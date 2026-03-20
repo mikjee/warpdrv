@@ -1,7 +1,7 @@
 import { Box, Text, HStack, VStack, Flex, Button, Spinner } from '@chakra-ui/react';
 import {
 	Play, Square, RotateCcw, Plus, Server, Clock, Zap, Trash2,
-	Activity, Gauge, MemoryStick, Terminal,
+	Activity, Gauge, MemoryStick, Terminal, Edit,
 } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { PageHeader } from '../components/PageHeader';
@@ -10,9 +10,10 @@ import { StatusBadge } from '../components/StatusBadge';
 import { VramBar } from '../components/VramBar';
 import { LaunchServerDialog } from '../components/dialogs/LaunchServerDialog';
 import { ServerLogs } from '../components/dialogs/ServerLogs';
+import { ServerEditDialog } from '../components/dialogs/ServerEditDialog';
 import { useListQuery, useMutation } from '../hooks/useQuery';
-import { fetchServers, stopServer, restartServer, removeServer } from '../api/services';
-import type { IServer } from '@warpcore/shared';
+import { fetchServers, stopServer, restartServer, removeServer, updateServer, fetchBackends, fetchModels } from '../api/services';
+import type { IServer, IBackend, IModel } from '@warpcore/shared';
 import { EServerStatus } from '@warpcore/shared';
 
 function formatUptime(startedAt: number | null): string {
@@ -40,15 +41,27 @@ export function ServersPage() {
 
 	const [showLaunch, setShowLaunch] = useState(false);
 	const [logsServerId, setLogsServerId] = useState<string | null>(null);
+	const [editingServerId, setEditingServerId] = useState<string | null>(null);
 	const logsServer = servers.find(s => s.id === logsServerId);
+	const editingServer = servers.find(s => s.id === editingServerId);
+
+	// Fetch backends and models for edit dialog
+	const { data: backends } = useListQuery<IBackend>(useCallback(() => fetchBackends(), []));
+	const { data: models } = useListQuery<IModel>(useCallback(() => fetchModels(), []));
 
 	const stopMut = useMutation<string, IServer>(useCallback((id: string) => stopServer(id), []));
 	const restartMut = useMutation<string, IServer>(useCallback((id: string) => restartServer(id), []));
 	const removeMut = useMutation<string, null>(useCallback((id: string) => removeServer(id), []));
+	const updateMut = useMutation<[string, string, any], IServer>(useCallback(([id, modelPath, params]) => updateServer(id, { modelPath, params }), []));
 
 	const handleStop = async (id: string) => { await stopMut.mutate(id); await refetch(); };
 	const handleRestart = async (id: string) => { await restartMut.mutate(id); await refetch(); };
 	const handleRemove = async (id: string) => { await removeMut.mutate(id); await refetch(); };
+
+	const handleRelaunchWithChanges = async (serverId: string, modelPath: string, params: any) => {
+		await updateMut.mutate([serverId, modelPath, params]);
+		await refetch();
+	};
 
 	return (
 		<Box>
@@ -135,9 +148,17 @@ export function ServersPage() {
 											</HStack>
 
 											<HStack gap="1.5">
+												<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }} borderRadius="md" onClick={() => setEditingServerId(server.id)}>
+													<Edit size={14} />
+												</Button>
 												<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#22d3ee', bg: 'rgba(34, 211, 238, 0.08)' }} borderRadius="md" onClick={() => setLogsServerId(server.id)}>
 													<Terminal size={14} />
 												</Button>
+												{!isRunning && !isLoading && (
+													<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' }} borderRadius="md" onClick={() => handleRestart(server.id)}>
+														<Play size={14} />
+													</Button>
+												)}
 												{(isRunning || isLoading) && (
 													<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' }} borderRadius="md" onClick={() => handleRestart(server.id)}>
 														<RotateCcw size={14} />
@@ -185,6 +206,16 @@ export function ServersPage() {
 
 			{logsServer && (
 				<ServerLogs serverId={logsServer.id} serverAlias={logsServer.modelAlias} onClose={() => setLogsServerId(null)} />
+			)}
+
+			{editingServer && backends && models && (
+				<ServerEditDialog
+					server={editingServer}
+					backends={backends}
+					models={models}
+					onClose={() => setEditingServerId(null)}
+					onRelaunch={handleRelaunchWithChanges}
+				/>
 			)}
 		</Box>
 	);

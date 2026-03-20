@@ -21,6 +21,7 @@ export function BackendsPage() {
 	const { data: backends, loading, refetch } = useListQuery<IBackend>(fetcher);
 
 	const [showAddDialog, setShowAddDialog] = useState(false);
+	const [editingBackend, setEditingBackend] = useState<IBackend | null>(null);
 	const [validatingId, setValidatingId] = useState<string | null>(null);
 
 	const deleteMut = useMutation<string, null>(
@@ -100,6 +101,9 @@ export function BackendsPage() {
 												</Box>
 											</HStack>
 											<HStack gap="1">
+												<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }} borderRadius="md" onClick={() => setEditingBackend(backend)}>
+													<Edit size={14} />
+												</Button>
 												<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="md" onClick={() => handleValidate(backend.id)} disabled={validatingId === backend.id}>
 													{validatingId === backend.id ? <Spinner size="xs" /> : <RefreshCw size={14} />}
 												</Button>
@@ -143,6 +147,19 @@ export function BackendsPage() {
 			{showAddDialog && (
 				<BackendDialog
 					onClose={() => { setShowAddDialog(false); refetch(); }}
+				/>
+			)}
+
+			{editingBackend && (
+				<BackendDialog
+					editData={{
+						id: editingBackend.id,
+						name: editingBackend.name,
+						path: editingBackend.path,
+						description: editingBackend.description ?? '',
+						defaultArgs: editingBackend.defaultArgs,
+					}}
+					onClose={() => { setEditingBackend(null); refetch(); }}
 				/>
 			)}
 		</Box>

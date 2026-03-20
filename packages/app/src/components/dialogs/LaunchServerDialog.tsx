@@ -45,10 +45,11 @@ function ToggleChip({ label, active, onClick }: { label: string; active: boolean
 	);
 }
 
-function SelectField({ label, value, options, onChange, mono }: {
-	label: string; value: string; options: string[]; onChange: (v: string) => void; mono?: boolean;
+function SelectField({ label, value, options, onChange, mono, optionLabels }: {
+	label: string; value: string; options: string[]; onChange: (v: string) => void; mono?: boolean; optionLabels?: Record<string, string>;
 }) {
 	const [open, setOpen] = useState(false);
+	const displayValue = optionLabels && optionLabels[value] ? optionLabels[value] : value;
 	return (
 		<Box position="relative" flex="1">
 			<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">{label}</Text>
@@ -57,7 +58,7 @@ function SelectField({ label, value, options, onChange, mono }: {
 				fontFamily={mono ? '"Geist Mono", monospace' : undefined} fontSize="12px" borderRadius="lg"
 				_hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }} onClick={() => setOpen(!open)}
 			>
-				{value}
+				{displayValue}
 				<ChevronDown size={14} />
 			</Button>
 			{open && (
@@ -65,16 +66,19 @@ function SelectField({ label, value, options, onChange, mono }: {
 					borderColor="rgba(255, 255, 255, 0.1)" borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)"
 					zIndex="dropdown" maxH="200px" overflowY="auto" py="1"
 				>
-					{options.map(opt => (
-						<Box key={opt} px="3" py="1.5" fontSize="12px" fontFamily={mono ? '"Geist Mono", monospace' : undefined}
-							color={opt === value ? '#3381ff' : 'rgba(255, 255, 255, 0.6)'}
-							bg={opt === value ? 'rgba(51, 129, 255, 0.08)' : 'transparent'}
-							cursor="pointer" _hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
-							onClick={() => { onChange(opt); setOpen(false); }}
-						>
-							{opt}
-						</Box>
-					))}
+					{options.map(opt => {
+						const displayLabel = optionLabels && optionLabels[opt] ? optionLabels[opt] : opt;
+						return (
+							<Box key={opt} px="3" py="1.5" fontSize="12px" fontFamily={mono ? '"Geist Mono", monospace' : undefined}
+								color={opt === value ? '#3381ff' : 'rgba(255, 255, 255, 0.6)'}
+								bg={opt === value ? 'rgba(51, 129, 255, 0.08)' : 'transparent'}
+								cursor="pointer" _hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
+								onClick={() => { onChange(opt); setOpen(false); }}
+							>
+								{displayLabel}
+							</Box>
+						);
+					})}
 				</Box>
 			)}
 		</Box>
@@ -152,6 +156,13 @@ export function LaunchServerDialog({ onClose }: ILaunchServerDialogProps) {
 
 	const selectedEntry = modelEntries.find(e => e.file.filePath === selectedModelPath);
 	const selectedBackend = backends.find(b => b.id === selectedBackendId);
+
+	// Available devices from selected backend (for device dropdown)
+	const availableDevices = selectedBackend?.detectedDevices ?? [];
+	const deviceIdToName = Object.fromEntries(availableDevices.map(d => [d.id, d.name]));
+	const deviceOptions = availableDevices.length > 0
+		? availableDevices.map(d => d.id)
+		: [''];
 
 	// VRAM estimate
 	const meta = selectedEntry?.file.metadata;
@@ -417,7 +428,11 @@ export function LaunchServerDialog({ onClose }: ILaunchServerDialogProps) {
 											<NumberField label="Port" value={params.port} onChange={v => updateParam('port', v)} min={0} max={65535} suffix="0 = auto" />
 											<Box>
 												<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Device</Text>
-												<Input placeholder="Default" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={params.device} onChange={e => updateParam('device', e.target.value)} />
+												{availableDevices.length > 0 ? (
+													<SelectField label="" value={params.device} options={deviceOptions} onChange={v => updateParam('device', v)} mono optionLabels={deviceIdToName} />
+												) : (
+													<Input placeholder="Default" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={params.device} onChange={e => updateParam('device', e.target.value)} />
+												)}
 											</Box>
 											<Box>
 												<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Extra Arguments</Text>

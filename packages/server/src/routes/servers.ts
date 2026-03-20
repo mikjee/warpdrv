@@ -193,6 +193,63 @@ serversRouter.post('/:id/restart', async (req, res) => {
 	res.json({ ok: true, data: server, error: null });
 });
 
+// PUT /api/servers/:id — update params and restart
+serversRouter.put('/:id', async (req, res) => {
+	const server = await store.get<IServer>(PREFIX + req.params.id);
+	if (!server) {
+		res.status(404).json({ ok: false, data: null, error: 'Server not found' });
+		return;
+	}
+
+	const updatePayload = req.body as Partial<Pick<IServer, 'backendId' | 'modelPath' | 'mmprojPath' | 'params'>>;
+
+	// Validate new backend if changed
+	let backend = await store.get<IBackend>('backends:' + (updatePayload.backendId ?? server.backendId));
+	if (!backend) {
+		res.status(400).json({ ok: false, data: null, error: 'Backend not found' });
+		return;
+	}
+
+	// Kill existing if running
+	if (server.pid) {
+		killServer(server.id);
+		usedPorts.delete(server.port);
+	}
+
+	// Update fields
+	if (updatePayload.backendId) server.backendId = updatePayload.backendId;
+	if (updatePayload.modelPath) server.modelPath = updatePayload.modelPath;
+	if (updatePayload.mmprojPath !== undefined) server.mmprojPath = updatePayload.mmprojPath;
+	if (updatePayload.params) server.params = updatePayload.params;
+
+	// Re-spawn with new params
+	const args = buildArgs(
+		server.modelPath,
+		server.mmprojPath,
+		server.params,
+		backend.defaultArgs,
+	);
+
+	const pid = spawnServer(
+		server.id,
+		backend.path,
+		args,
+		async (status, error) => {
+			server.status = status;
+			if (error) server.error = error;
+			if (status === EServerStatus.RUNNING) server.startedAt = Date.now();
+			await store.put(PREFIX + server.id, server);
+		},
+	);
+
+	server.pid = pid;
+	server.status = EServerStatus.LOADING;
+	server.error = null;
+	await store.put(PREFIX + server.id, server);
+
+	res.json({ ok: true, data: server, error: null });
+});
+
 // DELETE /api/servers/:id — stop and remove
 serversRouter.delete('/:id', async (req, res) => {
 	const server = await store.get<IServer>(PREFIX + req.params.id);

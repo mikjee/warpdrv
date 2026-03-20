@@ -18,6 +18,7 @@ function makeModelId(dirPath: string): string {
 async function scanModelDir(dirPath: string, user: string, modelName: string): Promise<IModel | null> {
 	try {
 		const entries = await fs.readdir(dirPath, { withFileTypes: true });
+		console.log(`[modelScanner] Scanning model dir: ${dirPath} (${entries.length} entries)`);
 		const ggufEntries = entries.filter(e => e.isFile() && e.name.endsWith('.gguf'));
 
 		if (ggufEntries.length === 0) return null;
@@ -100,24 +101,30 @@ export async function scanModelRoot(rootPath: string): Promise<IModel[]> {
 	const models: IModel[] = [];
 
 	try {
+		console.log(`[modelScanner] Scanning root: ${rootPath}`);
 		const userDirs = await fs.readdir(rootPath, { withFileTypes: true });
+		console.log(`[modelScanner] Found ${userDirs.length} user dirs`);
 
 		for (const userDir of userDirs) {
 			if (!userDir.isDirectory()) continue;
 			const userPath = path.join(rootPath, userDir.name);
 
 			const modelDirs = await fs.readdir(userPath, { withFileTypes: true });
+			console.log(`[modelScanner] User ${userDir.name} has ${modelDirs.length} model dirs`);
 
 			for (const modelDir of modelDirs) {
 				if (!modelDir.isDirectory()) continue;
 				const modelPath = path.join(userPath, modelDir.name);
 
 				const model = await scanModelDir(modelPath, userDir.name, modelDir.name);
-				if (model) models.push(model);
+				if (model) {
+					console.log(`[modelScanner] Found model: ${userDir.name}/${modelDir.name}`);
+					models.push(model);
+				}
 			}
 		}
-	} catch {
-		// Root doesn't exist or isn't readable
+	} catch (err) {
+		console.error(`[modelScanner] Error scanning root ${rootPath}:`, err);
 	}
 
 	return models;

@@ -60,7 +60,7 @@ export async function fetchModels() {
 }
 
 export async function scanModels() {
-	return api.getList<IModel>('/models/scan');
+	return api.post<IModel[]>('/models/scan');
 }
 
 export async function fetchScanStatus() {
@@ -89,6 +89,10 @@ export async function stopServer(id: string) {
 
 export async function restartServer(id: string) {
 	return api.post<IServer>(`/servers/${id}/restart`);
+}
+
+export async function updateServer(id: string, data: Partial<Pick<IServer, 'backendId' | 'modelPath' | 'mmprojPath' | 'params'>>) {
+	return api.put<IServer>(`/servers/${id}`, data);
 }
 
 export async function removeServer(id: string) {

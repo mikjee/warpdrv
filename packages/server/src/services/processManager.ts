@@ -1,6 +1,37 @@
 import { spawn, type ChildProcess } from 'child_process';
+import http from 'http';
 import type { IServer, ILaunchParams } from '@warpcore/shared';
 import { EServerStatus, EKvQuantType } from '@warpcore/shared';
+
+// Health poller — checks /health endpoint until server is ready or timeout
+function pollHealth(
+	port: number,
+	onReady: () => void,
+	onFail: (err: string) => void,
+): ReturnType<typeof setInterval> {
+	let attempts = 0;
+	const maxAttempts = 120; // 2 minutes at 1s intervals
+
+	const interval = setInterval(() => {
+		attempts++;
+		if (attempts > maxAttempts) {
+			clearInterval(interval);
+			onFail('Server did not become ready within 2 minutes');
+			return;
+		}
+
+		const req = http.get(`http://127.0.0.1:${port}/health`, { timeout: 2000 }, (res) => {
+			if (res.statusCode === 200) {
+				clearInterval(interval);
+				onReady();
+			}
+		});
+		req.on('error', () => {}); // not ready yet, keep polling
+		req.on('timeout', () => req.destroy());
+	}, 1000);
+
+	return interval;
+}
 
 // In-memory map of running processes (keyed by server ID)
 const processes = new Map<string, ChildProcess>();
@@ -81,13 +112,7 @@ export function spawnServer(
 
 		child.stdout?.on('data', (data: Buffer) => {
 			const lines = data.toString().split('\n').filter(Boolean);
-			for (const line of lines) {
-				appendLog(line);
-				// Detect when server is ready
-				if (line.includes('server is listening')) {
-					onStatusChange(EServerStatus.RUNNING);
-				}
-			}
+			for (const line of lines) appendLog(line);
 		});
 
 		child.stderr?.on('data', (data: Buffer) => {
@@ -95,11 +120,27 @@ export function spawnServer(
 			for (const line of lines) appendLog(line);
 		});
 
+		// Extract port from args for health polling
+		const portIdx = args.indexOf('--port');
+		const port = portIdx !== -1 ? parseInt(args[portIdx + 1] ?? '0', 10) : 0;
+
+		// Start health poller instead of relying on stdout parsing
+		let healthInterval: ReturnType<typeof setInterval> | null = null;
+		if (port > 0) {
+			healthInterval = pollHealth(
+				port,
+				() => onStatusChange(EServerStatus.RUNNING),
+				(err) => onStatusChange(EServerStatus.ERROR, err),
+			);
+		}
+
 		child.on('error', (err) => {
+			if (healthInterval) clearInterval(healthInterval);
 			onStatusChange(EServerStatus.ERROR, err.message);
 		});
 
 		child.on('exit', (code) => {
+			if (healthInterval) clearInterval(healthInterval);
 			processes.delete(serverId);
 			if (code !== 0 && code !== null) {
 				onStatusChange(EServerStatus.ERROR, `Process exited with code ${code}`);
