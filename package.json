@@ -1,0 +1,15 @@
+{
+	"name": "warpcore",
+	"private": true,
+	"version": "0.1.0",
+	"workspaces": ["packages/*"],
+	"scripts": {
+		"dev": "concurrently -n server,app -c blue,green \"npm run dev -w @warpcore/server\" \"npm run dev -w @warpcore/app\"",
+		"dev:server": "npm run dev -w @warpcore/server",
+		"dev:app": "npm run dev -w @warpcore/app",
+		"build": "npm run build -w @warpcore/app"
+	},
+	"devDependencies": {
+		"concurrently": "^9.1.2"
+	}
+}
