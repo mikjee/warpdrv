@@ -31,3 +31,6 @@ export enum EDeviceBackendType {
 	ROCM = 'ROCm',
 	VULKAN = 'Vulkan',
 }
+
+// Re-export from hub-types
+export { EDownloadStatus } from './hub-types';

@@ -8,14 +8,15 @@
 		"start": "tsx src/index.ts"
 	},
 	"dependencies": {
+		"@huggingface/hub": "^2.11.0",
 		"@warpcore/shared": "*",
-		"express": "^5.1.0",
 		"cors": "^2.8.5",
-		"level": "^9.0.0"
+		"express": "^5.1.0",
+		"node-downloader-helper": "^2.1.11"
 	},
 	"devDependencies": {
-		"@types/express": "^5.0.2",
 		"@types/cors": "^2.8.18",
+		"@types/express": "^5.0.2",
 		"tsx": "^4.19.4",
 		"typescript": "^5.8.3"
 	}

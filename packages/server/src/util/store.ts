@@ -1,58 +1,61 @@
-import { Level } from 'level';
+import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import os from 'os';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DB_PATH = path.join(__dirname, '..', '..', '.warpcore-db');
+function getDataDir(): string {
+	const platform = os.platform();
+	if (platform === 'win32') return path.join(os.homedir(), 'AppData', 'Roaming', 'warpcore');
+	if (platform === 'darwin') return path.join(os.homedir(), 'Library', 'Application Support', 'warpcore');
+	return path.join(os.homedir(), '.config', 'warpcore');
+}
 
-// Single LevelDB instance — all data stored as JSON strings under namespaced keys
-const db = new Level<string, string>(DB_PATH, { valueEncoding: 'utf8' });
+const DATA_DIR = getDataDir();
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+const DB_FILE = path.join(DATA_DIR, 'warpcore-data.json');
+let data: Record<string, string> = {};
+
+// Load from disk on startup
+function load(): void {
+	try {
+		if (fs.existsSync(DB_FILE)) {
+			data = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+		}
+	} catch {
+		data = {};
+	}
+}
+
+function save(): void {
+	fs.writeFileSync(DB_FILE, JSON.stringify(data, null, '\t'), 'utf8');
+}
+
+// Init
+load();
 
 export const store = {
 	async get<T>(key: string): Promise<T | null> {
-		try {
-			const raw = await db.get(key);
-			if (raw === undefined || raw === null) return null;
-			return JSON.parse(raw) as T;
-		} catch (err: unknown) {
-			if ((err as { code?: string }).code === 'LEVEL_NOT_FOUND') return null;
-			throw err;
-		}
+		const raw = data[key];
+		if (raw === undefined) return null;
+		return JSON.parse(raw) as T;
 	},
 
 	async put<T>(key: string, value: T): Promise<void> {
-		await db.put(key, JSON.stringify(value));
+		data[key] = JSON.stringify(value);
+		save();
 	},
 
 	async del(key: string): Promise<void> {
-		try {
-			await db.del(key);
-		} catch (err: unknown) {
-			if ((err as { code?: string }).code === 'LEVEL_NOT_FOUND') return;
-			throw err;
-		}
+		delete data[key];
+		save();
 	},
 
 	async list<T>(prefix: string): Promise<T[]> {
-		const results: T[] = [];
-		for await (const [, value] of db.iterator({
-			gte: prefix,
-			lte: prefix + '\xFF',
-		})) {
-			results.push(JSON.parse(value) as T);
-		}
-		return results;
+		return Object.entries(data)
+			.filter(([key]) => key.startsWith(prefix))
+			.map(([, value]) => JSON.parse(value) as T);
 	},
 
 	async keys(prefix: string): Promise<string[]> {
-		const results: string[] = [];
-		for await (const [key] of db.iterator({
-			gte: prefix,
-			lte: prefix + '\xFF',
-			values: false,
-		})) {
-			results.push(key);
-		}
-		return results;
+		return Object.keys(data).filter(key => key.startsWith(prefix));
 	},
 };

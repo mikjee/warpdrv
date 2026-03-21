@@ -15,6 +15,6 @@
 		"resolveJsonModule": true,
 		"noEmit": true
 	},
-	"include": ["src"],
+	"include": ["src", "src/routes/hub.ts"],
 	"references": [{ "path": "../shared" }]
 }

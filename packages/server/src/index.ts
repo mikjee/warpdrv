@@ -6,6 +6,7 @@ import { backendsRouter } from './routes/backends';
 import { modelsRouter } from './routes/models';
 import { serversRouter, reconcileServers } from './routes/servers';
 import { presetsRouter } from './routes/presets';
+import { hubRouter } from './routes/hub';
 import type { ISettings } from '@warpcore/shared';
 import { DEFAULT_SETTINGS } from '@warpcore/shared';
 
@@ -32,6 +33,7 @@ async function main() {
 	app.use('/api/models', modelsRouter);
 	app.use('/api/servers', serversRouter);
 	app.use('/api/presets', presetsRouter);
+	app.use('/api/hub', hubRouter);
 
 	// Health check
 	app.get('/api/health', (_req, res) => {

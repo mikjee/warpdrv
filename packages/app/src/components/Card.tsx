@@ -5,20 +5,22 @@ interface ICardProps {
 	children: ReactNode;
 	variant?: 'default' | 'accent' | 'status';
 	accentColor?: string;
+	bg?: string;
+	borderColor?: string;
 	onClick?: () => void;
 	selected?: boolean;
 }
 
-export function Card({ children, variant = 'default', accentColor, onClick, selected }: ICardProps) {
+export function Card({ children, variant = 'default', accentColor, onClick, selected, bg, borderColor }: ICardProps) {
 	const isClickable = !!onClick;
 
 	return (
 		<Box
 			position="relative"
-			bg="#111114"
+			bg={bg ?? '#111114'}
 			borderRadius="xl"
 			borderWidth="1px"
-			borderColor={selected ? 'rgba(51, 129, 255, 0.4)' : 'rgba(255, 255, 255, 0.06)'}
+			borderColor={selected ? 'rgba(51, 129, 255, 0.4)' : borderColor ?? 'rgba(255, 255, 255, 0.06)'}
 			p="5"
 			cursor={isClickable ? 'pointer' : 'default'}
 			transition="all 0.2s ease"

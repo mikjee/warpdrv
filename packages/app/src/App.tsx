@@ -5,6 +5,7 @@ import { ModelsPage } from './pages/ModelsPage';
 import { BackendsPage } from './pages/BackendsPage';
 import { ServersPage } from './pages/ServersPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { HubPage } from './pages/HubPage';
 
 export function App() {
 	return (
@@ -15,6 +16,7 @@ export function App() {
 				<Route path="/models" element={<ModelsPage />} />
 				<Route path="/backends" element={<BackendsPage />} />
 				<Route path="/servers" element={<ServersPage />} />
+				<Route path="/hub" element={<HubPage />} />
 				<Route path="/settings" element={<SettingsPage />} />
 			</Route>
 		</Routes>

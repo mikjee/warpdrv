@@ -3,13 +3,13 @@ import {
 	Box, Text, HStack, VStack, Flex, Input, Button, Badge, Spinner,
 } from '@chakra-ui/react';
 import {
-	Play, X, ChevronDown, ChevronRight, Zap, Cpu,
+	Play, X, ChevronDown, ChevronRight, Zap, Cpu, RefreshCw,
 	Layers, Server, Gauge, Package, Bookmark,
 	AlertTriangle, Check,
 } from 'lucide-react';
 import {
 	EKvQuantType,
-	type IModel, type IBackend, type ILaunchParams,
+	type IModel, type IBackend, type ILaunchParams, type IServer,
 	DEFAULT_LAUNCH_PARAMS,
 	calculateVramEstimate, kvQuantToNumeric,
 	type IPreset,
@@ -17,7 +17,7 @@ import {
 import { Card } from '../Card';
 import { VramBar } from '../VramBar';
 import { useListQuery } from '../../hooks/useQuery';
-import { fetchModels, fetchBackends, fetchPresets, launchServer, createPreset } from '../../api/services';
+import { fetchModels, fetchBackends, fetchPresets, launchServer, createPreset, updateServer } from '../../api/services';
 import { useToast } from '../ToastProvider';
 
 const KV_QUANT_OPTIONS = Object.values(EKvQuantType);
@@ -110,9 +110,16 @@ function formatSize(mb: number): string {
 
 interface ILaunchServerDialogProps {
 	onClose: () => void;
+	editMode?: {
+		serverId: string;
+		backendId: string;
+		modelPath: string;
+		mmprojPath: string | null;
+		params: ILaunchParams;
+	};
 }
 
-export function LaunchServerDialog({ onClose }: ILaunchServerDialogProps) {
+export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogProps) {
 	const { toast } = useToast();
 
 	// Fetch real data
@@ -124,8 +131,8 @@ export function LaunchServerDialog({ onClose }: ILaunchServerDialogProps) {
 	const { data: presets } = useListQuery<IPreset>(presetsFetcher);
 
 	// Selection state
-	const [selectedModelPath, setSelectedModelPath] = useState<string | null>(null);
-	const [selectedBackendId, setSelectedBackendId] = useState<string | null>(null);
+	const [selectedModelPath, setSelectedModelPath] = useState<string | null>(editMode?.modelPath ?? null);
+	const [selectedBackendId, setSelectedBackendId] = useState<string | null>(editMode?.backendId ?? null);
 	const [modelSearch, setModelSearch] = useState('');
 	const [showAdvanced, setShowAdvanced] = useState(false);
 	const [showPresets, setShowPresets] = useState(false);
@@ -133,7 +140,7 @@ export function LaunchServerDialog({ onClose }: ILaunchServerDialogProps) {
 	const [launching, setLaunching] = useState(false);
 
 	// Params
-	const [params, setParams] = useState<ILaunchParams>({ ...DEFAULT_LAUNCH_PARAMS });
+	const [params, setParams] = useState<ILaunchParams>(editMode?.params ?? { ...DEFAULT_LAUNCH_PARAMS });
 
 	const updateParam = <K extends keyof ILaunchParams>(key: K, value: ILaunchParams[K]) => {
 		setParams(prev => ({ ...prev, [key]: value }));
@@ -176,25 +183,44 @@ export function LaunchServerDialog({ onClose }: ILaunchServerDialogProps) {
 		gpuLayers: params.gpuLayers,
 	}, selectedBackend.detectedDevices[0]?.vramFreeMb ?? selectedBackend.detectedDevices[0]?.vramTotalMb ?? 99999) : null;
 
-	// Launch handler
+	// Launch/Relaunch handler
 	const handleLaunch = async () => {
 		if (!selectedEntry || !selectedBackendId) return;
 		setLaunching(true);
 
-		const result = await launchServer({
-			backendId: selectedBackendId,
-			modelPath: selectedEntry.file.filePath,
-			mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
-			modelAlias: selectedEntry.file.fileName.replace('.gguf', ''),
-			params,
-		});
+		if (editMode) {
+			// Relaunch existing server with updated params
+			const result = await updateServer(editMode.serverId, {
+				backendId: selectedBackendId,
+				modelPath: selectedEntry.file.filePath,
+				mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
+				params,
+			});
 
-		setLaunching(false);
-		if (result.ok) {
-			toast('success', `Server launched on port ${result.data.port}`);
-			onClose();
+			setLaunching(false);
+			if (result.ok) {
+				toast('success', 'Server relaunched with changes');
+				onClose();
+			} else {
+				toast('error', result.error ?? 'Failed to relaunch server');
+			}
 		} else {
-			toast('error', result.error ?? 'Failed to launch server');
+			// Launch new server
+			const result = await launchServer({
+				backendId: selectedBackendId,
+				modelPath: selectedEntry.file.filePath,
+				mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
+				modelAlias: selectedEntry.file.fileName.replace('.gguf', ''),
+				params,
+			});
+
+			setLaunching(false);
+			if (result.ok) {
+				toast('success', `Server launched on port ${result.data.port}`);
+				onClose();
+			} else {
+				toast('error', result.error ?? 'Failed to launch server');
+			}
 		}
 	};
 
@@ -240,29 +266,33 @@ export function LaunchServerDialog({ onClose }: ILaunchServerDialogProps) {
 				<Flex px="6" py="4" justify="space-between" align="center" borderBottomWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" bg="rgba(255, 255, 255, 0.01)">
 					<HStack gap="3">
 						<Flex w="9" h="9" borderRadius="lg" alignItems="center" justifyContent="center"
-							bgGradient="to-br" gradientFrom="rgba(51, 129, 255, 0.2)" gradientTo="rgba(167, 139, 250, 0.2)"
-							borderWidth="1px" borderColor="rgba(51, 129, 255, 0.2)"
+							bgGradient={editMode ? "to-br" : "to-br"}
+							gradientFrom={editMode ? "rgba(251, 191, 36, 0.2)" : "rgba(51, 129, 255, 0.2)"}
+							gradientTo={editMode ? "rgba(245, 158, 11, 0.2)" : "rgba(167, 139, 250, 0.2)"}
+							borderWidth="1px" borderColor={editMode ? "rgba(251, 191, 36, 0.2)" : "rgba(51, 129, 255, 0.2)"}
 						>
-							<Zap size={18} color="#3381ff" />
+							{editMode ? <RefreshCw size={18} color="#fbbf24" /> : <Zap size={18} color="#3381ff" />}
 						</Flex>
 						<Box>
-							<Text fontSize="16px" fontWeight="700" color="#e4e4e7" letterSpacing="-0.01em">Launch Server</Text>
-							<Text fontSize="12px" color="rgba(255, 255, 255, 0.35)">Configure and start a llama-server instance</Text>
+							<Text fontSize="16px" fontWeight="700" color="#e4e4e7" letterSpacing="-0.01em">{editMode ? 'Edit Server' : 'Launch Server'}</Text>
+							<Text fontSize="12px" color="rgba(255, 255, 255, 0.35)">{editMode ? 'Modify launch parameters — requires relaunch' : 'Configure and start a llama-server instance'}</Text>
 						</Box>
 					</HStack>
 					<HStack gap="2">
-						<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' }} borderRadius="lg" fontSize="12px" onClick={() => setShowPresets(!showPresets)}>
-							<Bookmark size={14} />
-							Presets
-						</Button>
+						{!editMode && (
+							<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' }} borderRadius="lg" fontSize="12px" onClick={() => setShowPresets(!showPresets)}>
+								<Bookmark size={14} />
+								Presets
+							</Button>
+						)}
 						<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.3)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="md" onClick={onClose} minW="8" px="0">
 							<X size={16} />
 						</Button>
 					</HStack>
 				</Flex>
 
-				{/* Preset panel (slides down) */}
-				{showPresets && (
+				{/* Preset panel (slides down) - only in create mode */}
+				{showPresets && !editMode && (
 					<Box px="6" py="4" borderBottomWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" bg="rgba(251, 191, 36, 0.02)">
 						{presets.length > 0 ? (
 							<VStack align="stretch" gap="2">
@@ -467,7 +497,7 @@ export function LaunchServerDialog({ onClose }: ILaunchServerDialogProps) {
 				{/* Footer */}
 				<Flex px="6" py="4" justify="space-between" align="center" borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" bg="rgba(255, 255, 255, 0.01)">
 					<HStack gap="2">
-						{selectedModelPath && selectedBackendId && (
+						{selectedModelPath && selectedBackendId && !editMode && (
 							<HStack gap="2">
 								<Input placeholder="Preset name..." size="sm" w="180px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(251, 191, 36, 0.4)', outline: 'none' }} value={presetName} onChange={e => setPresetName(e.target.value)} />
 								<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' }} borderRadius="lg" fontSize="12px" onClick={handleSavePreset} disabled={!presetName.trim()}>
@@ -478,9 +508,26 @@ export function LaunchServerDialog({ onClose }: ILaunchServerDialogProps) {
 					</HStack>
 					<HStack gap="2">
 						<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="lg" fontSize="13px" onClick={onClose}>Cancel</Button>
-						<Button size="sm" disabled={!canLaunch} bgGradient="to-r" gradientFrom="#3381ff" gradientTo="#5b6af5" color="white" _hover={{ opacity: 0.9, shadow: '0 4px 20px rgba(51, 129, 255, 0.3)' }} _disabled={{ opacity: 0.3, cursor: 'not-allowed' }} borderRadius="lg" fontSize="13px" fontWeight="600" px="6" transition="all 0.2s ease" onClick={handleLaunch}>
-							{launching ? <Spinner size="xs" /> : <Play size={14} />}
-							Launch
+						<Button
+							size="sm"
+							disabled={!canLaunch}
+							bgGradient="to-r"
+							gradientFrom={editMode ? '#fbbf24' : '#3381ff'}
+							gradientTo={editMode ? '#f59e0b' : '#5b6af5'}
+							color={editMode ? "#fbbf24" : "white"}
+							borderColor={editMode ? "rgba(251, 191, 36, 0.3)" : undefined}
+							borderWidth="1px"
+							_hover={{ opacity: 0.9, shadow: editMode ? '0 4px 20px rgba(251, 191, 36, 0.3)' : '0 4px 20px rgba(51, 129, 255, 0.3)' }}
+							_disabled={{ opacity: 0.3, cursor: 'not-allowed' }}
+							borderRadius="lg"
+							fontSize="13px"
+							fontWeight="600"
+							px="6"
+							transition="all 0.2s ease"
+							onClick={handleLaunch}
+						>
+							{launching ? <Spinner size="xs" /> : editMode ? <RefreshCw size={14} /> : <Play size={14} />}
+							{editMode ? 'Relaunch with Changes' : 'Launch'}
 						</Button>
 					</HStack>
 				</Flex>

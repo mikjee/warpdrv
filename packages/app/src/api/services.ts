@@ -9,6 +9,10 @@ import type {
 	IServerCreatePayload,
 	IPreset,
 	IPresetCreatePayload,
+	IHubModel,
+	IHubModelDetail,
+	IDownload,
+	IDownloadRequestPayload,
 } from '@warpcore/shared';
 
 // ============================================================
@@ -122,3 +126,5 @@ export async function createPreset(data: IPresetCreatePayload) {
 export async function deletePreset(id: string) {
 	return api.del<null>(`/presets/${id}`);
 }
+
+export * from './hub-services';

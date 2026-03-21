@@ -1,0 +1,14 @@
+{
+	"$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-utils/schema/capability.json",
+	"identifier": "default",
+	"description": "Default capabilities for WarpCore desktop",
+	"windows": ["main"],
+	"permissions": [
+		"core:default",
+		"shell:allow-open",
+		"shell:allow-execute",
+		"shell:allow-spawn",
+		"shell:allow-stdin-write",
+		"shell:allow-kill"
+	]
+}

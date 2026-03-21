@@ -7,6 +7,7 @@ import {
 	Play,
 	Settings,
 	Zap,
+	Globe,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 
@@ -21,6 +22,7 @@ const NAV_ITEMS: INavItem[] = [
 	{ path: '/models', label: 'Models', icon: <FolderOpen size={18} /> },
 	{ path: '/backends', label: 'Backends', icon: <Blocks size={18} /> },
 	{ path: '/devices', label: 'Devices', icon: <Cpu size={18} /> },
+	{ path: '/hub', label: 'Hub', icon: <Globe size={18} /> },
 	{ path: '/settings', label: 'Settings', icon: <Settings size={18} /> },
 ];
 

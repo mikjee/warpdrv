@@ -10,10 +10,9 @@ import { StatusBadge } from '../components/StatusBadge';
 import { VramBar } from '../components/VramBar';
 import { LaunchServerDialog } from '../components/dialogs/LaunchServerDialog';
 import { ServerLogs } from '../components/dialogs/ServerLogs';
-import { ServerEditDialog } from '../components/dialogs/ServerEditDialog';
 import { useListQuery, useMutation } from '../hooks/useQuery';
-import { fetchServers, stopServer, restartServer, removeServer, updateServer, fetchBackends, fetchModels } from '../api/services';
-import type { IServer, IBackend, IModel } from '@warpcore/shared';
+import { fetchServers, stopServer, restartServer, removeServer } from '../api/services';
+import type { IServer } from '@warpcore/shared';
 import { EServerStatus } from '@warpcore/shared';
 
 function formatUptime(startedAt: number | null): string {
@@ -45,23 +44,13 @@ export function ServersPage() {
 	const logsServer = servers.find(s => s.id === logsServerId);
 	const editingServer = servers.find(s => s.id === editingServerId);
 
-	// Fetch backends and models for edit dialog
-	const { data: backends } = useListQuery<IBackend>(useCallback(() => fetchBackends(), []));
-	const { data: models } = useListQuery<IModel>(useCallback(() => fetchModels(), []));
-
 	const stopMut = useMutation<string, IServer>(useCallback((id: string) => stopServer(id), []));
 	const restartMut = useMutation<string, IServer>(useCallback((id: string) => restartServer(id), []));
 	const removeMut = useMutation<string, null>(useCallback((id: string) => removeServer(id), []));
-	const updateMut = useMutation<[string, string, any], IServer>(useCallback(([id, modelPath, params]) => updateServer(id, { modelPath, params }), []));
 
 	const handleStop = async (id: string) => { await stopMut.mutate(id); await refetch(); };
 	const handleRestart = async (id: string) => { await restartMut.mutate(id); await refetch(); };
 	const handleRemove = async (id: string) => { await removeMut.mutate(id); await refetch(); };
-
-	const handleRelaunchWithChanges = async (serverId: string, modelPath: string, params: any) => {
-		await updateMut.mutate([serverId, modelPath, params]);
-		await refetch();
-	};
 
 	return (
 		<Box>
@@ -208,13 +197,16 @@ export function ServersPage() {
 				<ServerLogs serverId={logsServer.id} serverAlias={logsServer.modelAlias} onClose={() => setLogsServerId(null)} />
 			)}
 
-			{editingServer && backends && models && (
-				<ServerEditDialog
-					server={editingServer}
-					backends={backends}
-					models={models}
+			{editingServer && (
+				<LaunchServerDialog
 					onClose={() => setEditingServerId(null)}
-					onRelaunch={handleRelaunchWithChanges}
+					editMode={{
+						serverId: editingServer.id,
+						backendId: editingServer.backendId,
+						modelPath: editingServer.modelPath,
+						mmprojPath: editingServer.mmprojPath ?? null,
+						params: editingServer.params,
+					}}
 				/>
 			)}
 		</Box>
