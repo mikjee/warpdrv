@@ -13,16 +13,36 @@ interface IValidationResult {
 	error: string | null;
 }
 
-// Run llama-server --version to validate binary and get version
+// Run llama-server --list-devices to detect compiled backends
 async function getVersion(binaryPath: string): Promise<string | null> {
 	try {
-		const { stdout, stderr } = await execFileAsync(binaryPath, ['--version'], {
+		const cliPath = binaryPath.replace(/llama-server$/, 'llama-cli');
+		const { stdout, stderr } = await execFileAsync(cliPath, ['--list-devices'], {
 			timeout: 10000,
 		});
-		// Version string is usually in stderr or stdout
 		const output = stderr + stdout;
-		const match = output.match(/build:\s*(\S+)/);
-		return match ? match[1]! : 'unknown';
+
+		const parts: string[] = [];
+
+		// Detect CUDA - must say "CUDA devices" (not ROCm devices)
+		if (output.match(/ggml_cuda_init: found \d+ CUDA devices/)) {
+			parts.push('CUDA');
+		}
+
+		// Detect ROCm - can show as "ROCm devices" under ggml_cuda_init or ggml_rocm_init
+		if (output.match(/ggml_cuda_init: found \d+ ROCm devices/) ||
+			output.match(/ggml_rocm_init/i) ||
+			output.match(/Available devices:.*\n.*ROCm\d:/s)) {
+			parts.push('ROCm');
+		}
+
+		// Detect Vulkan - look for actual Vulkan device listings
+		if (output.match(/Found \d+ Vulkan devices/i) ||
+			output.includes('ggml_vulkan:')) {
+			parts.push('Vulkan');
+		}
+
+		return parts.length > 0 ? parts.join(', ') : 'unknown';
 	} catch {
 		return null;
 	}
