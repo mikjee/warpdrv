@@ -1,9 +1,6 @@
 import { Router } from 'express';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const updateRouter = Router();
 
@@ -17,9 +14,9 @@ interface IReleaseInfo {
 function getLocalRelease(): IReleaseInfo {
 	// Walk up from server/src/routes to repo root
 	const candidates = [
-		path.join(__dirname, '..', '..', '..', '..', 'release.json'),
-		path.join(__dirname, '..', '..', '..', 'release.json'),
-		path.join(__dirname, '..', '..', 'release.json'),
+		path.join(process.cwd(), 'release.json'),
+		path.join(process.cwd(), '..', 'release.json'),
+		path.join(process.cwd(), '..', '..', 'release.json'),
 	];
 	for (const p of candidates) {
 		if (fs.existsSync(p)) {

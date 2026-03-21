@@ -6,8 +6,14 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+
 .warpcore-db
+
 packages/desktop/target/
+packages/desktop/target/
+packages/desktop/binaries/
+packages/desktop/app-dist/
+packages/server/dist/
 
 node_modules
 dist

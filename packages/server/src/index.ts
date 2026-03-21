@@ -38,6 +38,10 @@ async function main() {
 	app.use('/api/hub', hubRouter);
 	app.use('/api/update', updateRouter);
 
+	// Static frontend serving (production only)
+	const { serveStaticApp } = await import('./middleware/serveStatic');
+	serveStaticApp(app);
+
 	// Health check
 	app.get('/api/health', (_req, res) => {
 		res.json({ ok: true, version: '0.1.0' });

@@ -4,6 +4,8 @@ use std::process::{Child, Command};
 use std::sync::Mutex;
 use std::time::Duration;
 use std::thread;
+use std::path::PathBuf;
+use std::env;
 
 use tauri::{
     image::Image,
@@ -24,17 +26,59 @@ fn is_server_running(port: u16) -> bool {
     .is_ok()
 }
 
-fn spawn_server() -> Option<Child> {
-    let child = Command::new("npx")
-        .args(["tsx", "packages/server/src/index.ts"])
-        .current_dir(env!("CARGO_MANIFEST_DIR").to_string() + "/../..")
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn();
+fn find_server_binary() -> Option<(String, Vec<String>)> {
+    if let Ok(exe_path) = env::current_exe() {
+        let exe_dir = exe_path.parent().unwrap_or(std::path::Path::new("."));
 
-    match child {
+        for entry in std::fs::read_dir(exe_dir).ok()? {
+            if let Ok(entry) = entry {
+                let name = entry.file_name().to_string_lossy().to_string();
+                if name.starts_with("warpcore-server") && !name.ends_with(".sig") {
+                    return Some((entry.path().to_string_lossy().to_string(), vec![]));
+                }
+            }
+        }
+    }
+
+    let dev_index = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("server")
+        .join("src")
+        .join("index.ts");
+
+    if dev_index.exists() {
+        return Some((
+            "npx".to_string(),
+            vec![
+                "tsx".to_string(),
+                dev_index.canonicalize().unwrap_or(dev_index).to_string_lossy().to_string(),
+            ],
+        ));
+    }
+
+    None
+}
+
+fn spawn_server() -> Option<Child> {
+    let (bin, args) = find_server_binary()?;
+
+    let log_file = std::fs::File::create("/tmp/warpcore-server.log").unwrap();
+    let err_file = log_file.try_clone().unwrap();
+
+    // Find resource dir (Tauri puts resources in ../lib/WarpCore/ relative to the binary)
+    let resource_dir = env::current_exe().ok()
+        .and_then(|p| p.parent().map(|d| d.join("../lib/WarpCore").to_string_lossy().to_string()))
+        .unwrap_or_else(|| ".".to_string());
+
+    let mut cmd = Command::new(&bin);
+    cmd.args(&args)
+        .env("WARPCORE_RESOURCE_DIR", &resource_dir)
+        .stdout(log_file)
+        .stderr(err_file);
+
+    match cmd.spawn() {
         Ok(c) => {
-            println!("[WarpCore] Server spawned with PID {}", c.id());
+            println!("[WarpCore] Server spawned: {} {:?} (PID {})", bin, args, c.id());
             Some(c)
         }
         Err(e) => {
@@ -55,65 +99,137 @@ fn wait_for_server(port: u16, timeout_secs: u64) -> bool {
     false
 }
 
+fn navigate_to_app(app: &tauri::AppHandle, port: u16) {
+    if let Some(window) = app.get_webview_window("main") {
+        let url = format!("http://localhost:{}", port);
+        let _ = window.navigate(url.parse().unwrap());
+    }
+}
+
+fn loading_html(port: u16) -> String {
+    format!(r#"
+        <html>
+        <head><style>
+            body {{
+                margin: 0; background: #09090b; color: #e4e4e7;
+                font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+                display: flex; align-items: center; justify-content: center;
+                height: 100vh; flex-direction: column; gap: 16px;
+            }}
+            .spinner {{
+                width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.08);
+                border-top-color: #3381ff; border-radius: 50%;
+                animation: spin 0.8s linear infinite;
+            }}
+            @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
+            .text {{ font-size: 14px; color: rgba(255,255,255,0.4); }}
+            .sub {{ font-size: 11px; color: rgba(255,255,255,0.2); margin-top: 4px; }}
+        </style></head>
+        <body>
+            <div class="spinner"></div>
+            <div class="text">Starting WarpCore...</div>
+            <div class="sub">Waiting for server on port {port}</div>
+            <script>
+                setInterval(() => {{
+                    fetch('http://localhost:{port}/api/health')
+                        .then(r => r.json())
+                        .then(d => {{ if (d.ok) window.location.href = 'http://localhost:{port}'; }})
+                        .catch(() => {{}});
+                }}, 1000);
+            </script>
+        </body>
+        </html>
+    "#, port = port)
+}
+
+fn base64_encode(data: &[u8]) -> String {
+    const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut result = String::new();
+    for chunk in data.chunks(3) {
+        let b = match chunk.len() {
+            3 => [chunk[0], chunk[1], chunk[2]],
+            2 => [chunk[0], chunk[1], 0],
+            1 => [chunk[0], 0, 0],
+            _ => unreachable!(),
+        };
+        let n = ((b[0] as u32) << 16) | ((b[1] as u32) << 8) | (b[2] as u32);
+        result.push(CHARS[((n >> 18) & 0x3F) as usize] as char);
+        result.push(CHARS[((n >> 12) & 0x3F) as usize] as char);
+        if chunk.len() > 1 { result.push(CHARS[((n >> 6) & 0x3F) as usize] as char); } else { result.push('='); }
+        if chunk.len() > 2 { result.push(CHARS[(n & 0x3F) as usize] as char); } else { result.push('='); }
+    }
+    result
+}
+
 fn main() {
     let server_port: u16 = 4400;
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .manage(ServerProcess(Mutex::new(None)))
         .manage(ServerPort(server_port))
         .setup(move |app| {
-            // Spawn server if not already running
-            if !is_server_running(server_port) {
-                let child = spawn_server();
-                if let Some(c) = child {
-                    *app.state::<ServerProcess>().0.lock().unwrap() = Some(c);
-                }
-                let ready = wait_for_server(server_port, 30);
-                if !ready {
-                    eprintln!("[WarpCore] Server did not start within 30s");
-                }
-            } else {
-                println!("[WarpCore] Server already running on port {}", server_port);
+            // Show loading page immediately
+            if let Some(window) = app.get_webview_window("main") {
+                let html = loading_html(server_port);
+                let data_url = format!(
+                    "data:text/html;base64,{}",
+                    base64_encode(html.as_bytes())
+                );
+                let _ = window.navigate(data_url.parse().unwrap());
+                let _ = window.show();
             }
 
-            // Health monitor — background thread detects server death and respawns
+            // Spawn server in background
             let app_handle = app.handle().clone();
             thread::spawn(move || {
+                let port = server_port;
+
+                if !is_server_running(port) {
+                    let child = spawn_server();
+                    if let Some(c) = child {
+                        *app_handle.state::<ServerProcess>().0.lock().unwrap() = Some(c);
+                    }
+                    let ready = wait_for_server(port, 60);
+                    if ready {
+                        println!("[WarpCore] Server ready on port {}", port);
+                        navigate_to_app(&app_handle, port);
+                    } else {
+                        eprintln!("[WarpCore] Server did not start within 60s");
+                    }
+                } else {
+                    println!("[WarpCore] Server already running on port {}", port);
+                    navigate_to_app(&app_handle, port);
+                }
+
+                // Health monitor
                 let mut was_running = true;
                 loop {
                     thread::sleep(Duration::from_secs(3));
-
-                    let port = app_handle.state::<ServerPort>().0;
                     let running = is_server_running(port);
 
                     if was_running && !running {
-                        println!("[WarpCore] Server connection lost, attempting respawn...");
+                        println!("[WarpCore] Server died, respawning...");
                         let _ = app_handle.emit("server-status", "disconnected");
-
                         let child = spawn_server();
                         if let Some(c) = child {
                             *app_handle.state::<ServerProcess>().0.lock().unwrap() = Some(c);
-                            let recovered = wait_for_server(port, 30);
-                            if recovered {
-                                println!("[WarpCore] Server respawned successfully");
+                            if wait_for_server(port, 30) {
+                                println!("[WarpCore] Server respawned");
                                 let _ = app_handle.emit("server-status", "connected");
-                                if let Some(window) = app_handle.get_webview_window("main") {
-                                    let url = format!("http://localhost:{}", port);
-                                    let _ = window.navigate(url.parse().unwrap());
-                                }
-                            } else {
-                                eprintln!("[WarpCore] Server respawn failed");
-                                let _ = app_handle.emit("server-status", "failed");
+                                navigate_to_app(&app_handle, port);
                             }
                         }
                     } else if !was_running && running {
                         println!("[WarpCore] Server connection restored");
                         let _ = app_handle.emit("server-status", "connected");
-                        if let Some(window) = app_handle.get_webview_window("main") {
-                            let url = format!("http://localhost:{}", port);
-                            let _ = window.navigate(url.parse().unwrap());
-                        }
+                        navigate_to_app(&app_handle, port);
                     }
 
                     was_running = running;
@@ -163,10 +279,7 @@ fn main() {
                             thread::spawn(move || {
                                 if wait_for_server(port, 30) {
                                     let _ = app_clone.emit("server-status", "connected");
-                                    if let Some(window) = app_clone.get_webview_window("main") {
-                                        let url = format!("http://localhost:{}", port);
-                                        let _ = window.navigate(url.parse().unwrap());
-                                    }
+                                    navigate_to_app(&app_clone, port);
                                 }
                             });
                         }
@@ -197,7 +310,7 @@ fn main() {
                 })
                 .build(app)?;
 
-            // Intercept window close — hide to tray
+            // Close to tray
             if let Some(window) = app.get_webview_window("main") {
                 let w = window.clone();
                 window.on_window_event(move |event| {
@@ -206,11 +319,6 @@ fn main() {
                         let _ = w.hide();
                     }
                 });
-            }
-
-            // Show window
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
             }
 
             Ok(())
