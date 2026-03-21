@@ -9,6 +9,7 @@ import {
 	Zap,
 	Globe,
 } from 'lucide-react';
+import { UpdateBanner } from './UpdateBanner';
 import type { ReactNode } from 'react';
 
 interface INavItem {
@@ -121,6 +122,7 @@ export function Shell() {
 
 			{/* Main content */}
 			<Box flex="1" overflow="auto" bg="#09090b">
+				<UpdateBanner />
 				<Outlet />
 			</Box>
 		</Flex>

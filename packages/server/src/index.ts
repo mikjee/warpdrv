@@ -9,15 +9,17 @@ import { presetsRouter } from './routes/presets';
 import { hubRouter } from './routes/hub';
 import type { ISettings } from '@warpcore/shared';
 import { DEFAULT_SETTINGS } from '@warpcore/shared';
+import { runMigrations } from './services/migrationRunner';
+import { updateRouter } from './routes/update';
 
 const SETTINGS_KEY = 'settings:general';
 
 async function main() {
+	await runMigrations();
+
 	// Ensure default settings exist
 	const settings = await store.get<ISettings>(SETTINGS_KEY);
-	if (!settings) {
-		await store.put(SETTINGS_KEY, DEFAULT_SETTINGS);
-	}
+	if (!settings) await store.put(SETTINGS_KEY, DEFAULT_SETTINGS);
 
 	// Reconcile any servers that were running before restart
 	await reconcileServers();
@@ -34,6 +36,7 @@ async function main() {
 	app.use('/api/servers', serversRouter);
 	app.use('/api/presets', presetsRouter);
 	app.use('/api/hub', hubRouter);
+	app.use('/api/update', updateRouter);
 
 	// Health check
 	app.get('/api/health', (_req, res) => {

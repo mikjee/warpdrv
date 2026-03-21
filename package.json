@@ -11,11 +11,11 @@
 		"dev:app": "npm run dev -w @warpcore/app",
 		"dev:desktop": "npm run dev -w @warpcore/desktop",
 		"build": "npm run build -w @warpcore/app",
-		"build:desktop": "npm run build -w @warpcore/desktop"
+		"build:desktop": "npm run build -w @warpcore/desktop",
+		"release": "bash release.sh"
 	},
 	"devDependencies": {
 		"concurrently": "^9.1.2"
 	},
-	"dependencies": {
-	}
+	"dependencies": {}
 }

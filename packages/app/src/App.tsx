@@ -4,8 +4,8 @@ import { DevicesPage } from './pages/DevicesPage';
 import { ModelsPage } from './pages/ModelsPage';
 import { BackendsPage } from './pages/BackendsPage';
 import { ServersPage } from './pages/ServersPage';
-import { SettingsPage } from './pages/SettingsPage';
 import { HubPage } from './pages/HubPage';
+import { SettingsPage } from './pages/SettingsPage';
 
 export function App() {
 	return (

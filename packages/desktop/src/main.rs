@@ -9,13 +9,13 @@ use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItemBuilder},
     tray::TrayIconBuilder,
+    Emitter,
     Manager,
 };
 
-// Track the server child process
 struct ServerProcess(Mutex<Option<Child>>);
+struct ServerPort(u16);
 
-// Check if the server is already running on the given port
 fn is_server_running(port: u16) -> bool {
     std::net::TcpStream::connect_timeout(
         &format!("127.0.0.1:{}", port).parse().unwrap(),
@@ -24,11 +24,7 @@ fn is_server_running(port: u16) -> bool {
     .is_ok()
 }
 
-// Spawn the WarpCore server as a child process
 fn spawn_server() -> Option<Child> {
-    // Try to find the server entrypoint relative to the executable
-    // In dev: run tsx directly
-    // In production: the server would be bundled as a sidecar or run via node
     let child = Command::new("npx")
         .args(["tsx", "packages/server/src/index.ts"])
         .current_dir(env!("CARGO_MANIFEST_DIR").to_string() + "/../..")
@@ -38,17 +34,16 @@ fn spawn_server() -> Option<Child> {
 
     match child {
         Ok(c) => {
-            println!("[WarpCore Desktop] Server spawned with PID {}", c.id());
+            println!("[WarpCore] Server spawned with PID {}", c.id());
             Some(c)
         }
         Err(e) => {
-            eprintln!("[WarpCore Desktop] Failed to spawn server: {}", e);
+            eprintln!("[WarpCore] Failed to spawn server: {}", e);
             None
         }
     }
 }
 
-// Wait for server to become ready
 fn wait_for_server(port: u16, timeout_secs: u64) -> bool {
     let start = std::time::Instant::now();
     while start.elapsed() < Duration::from_secs(timeout_secs) {
@@ -66,6 +61,7 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(ServerProcess(Mutex::new(None)))
+        .manage(ServerPort(server_port))
         .setup(move |app| {
             // Spawn server if not already running
             if !is_server_running(server_port) {
@@ -73,27 +69,68 @@ fn main() {
                 if let Some(c) = child {
                     *app.state::<ServerProcess>().0.lock().unwrap() = Some(c);
                 }
-
-                // Wait for server to be ready before showing window
                 let ready = wait_for_server(server_port, 30);
                 if !ready {
-                    eprintln!("[WarpCore Desktop] Server did not start within 30s");
+                    eprintln!("[WarpCore] Server did not start within 30s");
                 }
             } else {
-                println!("[WarpCore Desktop] Server already running on port {}", server_port);
+                println!("[WarpCore] Server already running on port {}", server_port);
             }
 
-            // Build tray menu
-            let open_item = MenuItemBuilder::with_id("open", "Open WarpCore")
-                .build(app)?;
-            let hide_item = MenuItemBuilder::with_id("hide", "Hide Window")
-                .build(app)?;
-            let quit_item = MenuItemBuilder::with_id("quit", "Quit")
-                .build(app)?;
+            // Health monitor — background thread detects server death and respawns
+            let app_handle = app.handle().clone();
+            thread::spawn(move || {
+                let mut was_running = true;
+                loop {
+                    thread::sleep(Duration::from_secs(3));
+
+                    let port = app_handle.state::<ServerPort>().0;
+                    let running = is_server_running(port);
+
+                    if was_running && !running {
+                        println!("[WarpCore] Server connection lost, attempting respawn...");
+                        let _ = app_handle.emit("server-status", "disconnected");
+
+                        let child = spawn_server();
+                        if let Some(c) = child {
+                            *app_handle.state::<ServerProcess>().0.lock().unwrap() = Some(c);
+                            let recovered = wait_for_server(port, 30);
+                            if recovered {
+                                println!("[WarpCore] Server respawned successfully");
+                                let _ = app_handle.emit("server-status", "connected");
+                                if let Some(window) = app_handle.get_webview_window("main") {
+                                    let url = format!("http://localhost:{}", port);
+                                    let _ = window.navigate(url.parse().unwrap());
+                                }
+                            } else {
+                                eprintln!("[WarpCore] Server respawn failed");
+                                let _ = app_handle.emit("server-status", "failed");
+                            }
+                        }
+                    } else if !was_running && running {
+                        println!("[WarpCore] Server connection restored");
+                        let _ = app_handle.emit("server-status", "connected");
+                        if let Some(window) = app_handle.get_webview_window("main") {
+                            let url = format!("http://localhost:{}", port);
+                            let _ = window.navigate(url.parse().unwrap());
+                        }
+                    }
+
+                    was_running = running;
+                }
+            });
+
+            // Tray menu
+            let open_item = MenuItemBuilder::with_id("open", "Open WarpCore").build(app)?;
+            let hide_item = MenuItemBuilder::with_id("hide", "Hide Window").build(app)?;
+            let restart_item = MenuItemBuilder::with_id("restart", "Restart Server").build(app)?;
+            let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
 
             let menu = MenuBuilder::new(app)
                 .item(&open_item)
                 .item(&hide_item)
+                .separator()
+                .item(&restart_item)
                 .separator()
                 .item(&quit_item)
                 .build()?;
@@ -101,7 +138,7 @@ fn main() {
             let _tray = TrayIconBuilder::with_id("warpcore-tray")
                 .icon(Image::from_bytes(include_bytes!("../icons/icon.png"))?)
                 .menu(&menu)
-                .menu_on_left_click(false)
+                .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id().as_ref() {
                     "open" => {
                         if let Some(window) = app.get_webview_window("main") {
@@ -114,17 +151,30 @@ fn main() {
                             let _ = window.hide();
                         }
                     }
-                    "quit" => {
-                        // Kill server process if we spawned it
-                        if let Some(mut child) = app
-                            .state::<ServerProcess>()
-                            .0
-                            .lock()
-                            .unwrap()
-                            .take()
-                        {
+                    "restart" => {
+                        if let Some(mut child) = app.state::<ServerProcess>().0.lock().unwrap().take() {
                             let _ = child.kill();
-                            println!("[WarpCore Desktop] Server process killed");
+                        }
+                        let child = spawn_server();
+                        if let Some(c) = child {
+                            *app.state::<ServerProcess>().0.lock().unwrap() = Some(c);
+                            let port = app.state::<ServerPort>().0;
+                            let app_clone = app.clone();
+                            thread::spawn(move || {
+                                if wait_for_server(port, 30) {
+                                    let _ = app_clone.emit("server-status", "connected");
+                                    if let Some(window) = app_clone.get_webview_window("main") {
+                                        let url = format!("http://localhost:{}", port);
+                                        let _ = window.navigate(url.parse().unwrap());
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    "quit" => {
+                        if let Some(mut child) = app.state::<ServerProcess>().0.lock().unwrap().take() {
+                            let _ = child.kill();
+                            println!("[WarpCore] Server process killed");
                         }
                         app.exit(0);
                     }
@@ -147,7 +197,18 @@ fn main() {
                 })
                 .build(app)?;
 
-            // Show window once ready
+            // Intercept window close — hide to tray
+            if let Some(window) = app.get_webview_window("main") {
+                let w = window.clone();
+                window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        api.prevent_close();
+                        let _ = w.hide();
+                    }
+                });
+            }
+
+            // Show window
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
             }
