@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Box, Text, HStack, VStack, Flex, Badge, Button, Spinner } from '@chakra-ui/react';
+import { useState, useEffect } from 'react';
+import { Box, Text, HStack, VStack, Flex, Badge, Button, Spinner, AccordionRoot, AccordionItem as AccordionItemComp, AccordionItemTrigger, AccordionItemContent } from '@chakra-ui/react';
 import {
-	Download, Heart, Clock, Calendar, Tag, CheckCircle,
-	ArrowDownToLine, FileText, Layers,
+	Download, Heart, Clock, Calendar, CheckCircle,
+	ArrowDownToLine, FileText, Layers, ChevronDown, HardDriveDownload,
 } from 'lucide-react';
 import type { IHubModelDetail, IHubFile } from '@warpcore/shared';
 import { Card } from '../Card';
@@ -190,8 +190,12 @@ export function HubModelDetail({ modelId, modelRoots }: IHubModelDetailProps) {
 		);
 	}
 
-	const ggufFiles = detail.files.filter((f: IHubFile) => f.isGguf);
+	const ggufFiles = detail.files.filter((f: IHubFile) => f.isGguf).sort((a, b) => a.size - b.size);
 	const otherFiles = detail.files.filter((f: IHubFile) => !f.isGguf);
+
+	// Count downloaded files
+	const downloadedCount = ggufFiles.filter((f: IHubFile) => f.isDownloaded).length;
+	const totalFiles = ggufFiles.length;
 
 	// Find if any file from this repo exists in a root (for dir picker hint)
 	const existsInRoot = detail.files.find((f: IHubFile) => f.downloadedInRoot)?.downloadedInRoot ?? null;
@@ -246,39 +250,73 @@ export function HubModelDetail({ modelId, modelRoots }: IHubModelDetailProps) {
 					)}
 				</Box>
 
-				{/* GGUF Files */}
+				{/* Downloads Section - Collapsible */}
 				{ggufFiles.length > 0 && (
-					<Box>
-						<HStack gap="2" mb="3">
-							<Text fontSize="13px" fontWeight="600" color="rgba(255, 255, 255, 0.6)">
-								GGUF Files
-							</Text>
-							<Badge
-								px="2" py="0" borderRadius="full" fontSize="11px"
-								bg="rgba(255, 255, 255, 0.06)" color="rgba(255, 255, 255, 0.4)"
+					<AccordionRoot collapsible defaultValue={[]} w="full">
+						<AccordionItemComp value="downloads" w="full">
+							<AccordionItemTrigger
+								w="full" p="4" borderRadius="xl"
+								bg={`linear-gradient(135deg, ${downloadedCount === totalFiles ? 'rgba(52, 211, 153, 0.12)' : 'rgba(51, 129, 255, 0.12)'} 0%, transparent 100%)`}
+								borderWidth="1px"
+								borderColor={`color-mix(in srgb, ${downloadedCount === totalFiles ? '#34d399' : '#3381ff'} 25%, rgba(255, 255, 255, 0.06))`}
+								_hover={{ bg: 'rgba(51, 129, 255, 0.08)' }}
+								focusRing="none"
 							>
-								{ggufFiles.length}
-							</Badge>
-						</HStack>
-						<VStack align="stretch" gap="2">
-							{ggufFiles.map((file: IHubFile) => (
-								<FileRow
-									key={file.filename}
-									file={file}
-									modelRoots={modelRoots}
-									author={detail.author}
-									modelName={detail.modelId}
-									existsInRoot={existsInRoot}
-								/>
-							))}
-						</VStack>
-					</Box>
+								<Flex w="full" justify="space-between" align="center">
+									<Flex gap="4" flex="1" minW="0">
+										<Box
+											w="12" h="12" borderRadius="lg" display="flex" alignItems="center" justifyContent="center"
+											bg={`color-mix(in srgb, ${downloadedCount === totalFiles ? '#34d399' : '#3381ff'} 15%, transparent)`}
+										>
+											<HardDriveDownload size={20} color={downloadedCount === totalFiles ? '#34d399' : '#3381ff'} />
+										</Box>
+
+										<VStack align="start" gap="0.5">
+											<Text fontSize="14px" fontWeight="600" color="#e4e4e7">
+												Download Files
+											</Text>
+											<HStack gap="2">
+												<Text fontSize="12px" color={downloadedCount === totalFiles ? '#34d399' : '#3381ff'} fontWeight="500">
+													{totalFiles} total available
+												</Text>
+												<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">
+													({downloadedCount} downloaded)
+												</Text>
+											</HStack>
+										</VStack>
+									</Flex>
+
+									<Box
+										w="8" h="8" borderRadius="md" display="flex" alignItems="center" justifyContent="center" flexShrink={0}
+										bg={`color-mix(in srgb, ${downloadedCount === totalFiles ? '#34d399' : '#3381ff'} 10%, transparent)`}
+									>
+										<ChevronDown size={16} color={downloadedCount === totalFiles ? '#34d399' : '#3381ff'} />
+									</Box>
+								</Flex>
+							</AccordionItemTrigger>
+
+							<AccordionItemContent pt="0" pb="4" px="2">
+								<VStack align="stretch" gap="2">
+									{ggufFiles.map((file: IHubFile) => (
+										<FileRow
+											key={file.filename}
+											file={file}
+											modelRoots={modelRoots}
+											author={detail.author}
+											modelName={detail.modelId}
+											existsInRoot={existsInRoot}
+										/>
+									))}
+								</VStack>
+							</AccordionItemContent>
+						</AccordionItemComp>
+					</AccordionRoot>
 				)}
 
-				{/* Other files (collapsed) */}
+				{/* Other files info */}
 				{otherFiles.length > 0 && (
-					<Box>
-						<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)" mb="2">
+					<Box mt="4">
+						<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">
 							{otherFiles.length} other file{otherFiles.length > 1 ? 's' : ''} (config, tokenizer, etc.)
 						</Text>
 					</Box>
