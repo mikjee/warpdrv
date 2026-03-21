@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import {
-	Box, Text, HStack, VStack, Flex, Badge, Button, Spinner,
-} from '@chakra-ui/react';
+import { Box, Text, HStack, VStack, Flex, Badge, Button, Spinner } from '@chakra-ui/react';
 import {
 	Download, Heart, Clock, Calendar, Tag, CheckCircle,
 	ArrowDownToLine, FileText, Layers,
@@ -11,6 +9,9 @@ import { Card } from '../Card';
 import { DirPickerPopover } from './DirPickerPopover';
 import { fetchHubModel, startHubDownload } from '../../api/services';
 import { useToast } from '../ToastProvider';
+import Markdown from 'markdown-to-jsx';
+import DOMPurify from 'dompurify';
+import './markdown.css';
 
 function formatBytes(bytes: number): string {
 	if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
@@ -80,87 +81,82 @@ function FileRow({ file, modelRoots, author, modelName, existsInRoot }: {
 	};
 
 	return (
-		<Flex
-			justify="space-between" align="center"
-			px="4" py="3" borderRadius="lg"
-			bg="rgba(255, 255, 255, 0.02)"
-			borderWidth="1px" borderColor="rgba(255, 255, 255, 0.06)"
-			_hover={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}
-			transition="all 0.1s ease"
-		>
-			<HStack gap="3" flex="1" minW="0">
-				<Flex
-					w="8" h="8" borderRadius="md" alignItems="center" justifyContent="center"
-					bg={file.isDownloaded ? 'rgba(52, 211, 153, 0.08)' : 'rgba(255, 255, 255, 0.04)'}
-					flexShrink={0}
-				>
-					{file.isDownloaded
-						? <CheckCircle size={16} color="#34d399" />
-						: <Layers size={16} color="rgba(255, 255, 255, 0.3)" />
-					}
-				</Flex>
-				<Box flex="1" minW="0">
-					<Text fontSize="12px" fontWeight="500" color="#e4e4e7" fontFamily='"Geist Mono", monospace' lineClamp={1}>
-						{file.filename}
-					</Text>
-					<HStack gap="2" mt="0.5">
-						<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)" fontFamily='"Geist Mono", monospace'>
-							{formatBytes(file.size)}
+		<Card>
+			<Flex justify="space-between" align="center">
+				<HStack gap="3" flex="1" minW="0">
+					<Flex
+						w="8" h="8" borderRadius="md" alignItems="center" justifyContent="center"
+						bg={file.isDownloaded ? 'rgba(52, 211, 153, 0.08)' : 'rgba(255, 255, 255, 0.04)'}
+						flexShrink={0}
+					>
+						{file.isDownloaded
+							? <CheckCircle size={16} color="#34d399" />
+							: <Layers size={16} color="rgba(255, 255, 255, 0.3)" />
+						}
+					</Flex>
+					<Box flex="1" minW="0">
+						<Text fontSize="12px" fontWeight="500" color="#e4e4e7" fontFamily='"Geist Mono", monospace' lineClamp={1}>
+							{file.filename}
 						</Text>
-						{file.isDownloaded && file.downloadedInRoot && (
-							<Text fontSize="10px" color="rgba(52, 211, 153, 0.6)" lineClamp={1}>
-								in {file.downloadedInRoot}
+						<HStack gap="2" mt="0.5">
+							<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)" fontFamily='"Geist Mono", monospace'>
+								{formatBytes(file.size)}
 							</Text>
-						)}
-					</HStack>
-				</Box>
-			</HStack>
-
-			<HStack gap="2" flexShrink={0}>
-				{file.quantType && (
-					<Badge
-						px="2" py="0.5" borderRadius="md" fontSize="11px" fontWeight="600"
-						bg={`color-mix(in srgb, ${quantColor} 12%, transparent)`}
-						color={quantColor}
-						borderWidth="1px" borderColor={`color-mix(in srgb, ${quantColor} 20%, transparent)`}
-					>
-						{file.quantType}
-					</Badge>
-				)}
-
-				{file.isDownloaded ? (
-					<Badge
-						px="2.5" py="1" borderRadius="lg" fontSize="11px" fontWeight="500"
-						bg="rgba(52, 211, 153, 0.08)" color="#34d399"
-						borderWidth="1px" borderColor="rgba(52, 211, 153, 0.15)"
-					>
-						<CheckCircle size={11} /> Downloaded
-					</Badge>
-				) : (
-					<Box position="relative">
-						<Button
-							size="xs" px="3" borderRadius="lg" fontSize="11px" fontWeight="500"
-							bg="rgba(51, 129, 255, 0.1)" color="#3381ff"
-							borderWidth="1px" borderColor="rgba(51, 129, 255, 0.25)"
-							_hover={{ bg: 'rgba(51, 129, 255, 0.2)' }}
-							onClick={handleDownloadClick}
-							disabled={downloading}
-						>
-							{downloading ? <Spinner size="xs" /> : <ArrowDownToLine size={12} />}
-							Download
-						</Button>
-						{showDirPicker && (
-							<DirPickerPopover
-								roots={modelRoots}
-								existsInRoot={existsInRoot}
-								onSelect={handleDownload}
-								onClose={() => setShowDirPicker(false)}
-							/>
-						)}
+							{file.isDownloaded && file.downloadedInRoot && (
+								<Text fontSize="10px" color="rgba(52, 211, 153, 0.6)" lineClamp={1}>
+									in {file.downloadedInRoot}
+								</Text>
+							)}
+						</HStack>
 					</Box>
-				)}
-			</HStack>
-		</Flex>
+				</HStack>
+
+				<HStack gap="2" flexShrink={0}>
+					{file.quantType && (
+						<Badge
+							px="2" py="0.5" borderRadius="md" fontSize="11px" fontWeight="600"
+							bg={`color-mix(in srgb, ${quantColor} 12%, transparent)`}
+							color={quantColor}
+							borderWidth="1px" borderColor={`color-mix(in srgb, ${quantColor} 20%, transparent)`}
+						>
+							{file.quantType}
+						</Badge>
+					)}
+
+					{file.isDownloaded ? (
+						<Badge
+							px="2.5" py="1" borderRadius="lg" fontSize="11px" fontWeight="500"
+							bg="rgba(52, 211, 153, 0.08)" color="#34d399"
+							borderWidth="1px" borderColor="rgba(52, 211, 153, 0.15)"
+						>
+							<CheckCircle size={11} /> Downloaded
+						</Badge>
+					) : (
+						<Box position="relative">
+							<Button
+								size="xs" px="3" borderRadius="lg" fontSize="11px" fontWeight="500"
+								bg="rgba(51, 129, 255, 0.1)" color="#3381ff"
+								borderWidth="1px" borderColor="rgba(51, 129, 255, 0.25)"
+								_hover={{ bg: 'rgba(51, 129, 255, 0.2)' }}
+								onClick={handleDownloadClick}
+								disabled={downloading}
+							>
+								{downloading ? <Spinner size="xs" /> : <ArrowDownToLine size={12} />}
+								Download
+							</Button>
+							{showDirPicker && (
+								<DirPickerPopover
+									roots={modelRoots}
+									existsInRoot={existsInRoot}
+									onSelect={handleDownload}
+									onClose={() => setShowDirPicker(false)}
+								/>
+							)}
+						</Box>
+					)}
+				</HStack>
+			</Flex>
+		</Card>
 	);
 }
 
@@ -297,31 +293,42 @@ export function HubModelDetail({ modelId, modelRoots }: IHubModelDetailProps) {
 								README
 							</Text>
 						</HStack>
-						<Box
-							px="5" py="4" borderRadius="xl"
-							bg="rgba(255, 255, 255, 0.02)"
-							borderWidth="1px" borderColor="rgba(255, 255, 255, 0.06)"
-							fontSize="13px" lineHeight="1.7" color="rgba(255, 255, 255, 0.6)"
-							css={{
-								'& h1': { fontSize: '18px', fontWeight: 700, color: '#e4e4e7', marginTop: '16px', marginBottom: '8px' },
-								'& h2': { fontSize: '16px', fontWeight: 600, color: '#e4e4e7', marginTop: '14px', marginBottom: '6px' },
-								'& h3': { fontSize: '14px', fontWeight: 600, color: '#e4e4e7', marginTop: '12px', marginBottom: '4px' },
-								'& p': { marginBottom: '8px' },
-								'& code': { fontFamily: '"Geist Mono", monospace', fontSize: '12px', bg: 'rgba(255, 255, 255, 0.06)', padding: '1px 4px', borderRadius: '4px' },
-								'& pre': { fontFamily: '"Geist Mono", monospace', fontSize: '12px', bg: 'rgba(255, 255, 255, 0.04)', padding: '12px', borderRadius: '8px', overflow: 'auto', marginBottom: '8px' },
-								'& a': { color: '#3381ff', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } },
-								'& ul, & ol': { paddingLeft: '20px', marginBottom: '8px' },
-								'& li': { marginBottom: '2px' },
-								'& table': { borderCollapse: 'collapse', width: '100%', marginBottom: '8px' },
-								'& th, & td': { border: '1px solid rgba(255, 255, 255, 0.08)', padding: '6px 10px', fontSize: '12px' },
-								'& th': { bg: 'rgba(255, 255, 255, 0.04)', fontWeight: 600 },
-								'& hr': { border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.06)', margin: '12px 0' },
-								'& img': { maxWidth: '100%', borderRadius: '8px' },
-								'& blockquote': { borderLeft: '3px solid rgba(51, 129, 255, 0.3)', paddingLeft: '12px', color: 'rgba(255, 255, 255, 0.5)' },
-							}}
-							whiteSpace="pre-wrap"
-						>
-							{detail.readme}
+						<Box className="markdown-container">
+							<Markdown
+								options={{
+									disableParsingRawHTML: false,
+									overrides: {
+										a: {
+											component: ({ children, href, ...props }: any) => {
+												if (!href || !/^https?:\/\//.test(href)) return <span>{children}</span>;
+												return <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>;
+											},
+										},
+										img: {
+											component: ({ src, alt, ...props }: any) => {
+												if (!src || !/^https?:\/\//.test(src)) return null;
+												return <img src={src} alt={alt ?? ''} loading="lazy" style={{ maxWidth: '100%', borderRadius: '8px' }} {...props} />;
+											},
+										},
+										script: { component: () => null },
+										iframe: { component: () => null },
+										object: { component: () => null },
+										embed: { component: () => null },
+										form: { component: () => null },
+									},
+								}}
+							>
+								{DOMPurify.sanitize(detail.readme, {
+									ALLOWED_TAGS: [
+										'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'hr',
+										'ul', 'ol', 'li', 'a', 'img', 'code', 'pre', 'blockquote',
+										'table', 'thead', 'tbody', 'tr', 'th', 'td',
+										'strong', 'em', 'del', 'sup', 'sub', 'span', 'div',
+									],
+									ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'id'],
+									ALLOW_DATA_ATTR: false,
+								})}
+							</Markdown>
 						</Box>
 					</Box>
 				)}
