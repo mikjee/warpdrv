@@ -170,13 +170,27 @@ export interface IServer {
 	stats: IServerStats | null;
 }
 
-export interface IServerStats {
-	vramUsedMb: number;
+export interface ISlotStats {
+	id: number;
+	state: 'idle' | 'processing';
+	contextUsed: number;
+	contextTotal: number;
+	promptTokens: number;
+	promptTokensProcessed: number;
+	tokensGenerated: number;
 	promptSpeed: number; // tokens/sec
 	genSpeed: number; // tokens/sec
+}
+
+export interface IServerStats {
+	loadingProgress: number; // 0-1
+	isLoading: boolean;
+	slotsIdle: number;
+	slotsProcessing: number;
+	promptSpeed: number; // tokens/sec aggregate
+	genSpeed: number; // tokens/sec aggregate
 	tokensGenerated: number;
-	activeSlots: number;
-	totalSlots: number;
+	slots: ISlotStats[];
 }
 
 export interface IServerCreatePayload {

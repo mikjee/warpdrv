@@ -2,6 +2,7 @@ import { spawn, type ChildProcess } from 'child_process';
 import http from 'http';
 import type { IServer, ILaunchParams } from '@warpcore/shared';
 import { EServerStatus, EKvQuantType } from '@warpcore/shared';
+import { startStatsPolling, stopStatsPolling } from './statsPoller';
 
 // Health poller — checks /health endpoint until server is ready or timeout
 function pollHealth(
@@ -129,7 +130,10 @@ export function spawnServer(
 		if (port > 0) {
 			healthInterval = pollHealth(
 				port,
-				() => onStatusChange(EServerStatus.RUNNING),
+				() => {
+					onStatusChange(EServerStatus.RUNNING);
+					startStatsPolling(serverId, port);
+				},
 				(err) => onStatusChange(EServerStatus.ERROR, err),
 			);
 		}
@@ -141,6 +145,7 @@ export function spawnServer(
 
 		child.on('exit', (code) => {
 			if (healthInterval) clearInterval(healthInterval);
+			stopStatsPolling(serverId);
 			processes.delete(serverId);
 			if (code !== 0 && code !== null) {
 				onStatusChange(EServerStatus.ERROR, `Process exited with code ${code}`);
@@ -161,9 +166,8 @@ export function spawnServer(
 export function killServer(serverId: string): boolean {
 	const child = processes.get(serverId);
 	if (!child) return false;
-
 	try {
-		// Kill the process group (negative PID kills the group)
+		stopStatsPolling(serverId);
 		if (child.pid) process.kill(-child.pid, 'SIGTERM');
 		processes.delete(serverId);
 		return true;

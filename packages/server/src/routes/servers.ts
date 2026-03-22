@@ -9,6 +9,7 @@ import {
 	getServerLogs,
 	clearServerLogs,
 } from '../services/processManager';
+import { getServerStats } from '../services/statsPoller';
 import type {
 	IServer,
 	IServerCreatePayload,
@@ -56,7 +57,8 @@ export async function reconcileServers(): Promise<void> {
 // GET /api/servers
 serversRouter.get('/', async (_req, res) => {
 	const servers = await store.list<IServer>(PREFIX);
-	res.json({ ok: true, data: servers, total: servers.length, error: null });
+	const withStats = servers.map(s => ({ ...s, stats: (s.status === EServerStatus.RUNNING || s.status === EServerStatus.LOADING) ? getServerStats(s.id) : null }));
+	res.json({ ok: true, data: withStats, total: withStats.length, error: null });
 });
 
 // GET /api/servers/:id

@@ -38,6 +38,13 @@ async function main() {
 	app.use('/api/hub', hubRouter);
 	app.use('/api/update', updateRouter);
 
+	// Stats endpoint — returns live stats for a running server
+	app.get('/api/servers/:id/stats', (req, res) => {
+		const { getServerStats } = require('./services/statsPoller');
+		const stats = getServerStats(req.params.id);
+		res.json({ ok: true, data: stats, error: null });
+	});
+
 	// Static frontend serving (production only)
 	const { serveStaticApp } = await import('./middleware/serveStatic');
 	serveStaticApp(app);
