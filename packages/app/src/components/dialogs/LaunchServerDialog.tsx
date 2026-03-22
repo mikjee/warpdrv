@@ -163,7 +163,6 @@ function ModelCombobox({ entries, selectedPath, onSelect }: {
 			<Combobox.Control>
 				<Combobox.Input
 					placeholder="Search models..."
-					size="sm"
 					bg="rgba(255, 255, 255, 0.03)"
 					borderColor="rgba(255, 255, 255, 0.08)"
 					color="rgba(255, 255, 255, 0.7)"
@@ -333,6 +332,27 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 		gpuLayers: params.gpuLayers,
 	}, selectedBackend.detectedDevices[0]?.vramFreeMb ?? selectedBackend.detectedDevices[0]?.vramTotalMb ?? 99999) : null;
 
+	// Save without relaunch handler (edit mode only)
+	const handleSaveWithoutRelaunch = async () => {
+		if (!selectedEntry || !selectedBackendId || !editMode) return;
+		setLaunching(true);
+
+		const result = await updateServer(editMode.serverId, {
+			backendId: selectedBackendId,
+			modelPath: selectedEntry.file.filePath,
+			mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
+			params,
+		}, false); // skip relaunch
+
+		setLaunching(false);
+		if (result.ok) {
+			toast('success', 'Server config saved');
+			onClose();
+		} else {
+			toast('error', result.error ?? 'Failed to save server config');
+		}
+	};
+
 	// Launch/Relaunch handler
 	const handleLaunch = async () => {
 		if (!selectedEntry || !selectedBackendId) return;
@@ -345,7 +365,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				modelPath: selectedEntry.file.filePath,
 				mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
 				params,
-			});
+			}, true); // relaunch
 
 			setLaunching(false);
 			if (result.ok) {
@@ -636,27 +656,68 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 					</HStack>
 					<HStack gap="2">
 						<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="lg" fontSize="13px" onClick={onClose}>Cancel</Button>
-						<Button
-							size="sm"
-							disabled={!canLaunch}
-							bgGradient="to-r"
-							gradientFrom={editMode ? '#fbbf24' : '#3381ff'}
-							gradientTo={editMode ? '#f59e0b' : '#5b6af5'}
-							color={editMode ? "#18181b" : "white"}
-							borderColor={editMode ? "rgba(251, 191, 36, 0.3)" : undefined}
-							borderWidth="1px"
-							_hover={{ opacity: 0.9, shadow: editMode ? '0 4px 20px rgba(251, 191, 36, 0.3)' : '0 4px 20px rgba(51, 129, 255, 0.3)' }}
-							_disabled={{ opacity: 0.3, cursor: 'not-allowed' }}
-							borderRadius="lg"
-							fontSize="13px"
-							fontWeight="600"
-							px="6"
-							transition="all 0.2s ease"
-							onClick={handleLaunch}
-						>
-							{launching ? <Spinner size="xs" /> : editMode ? <RefreshCw size={14} /> : <Play size={14} />}
-							{editMode ? 'Relaunch with Changes' : 'Launch'}
-						</Button>
+						{editMode ? (
+							<>
+								<Button
+									size="sm"
+									disabled={!canLaunch || launching}
+									bg="rgba(255, 255, 255, 0.08)"
+									color="#e4e4e7"
+									borderWidth="1px"
+									borderColor="rgba(255, 255, 255, 0.15)"
+									_hover={{ bg: 'rgba(255, 255, 255, 0.12)', borderColor: 'rgba(255, 255, 255, 0.25)' }}
+									_disabled={{ opacity: 0.3, cursor: 'not-allowed' }}
+									borderRadius="lg"
+									fontSize="13px"
+									fontWeight="600"
+									px="5"
+									onClick={handleSaveWithoutRelaunch}
+								>
+									Save
+								</Button>
+								<Button
+									size="sm"
+									disabled={!canLaunch || launching}
+									bgGradient="to-r"
+									gradientFrom="#fbbf24"
+									gradientTo="#f59e0b"
+									color="#18181b"
+									borderWidth="1px"
+									borderColor="rgba(251, 191, 36, 0.3)"
+									_hover={{ opacity: 0.9, shadow: '0 4px 20px rgba(251, 191, 36, 0.3)' }}
+									_disabled={{ opacity: 0.3, cursor: 'not-allowed' }}
+									borderRadius="lg"
+									fontSize="13px"
+									fontWeight="600"
+									px="6"
+									transition="all 0.2s ease"
+									onClick={handleLaunch}
+								>
+									{launching ? <Spinner size="xs" /> : <RefreshCw size={14} />}
+									Relaunch with Changes
+								</Button>
+							</>
+						) : (
+							<Button
+								size="sm"
+								disabled={!canLaunch || launching}
+								bgGradient="to-r"
+								gradientFrom="#3381ff"
+								gradientTo="#5b6af5"
+								color="white"
+								_hover={{ opacity: 0.9, shadow: '0 4px 20px rgba(51, 129, 255, 0.3)' }}
+								_disabled={{ opacity: 0.3, cursor: 'not-allowed' }}
+								borderRadius="lg"
+								fontSize="13px"
+								fontWeight="600"
+								px="6"
+								transition="all 0.2s ease"
+								onClick={handleLaunch}
+							>
+								{launching ? <Spinner size="xs" /> : <Play size={14} />}
+								Launch
+							</Button>
+						)}
 					</HStack>
 				</Flex>
 			</Box>

@@ -148,6 +148,11 @@ fn loading_html(port: u16) -> String {
     "#, port = port)
 }
 
+// Autostart is handled by the tauri-plugin-autostart built-in commands:
+// - autostart:enable - enables autostart
+// - autostart:disable - disables autostart
+// - autostart:is_enabled - checks if autostart is enabled
+
 fn base64_encode(data: &[u8]) -> String {
     const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut result = String::new();
@@ -172,6 +177,10 @@ fn main() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--hidden"]),
+        ))
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
@@ -291,6 +300,15 @@ fn main() {
                         }
                     }
                     "quit" => {
+                        // First, stop all llama-server instances via API
+                        if is_server_running(server_port) {
+                            let _ = reqwest::blocking::Client::new()
+                                .post(format!("http://localhost:{}/api/servers/stop-all", server_port))
+                                .send();
+                            thread::sleep(Duration::from_millis(500));
+                        }
+
+                        // Then kill the Node.js server process
                         if let Some(mut child) = app.state::<ServerProcess>().0.lock().unwrap().take() {
                             let _ = child.kill();
                             println!("[WarpCore] Server process killed");

@@ -150,6 +150,27 @@ serversRouter.post('/:id/stop', async (req, res) => {
 	res.json({ ok: true, data: server, error: null });
 });
 
+// POST /api/servers/stop-all — stop all running servers
+serversRouter.post('/stop-all', async (_req, res) => {
+	const servers = await store.list<IServer>(PREFIX);
+	let stoppedCount = 0;
+
+	for (const server of servers) {
+		if (server.status === EServerStatus.RUNNING || server.status === EServerStatus.LOADING) {
+			if (server.pid) {
+				killServer(server.id, server.pid);
+			}
+			usedPorts.delete(server.port);
+			server.status = EServerStatus.STOPPED;
+			server.pid = undefined;
+			await store.put(PREFIX + server.id, server);
+			stoppedCount++;
+		}
+	}
+
+	res.json({ ok: true, data: { stoppedCount }, error: null });
+});
+
 // POST /api/servers/:id/restart
 serversRouter.post('/:id/restart', async (req, res) => {
 	const server = await store.get<IServer>(PREFIX + req.params.id);
@@ -195,7 +216,7 @@ serversRouter.post('/:id/restart', async (req, res) => {
 	res.json({ ok: true, data: server, error: null });
 });
 
-// PUT /api/servers/:id — update params and restart
+// PUT /api/servers/:id — update params and optionally restart
 serversRouter.put('/:id', async (req, res) => {
 	const server = await store.get<IServer>(PREFIX + req.params.id);
 	if (!server) {
@@ -203,7 +224,9 @@ serversRouter.put('/:id', async (req, res) => {
 		return;
 	}
 
-	const updatePayload = req.body as Partial<Pick<IServer, 'backendId' | 'modelPath' | 'mmprojPath' | 'params'>>;
+	type TUpdatePayload = Partial<Pick<IServer, 'backendId' | 'modelPath' | 'mmprojPath' | 'params'>> & { relaunch?: boolean };
+	const updatePayload = req.body as TUpdatePayload;
+	const shouldRelaunch = updatePayload.relaunch ?? true;
 
 	// Validate new backend if changed
 	let backend = await store.get<IBackend>('backends:' + (updatePayload.backendId ?? server.backendId));
@@ -212,8 +235,8 @@ serversRouter.put('/:id', async (req, res) => {
 		return;
 	}
 
-	// Kill existing if running
-	if (server.pid) {
+	// Kill existing if running and relaunching
+	if (server.pid && shouldRelaunch) {
 		killServer(server.id, server.pid);
 		usedPorts.delete(server.port);
 	}
@@ -230,29 +253,35 @@ serversRouter.put('/:id', async (req, res) => {
 		}
 	}
 
-	// Re-spawn with new params
-	const args = buildArgs(
-		server.modelPath,
-		server.mmprojPath,
-		server.params,
-		backend.defaultArgs,
-	);
+	if (shouldRelaunch) {
+		// Re-spawn with new params
+		const args = buildArgs(
+			server.modelPath,
+			server.mmprojPath,
+			server.params,
+			backend.defaultArgs,
+		);
 
-	const pid = spawnServer(
-		server.id,
-		backend.path,
-		args,
-		async (status, error) => {
-			server.status = status;
-			if (error) server.error = error;
-			if (status === EServerStatus.RUNNING) server.startedAt = Date.now();
-			await store.put(PREFIX + server.id, server);
-		},
-	);
+		const pid = spawnServer(
+			server.id,
+			backend.path,
+			args,
+			async (status, error) => {
+				server.status = status;
+				if (error) server.error = error;
+				if (status === EServerStatus.RUNNING) server.startedAt = Date.now();
+				await store.put(PREFIX + id, server);
+			},
+		);
 
-	server.pid = pid || undefined;
-	server.status = EServerStatus.LOADING;
-	server.error = null;
+		server.pid = pid || undefined;
+		server.status = EServerStatus.LOADING;
+		server.error = null;
+	} else {
+		// Just update config without relaunching
+		server.status = EServerStatus.STOPPED;
+	}
+
 	await store.put(PREFIX + server.id, server);
 
 	res.json({ ok: true, data: server, error: null });

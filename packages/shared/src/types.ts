@@ -173,8 +173,6 @@ export interface IServer {
 export interface ISlotStats {
 	id: number;
 	state: 'idle' | 'processing';
-	contextUsed: number;
-	contextTotal: number;
 	tokensGenerated: number;
 	tokensRemaining: number;
 }
@@ -226,6 +224,7 @@ export interface ISettings {
 	portRangeEnd: number;
 	apiHost: string;
 	apiPort: number;
+	autoLaunch: boolean;
 }
 
 export const DEFAULT_SETTINGS: ISettings = {
@@ -234,6 +233,7 @@ export const DEFAULT_SETTINGS: ISettings = {
 	portRangeEnd: 8099,
 	apiHost: '0.0.0.0',
 	apiPort: 4400,
+	autoLaunch: false,
 };
 
 // ============================================================

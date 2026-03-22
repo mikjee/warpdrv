@@ -1,7 +1,7 @@
-import { Box, Text, HStack, VStack, Flex, Button, Spinner } from '@chakra-ui/react';
+import { Box, Text, HStack, VStack, Flex, Button, Spinner, Badge } from '@chakra-ui/react';
 import {
 	Play, Square, RotateCcw, Plus, Server, Clock, Zap, Trash2,
-	Activity, Gauge, MemoryStick, Terminal, Edit,
+	Activity, Gauge, MemoryStick, Terminal, Edit
 } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { PageHeader } from '../components/PageHeader';
@@ -171,36 +171,26 @@ export function ServersPage() {
 
 										{/* Stats */}
 										{server.stats && server.stats.tokensGenerated != null && (
-										<>
 											<HStack gap="2" flexWrap="wrap">
 												<StatPill icon={<Activity size={12} />} label="Slots" value={`${server.stats.slotsProcessing}/${server.stats.slotsProcessing + server.stats.slotsIdle}`} />
-												<StatPill icon={<Zap size={12} />} label="Tokens" value={(server.stats.tokensGenerated ?? 0).toLocaleString()} />
+												{(server.stats.slots ?? []).map(slot => {
+													const isPrompt = slot.state === 'processing' && slot.tokensGenerated === 0;
+													const isGen = slot.state === 'processing' && slot.tokensGenerated > 0;
+													const color = isPrompt ? '#fbbf24' : isGen ? '#3381ff' : 'rgba(255, 255, 255, 0.25)';
+													const label = isPrompt ? 'prompt' : isGen ? `gen ${slot.tokensGenerated}` : 'idle';
+													return (
+														<Badge key={slot.id} px="2" py="0.5" borderRadius="md" fontSize="10px" fontFamily='"Geist Mono", monospace'
+															bg={`color-mix(in srgb, ${color} 10%, transparent)`}
+															color={color}
+															borderWidth="1px"
+															borderColor={`color-mix(in srgb, ${color} 20%, transparent)`}
+														>
+															S{slot.id}: {label}
+														</Badge>
+													);
+												})}
 											</HStack>
-											{(server.stats.slots ?? []).length > 0 && (
-												<VStack align="stretch" gap="1.5" mt="1">
-													{(server.stats.slots ?? []).map(slot => {
-														const isPrompt = slot.state === 'processing' && slot.tokensGenerated === 0;
-														const isGen = slot.state === 'processing' && slot.tokensGenerated > 0;
-														const barColor = isPrompt ? '#fbbf24' : isGen ? '#3381ff' : 'rgba(255, 255, 255, 0.15)';
-														const textColor = isPrompt ? '#fbbf24' : isGen ? '#3381ff' : 'rgba(255, 255, 255, 0.2)';
-														const bgColor = slot.state === 'processing' ? (isPrompt ? 'rgba(251, 191, 36, 0.04)' : 'rgba(51, 129, 255, 0.04)') : 'rgba(255, 255, 255, 0.02)';
-														const borderColor = slot.state === 'processing' ? (isPrompt ? 'rgba(251, 191, 36, 0.08)' : 'rgba(51, 129, 255, 0.08)') : 'rgba(255, 255, 255, 0.04)';
-														return (
-															<HStack key={slot.id} gap="2" px="2.5" py="1.5" borderRadius="md" bg={bgColor} borderWidth="1px" borderColor={borderColor}>
-																<Text fontSize="10px" color={textColor} fontFamily='"Geist Mono", monospace' w="50px">Slot {slot.id}</Text>
-																<Box flex="1" h="3px" bg="rgba(255, 255, 255, 0.06)" borderRadius="full" overflow="hidden">
-																	<Box h="100%" w={slot.contextTotal > 0 ? `${(slot.contextUsed / slot.contextTotal * 100)}%` : '0%'} bg={barColor} borderRadius="full" transition="width 0.3s ease" />
-																</Box>
-																<Text fontSize="10px" color={textColor} fontFamily='"Geist Mono", monospace'>
-																	{isPrompt ? 'processing prompt...' : isGen ? `${slot.tokensGenerated}/${slot.tokensGenerated + slot.tokensRemaining} tok` : 'idle'}
-																</Text>
-															</HStack>
-														);
-													})}
-												</VStack>
-											)}
-										</>
-									)}
+										)}
 									</VStack>
 								</Card>
 							);

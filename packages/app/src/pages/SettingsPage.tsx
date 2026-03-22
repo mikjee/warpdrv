@@ -1,4 +1,4 @@
-import { Box, Text, HStack, VStack, Flex, Input, Button, Spinner } from '@chakra-ui/react';
+import { Box, Text, HStack, VStack, Flex, Input, Button, Spinner, Switch } from '@chakra-ui/react';
 import { Settings, FolderOpen, Plus, Trash2, Save, Check } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '../components/PageHeader';
@@ -17,6 +17,7 @@ export function SettingsPage() {
 	const [portEnd, setPortEnd] = useState(8099);
 	const [apiHost, setApiHost] = useState('0.0.0.0');
 	const [apiPort, setApiPort] = useState(4400);
+	const [autoLaunch, setAutoLaunch] = useState(false);
 	const [newRoot, setNewRoot] = useState('');
 	const [saved, setSaved] = useState(false);
 
@@ -32,6 +33,7 @@ export function SettingsPage() {
 			setPortEnd(settings.portRangeEnd);
 			setApiHost(settings.apiHost);
 			setApiPort(settings.apiPort);
+			setAutoLaunch(settings.autoLaunch ?? false);
 		}
 	}, [settings]);
 
@@ -68,7 +70,23 @@ export function SettingsPage() {
 			portRangeEnd: portEnd,
 			apiHost,
 			apiPort,
+			autoLaunch,
 		});
+
+		// Apply autostart setting via Tauri plugin built-in commands
+		try {
+			const { invoke } = await import('@tauri-apps/api/core');
+			if (autoLaunch) {
+				await invoke('autostart:enable');
+				console.log('[Settings] Autostart enabled successfully');
+			} else {
+				await invoke('autostart:disable');
+				console.log('[Settings] Autostart disabled successfully');
+			}
+		} catch (err) {
+			console.error('[Settings] Failed to apply autostart setting:', err);
+		}
+
 		setSaved(true);
 		setTimeout(() => setSaved(false), 2000);
 		await refetch();
@@ -179,6 +197,24 @@ export function SettingsPage() {
 								<Input value={apiHost} onChange={e => setApiHost(e.target.value)} size="sm" w="140px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
 								<Text fontSize="13px" color="rgba(255, 255, 255, 0.25)">:</Text>
 								<Input value={apiPort} onChange={e => setApiPort(Number(e.target.value))} type="number" size="sm" w="100px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
+							</HStack>
+						</VStack>
+					</Card>
+
+					{/* Auto-launch */}
+					<Card>
+						<VStack align="stretch" gap="4">
+							<HStack justify="space-between" alignItems="center">
+								<Box>
+									<Text fontSize="14px" fontWeight="600" color="#e4e4e7">Launch on Startup</Text>
+									<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)">
+										Start WarpCore automatically when you log in
+									</Text>
+								</Box>
+								<Switch.Root checked={autoLaunch} onCheckedChange={(details) => setAutoLaunch(details.checked)}>
+									<Switch.HiddenInput />
+									<Switch.Control />
+								</Switch.Root>
 							</HStack>
 						</VStack>
 					</Card>

@@ -50,19 +50,17 @@ export function startStatsPolling(serverId: string, port: number): void {
 
 		const slots = await fetchJson<ISlotResponse[]>(`${base}/slots`);
 
+		// Parse log buffer for per-slot context info
 		const slotStats: ISlotStats[] = (slots ?? []).map((s) => {
 			const nextToken = s.next_token?.[0];
 			const nDecoded = nextToken?.n_decoded ?? 0;
 			const nRemain = nextToken?.n_remain ?? 0;
-			const contextUsed = nDecoded > 0 ? (s.n_ctx - nRemain) : 0;
 
 			return {
 				id: s.id,
 				state: s.is_processing ? 'processing' as const : 'idle' as const,
-				contextUsed,
-				contextTotal: s.n_ctx,
 				tokensGenerated: nDecoded,
-				tokensRemaining: nRemain,
+				tokensRemaining: nRemain > 0 ? nRemain : 0,
 			};
 		});
 

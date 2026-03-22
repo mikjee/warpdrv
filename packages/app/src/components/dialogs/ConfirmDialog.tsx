@@ -15,7 +15,7 @@ export function ConfirmDialog({ title, message, isOpen, onConfirm, onCancel, isL
 	const [open, setOpen] = useState(isOpen);
 
 	return (
-		<Dialog.Root open={open} onOpenChange={setOpen}>
+		<Dialog.Root open={open} onOpenChange={(details) => setOpen(details.open)}>
 			<Portal>
 				<Dialog.Backdrop />
 				<Dialog.Positioner>
