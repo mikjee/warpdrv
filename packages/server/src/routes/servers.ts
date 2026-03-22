@@ -47,7 +47,7 @@ export async function reconcileServers(): Promise<void> {
 				usedPorts.add(server.port);
 			} else {
 				server.status = EServerStatus.STOPPED;
-				server.pid = null;
+				server.pid = undefined;
 				await store.put(PREFIX + server.id, server);
 			}
 		}
@@ -98,7 +98,7 @@ serversRouter.post('/', async (req, res) => {
 		modelAlias: payload.modelAlias,
 		params,
 		port,
-		pid: null,
+		pid: undefined,
 		status: EServerStatus.STOPPED,
 		startedAt: null,
 		error: null,
@@ -123,7 +123,7 @@ serversRouter.post('/', async (req, res) => {
 			if (status === EServerStatus.RUNNING) server.startedAt = Date.now();
 			await store.put(PREFIX + id, server);
 		},
-	);
+	) || undefined;
 
 	server.pid = pid;
 	server.status = EServerStatus.LOADING;
@@ -140,11 +140,11 @@ serversRouter.post('/:id/stop', async (req, res) => {
 		return;
 	}
 
-	killServer(server.id);
+	killServer(server.id, server.pid);
 	usedPorts.delete(server.port);
 
 	server.status = EServerStatus.STOPPED;
-	server.pid = null;
+	server.pid = undefined;
 	await store.put(PREFIX + server.id, server);
 
 	res.json({ ok: true, data: server, error: null });
@@ -165,7 +165,7 @@ serversRouter.post('/:id/restart', async (req, res) => {
 	}
 
 	// Kill existing
-	killServer(server.id);
+	killServer(server.id, server.pid);
 
 	// Re-spawn
 	const args = buildArgs(
@@ -187,7 +187,7 @@ serversRouter.post('/:id/restart', async (req, res) => {
 		},
 	);
 
-	server.pid = pid;
+	server.pid = pid || undefined;
 	server.status = EServerStatus.LOADING;
 	server.error = null;
 	await store.put(PREFIX + server.id, server);
@@ -214,7 +214,7 @@ serversRouter.put('/:id', async (req, res) => {
 
 	// Kill existing if running
 	if (server.pid) {
-		killServer(server.id);
+		killServer(server.id, server.pid);
 		usedPorts.delete(server.port);
 	}
 
@@ -222,7 +222,13 @@ serversRouter.put('/:id', async (req, res) => {
 	if (updatePayload.backendId) server.backendId = updatePayload.backendId;
 	if (updatePayload.modelPath) server.modelPath = updatePayload.modelPath;
 	if (updatePayload.mmprojPath !== undefined) server.mmprojPath = updatePayload.mmprojPath;
-	if (updatePayload.params) server.params = updatePayload.params;
+	if (updatePayload.params) {
+		server.params = updatePayload.params;
+		// Sync server.port with params.port if a specific port was configured
+		if (updatePayload.params.port > 0) {
+			server.port = updatePayload.params.port;
+		}
+	}
 
 	// Re-spawn with new params
 	const args = buildArgs(
@@ -244,7 +250,7 @@ serversRouter.put('/:id', async (req, res) => {
 		},
 	);
 
-	server.pid = pid;
+	server.pid = pid || undefined;
 	server.status = EServerStatus.LOADING;
 	server.error = null;
 	await store.put(PREFIX + server.id, server);
@@ -260,7 +266,7 @@ serversRouter.delete('/:id', async (req, res) => {
 		return;
 	}
 
-	killServer(server.id);
+	killServer(server.id, server.pid);
 	usedPorts.delete(server.port);
 	clearServerLogs(server.id);
 	await store.del(PREFIX + server.id);

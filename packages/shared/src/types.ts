@@ -162,7 +162,7 @@ export interface IServer {
 	modelAlias: string; // display name
 	params: ILaunchParams;
 	port: number; // actual assigned port
-	pid: number | null; // OS process ID
+	pid: number | undefined; // OS process ID
 	status: EServerStatus;
 	startedAt: number | null;
 	error: string | null;
@@ -175,20 +175,13 @@ export interface ISlotStats {
 	state: 'idle' | 'processing';
 	contextUsed: number;
 	contextTotal: number;
-	promptTokens: number;
-	promptTokensProcessed: number;
 	tokensGenerated: number;
-	promptSpeed: number; // tokens/sec
-	genSpeed: number; // tokens/sec
+	tokensRemaining: number;
 }
 
 export interface IServerStats {
-	loadingProgress: number; // 0-1
-	isLoading: boolean;
 	slotsIdle: number;
 	slotsProcessing: number;
-	promptSpeed: number; // tokens/sec aggregate
-	genSpeed: number; // tokens/sec aggregate
 	tokensGenerated: number;
 	slots: ISlotStats[];
 }

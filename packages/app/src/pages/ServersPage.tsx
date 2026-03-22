@@ -170,30 +170,37 @@ export function ServersPage() {
 										</Flex>
 
 										{/* Stats */}
-										{server.stats && !server.stats.isLoading && server.stats.tokensGenerated != null && (
-											<>
-												<HStack gap="2" flexWrap="wrap">
-													<StatPill icon={<Gauge size={12} />} label="Prompt" value={`${(server.stats.promptSpeed ?? 0).toFixed(0)} t/s`} />
-													<StatPill icon={<Zap size={12} />} label="Gen" value={`${(server.stats.genSpeed ?? 0).toFixed(1)} t/s`} />
-													<StatPill icon={<Activity size={12} />} label="Slots" value={`${server.stats.slotsProcessing ?? 0}/${(server.stats.slotsProcessing ?? 0) + (server.stats.slotsIdle ?? 0)}`} />
-													<StatPill icon={<MemoryStick size={12} />} label="Tokens" value={(server.stats.tokensGenerated ?? 0).toLocaleString()} />
-												</HStack>
-												{(server.stats.slots ?? []).length > 0 && (
-													<VStack align="stretch" gap="1.5" mt="1">
-														{(server.stats.slots ?? []).map(slot => (
-															<HStack key={slot.id} gap="2" px="2.5" py="1.5" borderRadius="md" bg={slot.state === 'processing' ? 'rgba(51, 129, 255, 0.04)' : 'rgba(255, 255, 255, 0.02)'} borderWidth="1px" borderColor={slot.state === 'processing' ? 'rgba(51, 129, 255, 0.08)' : 'rgba(255, 255, 255, 0.04)'}>
-																<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)" fontFamily='"Geist Mono", monospace' w="50px">Slot {slot.id}</Text>
+										{server.stats && server.stats.tokensGenerated != null && (
+										<>
+											<HStack gap="2" flexWrap="wrap">
+												<StatPill icon={<Activity size={12} />} label="Slots" value={`${server.stats.slotsProcessing}/${server.stats.slotsProcessing + server.stats.slotsIdle}`} />
+												<StatPill icon={<Zap size={12} />} label="Tokens" value={(server.stats.tokensGenerated ?? 0).toLocaleString()} />
+											</HStack>
+											{(server.stats.slots ?? []).length > 0 && (
+												<VStack align="stretch" gap="1.5" mt="1">
+													{(server.stats.slots ?? []).map(slot => {
+														const isPrompt = slot.state === 'processing' && slot.tokensGenerated === 0;
+														const isGen = slot.state === 'processing' && slot.tokensGenerated > 0;
+														const barColor = isPrompt ? '#fbbf24' : isGen ? '#3381ff' : 'rgba(255, 255, 255, 0.15)';
+														const textColor = isPrompt ? '#fbbf24' : isGen ? '#3381ff' : 'rgba(255, 255, 255, 0.2)';
+														const bgColor = slot.state === 'processing' ? (isPrompt ? 'rgba(251, 191, 36, 0.04)' : 'rgba(51, 129, 255, 0.04)') : 'rgba(255, 255, 255, 0.02)';
+														const borderColor = slot.state === 'processing' ? (isPrompt ? 'rgba(251, 191, 36, 0.08)' : 'rgba(51, 129, 255, 0.08)') : 'rgba(255, 255, 255, 0.04)';
+														return (
+															<HStack key={slot.id} gap="2" px="2.5" py="1.5" borderRadius="md" bg={bgColor} borderWidth="1px" borderColor={borderColor}>
+																<Text fontSize="10px" color={textColor} fontFamily='"Geist Mono", monospace' w="50px">Slot {slot.id}</Text>
 																<Box flex="1" h="3px" bg="rgba(255, 255, 255, 0.06)" borderRadius="full" overflow="hidden">
-																	<Box h="100%" w={slot.contextTotal > 0 ? `${(slot.contextUsed / slot.contextTotal * 100)}%` : '0%'} bg="#3381ff" borderRadius="full" />
+																	<Box h="100%" w={slot.contextTotal > 0 ? `${(slot.contextUsed / slot.contextTotal * 100)}%` : '0%'} bg={barColor} borderRadius="full" transition="width 0.3s ease" />
 																</Box>
-																<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)" fontFamily='"Geist Mono", monospace'>{slot.contextUsed}/{slot.contextTotal}</Text>
-																<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)" fontFamily='"Geist Mono", monospace'>{slot.genSpeed.toFixed(1)} t/s</Text>
+																<Text fontSize="10px" color={textColor} fontFamily='"Geist Mono", monospace'>
+																	{isPrompt ? 'processing prompt...' : isGen ? `${slot.tokensGenerated}/${slot.tokensGenerated + slot.tokensRemaining} tok` : 'idle'}
+																</Text>
 															</HStack>
-														))}
-													</VStack>
-												)}
-											</>
-										)}
+														);
+													})}
+												</VStack>
+											)}
+										</>
+									)}
 									</VStack>
 								</Card>
 							);

@@ -1,7 +1,6 @@
 import http from 'http';
 import type { IServerStats, ISlotStats } from '@warpcore/shared';
 
-// In-memory stats per server
 const statsMap = new Map<string, IServerStats>();
 const pollers = new Map<string, ReturnType<typeof setInterval>>();
 
@@ -23,25 +22,24 @@ function fetchJson<T>(url: string): Promise<T | null> {
 
 interface IHealthResponse {
 	status: string;
-	progress?: number;
 	slots_idle?: number;
 	slots_processing?: number;
 }
 
+interface ISlotNextToken {
+	has_next_token: boolean;
+	n_remain: number;
+	n_decoded: number;
+}
+
 interface ISlotResponse {
 	id: number;
-	state: number; // 0 = idle, 1 = processing
 	n_ctx: number;
-	n_predict: number;
-	prompt_tokens: number;
-	prompt_tokens_processed: number;
-	tokens_predicted: number;
-	t_prompt_processing: number; // ms
-	t_token_generation: number; // ms
+	is_processing: boolean;
+	next_token?: ISlotNextToken[];
 }
 
 export function startStatsPolling(serverId: string, port: number): void {
-	// Don't double-poll
 	if (pollers.has(serverId)) return;
 
 	const interval = setInterval(async () => {
@@ -52,31 +50,30 @@ export function startStatsPolling(serverId: string, port: number): void {
 
 		const slots = await fetchJson<ISlotResponse[]>(`${base}/slots`);
 
-		const slotStats: ISlotStats[] = (slots ?? []).map((s) => ({
-			id: s.id,
-			state: s.state === 1 ? 'processing' as const : 'idle' as const,
-			contextUsed: s.prompt_tokens + s.tokens_predicted,
-			contextTotal: s.n_ctx,
-			promptTokens: s.prompt_tokens,
-			promptTokensProcessed: s.prompt_tokens_processed,
-			tokensGenerated: s.tokens_predicted,
-			promptSpeed: s.t_prompt_processing > 0 ? (s.prompt_tokens_processed / (s.t_prompt_processing / 1000)) : 0,
-			genSpeed: s.t_token_generation > 0 ? (s.tokens_predicted / (s.t_token_generation / 1000)) : 0,
-		}));
+		const slotStats: ISlotStats[] = (slots ?? []).map((s) => {
+			const nextToken = s.next_token?.[0];
+			const nDecoded = nextToken?.n_decoded ?? 0;
+			const nRemain = nextToken?.n_remain ?? 0;
+			const contextUsed = nDecoded > 0 ? (s.n_ctx - nRemain) : 0;
 
-		const totalPromptTokens = slotStats.reduce((sum, s) => sum + s.promptTokensProcessed, 0);
-		const totalGenTokens = slotStats.reduce((sum, s) => sum + s.tokensGenerated, 0);
-		const totalPromptMs = (slots ?? []).reduce((sum, s) => sum + s.t_prompt_processing, 0);
-		const totalGenMs = (slots ?? []).reduce((sum, s) => sum + s.t_token_generation, 0);
+			return {
+				id: s.id,
+				state: s.is_processing ? 'processing' as const : 'idle' as const,
+				contextUsed,
+				contextTotal: s.n_ctx,
+				tokensGenerated: nDecoded,
+				tokensRemaining: nRemain,
+			};
+		});
+
+		const totalGenerated = slotStats.reduce((sum, s) => sum + s.tokensGenerated, 0);
+		const processingCount = slotStats.filter(s => s.state === 'processing').length;
+		const idleCount = slotStats.filter(s => s.state === 'idle').length;
 
 		const stats: IServerStats = {
-			loadingProgress: health.status === 'loading model' ? (health.progress ?? 0) : health.status === 'ok' ? 1 : 0,
-			isLoading: health.status === 'loading model',
-			slotsIdle: health.slots_idle ?? 0,
-			slotsProcessing: health.slots_processing ?? 0,
-			promptSpeed: totalPromptMs > 0 ? (totalPromptTokens / (totalPromptMs / 1000)) : 0,
-			genSpeed: totalGenMs > 0 ? (totalGenTokens / (totalGenMs / 1000)) : 0,
-			tokensGenerated: totalGenTokens,
+			slotsIdle: health.slots_idle ?? idleCount,
+			slotsProcessing: health.slots_processing ?? processingCount,
+			tokensGenerated: totalGenerated,
 			slots: slotStats,
 		};
 

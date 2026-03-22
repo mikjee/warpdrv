@@ -163,17 +163,33 @@ export function spawnServer(
 }
 
 // Kill a running server process
-export function killServer(serverId: string): boolean {
+export function killServer(serverId: string, pid?: number): boolean {
 	const child = processes.get(serverId);
-	if (!child) return false;
-	try {
-		stopStatsPolling(serverId);
-		if (child.pid) process.kill(-child.pid, 'SIGTERM');
-		processes.delete(serverId);
-		return true;
-	} catch {
-		return false;
+
+	// Try to kill from in-memory process first, then fall back to PID
+	if (child?.pid) {
+		try {
+			stopStatsPolling(serverId);
+			process.kill(-child.pid, 'SIGTERM');
+			processes.delete(serverId);
+			return true;
+		} catch {
+			// Process may have already exited
+		}
 	}
+
+	// If not in map, try to kill using PID from storage (orphan process)
+	if (pid) {
+		try {
+			stopStatsPolling(serverId);
+			process.kill(-pid, 'SIGTERM');
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	return false;
 }
 
 // Check if a process is still alive by PID
