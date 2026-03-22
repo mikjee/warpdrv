@@ -3,6 +3,9 @@ import path from 'path';
 import crypto from 'crypto';
 import type { IModel, IGgufFile } from '@warpcore/shared';
 import { parseGgufMetadata } from './ggufParser';
+import { store } from '../util/store';
+
+const MODELS_CACHE_KEY = 'models:cache';
 
 // Shard pattern: -00001-of-00003.gguf
 const SHARD_REGEX = /-(\d{5})-of-(\d{5})\.gguf$/i;
@@ -14,16 +17,22 @@ function makeModelId(dirPath: string): string {
 	return crypto.createHash('md5').update(dirPath).digest('hex').slice(0, 12);
 }
 
-// Scan a single model directory (user/model level)
-async function scanModelDir(dirPath: string, user: string, modelName: string): Promise<IModel | null> {
+// Scan a single model directory (user/model level) with caching
+async function scanModelDir(dirPath: string, user: string, modelName: string, cachedModels: IModel[]): Promise<IModel | null> {
 	try {
 		const entries = await fs.readdir(dirPath, { withFileTypes: true });
-		console.log(`[modelScanner] Scanning model dir: ${dirPath} (${entries.length} entries)`);
 		const ggufEntries = entries.filter(e => e.isFile() && e.name.endsWith('.gguf'));
 
 		if (ggufEntries.length === 0) return null;
 
+		// Find cached model for this directory
+		const modelId = makeModelId(dirPath);
+		const cachedModel = cachedModels.find(m => m.id === modelId);
+		const cachedFilesByPath = new Map(cachedModel?.files.map(f => [f.filePath, f]) ?? []);
+
 		const files: IGgufFile[] = [];
+		let parsedCount = 0;
+		let cachedCount = 0;
 
 		for (const entry of ggufEntries) {
 			const filePath = path.join(dirPath, entry.name);
@@ -38,9 +47,18 @@ async function scanModelDir(dirPath: string, user: string, modelName: string): P
 			// Detect mmproj
 			const isMmproj = MMPROJ_REGEX.test(entry.name);
 
-			// Parse metadata (only for first shard or non-shard files)
+			// Try to reuse cached metadata
+			const cachedFile = cachedFilesByPath.get(filePath);
+			let metadata = cachedFile?.metadata ?? null;
+
+			// Parse metadata if not cached or if it's a new file
 			const shouldParse = !isMmproj && (shardIndex === null || shardIndex === 1);
-			const metadata = shouldParse ? await parseGgufMetadata(filePath) : null;
+			if (shouldParse && !metadata) {
+				metadata = await parseGgufMetadata(filePath);
+				parsedCount++;
+			} else if (cachedFile) {
+				cachedCount++;
+			}
 
 			files.push({
 				fileName: entry.name,
@@ -54,12 +72,10 @@ async function scanModelDir(dirPath: string, user: string, modelName: string): P
 		}
 
 		// Auto-detect primary model file
-		// Priority: non-shard non-mmproj files first, then first shard of a multi-shard set
 		const modelFiles = files.filter(f => !f.isMmproj);
 		const nonShardFiles = modelFiles.filter(f => f.shardIndex === null);
 		const firstShards = modelFiles.filter(f => f.shardIndex === 1);
 
-		// Pick the largest non-shard model file, or first shard
 		let primaryFile: IGgufFile | null = null;
 		if (nonShardFiles.length > 0) {
 			primaryFile = nonShardFiles.sort((a, b) => b.sizeMb - a.sizeMb)[0] ?? null;
@@ -70,19 +86,16 @@ async function scanModelDir(dirPath: string, user: string, modelName: string): P
 		// Auto-detect mmproj
 		const mmprojFile = files.find(f => f.isMmproj) ?? null;
 
-		// Total size = sum of all shards belonging to the primary model
+		// Total size = sum of all shards
 		let totalSizeMb = 0;
 		if (primaryFile && primaryFile.shardTotal) {
-			// Sum all shards
-			totalSizeMb = modelFiles
-				.filter(f => f.shardIndex !== null)
-				.reduce((sum, f) => sum + f.sizeMb, 0);
+			totalSizeMb = modelFiles.filter(f => f.shardIndex !== null).reduce((sum, f) => sum + f.sizeMb, 0);
 		} else if (primaryFile) {
 			totalSizeMb = primaryFile.sizeMb;
 		}
 
-		return {
-			id: makeModelId(dirPath),
+		const result: IModel = {
+			id: modelId,
 			user,
 			name: modelName,
 			dirPath,
@@ -91,34 +104,36 @@ async function scanModelDir(dirPath: string, user: string, modelName: string): P
 			mmprojFile,
 			totalSizeMb,
 		};
+
+		if (parsedCount > 0 || cachedCount > 0) {
+			console.log(`[modelScanner] ${user}/${modelName}: ${parsedCount} parsed, ${cachedCount} from cache`);
+		}
+
+		return result;
 	} catch {
 		return null;
 	}
 }
 
 // Scan a root model directory following user/model folder structure
-export async function scanModelRoot(rootPath: string): Promise<IModel[]> {
+async function scanModelRoot(rootPath: string, cachedModels: IModel[]): Promise<IModel[]> {
 	const models: IModel[] = [];
 
 	try {
-		console.log(`[modelScanner] Scanning root: ${rootPath}`);
 		const userDirs = await fs.readdir(rootPath, { withFileTypes: true });
-		console.log(`[modelScanner] Found ${userDirs.length} user dirs`);
 
 		for (const userDir of userDirs) {
 			if (!userDir.isDirectory()) continue;
 			const userPath = path.join(rootPath, userDir.name);
 
 			const modelDirs = await fs.readdir(userPath, { withFileTypes: true });
-			console.log(`[modelScanner] User ${userDir.name} has ${modelDirs.length} model dirs`);
 
 			for (const modelDir of modelDirs) {
 				if (!modelDir.isDirectory()) continue;
 				const modelPath = path.join(userPath, modelDir.name);
 
-				const model = await scanModelDir(modelPath, userDir.name, modelDir.name);
+				const model = await scanModelDir(modelPath, userDir.name, modelDir.name, cachedModels);
 				if (model) {
-					console.log(`[modelScanner] Found model: ${userDir.name}/${modelDir.name}`);
 					models.push(model);
 				}
 			}
@@ -130,12 +145,33 @@ export async function scanModelRoot(rootPath: string): Promise<IModel[]> {
 	return models;
 }
 
-// Scan all configured model roots
+// Scan all configured model roots with caching
 export async function scanAllModelRoots(roots: string[]): Promise<IModel[]> {
+	// Load cached models
+	let cachedModels: IModel[] = [];
+	try {
+		cachedModels = await store.get<IModel[]>(MODELS_CACHE_KEY) ?? [];
+		if (cachedModels.length > 0) {
+			console.log(`[modelScanner] Loaded ${cachedModels.length} cached models`);
+		}
+	} catch (err) {
+		console.warn('[modelScanner] Failed to load cache:', err);
+	}
+
+	// Scan all roots
 	const all: IModel[] = [];
 	for (const root of roots) {
-		const models = await scanModelRoot(root);
+		const models = await scanModelRoot(root, cachedModels);
 		all.push(...models);
 	}
+
+	// Save updated cache
+	try {
+		await store.put(MODELS_CACHE_KEY, all);
+		console.log(`[modelScanner] Saved cache: ${all.length} models`);
+	} catch (err) {
+		console.warn('[modelScanner] Failed to save cache:', err);
+	}
+
 	return all;
 }

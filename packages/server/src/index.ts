@@ -3,7 +3,7 @@ import cors from 'cors';
 import { store } from './util/store';
 import { settingsRouter } from './routes/settings';
 import { backendsRouter } from './routes/backends';
-import { modelsRouter } from './routes/models';
+import { modelsRouter, loadCachedModels } from './routes/models';
 import { serversRouter, reconcileServers } from './routes/servers';
 import { presetsRouter } from './routes/presets';
 import { hubRouter } from './routes/hub';
@@ -23,6 +23,9 @@ async function main() {
 
 	// Reconcile any servers that were running before restart
 	await reconcileServers();
+
+	// Load cached model scan results
+	await loadCachedModels();
 
 	const app = express();
 

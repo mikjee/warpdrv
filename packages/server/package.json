@@ -8,6 +8,7 @@
 		"start": "tsx src/index.ts"
 	},
 	"dependencies": {
+		"@huggingface/gguf": "^0.4.1",
 		"@huggingface/hub": "^2.11.0",
 		"@warpcore/shared": "*",
 		"cors": "^2.8.5",

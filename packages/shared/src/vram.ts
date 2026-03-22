@@ -7,13 +7,13 @@ const SAFETY_BUFFER_MB = 577;
 // Source: https://oobabooga.github.io/blog/posts/gguf-vram-formula/
 // Trained on 19,517 measurements across 60 quants / 32 model families
 export function estimateVram(input: IVramEstimateInput): number {
-	const sizePerLayer = input.sizeInMb / input.nLayers;
-	const kvCacheFactor = input.nKvHeads * input.cacheType * input.contextLength;
+	const effectiveGpuLayers = Math.min(input.gpuLayers, input.nLayers);
+	const sizePerLayer = input.sizeInMb / input.nLayers;	const kvCacheFactor = input.nKvHeads * input.cacheType * input.contextLength;
 	const embeddingPerContext = input.embeddingDim / input.contextLength;
 
 	const vram =
 		(sizePerLayer - 17.99552795246051 + 3.148552680382576e-05 * kvCacheFactor)
-		* (input.gpuLayers + Math.max(0.9690636483914102, input.cacheType - (Math.floor(50.77817218646521 * embeddingPerContext) + 9.987899908205632)))
+		* (effectiveGpuLayers + Math.max(0.9690636483914102, input.cacheType - (Math.floor(50.77817218646521 * embeddingPerContext) + 9.987899908205632)))
 		+ 1516.522943869404;
 
 	return Math.max(0, Math.round(vram));

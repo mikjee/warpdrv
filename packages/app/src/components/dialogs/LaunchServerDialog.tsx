@@ -322,15 +322,16 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 
 	// VRAM estimate
 	const meta = selectedEntry?.file.metadata;
-	const vramEstimate = meta && selectedBackend ? calculateVramEstimate({
-		sizeInMb: selectedEntry.model.totalSizeMb,
-		nLayers: meta.nLayers,
-		nKvHeads: meta.nKvHeads,
-		embeddingDim: meta.embeddingDim,
-		contextLength: params.contextSize > 0 ? params.contextSize : meta.contextLength,
-		cacheType: kvQuantToNumeric(params.kvQuantK),
-		gpuLayers: params.gpuLayers,
-	}, selectedBackend.detectedDevices[0]?.vramFreeMb ?? selectedBackend.detectedDevices[0]?.vramTotalMb ?? 99999) : null;
+	const vramEstimate = null; 
+	// const vramEstimate = meta && selectedBackend ? calculateVramEstimate({
+	// 	sizeInMb: selectedEntry.model.totalSizeMb,
+	// 	nLayers: meta.nLayers,
+	// 	nKvHeads: meta.nKvHeads,
+	// 	embeddingDim: meta.embeddingDim,
+	// 	contextLength: params.contextSize !== 0 ? params.contextSize : meta.contextLength,
+	// 	cacheType: kvQuantToNumeric(params.kvQuantK),
+	// 	gpuLayers: params.gpuLayers,
+	// }, selectedBackend.detectedDevices[0]?.vramFreeMb ?? selectedBackend.detectedDevices[0]?.vramTotalMb ?? 99999) : null;
 
 	// Save without relaunch handler (edit mode only)
 	const handleSaveWithoutRelaunch = async () => {
@@ -622,7 +623,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 							</Box>
 
 							{/* VRAM Estimate */}
-							{vramEstimate && (
+							{/* {vramEstimate && (
 								<Box p="4" borderRadius="xl"
 									bg={vramEstimate.willFit ? 'rgba(52, 211, 153, 0.04)' : 'rgba(251, 113, 133, 0.04)'}
 									borderWidth="1px" borderColor={vramEstimate.willFit ? 'rgba(52, 211, 153, 0.15)' : 'rgba(251, 113, 133, 0.15)'}
@@ -637,7 +638,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 									<VramBar totalMb={vramEstimate.availableMb} usedMb={vramEstimate.safeEstimateMb} compact />
 									<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)" mt="1.5">Includes 577 MB safety buffer (95% confidence)</Text>
 								</Box>
-							)}
+							)} */}
 						</VStack>
 					</Flex>
 				</Box>
