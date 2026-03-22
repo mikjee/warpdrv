@@ -87,29 +87,7 @@ export function SettingsPage() {
 
 	return (
 		<Box>
-			<PageHeader
-				title="Settings"
-				subtitle="WarpCore configuration"
-				icon={<Settings size={20} />}
-				actions={
-					<Button
-						size="sm"
-						bg={saved ? 'rgba(52, 211, 153, 0.12)' : 'rgba(52, 211, 153, 0.12)'}
-						color="#34d399"
-						borderWidth="1px"
-						borderColor="rgba(52, 211, 153, 0.25)"
-						_hover={{ bg: 'rgba(52, 211, 153, 0.2)' }}
-						borderRadius="lg"
-						fontSize="13px"
-						fontWeight="500"
-						onClick={handleSave}
-						disabled={saveMut.loading}
-					>
-						{saved ? <Check size={15} /> : saveMut.loading ? <Spinner size="xs" /> : <Save size={15} />}
-						{saved ? 'Saved' : 'Save Changes'}
-					</Button>
-				}
-			/>
+			<PageHeader title="Settings" subtitle="WarpCore configuration" icon={<Settings size={20} />} />
 			<Box p="8" maxW="700px">
 				<VStack align="stretch" gap="6">
 					{/* Model directories */}
@@ -205,6 +183,26 @@ export function SettingsPage() {
 						</VStack>
 					</Card>
 				</VStack>
+
+				{/* Save button */}
+				<HStack justify="flex-end" mt="2">
+					<Button
+						size="sm"
+						bg={saved ? 'rgba(52, 211, 153, 0.12)' : 'rgba(52, 211, 153, 0.12)'}
+						color="#34d399"
+						borderWidth="1px"
+						borderColor="rgba(52, 211, 153, 0.25)"
+						_hover={{ bg: 'rgba(52, 211, 153, 0.2)' }}
+						borderRadius="lg"
+						fontSize="13px"
+						fontWeight="500"
+						onClick={handleSave}
+						disabled={saveMut.loading}
+					>
+						{saved ? <Check size={15} /> : saveMut.loading ? <Spinner size="xs" /> : <Save size={15} />}
+						{saved ? 'Saved' : 'Save Changes'}
+					</Button>
+				</HStack>
 			</Box>
 
 			{deletingRootIndex !== null && (

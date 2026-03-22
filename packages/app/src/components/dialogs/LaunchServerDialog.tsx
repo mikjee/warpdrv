@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
-	Box, Text, HStack, VStack, Flex, Input, Button, Badge, Spinner, Portal,
+	Box, Text, HStack, VStack, Flex, Input, Button, Badge, Spinner, Portal, Combobox, useListCollection, useFilter, createListCollection
 } from '@chakra-ui/react';
 import {
 	Play, X, ChevronDown, ChevronRight, Zap, Cpu, RefreshCw,
@@ -117,6 +117,109 @@ function formatSize(mb: number): string {
 	return mb + ' MB';
 }
 
+type TModelEntry = {
+	model: IModel;
+	file: IModel['files'][number];
+	label: string;
+	searchText: string;
+};
+
+function ModelCombobox({ entries, selectedPath, onSelect }: {
+	entries: TModelEntry[];
+	selectedPath: string | null;
+	onSelect: (path: string) => void;
+}) {
+	const [inputValue, setInputValue] = useState('');
+
+	const filteredItems = useMemo(() => {
+		if (!inputValue) return entries;
+		const terms = inputValue.toLowerCase().split(/\s+/).filter(Boolean);
+		return entries.filter(e => terms.every(term => e.searchText.includes(term)));
+	}, [entries, inputValue]);
+
+	const collection = useMemo(() =>
+		createListCollection({
+			items: filteredItems.map(e => ({
+				label: e.file.fileName,
+				value: e.file.filePath,
+				entry: e,
+			})),
+			itemToString: (item) => item.label,
+			itemToValue: (item) => item.value,
+		}),
+	[filteredItems]);
+
+	return (
+		<Combobox.Root
+			collection={collection}
+			onValueChange={(details) => {
+				const val = details.value?.[0];
+				if (val) onSelect(val);
+			}}
+			onInputValueChange={(details) => setInputValue(details.inputValue)}
+			value={selectedPath ? [selectedPath] : []}
+			openOnClick
+		>
+			<Combobox.Control>
+				<Combobox.Input
+					placeholder="Search models..."
+					size="sm"
+					bg="rgba(255, 255, 255, 0.03)"
+					borderColor="rgba(255, 255, 255, 0.08)"
+					color="rgba(255, 255, 255, 0.7)"
+					fontSize="13px"
+					borderRadius="lg"
+					_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
+					_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
+				/>
+				<Combobox.IndicatorGroup>
+					<Combobox.ClearTrigger />
+					<Combobox.Trigger />
+				</Combobox.IndicatorGroup>
+			</Combobox.Control>
+			<Portal>
+				<Combobox.Positioner>
+					<Combobox.Content
+						maxH="280px" overflowY="auto"
+						bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
+						borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
+					>
+						<Combobox.Empty>
+							<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)" py="4" textAlign="center">No matches</Text>
+						</Combobox.Empty>
+						{collection.items.map((item) => {
+							const entry = (item as { entry: TModelEntry }).entry;
+							const qt = entry.file.metadata?.quantType ?? '?';
+							const quantColor = QUANT_COLORS[qt] ?? 'rgba(255, 255, 255, 0.4)';
+							return (
+								<Combobox.Item
+									key={item.value}
+									item={item}
+									px="3" py="2" borderRadius="md" cursor="pointer"
+									_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
+									_highlighted={{ bg: 'rgba(51, 129, 255, 0.08)' }}
+								>
+									<HStack gap="3" w="100%">
+										<Box flex="1" minW="0">
+											<Text fontSize="12px" fontWeight="500" color="#e4e4e7" lineClamp={1}>{entry.file.fileName}</Text>
+											<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)" mt="0.5">{entry.model.user}/{entry.model.name}</Text>
+										</Box>
+										<HStack gap="2" flexShrink={0}>
+											<Badge px="1.5" py="0" borderRadius="sm" fontSize="10px" fontWeight="600" bg={`color-mix(in srgb, ${quantColor} 12%, transparent)`} color={quantColor}>{qt}</Badge>
+											<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)" fontFamily='"Geist Mono", monospace'>{formatSize(entry.model.totalSizeMb)}</Text>
+										</HStack>
+										<Combobox.ItemIndicator />
+									</HStack>
+								</Combobox.Item>
+							);
+						})}
+					</Combobox.Content>
+				</Combobox.Positioner>
+			</Portal>
+		</Combobox.Root>
+	);
+}
+
 interface ILaunchServerDialogProps {
 	onClose: () => void;
 	editMode?: {
@@ -155,23 +258,57 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 		setParams(prev => ({ ...prev, [key]: value }));
 	};
 
-	// Flatten models to selectable file entries
-	const modelEntries = models.flatMap(m =>
-		m.files
-			.filter(f => !f.isMmproj)
-			.filter(f => f.shardIndex === null || f.shardIndex === 1)
-			.map(f => ({
-				model: m,
-				file: f,
-				label: f.fileName,
-				searchText: `${m.user} ${m.name} ${f.fileName} ${f.metadata?.quantType ?? ''} ${f.metadata?.paramCount ?? ''}`.toLowerCase(),
-			}))
-	);
+	const parseDefaultArgsToParams = (defaultArgs: string[]): Partial<ILaunchParams> => {
+		const argsSet = new Set(defaultArgs);
+		return {
+			flashAttn: argsSet.has('-fa'),
+			mlock: argsSet.has('--mlock'),
+			mmap: !argsSet.has('--no-mmap'),
+			directIo: argsSet.has('-dio'),
+			noWarmup: argsSet.has('--no-warmup'),
+			jinja: argsSet.has('--jinja'),
+		};
+	};
 
-	const filteredEntries = modelEntries.filter(e => e.searchText.includes(modelSearch.toLowerCase()));
+	// Flatten models to selectable file entries
+	const modelEntries = useMemo(() => {
+		if (!models) return [];
+		return models.flatMap(m =>
+			m.files
+				.filter(f => !f.isMmproj)
+				.filter(f => f.shardIndex === null || f.shardIndex === 1)
+				.map(f => ({
+					model: m,
+					file: f,
+					label: f.fileName,
+					searchText: `${m.user} ${m.name} ${f.fileName} ${f.metadata?.quantType ?? ''} ${f.metadata?.paramCount ?? ''}`.toLowerCase(),
+				}))
+		);
+	}, [models]);
+
+	const filteredEntries = useMemo(() => {
+		if (!modelSearch) return modelEntries;
+		const term = modelSearch.toLowerCase();
+		return modelEntries.filter(e => e.searchText.includes(term));
+	}, [modelEntries, modelSearch]);
+
+	const { collection } = useListCollection({
+		initialItems: filteredEntries.map(entry => ({
+			value: entry.file.filePath,
+			label: entry.file.fileName,
+			entry,
+		})),
+	});
 
 	const selectedEntry = modelEntries.find(e => e.file.filePath === selectedModelPath);
 	const selectedBackend = backends.find(b => b.id === selectedBackendId);
+
+	useEffect(() => {
+		if (selectedBackendId && selectedBackend && !editMode) {
+			const defaultsFromBackend = parseDefaultArgsToParams(selectedBackend.defaultArgs);
+			setParams(prev => ({ ...prev, ...defaultsFromBackend }));
+		}
+	}, [selectedBackendId, selectedBackend, editMode]);
 
 	// Flatten all devices across all backends for the device dropdown
 	const allDevices = backends.flatMap(b =>
@@ -332,37 +469,15 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 							{/* Model picker */}
 							<Box>
 								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">1. Select Model</Text>
-								<Input placeholder="Search models..." size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontSize="13px" borderRadius="lg" mb="2" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={modelSearch} onChange={e => setModelSearch(e.target.value)} />
-								<VStack align="stretch" gap="1" maxH="220px" overflowY="auto" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" borderRadius="lg" p="1">
-									{filteredEntries.length === 0 && (
-										<Flex py="6" justifyContent="center">
-											<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">{models.length === 0 ? 'No models scanned. Go to Settings and scan.' : 'No matches'}</Text>
-										</Flex>
-									)}
-									{filteredEntries.map(entry => {
-										const isSelected = selectedModelPath === entry.file.filePath;
-										const qt = entry.file.metadata?.quantType ?? '?';
-										const quantColor = QUANT_COLORS[qt] ?? 'rgba(255, 255, 255, 0.4)';
-										return (
-											<HStack key={entry.file.filePath} gap="3" px="3" py="2" borderRadius="md" cursor="pointer"
-												bg={isSelected ? 'rgba(51, 129, 255, 0.08)' : 'transparent'}
-												borderWidth="1px" borderColor={isSelected ? 'rgba(51, 129, 255, 0.2)' : 'transparent'}
-												_hover={{ bg: isSelected ? 'rgba(51, 129, 255, 0.1)' : 'rgba(255, 255, 255, 0.03)' }}
-												onClick={() => setSelectedModelPath(entry.file.filePath)} transition="all 0.1s ease"
-											>
-												<Box flex="1" minW="0">
-													<Text fontSize="12px" fontWeight="500" color="#e4e4e7" lineClamp={1}>{entry.file.fileName}</Text>
-													<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)" mt="0.5">{entry.model.user}/{entry.model.name}</Text>
-												</Box>
-												<HStack gap="2" flexShrink={0}>
-													<Badge px="1.5" py="0" borderRadius="sm" fontSize="10px" fontWeight="600" bg={`color-mix(in srgb, ${quantColor} 12%, transparent)`} color={quantColor}>{qt}</Badge>
-													<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)" fontFamily='"Geist Mono", monospace'>{formatSize(entry.model.totalSizeMb)}</Text>
-												</HStack>
-											</HStack>
-										);
-									})}
-								</VStack>
-
+								{models.length === 0 ? (
+									<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No models scanned. Go to Settings and scan.</Text>
+								) : (
+									<ModelCombobox
+										entries={modelEntries}
+										selectedPath={selectedModelPath}
+										onSelect={setSelectedModelPath}
+									/>
+								)}
 								{selectedEntry?.file.metadata && (
 									<HStack mt="2" gap="4" px="3" py="2" bg="rgba(51, 129, 255, 0.04)" borderRadius="lg" borderWidth="1px" borderColor="rgba(51, 129, 255, 0.1)">
 										<HStack gap="1.5"><Layers size={12} color="rgba(255, 255, 255, 0.35)" /><Text fontSize="11px" color="rgba(255, 255, 255, 0.5)">{selectedEntry.file.metadata.nLayers} layers</Text></HStack>

@@ -48,24 +48,25 @@ export function buildArgs(
 	defaultArgs: string[],
 ): string[] {
 	const args: string[] = [...defaultArgs];
+	const argsSet = new Set(defaultArgs);
 
 	args.push('-m', modelPath);
 
 	if (mmprojPath) args.push('--mmproj', mmprojPath);
 
-	if (params.gpuLayers > 0) args.push('-ngl', String(params.gpuLayers));
-	if (params.contextSize > 0) args.push('-c', String(params.contextSize));
-	if (params.batchSize > 0) args.push('-b', String(params.batchSize));
-	if (params.ubatchSize > 0) args.push('-ub', String(params.ubatchSize));
-	if (params.threads > 0) args.push('-t', String(params.threads));
-	if (params.threadsBatch > 0) args.push('-tb', String(params.threadsBatch));
+	if (params.gpuLayers > 0 && !argsSet.has('-ngl')) args.push('-ngl', String(params.gpuLayers));
+	if (params.contextSize > 0 && !argsSet.has('-c')) args.push('-c', String(params.contextSize));
+	if (params.batchSize > 0 && !argsSet.has('-b')) args.push('-b', String(params.batchSize));
+	if (params.ubatchSize > 0 && !argsSet.has('-ub')) args.push('-ub', String(params.ubatchSize));
+	if (params.threads > 0 && !argsSet.has('-t')) args.push('-t', String(params.threads));
+	if (params.threadsBatch > 0 && !argsSet.has('-tb')) args.push('-tb', String(params.threadsBatch));
 
-	if (params.flashAttn && !defaultArgs.includes('-fa')) args.push('-fa', '1');
-	if (params.mlock && !defaultArgs.includes('--mlock')) args.push('--mlock');
-	if (!params.mmap) args.push('--no-mmap');
-	if (params.directIo && !defaultArgs.includes('-dio')) args.push('-dio');
-	if (params.noWarmup && !defaultArgs.includes('--no-warmup')) args.push('--no-warmup');
-	if (params.jinja) args.push('--jinja');
+	if (params.flashAttn && !argsSet.has('-fa')) args.push('-fa', '1');
+	if (params.mlock && !argsSet.has('--mlock')) args.push('--mlock');
+	if (!params.mmap && !argsSet.has('--no-mmap') && !argsSet.has('--mmap')) args.push('--no-mmap');
+	if (params.directIo && !argsSet.has('-dio')) args.push('-dio');
+	if (params.noWarmup && !argsSet.has('--no-warmup')) args.push('--no-warmup');
+	if (params.jinja && !argsSet.has('--jinja')) args.push('--jinja');
 
 	if (params.kvQuantK !== EKvQuantType.F16) args.push('--cache-type-k', params.kvQuantK);
 	if (params.kvQuantV !== EKvQuantType.F16) args.push('--cache-type-v', params.kvQuantV);
