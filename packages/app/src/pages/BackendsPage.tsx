@@ -6,6 +6,7 @@ import { Card } from '../components/Card';
 import { useListQuery, useMutation } from '../hooks/useQuery';
 import { fetchBackends, deleteBackend, validateBackend } from '../api/services';
 import { BackendDialog } from '../components/dialogs/BackendDialog';
+import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
 import type { IBackend } from '@warpcore/shared';
 import { EValidationStatus } from '@warpcore/shared';
 
@@ -22,6 +23,7 @@ export function BackendsPage() {
 
 	const [showAddDialog, setShowAddDialog] = useState(false);
 	const [editingBackend, setEditingBackend] = useState<IBackend | null>(null);
+	const [deletingId, setDeletingId] = useState<string | null>(null);
 	const [validatingId, setValidatingId] = useState<string | null>(null);
 
 	const deleteMut = useMutation<string, null>(
@@ -31,6 +33,11 @@ export function BackendsPage() {
 	const handleDelete = async (id: string) => {
 		await deleteMut.mutate(id);
 		await refetch();
+		setDeletingId(null);
+	};
+
+	const confirmDelete = (id: string) => {
+		setDeletingId(id);
 	};
 
 	const handleValidate = async (id: string) => {
@@ -107,7 +114,7 @@ export function BackendsPage() {
 												<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="md" onClick={() => handleValidate(backend.id)} disabled={validatingId === backend.id}>
 													{validatingId === backend.id ? <Spinner size="xs" /> : <RefreshCw size={14} />}
 												</Button>
-												<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fb7185', bg: 'rgba(251, 113, 133, 0.08)' }} borderRadius="md" onClick={() => handleDelete(backend.id)}>
+												<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fb7185', bg: 'rgba(251, 113, 133, 0.08)' }} borderRadius="md" onClick={() => confirmDelete(backend.id)}>
 													<Trash2 size={14} />
 												</Button>
 											</HStack>
@@ -160,6 +167,17 @@ export function BackendsPage() {
 						defaultArgs: editingBackend.defaultArgs,
 					}}
 					onClose={() => { setEditingBackend(null); refetch(); }}
+				/>
+			)}
+
+			{deletingId && (
+				<ConfirmDialog
+					title="Delete Backend?"
+					message={`This will remove the backend from your configuration. Any servers using this backend will stop.}`}
+					isOpen={true}
+					isLoading={deleteMut.loading}
+					onCancel={() => setDeletingId(null)}
+					onConfirm={() => handleDelete(deletingId)}
 				/>
 			)}
 		</Box>

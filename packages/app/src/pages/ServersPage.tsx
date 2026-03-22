@@ -10,6 +10,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { VramBar } from '../components/VramBar';
 import { LaunchServerDialog } from '../components/dialogs/LaunchServerDialog';
 import { ServerLogs } from '../components/dialogs/ServerLogs';
+import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
 import { useListQuery, useMutation } from '../hooks/useQuery';
 import { fetchServers, stopServer, restartServer, removeServer } from '../api/services';
 import type { IServer } from '@warpcore/shared';
@@ -41,8 +42,10 @@ export function ServersPage() {
 	const [showLaunch, setShowLaunch] = useState(false);
 	const [logsServerId, setLogsServerId] = useState<string | null>(null);
 	const [editingServerId, setEditingServerId] = useState<string | null>(null);
+	const [deletingServerId, setDeletingServerId] = useState<string | null>(null);
 	const logsServer = servers.find(s => s.id === logsServerId);
 	const editingServer = servers.find(s => s.id === editingServerId);
+	const deletingServer = servers.find(s => s.id === deletingServerId);
 
 	const stopMut = useMutation<string, IServer>(useCallback((id: string) => stopServer(id), []));
 	const restartMut = useMutation<string, IServer>(useCallback((id: string) => restartServer(id), []));
@@ -50,7 +53,8 @@ export function ServersPage() {
 
 	const handleStop = async (id: string) => { await stopMut.mutate(id); await refetch(); };
 	const handleRestart = async (id: string) => { await restartMut.mutate(id); await refetch(); };
-	const handleRemove = async (id: string) => { await removeMut.mutate(id); await refetch(); };
+	const handleRemove = async (id: string) => { await removeMut.mutate(id); await refetch(); setDeletingServerId(null); };
+	const confirmDelete = (id: string) => { setDeletingServerId(id); };
 
 	return (
 		<Box>
@@ -158,7 +162,7 @@ export function ServersPage() {
 														<Square size={14} />
 													</Button>
 												) : (
-													<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fb7185', bg: 'rgba(251, 113, 133, 0.08)' }} borderRadius="md" onClick={() => handleRemove(server.id)}>
+													<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fb7185', bg: 'rgba(251, 113, 133, 0.08)' }} borderRadius="md" onClick={() => confirmDelete(server.id)}>
 														<Trash2 size={14} />
 													</Button>
 												)}
@@ -207,6 +211,17 @@ export function ServersPage() {
 						mmprojPath: editingServer.mmprojPath ?? null,
 						params: editingServer.params,
 					}}
+				/>
+			)}
+
+			{deletingServer && (
+				<ConfirmDialog
+					title="Delete Server?"
+					message={`This will remove "${deletingServer.modelAlias}" from your configuration. The server process will not be affected.`}
+					isOpen={true}
+					isLoading={removeMut.loading}
+					onCancel={() => setDeletingServerId(null)}
+					onConfirm={() => handleRemove(deletingServer.id)}
 				/>
 			)}
 		</Box>

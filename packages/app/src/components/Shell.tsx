@@ -8,6 +8,7 @@ import {
 	Settings,
 	Zap,
 	Globe,
+	Info,
 } from 'lucide-react';
 import { UpdateBanner } from './UpdateBanner';
 import type { ReactNode } from 'react';
@@ -25,6 +26,7 @@ const NAV_ITEMS: INavItem[] = [
 	{ path: '/devices', label: 'Devices', icon: <Cpu size={18} /> },
 	{ path: '/hub', label: 'Hub', icon: <Globe size={18} /> },
 	{ path: '/settings', label: 'Settings', icon: <Settings size={18} /> },
+	{ path: '/about', label: 'About', icon: <Info size={18} /> },
 ];
 
 function SidebarLink({ item }: { item: INavItem }) {

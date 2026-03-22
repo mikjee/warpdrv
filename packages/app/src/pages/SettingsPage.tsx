@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
 import { useQuery, useMutation } from '../hooks/useQuery';
+import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
 import { fetchSettings, updateSettings } from '../api/services';
 import type { ISettings } from '@warpcore/shared';
 
@@ -42,11 +43,25 @@ export function SettingsPage() {
 		}
 	};
 
+	const [deletingRootIndex, setDeletingRootIndex] = useState<number | null>(null);
+
 	const handleRemoveRoot = (idx: number) => {
 		setModelRoots(modelRoots.filter((_, i) => i !== idx));
+		setDeletingRootIndex(null);
+	};
+
+	const confirmDeleteRoot = (idx: number) => {
+		setDeletingRootIndex(idx);
 	};
 
 	const handleSave = async () => {
+		// Auto-add any text in the new root input before saving
+		const pendingRoot = newRoot.trim();
+		if (pendingRoot && !modelRoots.includes(pendingRoot)) {
+			setModelRoots([...modelRoots, pendingRoot]);
+			setNewRoot('');
+		}
+
 		await saveMut.mutate({
 			modelRoots,
 			portRangeStart: portStart,
@@ -122,7 +137,7 @@ export function SettingsPage() {
 											fontSize="12px"
 											borderRadius="lg"
 										/>
-										<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.3)" _hover={{ color: '#fb7185', bg: 'rgba(251, 113, 133, 0.08)' }} borderRadius="md" minW="8" px="0" onClick={() => handleRemoveRoot(idx)}>
+										<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.3)" _hover={{ color: '#fb7185', bg: 'rgba(251, 113, 133, 0.08)' }} borderRadius="md" minW="8" px="0" onClick={() => confirmDeleteRoot(idx)}>
 											<Trash2 size={14} />
 										</Button>
 									</HStack>
@@ -191,6 +206,16 @@ export function SettingsPage() {
 					</Card>
 				</VStack>
 			</Box>
+
+			{deletingRootIndex !== null && (
+				<ConfirmDialog
+					title="Remove Model Directory?"
+					message={`This will remove "${modelRoots[deletingRootIndex]}" from your configured model directories.`}
+					isOpen={true}
+					onCancel={() => setDeletingRootIndex(null)}
+					onConfirm={() => handleRemoveRoot(deletingRootIndex)}
+				/>
+			)}
 		</Box>
 	);
 }

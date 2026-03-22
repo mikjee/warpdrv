@@ -110,11 +110,17 @@ fn loading_html(port: u16) -> String {
     format!(r#"
         <html>
         <head><style>
+            * {{ box-sizing: border-box; }}
+            html, body {{
+                margin: 0; padding: 0;
+                height: 100%;
+                overflow: hidden;
+            }}
             body {{
-                margin: 0; background: #09090b; color: #e4e4e7;
+                background: #09090b; color: #e4e4e7;
                 font-family: -apple-system, BlinkMacSystemFont, sans-serif;
                 display: flex; align-items: center; justify-content: center;
-                height: 100vh; flex-direction: column; gap: 16px;
+                flex-direction: column; gap: 16px;
             }}
             .spinner {{
                 width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.08);

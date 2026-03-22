@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
-	Box, Text, HStack, VStack, Flex, Input, Button, Badge, Spinner,
+	Box, Text, HStack, VStack, Flex, Input, Button, Badge, Spinner, Portal,
 } from '@chakra-ui/react';
 import {
 	Play, X, ChevronDown, ChevronRight, Zap, Cpu, RefreshCw,
@@ -49,11 +49,13 @@ function SelectField({ label, value, options, onChange, mono, optionLabels }: {
 	label: string; value: string; options: string[]; onChange: (v: string) => void; mono?: boolean; optionLabels?: Record<string, string>;
 }) {
 	const [open, setOpen] = useState(false);
+	const buttonRef = useRef<HTMLButtonElement>(null);
 	const displayValue = optionLabels && optionLabels[value] ? optionLabels[value] : value;
+
 	return (
 		<Box position="relative" flex="1">
 			<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">{label}</Text>
-			<Button w="100%" size="sm" variant="outline" justifyContent="space-between"
+			<Button ref={buttonRef} w="100%" size="sm" variant="outline" justifyContent="space-between"
 				bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
 				fontFamily={mono ? '"Geist Mono", monospace' : undefined} fontSize="12px" borderRadius="lg"
 				_hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }} onClick={() => setOpen(!open)}
@@ -61,25 +63,32 @@ function SelectField({ label, value, options, onChange, mono, optionLabels }: {
 				{displayValue}
 				<ChevronDown size={14} />
 			</Button>
-			{open && (
-				<Box position="absolute" top="100%" left="0" right="0" mt="1" bg="#18181b" borderWidth="1px"
-					borderColor="rgba(255, 255, 255, 0.1)" borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)"
-					zIndex="dropdown" maxH="200px" overflowY="auto" py="1"
-				>
-					{options.map(opt => {
-						const displayLabel = optionLabels && optionLabels[opt] ? optionLabels[opt] : opt;
-						return (
-							<Box key={opt} px="3" py="1.5" fontSize="12px" fontFamily={mono ? '"Geist Mono", monospace' : undefined}
-								color={opt === value ? '#3381ff' : 'rgba(255, 255, 255, 0.6)'}
-								bg={opt === value ? 'rgba(51, 129, 255, 0.08)' : 'transparent'}
-								cursor="pointer" _hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
-								onClick={() => { onChange(opt); setOpen(false); }}
-							>
-								{displayLabel}
-							</Box>
-						);
-					})}
-				</Box>
+			{open && buttonRef.current && (
+				<Portal>
+					<Box
+						position="fixed"
+						top={buttonRef.current.getBoundingClientRect().bottom + 4}
+						left={buttonRef.current.getBoundingClientRect().left}
+						w={buttonRef.current.getBoundingClientRect().width}
+						bg="#18181b" borderWidth="1px"
+						borderColor="rgba(255, 255, 255, 0.1)" borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)"
+						zIndex={9999} maxH="200px" overflowY="auto" py="1"
+					>
+						{options.map(opt => {
+							const displayLabel = optionLabels && optionLabels[opt] ? optionLabels[opt] : opt;
+							return (
+								<Box key={opt} px="3" py="1.5" fontSize="12px" fontFamily={mono ? '"Geist Mono", monospace' : undefined}
+									color={opt === value ? '#3381ff' : 'rgba(255, 255, 255, 0.6)'}
+									bg={opt === value ? 'rgba(51, 129, 255, 0.08)' : 'transparent'}
+									cursor="pointer" _hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
+									onClick={() => { onChange(opt); setOpen(false); }}
+								>
+									{displayLabel}
+								</Box>
+							);
+						})}
+					</Box>
+				</Portal>
 			)}
 		</Box>
 	);
@@ -164,11 +173,15 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 	const selectedEntry = modelEntries.find(e => e.file.filePath === selectedModelPath);
 	const selectedBackend = backends.find(b => b.id === selectedBackendId);
 
-	// Available devices from selected backend (for device dropdown)
-	const availableDevices = selectedBackend?.detectedDevices ?? [];
-	const deviceIdToName = Object.fromEntries(availableDevices.map(d => [d.id, d.name]));
-	const deviceOptions = availableDevices.length > 0
-		? availableDevices.map(d => d.id)
+	// Flatten all devices across all backends for the device dropdown
+	const allDevices = backends.flatMap(b =>
+		b.detectedDevices.map(d => ({ ...d, backendId: b.id }))
+	);
+	const deviceIdToName = Object.fromEntries(
+		allDevices.map(d => [d.id, `${d.name} (${d.backendType}) [${d.id}]`])
+	);
+	const deviceOptions = allDevices.length > 0
+		? allDevices.map(d => d.id)
 		: [''];
 
 	// VRAM estimate
@@ -458,7 +471,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 											<NumberField label="Port" value={params.port} onChange={v => updateParam('port', v)} min={0} max={65535} suffix="0 = auto" />
 											<Box>
 												<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Device</Text>
-												{availableDevices.length > 0 ? (
+												{allDevices.length > 0 ? (
 													<SelectField label="" value={params.device} options={deviceOptions} onChange={v => updateParam('device', v)} mono optionLabels={deviceIdToName} />
 												) : (
 													<Input placeholder="Default" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={params.device} onChange={e => updateParam('device', e.target.value)} />
@@ -514,7 +527,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 							bgGradient="to-r"
 							gradientFrom={editMode ? '#fbbf24' : '#3381ff'}
 							gradientTo={editMode ? '#f59e0b' : '#5b6af5'}
-							color={editMode ? "#fbbf24" : "white"}
+							color={editMode ? "#18181b" : "white"}
 							borderColor={editMode ? "rgba(251, 191, 36, 0.3)" : undefined}
 							borderWidth="1px"
 							_hover={{ opacity: 0.9, shadow: editMode ? '0 4px 20px rgba(251, 191, 36, 0.3)' : '0 4px 20px rgba(51, 129, 255, 0.3)' }}
