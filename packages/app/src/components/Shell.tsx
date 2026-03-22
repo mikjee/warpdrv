@@ -76,17 +76,8 @@ export function Shell() {
 			>
 				{/* Logo */}
 				<HStack gap="2.5" px="2" py="3" mb="4">
-					<Flex
-						w="8"
-						h="8"
-						borderRadius="lg"
-						alignItems="center"
-						justifyContent="center"
-						bgGradient="to-br"
-						gradientFrom="#3381ff"
-						gradientTo="#a78bfa"
-					>
-						<Zap size={16} color="white" fill="white" />
+					<Flex w="8" h="8" borderRadius="lg" overflow="hidden">
+						<img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
 					</Flex>
 					<Box>
 						<Text
@@ -116,9 +107,16 @@ export function Shell() {
 
 				{/* Footer */}
 				<Box px="2" py="2" borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.04)">
-					<Text fontSize="11px" color="rgba(255, 255, 255, 0.2)">
-						Engine room for WarpDrv
-					</Text>
+					<a
+						href="https://www.github.com/mikjee"
+						target="_blank"
+						rel="noopener noreferrer"
+						style={{ textDecoration: 'none' }}
+					>
+						<Text fontSize="11px" color="rgba(255, 255, 255, 0.2)" _hover={{ color: 'rgba(255, 255, 255, 0.4)' }}>
+							@mikjee
+						</Text>
+					</a>
 				</Box>
 			</Flex>
 
