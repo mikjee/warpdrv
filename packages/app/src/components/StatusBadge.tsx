@@ -8,8 +8,22 @@ const STATUS_CONFIG: Record<EServerStatus, { color: string; label: string }> = {
 	[EServerStatus.ERROR]: { color: '#fb7185', label: 'Error' },
 };
 
-export function StatusBadge({ status }: { status: EServerStatus }) {
+export function StatusBadge({ status, port }: { status: EServerStatus; port?: number }) {
 	const config = STATUS_CONFIG[status] ?? { color: 'rgba(255, 255, 255, 0.3)', label: status };
+
+	// Format label with port info
+	let label = config.label;
+	if (port != null) {
+		if (status === EServerStatus.RUNNING) {
+			label = `Running on port ${port}`;
+		} else if (status === EServerStatus.STOPPED) {
+			label = `Stopped (port ${port})`;
+		} else if (status === EServerStatus.LOADING) {
+			label = `Loading on port ${port}`;
+		} else if (status === EServerStatus.ERROR) {
+			label = `Error (port ${port})`;
+		}
+	}
 
 	return (
 		<HStack
@@ -30,7 +44,7 @@ export function StatusBadge({ status }: { status: EServerStatus }) {
 				animation={status === EServerStatus.LOADING ? 'pulse 1.5s ease infinite' : undefined}
 			/>
 			<Text fontSize="11px" fontWeight="600" color={config.color} letterSpacing="0.02em">
-				{config.label}
+				{label}
 			</Text>
 		</HStack>
 	);

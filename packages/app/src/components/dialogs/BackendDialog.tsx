@@ -24,9 +24,38 @@ interface IBackendDialogProps {
 	editData?: { id: string; name: string; path: string; description: string; defaultArgs: string[] };
 }
 
+// Flags that take a numeric value (flag followed by its value)
+const FLAG_VALUE_PAIRS: Record<string, RegExp> = {
+	'-ngl': /^\d+$/,
+	'-c': /^\d+$/,
+	'-b': /^\d+$/,
+	'-ub': /^\d+$/,
+	'-t': /^\d+$/,
+	'-tb': /^\d+$/,
+	'-fa': /^\d+$/,
+};
+
 export function BackendDialog({ onClose, editData }: IBackendDialogProps) {
 	const { toast } = useToast();
 	const isEdit = !!editData;
+
+	// Group related args for display (e.g., ["-ngl", "999"] -> [["-ngl", "999"]])
+	const groupArgsForDisplay = (args: string[]) => {
+		const grouped: string[][] = [];
+		let i = 0;
+		while (i < args.length) {
+			const current = args[i];
+			const pattern = FLAG_VALUE_PAIRS[current];
+			if (pattern && i + 1 < args.length && pattern.test(args[i + 1])) {
+				grouped.push([args[i], args[i + 1]]);
+				i += 2;
+			} else {
+				grouped.push([current]);
+				i += 1;
+			}
+		}
+		return grouped;
+	};
 
 	const [name, setName] = useState(editData?.name ?? '');
 	const [path, setPath] = useState(editData?.path ?? '');
@@ -135,9 +164,21 @@ export function BackendDialog({ onClose, editData }: IBackendDialogProps) {
 								})}
 							</HStack>
 							<HStack gap="1.5" flexWrap="wrap" mb="2">
-								{defaultArgs.map((arg, i) => (
-									<Badge key={i} px="2" py="1" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="rgba(255, 255, 255, 0.04)" color="rgba(255, 255, 255, 0.6)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.08)" cursor="pointer" _hover={{ borderColor: 'rgba(251, 113, 133, 0.3)', color: '#fb7185' }} onClick={() => handleRemoveArg(i)} display="flex" alignItems="center" gap="1">
-										{arg} <X size={10} />
+								{groupArgsForDisplay(defaultArgs).map((groupedArgs, gi) => (
+									<Badge key={gi} px="2" py="1" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="rgba(255, 255, 255, 0.04)" color="rgba(255, 255, 255, 0.6)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.08)" cursor="pointer" _hover={{ borderColor: 'rgba(251, 113, 133, 0.3)', color: '#fb7185' }} onClick={() => {
+										// Find the index of the first arg in this group and remove all args in the group
+										const firstArg = groupedArgs[0];
+										const firstIdx = defaultArgs.indexOf(firstArg);
+										if (firstIdx !== -1) {
+											const newArgs = [...defaultArgs];
+											for (let j = 0; j < groupedArgs.length; j++) {
+												const argIdx = newArgs.indexOf(groupedArgs[j], firstIdx + j);
+												if (argIdx !== -1) newArgs.splice(argIdx, 1);
+											}
+											setDefaultArgs(newArgs);
+										}
+									}} display="flex" alignItems="center" gap="1">
+										{groupedArgs.join(' ')} <X size={10} />
 									</Badge>
 								))}
 							</HStack>

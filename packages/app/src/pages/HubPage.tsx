@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import {
 	Box, Text, HStack, VStack, Flex, Input, Button, Spinner, Badge,
 } from '@chakra-ui/react';
+import { Slider } from '@chakra-ui/react';
 import {
 	Globe, Search, ChevronDown, Package, AlertCircle, Settings,
 	ArrowUpDown, Download,
@@ -32,6 +33,8 @@ const SORT_OPTIONS: { value: EHubSort; label: string }[] = [
 	{ value: EHubSort.CREATED, label: 'Recently Created' },
 ];
 
+const PARAM_STEPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 17, 20, 24, 27, 30, 36, 45, 90, 140, 280, 560, 1000];
+
 export function HubPage() {
 	const { toast } = useToast();
 	const navigate = useNavigate();
@@ -52,8 +55,7 @@ export function HubPage() {
 	const [query, setQuery] = useState('');
 	const [sort, setSort] = useState<EHubSort>(EHubSort.DOWNLOADS);
 	const [showSortMenu, setShowSortMenu] = useState(false);
-	const [paramsMin, setParamsMin] = useState(0);
-	const [paramsMax, setParamsMax] = useState(0);
+	const [paramsRange, setParamsRange] = useState<[number, number]>([0, PARAM_STEPS.length - 1]);
 	const [results, setResults] = useState<IHubModel[]>([]);
 	const [searching, setSearching] = useState(false);
 	const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
@@ -64,7 +66,7 @@ export function HubPage() {
 		if (!query.trim()) return;
 		setSearching(true);
 		setSearchExecuted(true);
-		const result = await searchHub(query.trim(), sort, paramsMin, paramsMax);
+		const result = await searchHub(query.trim(), sort, PARAM_STEPS[paramsRange[0]] || 0, PARAM_STEPS[paramsRange[1]] || 1000);
 		if (result.ok) {
 			setResults(result.data);
 			setSelectedModelId(null);
@@ -187,12 +189,26 @@ export function HubPage() {
 				</Box>
 
 				{/* Param range */}
-				<HStack gap="1.5">
+				<HStack gap="2" alignItems="center">
 					<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">Params</Text>
-					<Input type="number" placeholder="Min" size="sm" w="65px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.6)" fontSize="11px" borderRadius="md" textAlign="center" _placeholder={{ color: 'rgba(255, 255, 255, 0.15)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={paramsMin || ''} onChange={e => setParamsMin(Number(e.target.value))} />
-					<Text fontSize="11px" color="rgba(255, 255, 255, 0.2)">-</Text>
-					<Input type="number" placeholder="Max" size="sm" w="65px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.6)" fontSize="11px" borderRadius="md" textAlign="center" _placeholder={{ color: 'rgba(255, 255, 255, 0.15)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={paramsMax || ''} onChange={e => setParamsMax(Number(e.target.value))} />
-					<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)">B</Text>
+					<Slider.Root
+						w="150px"
+						size="lg"
+						colorPalette="blue"
+						value={paramsRange}
+						min={0}
+						max={PARAM_STEPS.length - 1}
+						minStepsBetweenThumbs={1}
+						onValueChange={(details) => setParamsRange(details.value as [number, number])}
+					>
+						<Slider.Control>
+							<Slider.Track>
+								<Slider.Range />
+							</Slider.Track>
+							<Slider.Thumbs />
+						</Slider.Control>
+					</Slider.Root>
+					<Text fontSize="10px" color="rgba(255, 255, 255, 0.5)">{PARAM_STEPS[paramsRange[0]]}B - {PARAM_STEPS[paramsRange[1]]}B</Text>
 				</HStack>
 			</Flex>
 

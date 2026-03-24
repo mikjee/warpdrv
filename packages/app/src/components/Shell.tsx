@@ -90,7 +90,7 @@ export function Shell() {
 							gradientTo="rgba(255, 255, 255, 0.6)"
 							bgClip="text"
 						>
-							WarpCore
+							warpcore.ai
 						</Text>
 						<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)" fontWeight="500" letterSpacing="0.05em" textTransform="uppercase">
 							v0.1.0

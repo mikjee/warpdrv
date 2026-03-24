@@ -1,8 +1,9 @@
 import { Box, Text, HStack, VStack, Flex, Button, Spinner, Badge } from '@chakra-ui/react';
 import {
-	Play, Square, RotateCcw, Plus, Server, Clock, Zap, Trash2,
-	Activity, Gauge, MemoryStick, Terminal, Edit
+	Play, Square, RotateCcw, Plus, Server, Clock, Trash2,
+	Activity, Gauge, Cpu, Blocks, Terminal, Edit
 } from 'lucide-react';
+import { FaBrain, FaBookOpen } from 'react-icons/fa6';
 import { useState, useCallback } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
@@ -12,8 +13,8 @@ import { LaunchServerDialog } from '../components/dialogs/LaunchServerDialog';
 import { ServerLogs } from '../components/dialogs/ServerLogs';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
 import { useListQuery, useMutation } from '../hooks/useQuery';
-import { fetchServers, stopServer, restartServer, removeServer } from '../api/services';
-import type { IServer } from '@warpcore/shared';
+import { fetchServers, fetchBackends, fetchModels, stopServer, restartServer, removeServer } from '../api/services';
+import type { IServer, IBackend, IModel } from '@warpcore/shared';
 import { EServerStatus } from '@warpcore/shared';
 
 function formatUptime(startedAt: number | null): string {
@@ -38,6 +39,46 @@ function StatPill({ icon, label, value }: { icon: React.ReactNode; label: string
 export function ServersPage() {
 	const fetcher = useCallback(() => fetchServers(), []);
 	const { data: servers, loading, refetch } = useListQuery<IServer>(fetcher, { pollInterval: 3000 });
+
+	const { data: backends } = useListQuery<IBackend>(useCallback(() => fetchBackends(), []), { pollInterval: 0 });
+	const { data: models } = useListQuery<IModel>(useCallback(() => fetchModels(), []), { pollInterval: 0 });
+
+	// Build lookup maps
+	const backendMap = new Map(backends.map(b => [b.id, b]));
+	const modelByPath = new Map<string, IModel>();
+	models.forEach(m => {
+		if (m.primaryFile) {
+			modelByPath.set(m.primaryFile.filePath, m);
+		}
+	});
+
+	// Get backend type from detected devices
+	function getBackendType(backendId: string): string {
+		const backend = backendMap.get(backendId);
+		if (!backend || backend.detectedDevices.length === 0) return 'Unknown';
+		const types = new Set(backend.detectedDevices.map(d => d.backendType));
+		return Array.from(types).join(' + ');
+	}
+
+	// Get device display as "name (id)" format
+	function getDeviceName(server: IServer): string {
+		const backend = backendMap.get(server.backendId);
+		const device = backend?.detectedDevices.find(d => d.id === server.params.device);
+		if (device) {
+			return `${device.name} (${device.id})`;
+		}
+		if (server.params.device) {
+			return server.params.device;
+		}
+		const firstDevice = backend?.detectedDevices[0];
+		return firstDevice ? `${firstDevice.name} (${firstDevice.id})` : 'Default';
+	}
+
+	// Get model's max context length
+	function getModelMaxContext(server: IServer): number | null {
+		const model = modelByPath.get(server.modelPath);
+		return model?.primaryFile?.metadata?.contextLength ?? null;
+	}
 
 	const [showLaunch, setShowLaunch] = useState(false);
 	const [logsServerId, setLogsServerId] = useState<string | null>(null);
@@ -119,17 +160,15 @@ export function ServersPage() {
 													{isRunning && <Box position="absolute" top="-1px" right="-1px" w="8px" h="8px" borderRadius="full" bg="#34d399" shadow="0 0 8px #34d399" />}
 												</Flex>
 												<Box>
-													<HStack gap="2">
-														<Text fontSize="15px" fontWeight="600" color="#e4e4e7">{server.modelAlias}</Text>
-														<StatusBadge status={server.status as EServerStatus} />
-													</HStack>
+													<Text fontSize="15px" fontWeight="600" color="#e4e4e7">{server.modelAlias}</Text>
 													<HStack gap="3" mt="0.5">
-														<Text fontSize="12px" color="rgba(255, 255, 255, 0.35)" fontFamily='"Geist Mono", monospace'>:{server.port}</Text>
-														<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">|</Text>
-														<HStack gap="1" color="rgba(255, 255, 255, 0.35)">
-															<Clock size={11} />
-															<Text fontSize="12px">{formatUptime(server.startedAt)}</Text>
-														</HStack>
+														<StatusBadge status={server.status as EServerStatus} port={server.port} />
+														{server.status !== EServerStatus.STOPPED && (
+															<HStack gap="1" color="rgba(255, 255, 255, 0.35)">
+																<Clock size={11} />
+																<Text fontSize="12px">{formatUptime(server.startedAt)}</Text>
+															</HStack>
+														)}
 														{server.error && (
 															<>
 																<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">|</Text>
@@ -168,6 +207,29 @@ export function ServersPage() {
 												)}
 											</HStack>
 										</Flex>
+
+										{/* Details row */}
+										<HStack gap="2" flexWrap="wrap">
+											{(() => {
+												const backend = backendMap.get(server.backendId);
+												const model = modelByPath.get(server.modelPath);
+												const backendType = getBackendType(server.backendId);
+												const deviceName = getDeviceName(server);
+												const modelMaxCtx = getModelMaxContext(server);
+												const configuredCtx = server.params.contextSize;
+												const displayCtx = configuredCtx === 0 ? (modelMaxCtx ?? 'auto') : configuredCtx;
+
+												return (
+													<>
+														<StatPill icon={<FaBrain size={12} />} label="Model" value={model?.name ?? server.modelAlias} />
+														<StatPill icon={<Blocks size={12} />} label="Backend" value={backend?.name ?? server.backendId} />
+														<StatPill icon={<Gauge size={12} />} label="Type" value={backendType} />
+														<StatPill icon={<Cpu size={12} />} label="Device" value={deviceName} />
+														<StatPill icon={<FaBookOpen size={12} />} label="Context" value={`${displayCtx}`} />
+													</>
+												);
+											})()}
+										</HStack>
 
 										{/* Stats */}
 										{server.stats && server.stats.tokensGenerated != null && (
