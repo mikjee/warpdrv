@@ -1,7 +1,7 @@
 import { store } from '../util/store';
 
 const SCHEMA_KEY = '_schemaVersion';
-const CURRENT_SCHEMA = 1;
+const CURRENT_SCHEMA = 2;
 
 // Each migration transforms data from version N to N+1
 // Add new migrations as the data shape evolves
@@ -22,8 +22,19 @@ const migrations: Record<number, TMigrationFn> = {
 		}
 	},
 
+	// Migration v2: rename modelAlias to serverName for existing servers
+	2: async () => {
+		const servers = await store.list<Record<string, unknown>>('servers:');
+		for (const server of servers) {
+			if (server.modelAlias) {
+				server.serverName = server.modelAlias;
+				delete server.modelAlias;
+				await store.put('servers:' + server.id, server);
+			}
+		}
+	},
+
 	// Future migrations go here:
-	// 2: async () => { ... },
 	// 3: async () => { ... },
 };
 

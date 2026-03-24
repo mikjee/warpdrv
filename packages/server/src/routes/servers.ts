@@ -90,12 +90,15 @@ serversRouter.post('/', async (req, res) => {
 	const params = { ...payload.params, port };
 	const id = crypto.randomBytes(6).toString('hex');
 
+	// Generate server name from model filename if not provided
+	const serverName = payload.serverName ?? payload.modelPath.split('/').pop()?.replace('.gguf', '') ?? 'server';
+
 	const server: IServer = {
 		id,
 		backendId: payload.backendId,
 		modelPath: payload.modelPath,
 		mmprojPath: payload.mmprojPath,
-		modelAlias: payload.modelAlias,
+		serverName,
 		params,
 		port,
 		pid: undefined,
@@ -224,7 +227,7 @@ serversRouter.put('/:id', async (req, res) => {
 		return;
 	}
 
-	type TUpdatePayload = Partial<Pick<IServer, 'backendId' | 'modelPath' | 'mmprojPath' | 'params'>> & { relaunch?: boolean };
+	type TUpdatePayload = Partial<Pick<IServer, 'backendId' | 'modelPath' | 'mmprojPath' | 'serverName' | 'params'>> & { relaunch?: boolean };
 	const updatePayload = req.body as TUpdatePayload;
 	const shouldRelaunch = updatePayload.relaunch ?? true;
 
@@ -245,6 +248,7 @@ serversRouter.put('/:id', async (req, res) => {
 	if (updatePayload.backendId) server.backendId = updatePayload.backendId;
 	if (updatePayload.modelPath) server.modelPath = updatePayload.modelPath;
 	if (updatePayload.mmprojPath !== undefined) server.mmprojPath = updatePayload.mmprojPath;
+	if (updatePayload.serverName != null) server.serverName = updatePayload.serverName;
 	if (updatePayload.params) {
 		server.params = updatePayload.params;
 		// Sync server.port with params.port if a specific port was configured
@@ -270,7 +274,7 @@ serversRouter.put('/:id', async (req, res) => {
 				server.status = status;
 				if (error) server.error = error;
 				if (status === EServerStatus.RUNNING) server.startedAt = Date.now();
-				await store.put(PREFIX + id, server);
+				await store.put(PREFIX + server.id, server);
 			},
 		);
 

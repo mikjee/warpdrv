@@ -6,11 +6,11 @@ import { fetchServerLogs, clearServerLogs as clearLogsApi } from '../../api/serv
 
 interface IServerLogsProps {
 	serverId: string;
-	serverAlias: string;
+	serverName: string;
 	onClose: () => void;
 }
 
-export function ServerLogs({ serverId, serverAlias, onClose }: IServerLogsProps) {
+export function ServerLogs({ serverId, serverName, onClose }: IServerLogsProps) {
 	const logsEndRef = useRef<HTMLDivElement>(null);
 	const [autoScroll, setAutoScroll] = useState(true);
 
@@ -33,7 +33,7 @@ export function ServerLogs({ serverId, serverAlias, onClose }: IServerLogsProps)
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		a.href = url;
-		a.download = `${serverAlias}-logs.txt`;
+		a.download = `${serverName}-logs.txt`;
 		a.click();
 		URL.revokeObjectURL(url);
 	};
@@ -47,7 +47,7 @@ export function ServerLogs({ serverId, serverAlias, onClose }: IServerLogsProps)
 			<Flex px="4" py="2.5" justify="space-between" align="center" borderBottomWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" bg="rgba(255, 255, 255, 0.02)" flexShrink={0}>
 				<HStack gap="2">
 					<Terminal size={14} color="rgba(255, 255, 255, 0.4)" />
-					<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.6)">Logs — {serverAlias}</Text>
+					<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.6)">Logs — {serverName}</Text>
 				</HStack>
 				<HStack gap="1">
 					<Button size="xs" variant="ghost" color={autoScroll ? '#3381ff' : 'rgba(255, 255, 255, 0.3)'} _hover={{ bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="md" onClick={() => setAutoScroll(!autoScroll)}>

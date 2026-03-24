@@ -159,7 +159,7 @@ export interface IServer {
 	backendId: TBackendId;
 	modelPath: string; // path to primary GGUF file
 	mmprojPath: string | null;
-	modelAlias: string; // display name
+	serverName: string; // user-defined name, or auto-generated from model filename
 	params: ILaunchParams;
 	port: number; // actual assigned port
 	pid: number | undefined; // OS process ID
@@ -188,7 +188,7 @@ export interface IServerCreatePayload {
 	backendId: TBackendId;
 	modelPath: string;
 	mmprojPath: string | null;
-	modelAlias: string;
+	serverName: string | null; // null = auto-generate from model filename
 	params: ILaunchParams;
 }
 

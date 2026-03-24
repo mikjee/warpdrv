@@ -226,6 +226,7 @@ interface ILaunchServerDialogProps {
 		backendId: string;
 		modelPath: string;
 		mmprojPath: string | null;
+		serverName: string;
 		params: ILaunchParams;
 	};
 }
@@ -244,6 +245,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 	// Selection state
 	const [selectedModelPath, setSelectedModelPath] = useState<string | null>(editMode?.modelPath ?? null);
 	const [selectedBackendId, setSelectedBackendId] = useState<string | null>(editMode?.backendId ?? null);
+	const [serverName, setServerName] = useState<string>(editMode?.serverName ?? '');
 	const [modelSearch, setModelSearch] = useState('');
 	const [showAdvanced, setShowAdvanced] = useState(false);
 	const [showPresets, setShowPresets] = useState(false);
@@ -365,6 +367,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				backendId: selectedBackendId,
 				modelPath: selectedEntry.file.filePath,
 				mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
+				serverName: serverName.trim() || undefined,
 				params,
 			}, true); // relaunch
 
@@ -381,7 +384,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				backendId: selectedBackendId,
 				modelPath: selectedEntry.file.filePath,
 				mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
-				modelAlias: selectedEntry.file.fileName.replace('.gguf', ''),
+				serverName: serverName.trim() || null,
 				params,
 			});
 
@@ -508,6 +511,24 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 										)}
 									</HStack>
 								)}
+							</Box>
+
+							{/* Server name */}
+							<Box>
+								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Server Name <Text as="span" color="rgba(255, 255, 255, 0.25)" fontWeight="400"> (optional)</Text></Text>
+								<Input
+									value={serverName}
+									onChange={e => setServerName(e.target.value)}
+									placeholder={selectedEntry?.file.fileName.replace('.gguf', '') ?? 'Leave empty for auto-generated name'}
+									bg="rgba(255, 255, 255, 0.03)"
+									borderColor="rgba(255, 255, 255, 0.08)"
+									color="rgba(255, 255, 255, 0.7)"
+									fontSize="13px"
+									borderRadius="lg"
+									_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
+									_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
+								/>
+								<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)" mt="1.5">Leave empty to use model filename. Used for display only.</Text>
 							</Box>
 
 							{/* Backend picker */}

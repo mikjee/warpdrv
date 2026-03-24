@@ -160,7 +160,7 @@ export function ServersPage() {
 													{isRunning && <Box position="absolute" top="-1px" right="-1px" w="8px" h="8px" borderRadius="full" bg="#34d399" shadow="0 0 8px #34d399" />}
 												</Flex>
 												<Box>
-													<Text fontSize="15px" fontWeight="600" color="#e4e4e7">{server.modelAlias}</Text>
+													<Text fontSize="15px" fontWeight="600" color="#e4e4e7">{server.serverName}</Text>
 													<HStack gap="3" mt="0.5">
 														<StatusBadge status={server.status as EServerStatus} port={server.port} />
 														{server.status !== EServerStatus.STOPPED && (
@@ -221,7 +221,7 @@ export function ServersPage() {
 
 												return (
 													<>
-														<StatPill icon={<FaBrain size={12} />} label="Model" value={model?.name ?? server.modelAlias} />
+														<StatPill icon={<FaBrain size={12} />} label="Model" value={model?.name ?? server.serverName} />
 														<StatPill icon={<Blocks size={12} />} label="Backend" value={backend?.name ?? server.backendId} />
 														<StatPill icon={<Gauge size={12} />} label="Type" value={backendType} />
 														<StatPill icon={<Cpu size={12} />} label="Device" value={deviceName} />
@@ -266,7 +266,7 @@ export function ServersPage() {
 			)}
 
 			{logsServer && (
-				<ServerLogs serverId={logsServer.id} serverAlias={logsServer.modelAlias} onClose={() => setLogsServerId(null)} />
+				<ServerLogs serverId={logsServer.id} serverName={logsServer.serverName} onClose={() => setLogsServerId(null)} />
 			)}
 
 			{editingServer && (
@@ -277,6 +277,7 @@ export function ServersPage() {
 						backendId: editingServer.backendId,
 						modelPath: editingServer.modelPath,
 						mmprojPath: editingServer.mmprojPath ?? null,
+						serverName: editingServer.serverName,
 						params: editingServer.params,
 					}}
 				/>
@@ -285,7 +286,7 @@ export function ServersPage() {
 			{deletingServer && (
 				<ConfirmDialog
 					title="Delete Server?"
-					message={`This will remove "${deletingServer.modelAlias}" from your configuration. The server process will not be affected.`}
+					message={`This will remove "${deletingServer.serverName}" from your configuration. The server process will not be affected.`}
 					isOpen={true}
 					isLoading={removeMut.loading}
 					onCancel={() => setDeletingServerId(null)}
