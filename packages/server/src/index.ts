@@ -11,6 +11,7 @@ import type { ISettings } from '@warpcore/shared';
 import { DEFAULT_SETTINGS } from '@warpcore/shared';
 import { runMigrations } from './services/migrationRunner';
 import { updateRouter } from './routes/update';
+import { startModelProxy } from './services/modelProxy';
 
 const SETTINGS_KEY = 'settings:general';
 
@@ -64,6 +65,9 @@ async function main() {
 	app.listen(port, host, () => {
 		console.log(`[WarpCore] API server listening on ${host}:${port}`);
 	});
+
+	// Start model proxy
+	await startModelProxy();
 }
 
 main().catch(err => {

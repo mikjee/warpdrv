@@ -99,6 +99,7 @@ serversRouter.post('/', async (req, res) => {
 		modelPath: payload.modelPath,
 		mmprojPath: payload.mmprojPath,
 		serverName,
+		serverAlias: [],
 		params,
 		port,
 		pid: undefined,

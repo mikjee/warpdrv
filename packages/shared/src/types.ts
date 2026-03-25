@@ -160,6 +160,7 @@ export interface IServer {
 	modelPath: string; // path to primary GGUF file
 	mmprojPath: string | null;
 	serverName: string; // user-defined name, or auto-generated from model filename
+	serverAlias: string[]; // aliases for proxy routing
 	params: ILaunchParams;
 	port: number; // actual assigned port
 	pid: number | undefined; // OS process ID
@@ -225,6 +226,8 @@ export interface ISettings {
 	apiHost: string;
 	apiPort: number;
 	autoLaunch: boolean;
+	proxyPort: number;
+	proxyEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: ISettings = {
@@ -234,6 +237,8 @@ export const DEFAULT_SETTINGS: ISettings = {
 	apiHost: '0.0.0.0',
 	apiPort: 4400,
 	autoLaunch: false,
+	proxyPort: 1234,
+	proxyEnabled: true,
 };
 
 // ============================================================

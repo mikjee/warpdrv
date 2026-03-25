@@ -1,7 +1,7 @@
 import { store } from '../util/store';
 
 const SCHEMA_KEY = '_schemaVersion';
-const CURRENT_SCHEMA = 2;
+const CURRENT_SCHEMA = 3;
 
 // Each migration transforms data from version N to N+1
 // Add new migrations as the data shape evolves
@@ -34,8 +34,22 @@ const migrations: Record<number, TMigrationFn> = {
 		}
 	},
 
-	// Future migrations go here:
-	// 3: async () => { ... },
+	// Migration v3: add serverAlias to servers, add proxy settings
+	3: async () => {
+		const servers = await store.list<Record<string, unknown>>('servers:');
+		for (const server of servers) {
+			if (!server.serverAlias) {
+				server.serverAlias = [];
+				await store.put('servers:' + server.id, server);
+			}
+		}
+		const settings = await store.get<Record<string, unknown>>('settings:general');
+		if (settings) {
+			if (settings.proxyPort === undefined) settings.proxyPort = 1234;
+			if (settings.proxyEnabled === undefined) settings.proxyEnabled = true;
+			await store.put('settings:general', settings);
+		}
+	},
 };
 
 export async function runMigrations(): Promise<void> {
