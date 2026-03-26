@@ -316,15 +316,23 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 		}
 	}, [selectedBackendId, selectedBackend, editMode]);
 
-	// Flatten all devices across all backends for the device dropdown
-	const allDevices = backends.flatMap(b =>
-		b.detectedDevices.map(d => ({ ...d, backendId: b.id }))
-	);
+	// Reset device selection when backend changes if current device is not valid for new backend
+	useEffect(() => {
+		if (selectedBackend && params.device) {
+			const deviceIsValid = selectedBackend.detectedDevices.some(d => d.id === params.device);
+			if (!deviceIsValid) {
+				updateParam('device', '');
+			}
+		}
+	}, [selectedBackendId]);
+
+	// Flatten devices from the selected backend only for the device dropdown
+	const selectedBackendDevices = selectedBackend?.detectedDevices ?? [];
 	const deviceIdToName = Object.fromEntries(
-		allDevices.map(d => [d.id, `${d.name} (${d.backendType}) [${d.id}]`])
+		selectedBackendDevices.map(d => [d.id, `${d.name} (${d.backendType}) [${d.id}]`])
 	);
-	const deviceOptions = allDevices.length > 0
-		? allDevices.map(d => d.id)
+	const deviceOptions = selectedBackendDevices.length > 0
+		? selectedBackendDevices.map(d => d.id)
 		: [''];
 
 	// VRAM estimate
@@ -602,11 +610,34 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 									})}
 								</VStack>
 							</Box>
+
+							{/* Device selection */}
+							<Box>
+								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">3. Select Device</Text>
+								{selectedBackendDevices.length > 0 ? (
+									<SelectField label="" value={params.device} options={deviceOptions} onChange={v => updateParam('device', v)} mono optionLabels={deviceIdToName} />
+								) : (
+									<Input placeholder="Default" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={params.device} onChange={e => updateParam('device', e.target.value)} />
+								)}
+							</Box>
+
+							{/* Port selection */}
+							<Box>
+								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">4. Port</Text>
+								<HStack gap="1.5">
+									<Input type="number" value={params.port} onChange={e => updateParam('port', Number(e.target.value))} size="sm"
+										bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
+										fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
+										_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} min={0} max={65535}
+									/>
+									<Text fontSize="11px" color="rgba(255, 255, 255, 0.25)" flexShrink={0}>0 = auto</Text>
+								</HStack>
+							</Box>
 						</VStack>
 
 						{/* Right — Params */}
 						<VStack align="stretch" gap="4" w="360px" flexShrink={0}>
-							<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em">3. Parameters</Text>
+							<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em">Parameters</Text>
 
 							<Card>
 								<VStack align="stretch" gap="4">
@@ -661,15 +692,6 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 											<Box>
 												<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Chat Template</Text>
 												<Input placeholder="Auto-detect" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={params.chatTemplate} onChange={e => updateParam('chatTemplate', e.target.value)} />
-											</Box>
-											<NumberField label="Port" value={params.port} onChange={v => updateParam('port', v)} min={0} max={65535} suffix="0 = auto" />
-											<Box>
-												<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Device</Text>
-												{allDevices.length > 0 ? (
-													<SelectField label="" value={params.device} options={deviceOptions} onChange={v => updateParam('device', v)} mono optionLabels={deviceIdToName} />
-												) : (
-													<Input placeholder="Default" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={params.device} onChange={e => updateParam('device', e.target.value)} />
-												)}
 											</Box>
 											<Box>
 												<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Extra Arguments</Text>
