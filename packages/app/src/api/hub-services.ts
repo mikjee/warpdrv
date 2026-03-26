@@ -15,7 +15,8 @@ export async function fetchHubModel(author: string, name: string) {
 }
 
 export async function startHubDownload(payload: IDownloadRequestPayload) {
-	return api.post<IDownload>('/hub/download', payload);
+	// Response can be either a single download or multiple downloads for split files
+	return api.post<IDownload | { downloadIds: string[]; fileParts: string[] }>('/hub/download', payload);
 }
 
 export async function fetchDownloads() {

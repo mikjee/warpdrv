@@ -10,7 +10,7 @@ import {
 	clearServerLogs,
 } from '../services/processManager';
 import { getServerStats } from '../services/statsPoller';
-import { clearStickyRoute } from '../services/modelProxy';
+import { clearStickyRoute, getStickyRoutesResolved } from '../services/modelProxy';
 import type {
 	IServer,
 	IServerCreatePayload,

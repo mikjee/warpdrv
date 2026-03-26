@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { BsRouter } from "react-icons/bs";
 import { UpdateBanner } from './UpdateBanner';
+import { TitleBar } from './TitleBar';
 import type { ReactNode } from 'react';
 
 interface INavItem {
@@ -64,7 +65,9 @@ function SidebarLink({ item }: { item: INavItem }) {
 
 export function Shell() {
 	return (
-		<Flex h="100vh" overflow="hidden">
+		<Flex direction="column" h="100vh" overflow="hidden">
+			<TitleBar />
+			<Flex flex="1" overflow="hidden">
 			{/* Sidebar */}
 			<Flex
 				direction="column"
@@ -127,6 +130,8 @@ export function Shell() {
 				<UpdateBanner />
 				<Outlet />
 			</Box>
+			</Flex>
 		</Flex>
 	);
 }
+

@@ -4,14 +4,20 @@ import path from 'path';
 import { store } from '../util/store';
 import {
 	startDownload,
+	startMultiPartDownload,
 	pauseDownload,
 	resumeDownload,
 	cancelDownload,
 	getAllDownloads,
 	clearDownloadHistory,
 } from '../services/downloadManager';
-import type { ISettings, IDownloadRequestPayload } from '@warpcore/shared';
+import type { ISettings, IDownloadRequestPayload, IHubFile } from '@warpcore/shared';
 import { DEFAULT_SETTINGS } from '@warpcore/shared';
+import {
+	fetchAllGgufFiles,
+	mapFilesToHubFiles,
+	processGgufFiles,
+} from '../services/hubParser';
 
 const SETTINGS_KEY = 'settings:general';
 const HF_API = 'https://huggingface.co/api';
@@ -92,45 +98,17 @@ hubRouter.get('/model/:author/:name', async (req, res) => {
 		}
 		const info = await infoRes.json() as Record<string, unknown>;
 
-		// Fetch file list
-		const filesRes = await fetch(`${HF_API}/models/${modelId}/tree/main`);
-		const filesRaw = filesRes.ok ? await filesRes.json() as Record<string, unknown>[] : [];
-
 		// Get model roots to check downloaded status
 		const settings = await store.get<ISettings>(SETTINGS_KEY) ?? DEFAULT_SETTINGS;
 
-		const files = filesRaw
-			.filter((f: Record<string, unknown>) => f.type === 'file')
-			.map((f: Record<string, unknown>) => {
-				const filename = String(f.path ?? '');
-				const size = Number(f.size ?? 0);
-				const isGguf = filename.endsWith('.gguf');
+		// Fetch all GGUF files including from nested directories (one level deep)
+		const rawGgufFiles = await fetchAllGgufFiles(author!, name!, 'main');
 
-				// Check quant type
-				const quantMatch = filename.match(/[-_](Q\d[\w_]*|IQ\d[\w_]*|MXFP\d+|F16|F32|BF16)/i);
-				const quantType = quantMatch ? quantMatch[1]!.toUpperCase() : '';
+		// Map to IHubFile format with download status
+		const mappedFiles = mapFilesToHubFiles(rawGgufFiles, author!, name!, settings.modelRoots);
 
-				// Check if downloaded in any model root
-				let isDownloaded = false;
-				let downloadedInRoot: string | null = null;
-				for (const root of settings.modelRoots) {
-					const expectedPath = path.join(root, author!, name!, filename);
-					if (fs.existsSync(expectedPath)) {
-						isDownloaded = true;
-						downloadedInRoot = root;
-						break;
-					}
-				}
-
-				return {
-					filename,
-					size,
-					isGguf,
-					quantType,
-					isDownloaded,
-					downloadedInRoot,
-				};
-			});
+		// Process GGUF files to add shard info and parent model grouping
+		const files = processGgufFiles(mappedFiles) as IHubFile[];
 
 		// Fetch README
 		let readme = '';
@@ -163,6 +141,14 @@ hubRouter.get('/model/:author/:name', async (req, res) => {
 hubRouter.post('/download', async (req, res) => {
 	const payload = req.body as IDownloadRequestPayload;
 
+	console.log('[HubRoute] Download request received:', {
+		author: payload.author,
+		modelName: payload.modelName,
+		filename: payload.filename,
+		destRoot: payload.destRoot,
+		fileParts: payload.fileParts ?? [],
+	});
+
 	if (!payload.author || !payload.modelName || !payload.filename || !payload.destRoot) {
 		res.status(400).json({ ok: false, data: null, error: 'Missing required fields' });
 		return;
@@ -176,8 +162,27 @@ hubRouter.post('/download', async (req, res) => {
 	}
 
 	try {
-		const dl = await startDownload(payload.author, payload.modelName, payload.filename, payload.destRoot);
-		res.json({ ok: true, data: dl, error: null });
+		// If fileParts provided, start all parts simultaneously
+		if (payload.fileParts && payload.fileParts.length > 1) {
+			const downloadIds = await startMultiPartDownload(
+				payload.author,
+				payload.modelName,
+				payload.fileParts,
+				payload.destRoot,
+			);
+			res.json({ ok: true, data: { downloadIds, fileParts: payload.fileParts }, error: null });
+		} else {
+			// Single file download
+			const dl = await startDownload(
+				payload.author,
+				payload.modelName,
+				payload.filename,
+				payload.destRoot,
+				payload.fileParts ?? [payload.filename],
+				0,
+			);
+			res.json({ ok: true, data: dl, error: null });
+		}
 	} catch (err) {
 		res.json({ ok: false, data: null, error: String(err) });
 	}

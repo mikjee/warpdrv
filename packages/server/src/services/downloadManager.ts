@@ -36,14 +36,36 @@ export async function startDownload(
 	modelName: string,
 	filename: string,
 	destRoot: string,
+	fileParts: string[] = [],
+	partIndex: number = 0,
 ): Promise<IDownload> {
 	const id = makeDownloadId();
-	const destDir = path.join(destRoot, author, modelName);
-	const destPath = path.join(destDir, filename);
+
+	// Handle nested directories - create full path including subdirectories
+	const fileDirname = path.dirname(filename);
+	const destDir = fileDirname && fileDirname !== '.'
+		? path.join(destRoot, author, modelName, fileDirname)
+		: path.join(destRoot, author, modelName);
+	const destPath = path.join(destRoot, author, modelName, filename);
 	const url = hfDownloadUrl(author, modelName, filename);
 
-	// Create directory structure
+	// Create directory structure (including any nested dirs from the file path)
 	fs.mkdirSync(destDir, { recursive: true });
+
+	// If fileParts not provided, use just the filename
+	const allParts = fileParts.length > 0 ? fileParts : [filename];
+
+	console.log('[DownloadManager] Starting download:', {
+		id,
+		filename,
+		fileDirname,
+		url,
+		destDir,
+		destPath,
+		fileName: path.basename(filename),
+		allParts,
+		partIndex,
+	});
 
 	const dl: IDownload = {
 		id,
@@ -62,10 +84,12 @@ export async function startDownload(
 		startedAt: Date.now(),
 		completedAt: null,
 		resumeState: null,
+		fileParts: allParts,
+		partIndex,
 	};
 
 	const helper = new DownloaderHelper(url, destDir, {
-		fileName: filename,
+		fileName: path.basename(filename), // Only use basename for the actual file name
 		override: false,
 		removeOnStop: false, // Keep partial file when paused
 		removeOnFail: false, // Keep partial file on failure
@@ -100,7 +124,9 @@ export async function startDownload(
 
 	helper.on('error', (err) => {
 		dl.status = EDownloadStatus.FAILED;
-		dl.error = err.message ?? String(err);
+		const errorMsg = err.message ?? String(err);
+		console.error(`[Download Error] ID: ${id}, URL: ${url}, Filename: ${filename}, DestDir: ${destDir}, Error: ${errorMsg}`);
+		dl.error = errorMsg;
 		dl.speedBps = 0;
 		activeDownloaders.delete(id);
 		persistDownload(dl);
@@ -124,6 +150,8 @@ export async function startDownload(
 	activeDownloaders.set(id, helper);
 	await persistDownload(dl);
 
+	console.log(`[Download Start] ID: ${id}, URL: ${url}, Filename: ${filename}, DestDir: ${destDir}, DestPath: ${destPath}`);
+
 	helper.start().catch((err) => {
 		dl.status = EDownloadStatus.FAILED;
 		dl.error = String(err);
@@ -132,6 +160,30 @@ export async function startDownload(
 	});
 
 	return dl;
+}
+
+/**
+ * Starts downloads for all parts of a split model simultaneously
+ * Returns an array of download IDs that were started
+ */
+export async function startMultiPartDownload(
+	author: string,
+	modelName: string,
+	fileParts: string[],
+	destRoot: string,
+): Promise<string[]> {
+	const downloadIds: string[] = [];
+
+	// Start all parts in parallel
+	const downloadPromises = fileParts.map((filename, index) =>
+		startDownload(author, modelName, filename, destRoot, fileParts, index).then((dl) => {
+			downloadIds.push(dl.id);
+			return dl;
+		}),
+	);
+
+	await Promise.all(downloadPromises);
+	return downloadIds;
 }
 
 export async function pauseDownload(id: TDownloadId): Promise<boolean> {
@@ -158,7 +210,7 @@ export async function resumeDownload(id: TDownloadId): Promise<boolean> {
 	const startFresh = !hasResumeState || !hasPartialFile || partialSize === 0;
 
 	const helper = new DownloaderHelper(url, destDir, {
-		fileName: dl.filename,
+		fileName: path.basename(dl.filename), // Only use basename since destDir already has subdirs
 		override: startFresh,
 		removeOnStop: false,
 		removeOnFail: false,

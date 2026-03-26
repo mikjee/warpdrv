@@ -13,6 +13,70 @@ import Markdown from 'markdown-to-jsx';
 import DOMPurify from 'dompurify';
 import './markdown.css';
 
+// Browser-compatible path utilities (no Node.js path module)
+function getBasename(filepath: string): string {
+	return filepath.split('/').pop() ?? filepath;
+}
+
+function getDirname(filepath: string): string {
+	const parts = filepath.split('/');
+	if (parts.length <= 1) return '';
+	return parts.slice(0, -1).join('/');
+}
+
+// Group files by parent model for split file handling
+function groupFilesByModel(files: IHubFile[]): Map<string, IHubFile[]> {
+	const groups = new Map<string, IHubFile[]>();
+
+	for (const file of files) {
+		if (!file.isGguf) continue;
+
+		// Use parentModel if available (for split files), otherwise use the full file path
+		// The backend's extractShardInfo uses: filename.replace(SHARD_REGEX, '')
+		// This preserves directory paths: "MXFP4_MOE/file-00001-of-00002.gguf" -> parentModel = "MXFP4_MOE/file"
+		let key: string;
+		if (file.parentModel) {
+			// Use parentModel directly - it already includes the directory path if present
+			key = file.parentModel;
+		} else {
+			// Not a shard - use the filename itself as the key (without .gguf extension)
+			key = file.filename.replace(/\.gguf$/i, '');
+		}
+
+		if (!groups.has(key)) {
+			groups.set(key, []);
+		}
+		groups.get(key)!.push(file);
+	}
+
+	return groups;
+}
+
+// Build the grouping key for a file (same logic as groupFilesByModel)
+function getGroupKey(file: IHubFile): string {
+	if (file.parentModel) {
+		return file.parentModel; // Already includes directory path from backend
+	}
+	return file.filename.replace(/\.gguf$/i, '');
+}
+
+// Get all file parts for a model (all shards of a split model)
+function getFilePartsForModel(files: IHubFile[], primaryFile: IHubFile): string[] {
+	const key = getGroupKey(primaryFile);
+	return files
+		.filter(f => getGroupKey(f) === key)
+		.sort((a, b) => (a.shardIndex ?? 0) - (b.shardIndex ?? 0))
+		.map(f => f.filename);
+}
+
+// Get total size for a model (sum of all parts for split models)
+function getTotalSizeForModel(files: IHubFile[], primaryFile: IHubFile): number {
+	const key = getGroupKey(primaryFile);
+	return files
+		.filter(f => getGroupKey(f) === key)
+		.reduce((sum, f) => sum + f.size, 0);
+}
+
 function formatBytes(bytes: number): string {
 	if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
 	if (bytes >= 1048576) return (bytes / 1048576).toFixed(0) + ' MB';
@@ -44,11 +108,12 @@ interface IHubModelDetailProps {
 	modelRoots: string[];
 }
 
-function FileRow({ file, modelRoots, author, modelName, existsInRoot }: {
+function FileRow({ file, modelRoots, author, modelName, allFiles, existsInRoot }: {
 	file: IHubFile;
 	modelRoots: string[];
 	author: string;
 	modelName: string;
+	allFiles: IHubFile[];
 	existsInRoot: string | null;
 }) {
 	const { toast } = useToast();
@@ -56,17 +121,33 @@ function FileRow({ file, modelRoots, author, modelName, existsInRoot }: {
 	const [downloading, setDownloading] = useState(false);
 	const quantColor = QUANT_COLORS[file.quantType] ?? 'rgba(255, 255, 255, 0.4)';
 
+	// Get all file parts for multi-part downloads
+	const fileParts = getFilePartsForModel(allFiles, file);
+
+	// Calculate total size (sum of all parts for split models)
+	const totalSize = getTotalSizeForModel(allFiles, file);
+
 	const handleDownload = async (destRoot: string) => {
+		console.log('[HubModelDetail] Download clicked:', {
+			filename: file.filename,
+			parentModel: file.parentModel,
+			groupKey: getGroupKey(file),
+			fileParts,
+			destRoot,
+		});
+
 		setDownloading(true);
 		const result = await startHubDownload({
 			author,
 			modelName,
 			filename: file.filename,
 			destRoot,
+			fileParts: fileParts.length > 1 ? fileParts : undefined,
 		});
 		setDownloading(false);
 		if (result.ok) {
-			toast('success', `Downloading ${file.filename}`);
+			const partText = fileParts.length > 1 ? ` (${fileParts.length} parts)` : '';
+			toast('success', `Downloading ${file.parentModel ?? file.filename}${partText}`);
 		} else {
 			toast('error', result.error ?? 'Download failed');
 		}
@@ -95,13 +176,26 @@ function FileRow({ file, modelRoots, author, modelName, existsInRoot }: {
 						}
 					</Flex>
 					<Box flex="1" minW="0">
+						{/* Display parent model name for split files, or basename for regular files */}
 						<Text fontSize="12px" fontWeight="500" color="#e4e4e7" fontFamily='"Geist Mono", monospace' lineClamp={1}>
-							{file.filename}
+							{file.parentModel ?? getBasename(file.filename)}
 						</Text>
-						<HStack gap="2" mt="0.5">
+						<HStack gap="2" mt="0.5" flexWrap="wrap">
 							<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)" fontFamily='"Geist Mono", monospace'>
-								{formatBytes(file.size)}
+								{formatBytes(totalSize)}
 							</Text>
+							{/* Show total parts if this is a multi-part file */}
+							{fileParts.length > 1 && (
+								<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)">
+									{fileParts.length} parts
+								</Text>
+							)}
+							{/* Show directory path if file is nested */}
+							{file.filename.includes('/') && (
+								<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)">
+									in {getDirname(file.filename)}
+								</Text>
+							)}
 							{file.isDownloaded && file.downloadedInRoot && (
 								<Text fontSize="10px" color="rgba(52, 211, 153, 0.6)" lineClamp={1}>
 									in {file.downloadedInRoot}
@@ -142,7 +236,7 @@ function FileRow({ file, modelRoots, author, modelName, existsInRoot }: {
 								disabled={downloading}
 							>
 								{downloading ? <Spinner size="xs" /> : <ArrowDownToLine size={12} />}
-								Download
+								{fileParts.length > 1 ? `Download ${fileParts.length} parts` : 'Download'}
 							</Button>
 							{showDirPicker && (
 								<DirPickerPopover
@@ -190,12 +284,32 @@ export function HubModelDetail({ modelId, modelRoots }: IHubModelDetailProps) {
 		);
 	}
 
-	const ggufFiles = detail.files.filter((f: IHubFile) => f.isGguf).sort((a, b) => a.size - b.size);
+	const allGgufFiles = detail.files.filter((f: IHubFile) => f.isGguf);
 	const otherFiles = detail.files.filter((f: IHubFile) => !f.isGguf);
 
-	// Count downloaded files
-	const downloadedCount = ggufFiles.filter((f: IHubFile) => f.isDownloaded).length;
-	const totalFiles = ggufFiles.length;
+	// Group files by parent model and only show primary files
+	const fileGroups = groupFilesByModel(allGgufFiles);
+	const displayFiles: IHubFile[] = [];
+
+	for (const [_, files] of fileGroups) {
+		// Sort by shard index to get primary file first
+		const sorted = files.sort((a, b) => {
+			if (a.isPrimary) return -1;
+			if (b.isPrimary) return 1;
+			return (a.shardIndex ?? 0) - (b.shardIndex ?? 0);
+		});
+		// Add primary file (first shard or non-shard)
+		if (sorted.length > 0) {
+			displayFiles.push(sorted[0]!);
+		}
+	}
+
+	// Sort display files by size
+	displayFiles.sort((a, b) => a.size - b.size);
+
+	// Count downloaded files (count all parts, not just primary)
+	const downloadedCount = allGgufFiles.filter((f: IHubFile) => f.isDownloaded).length;
+	const totalModels = fileGroups.size; // Count unique models, not individual files
 
 	// Find if any file from this repo exists in a root (for dir picker hint)
 	const existsInRoot = detail.files.find((f: IHubFile) => f.downloadedInRoot)?.downloadedInRoot ?? null;
@@ -251,14 +365,14 @@ export function HubModelDetail({ modelId, modelRoots }: IHubModelDetailProps) {
 				</Box>
 
 				{/* Downloads Section - Collapsible */}
-				{ggufFiles.length > 0 && (
+				{displayFiles.length > 0 && (
 					<AccordionRoot collapsible defaultValue={[]} w="full">
 						<AccordionItemComp value="downloads" w="full">
 							<AccordionItemTrigger
 								w="full" p="4" borderRadius="xl"
-								bg={`linear-gradient(135deg, ${downloadedCount === totalFiles ? 'rgba(52, 211, 153, 0.12)' : 'rgba(51, 129, 255, 0.12)'} 0%, transparent 100%)`}
+								bg={`linear-gradient(135deg, ${downloadedCount === allGgufFiles.length ? 'rgba(52, 211, 153, 0.12)' : 'rgba(51, 129, 255, 0.12)'} 0%, transparent 100%)`}
 								borderWidth="1px"
-								borderColor={`color-mix(in srgb, ${downloadedCount === totalFiles ? '#34d399' : '#3381ff'} 25%, rgba(255, 255, 255, 0.06))`}
+								borderColor={`color-mix(in srgb, ${downloadedCount === allGgufFiles.length ? '#34d399' : '#3381ff'} 25%, rgba(255, 255, 255, 0.06))`}
 								_hover={{ bg: 'rgba(51, 129, 255, 0.08)' }}
 								focusRing="none"
 							>
@@ -266,9 +380,9 @@ export function HubModelDetail({ modelId, modelRoots }: IHubModelDetailProps) {
 									<Flex gap="4" flex="1" minW="0">
 										<Box
 											w="12" h="12" borderRadius="lg" display="flex" alignItems="center" justifyContent="center"
-											bg={`color-mix(in srgb, ${downloadedCount === totalFiles ? '#34d399' : '#3381ff'} 15%, transparent)`}
+											bg={`color-mix(in srgb, ${downloadedCount === allGgufFiles.length ? '#34d399' : '#3381ff'} 15%, transparent)`}
 										>
-											<HardDriveDownload size={20} color={downloadedCount === totalFiles ? '#34d399' : '#3381ff'} />
+											<HardDriveDownload size={20} color={downloadedCount === allGgufFiles.length ? '#34d399' : '#3381ff'} />
 										</Box>
 
 										<VStack align="start" gap="0.5">
@@ -276,8 +390,8 @@ export function HubModelDetail({ modelId, modelRoots }: IHubModelDetailProps) {
 												Download Files
 											</Text>
 											<HStack gap="2">
-												<Text fontSize="12px" color={downloadedCount === totalFiles ? '#34d399' : '#3381ff'} fontWeight="500">
-													{totalFiles} total available
+												<Text fontSize="12px" color={downloadedCount === allGgufFiles.length ? '#34d399' : '#3381ff'} fontWeight="500">
+													{totalModels} model{totalModels !== 1 ? 's' : ''} ({allGgufFiles.length} file{allGgufFiles.length !== 1 ? 's' : ''})
 												</Text>
 												<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">
 													({downloadedCount} downloaded)
@@ -288,19 +402,20 @@ export function HubModelDetail({ modelId, modelRoots }: IHubModelDetailProps) {
 
 									<Box
 										w="8" h="8" borderRadius="md" display="flex" alignItems="center" justifyContent="center" flexShrink={0}
-										bg={`color-mix(in srgb, ${downloadedCount === totalFiles ? '#34d399' : '#3381ff'} 10%, transparent)`}
+										bg={`color-mix(in srgb, ${downloadedCount === allGgufFiles.length ? '#34d399' : '#3381ff'} 10%, transparent)`}
 									>
-										<ChevronDown size={16} color={downloadedCount === totalFiles ? '#34d399' : '#3381ff'} />
+										<ChevronDown size={16} color={downloadedCount === allGgufFiles.length ? '#34d399' : '#3381ff'} />
 									</Box>
 								</Flex>
 							</AccordionItemTrigger>
 
 							<AccordionItemContent pt="0" pb="4" px="2">
 								<VStack align="stretch" gap="2">
-									{ggufFiles.map((file: IHubFile) => (
+									{displayFiles.map((file: IHubFile) => (
 										<FileRow
 											key={file.filename}
 											file={file}
+											allFiles={allGgufFiles}
 											modelRoots={modelRoots}
 											author={detail.author}
 											modelName={detail.modelId}
