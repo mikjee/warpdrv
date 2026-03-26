@@ -501,7 +501,7 @@ export function ServersPage() {
 
 			{editingServer && (
 				<LaunchServerDialog
-					onClose={() => setEditingServerId(null)}
+					onClose={() => { setEditingServerId(null); refetch(); }}
 					editMode={{
 						serverId: editingServer.id,
 						backendId: editingServer.backendId,

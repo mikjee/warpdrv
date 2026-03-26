@@ -651,7 +651,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 						</VStack>
 
 						{/* Right — Target Params Panel */}
-						<Box w="380px" flexShrink={0}>
+						<Box gap="5" flex="1" minW="0">
 							<LaunchParamsPanel
 								mode={EParamsMode.TARGET}
 								gpuLayers={params.gpuLayers}
