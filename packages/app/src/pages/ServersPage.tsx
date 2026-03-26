@@ -510,6 +510,7 @@ export function ServersPage() {
 						serverName: editingServer.serverName,
 						serverAlias: editingServer.serverAlias ?? [],
 						params: editingServer.params,
+						autoLaunch: editingServer.autoLaunch ?? false,
 					}}
 				/>
 			)}

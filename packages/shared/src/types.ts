@@ -4,20 +4,16 @@ import {
 	EValidationStatus,
 	EDeviceBackendType,
 } from './enums';
-
 // ============================================================
 // Identifiers
 // ============================================================
-
 export type TBackendId = string;
 export type TServerId = string;
 export type TPresetId = string;
 export type TModelId = string; // hash of file path
-
 // ============================================================
 // Devices
 // ============================================================
-
 export interface IDevice {
 	id: string;
 	name: string;
@@ -28,11 +24,9 @@ export interface IDevice {
 	vramFreeMb: number;
 	connection: string; // "Integrated", "PCIe", "USB4 eGPU", etc.
 }
-
 // ============================================================
 // Backends
 // ============================================================
-
 export interface IBackend {
 	id: TBackendId;
 	name: string;
@@ -45,25 +39,21 @@ export interface IBackend {
 	createdAt: number;
 	updatedAt: number;
 }
-
 export interface IBackendCreatePayload {
 	name: string;
 	path: string;
 	defaultArgs: string[];
 	description: string;
 }
-
 export interface IBackendUpdatePayload {
 	name?: string;
 	path?: string;
 	defaultArgs?: string[];
 	description?: string;
 }
-
 // ============================================================
 // GGUF Metadata (parsed from file headers)
 // ============================================================
-
 export interface IGgufMetadata {
 	architecture: string;
 	paramCount: string; // "27B", "122B (10B active)", etc.
@@ -74,12 +64,11 @@ export interface IGgufMetadata {
 	feedForwardDim: number;
 	contextLength: number; // model's native max context
 	fileSize: number; // bytes
+	vocabSize: number; // tokenizer vocabulary size, 0 if unknown
 }
-
 // ============================================================
 // Models (scanned from disk)
 // ============================================================
-
 // A single GGUF file on disk
 export interface IGgufFile {
 	fileName: string;
@@ -90,7 +79,6 @@ export interface IGgufFile {
 	shardTotal: number | null;
 	isMmproj: boolean;
 }
-
 // A model = a group of related GGUF files in one directory
 export interface IModel {
 	id: TModelId;
@@ -102,11 +90,32 @@ export interface IModel {
 	mmprojFile: IGgufFile | null; // auto-detected mmproj, null if none
 	totalSizeMb: number; // sum of all shards for primary model
 }
-
+// ============================================================
+// Speculative Decoding Params
+// ============================================================
+export interface ISpecDecodeParams {
+	enabled: boolean;
+	draftModelPath: string; // path to draft GGUF file
+	draftDevice: string; // empty = same as target, e.g. "CUDA0", "Vulkan0"
+	draftGpuLayers: number;
+	draftContextSize: number; // 0 = loaded from model
+	draftMax: number; // max tokens to draft per step
+	draftMin: number; // min tokens to draft per step
+	draftPMin: number; // acceptance probability threshold (0.0-1.0)
+}
+export const DEFAULT_SPEC_DECODE_PARAMS: ISpecDecodeParams = {
+	enabled: false,
+	draftModelPath: '',
+	draftDevice: '',
+	draftGpuLayers: 999,
+	draftContextSize: 0,
+	draftMax: 16,
+	draftMin: 0,
+	draftPMin: 0.75,
+};
 // ============================================================
 // Server Launch Params
 // ============================================================
-
 export interface ILaunchParams {
 	gpuLayers: number;
 	contextSize: number; // 0 = model default
@@ -126,8 +135,9 @@ export interface ILaunchParams {
 	port: number; // 0 = auto-assign
 	device: string; // empty = default, e.g. "CUDA0", "Vulkan1"
 	extraArgs: string; // free-form additional flags
+	parallelSlots: number; // number of concurrent slots, 0 = server default
+	specDecode: ISpecDecodeParams;
 }
-
 // Default launch params
 export const DEFAULT_LAUNCH_PARAMS: ILaunchParams = {
 	gpuLayers: 999,
@@ -148,12 +158,12 @@ export const DEFAULT_LAUNCH_PARAMS: ILaunchParams = {
 	port: 0,
 	device: '',
 	extraArgs: '',
+	parallelSlots: 4,
+	specDecode: { ...DEFAULT_SPEC_DECODE_PARAMS },
 };
-
 // ============================================================
 // Running Servers
 // ============================================================
-
 export interface IServer {
 	id: TServerId;
 	backendId: TBackendId;
@@ -169,22 +179,21 @@ export interface IServer {
 	error: string | null;
 	// Live stats (updated periodically)
 	stats: IServerStats | null;
+	// Auto-launch at startup (optional for backwards compatibility)
+	autoLaunch?: boolean;
 }
-
 export interface ISlotStats {
 	id: number;
 	state: 'idle' | 'processing';
 	tokensGenerated: number;
 	tokensRemaining: number;
 }
-
 export interface IServerStats {
 	slotsIdle: number;
 	slotsProcessing: number;
 	tokensGenerated: number;
 	slots: ISlotStats[];
 }
-
 export interface IServerCreatePayload {
 	backendId: TBackendId;
 	modelPath: string;
@@ -192,12 +201,11 @@ export interface IServerCreatePayload {
 	serverName: string | null; // null = auto-generate from model filename
 	params: ILaunchParams;
 	serverAlias?: string[]; // optional aliases for proxy routing
+	autoLaunch?: boolean; // auto-launch at startup
 }
-
 // ============================================================
 // Presets
 // ============================================================
-
 export interface IPreset {
 	id: TPresetId;
 	name: string;
@@ -207,7 +215,6 @@ export interface IPreset {
 	params: ILaunchParams;
 	createdAt: number;
 }
-
 export interface IPresetCreatePayload {
 	name: string;
 	backendId: TBackendId;
@@ -215,14 +222,11 @@ export interface IPresetCreatePayload {
 	mmprojPath: string | null;
 	params: ILaunchParams;
 }
-
 // ============================================================
 // Settings
 // ============================================================
-
 export type TSortField = 'name' | 'recency' | 'backend';
 export type TSortOrder = 'asc' | 'desc';
-
 export interface ISettings {
 	modelRoots: string[];
 	portRangeStart: number;
@@ -235,7 +239,6 @@ export interface ISettings {
 	serversSortField: TSortField;
 	serversSortOrder: TSortOrder;
 }
-
 export const DEFAULT_SETTINGS: ISettings = {
 	modelRoots: [],
 	portRangeStart: 8085,
@@ -248,11 +251,9 @@ export const DEFAULT_SETTINGS: ISettings = {
 	serversSortField: 'name',
 	serversSortOrder: 'asc',
 };
-
 // ============================================================
 // VRAM Calculator
 // ============================================================
-
 // Input params for oobabooga's VRAM prediction formula
 export interface IVramEstimateInput {
 	sizeInMb: number;
@@ -263,24 +264,20 @@ export interface IVramEstimateInput {
 	cacheType: number; // 16 for f16, 8 for q8_0, 4 for q4_0
 	gpuLayers: number;
 }
-
 export interface IVramEstimate {
 	estimatedMb: number;
 	safeEstimateMb: number; // + 577 MB safety buffer
 	willFit: boolean;
 	availableMb: number;
 }
-
 // ============================================================
 // API Response Wrappers
 // ============================================================
-
 export interface IApiResponse<T> {
 	ok: boolean;
 	data: T;
 	error: string | null;
 }
-
 export interface IApiListResponse<T> {
 	ok: boolean;
 	data: T[];

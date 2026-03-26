@@ -44,10 +44,10 @@ export function BackendDialog({ onClose, editData }: IBackendDialogProps) {
 		const grouped: string[][] = [];
 		let i = 0;
 		while (i < args.length) {
-			const current = args[i];
+			const current = args[i] as string;
 			const pattern = FLAG_VALUE_PAIRS[current];
-			if (pattern && i + 1 < args.length && pattern.test(args[i + 1])) {
-				grouped.push([args[i], args[i + 1]]);
+			if (pattern && i + 1 < args.length && pattern.test(args[i + 1] as any)) {
+				grouped.push([args[i] as any, args[i + 1]]);
 				i += 2;
 			} else {
 				grouped.push([current]);
@@ -168,11 +168,11 @@ export function BackendDialog({ onClose, editData }: IBackendDialogProps) {
 									<Badge key={gi} px="2" py="1" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="rgba(255, 255, 255, 0.04)" color="rgba(255, 255, 255, 0.6)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.08)" cursor="pointer" _hover={{ borderColor: 'rgba(251, 113, 133, 0.3)', color: '#fb7185' }} onClick={() => {
 										// Find the index of the first arg in this group and remove all args in the group
 										const firstArg = groupedArgs[0];
-										const firstIdx = defaultArgs.indexOf(firstArg);
+										const firstIdx = defaultArgs.indexOf(firstArg as any);
 										if (firstIdx !== -1) {
 											const newArgs = [...defaultArgs];
 											for (let j = 0; j < groupedArgs.length; j++) {
-												const argIdx = newArgs.indexOf(groupedArgs[j], firstIdx + j);
+												const argIdx = newArgs.indexOf(groupedArgs[j] as any, firstIdx + j);
 												if (argIdx !== -1) newArgs.splice(argIdx, 1);
 											}
 											setDefaultArgs(newArgs);

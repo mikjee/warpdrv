@@ -1,117 +1,32 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
-	Box, Text, HStack, VStack, Flex, Input, Button, Badge, Spinner, Portal, Combobox, useListCollection, useFilter, createListCollection
+	Box, Text, HStack, VStack, Flex, Input, Button, Badge, Spinner, Portal, Combobox, createListCollection, Switch,
 } from '@chakra-ui/react';
 import {
-	Play, X, ChevronDown, ChevronRight, Zap, Cpu, RefreshCw,
-	Layers, Server, Gauge, Package, Bookmark,
-	AlertTriangle, Check,
+	Play, X, ChevronDown, RefreshCw, Zap, Cpu,
+	Layers, Server, Package, Bookmark, Sparkles,
 } from 'lucide-react';
 import {
 	EKvQuantType,
 	type IModel, type IBackend, type ILaunchParams, type IServer,
-	DEFAULT_LAUNCH_PARAMS,
+	type ISpecDecodeParams,
+	DEFAULT_LAUNCH_PARAMS, DEFAULT_SPEC_DECODE_PARAMS,
 	calculateVramEstimate, kvQuantToNumeric,
 	type IPreset,
 } from '@warpcore/shared';
 import { Card } from '../Card';
 import { VramBar } from '../VramBar';
+import { LaunchParamsPanel, EParamsMode, ToggleChip, SelectField, NumberField } from '../LaunchParamsPanel';
 import { useListQuery } from '../../hooks/useQuery';
 import { fetchModels, fetchBackends, fetchPresets, launchServer, createPreset, updateServer, fetchStickyRoutes, clearStickyRoute } from '../../api/services';
 import type { IStickyRouteInfo } from '../../api/services';
 import { useToast } from '../ToastProvider';
-
-const KV_QUANT_OPTIONS = Object.values(EKvQuantType);
 
 const QUANT_COLORS: Record<string, string> = {
 	Q5_K_XL: '#34d399', Q6_K_XL: '#34d399', Q6_K: '#34d399', Q4_K_M: '#34d399',
 	Q8_0: '#22d3ee', IQ3_XXS: '#fbbf24', IQ3_M: '#fbbf24',
 	MXFP4: '#a78bfa', F32: 'rgba(255, 255, 255, 0.4)', BF16: 'rgba(255, 255, 255, 0.4)',
 };
-
-function ToggleChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-	return (
-		<Button
-			size="xs" px="3" py="1.5" h="auto" borderRadius="lg" fontSize="12px" fontWeight="500"
-			bg={active ? 'rgba(51, 129, 255, 0.12)' : 'rgba(255, 255, 255, 0.03)'}
-			color={active ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'}
-			borderWidth="1px"
-			borderColor={active ? 'rgba(51, 129, 255, 0.3)' : 'rgba(255, 255, 255, 0.06)'}
-			_hover={{ bg: active ? 'rgba(51, 129, 255, 0.18)' : 'rgba(255, 255, 255, 0.06)', color: active ? '#3381ff' : 'rgba(255, 255, 255, 0.6)' }}
-			onClick={onClick} transition="all 0.15s ease"
-		>
-			{active && <Check size={12} />}
-			{label}
-		</Button>
-	);
-}
-
-function SelectField({ label, value, options, onChange, mono, optionLabels }: {
-	label: string; value: string; options: string[]; onChange: (v: string) => void; mono?: boolean; optionLabels?: Record<string, string>;
-}) {
-	const [open, setOpen] = useState(false);
-	const buttonRef = useRef<HTMLButtonElement>(null);
-	const displayValue = optionLabels && optionLabels[value] ? optionLabels[value] : value;
-
-	return (
-		<Box position="relative" flex="1">
-			<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">{label}</Text>
-			<Button ref={buttonRef} w="100%" size="sm" variant="outline" justifyContent="space-between"
-				bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
-				fontFamily={mono ? '"Geist Mono", monospace' : undefined} fontSize="12px" borderRadius="lg"
-				_hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }} onClick={() => setOpen(!open)}
-			>
-				{displayValue}
-				<ChevronDown size={14} />
-			</Button>
-			{open && buttonRef.current && (
-				<Portal>
-					<Box
-						position="fixed"
-						top={buttonRef.current.getBoundingClientRect().bottom + 4}
-						left={buttonRef.current.getBoundingClientRect().left}
-						w={buttonRef.current.getBoundingClientRect().width}
-						bg="#18181b" borderWidth="1px"
-						borderColor="rgba(255, 255, 255, 0.1)" borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)"
-						zIndex={9999} maxH="200px" overflowY="auto" py="1"
-					>
-						{options.map(opt => {
-							const displayLabel = optionLabels && optionLabels[opt] ? optionLabels[opt] : opt;
-							return (
-								<Box key={opt} px="3" py="1.5" fontSize="12px" fontFamily={mono ? '"Geist Mono", monospace' : undefined}
-									color={opt === value ? '#3381ff' : 'rgba(255, 255, 255, 0.6)'}
-									bg={opt === value ? 'rgba(51, 129, 255, 0.08)' : 'transparent'}
-									cursor="pointer" _hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
-									onClick={() => { onChange(opt); setOpen(false); }}
-								>
-									{displayLabel}
-								</Box>
-							);
-						})}
-					</Box>
-				</Portal>
-			)}
-		</Box>
-	);
-}
-
-function NumberField({ label, value, onChange, suffix, min, max, step }: {
-	label: string; value: number; onChange: (v: number) => void; suffix?: string; min?: number; max?: number; step?: number;
-}) {
-	return (
-		<Box flex="1">
-			<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">{label}</Text>
-			<HStack gap="1.5">
-				<Input type="number" value={value} onChange={e => onChange(Number(e.target.value))} size="sm"
-					bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
-					fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
-					_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} min={min} max={max} step={step}
-				/>
-				{suffix && <Text fontSize="11px" color="rgba(255, 255, 255, 0.25)" flexShrink={0}>{suffix}</Text>}
-			</HStack>
-		</Box>
-	);
-}
 
 function formatSize(mb: number): string {
 	if (mb >= 1024) return (mb / 1024).toFixed(1) + ' GB';
@@ -125,19 +40,18 @@ type TModelEntry = {
 	searchText: string;
 };
 
-function ModelCombobox({ entries, selectedPath, onSelect }: {
+function ModelCombobox({ entries, selectedPath, onSelect, placeholder }: {
 	entries: TModelEntry[];
 	selectedPath: string | null;
 	onSelect: (path: string) => void;
+	placeholder?: string;
 }) {
 	const [inputValue, setInputValue] = useState('');
-
 	const filteredItems = useMemo(() => {
 		if (!inputValue) return entries;
 		const terms = inputValue.toLowerCase().split(/\s+/).filter(Boolean);
 		return entries.filter(e => terms.every(term => e.searchText.includes(term)));
 	}, [entries, inputValue]);
-
 	const collection = useMemo(() =>
 		createListCollection({
 			items: filteredItems.map(e => ({
@@ -149,7 +63,6 @@ function ModelCombobox({ entries, selectedPath, onSelect }: {
 			itemToValue: (item) => item.value,
 		}),
 	[filteredItems]);
-
 	return (
 		<Combobox.Root
 			collection={collection}
@@ -163,7 +76,7 @@ function ModelCombobox({ entries, selectedPath, onSelect }: {
 		>
 			<Combobox.Control>
 				<Combobox.Input
-					placeholder="Search models..."
+					placeholder={placeholder ?? 'Search models...'}
 					bg="rgba(255, 255, 255, 0.03)"
 					borderColor="rgba(255, 255, 255, 0.08)"
 					color="rgba(255, 255, 255, 0.7)"
@@ -230,6 +143,7 @@ interface ILaunchServerDialogProps {
 		serverName: string;
 		serverAlias: string[];
 		params: ILaunchParams;
+		autoLaunch?: boolean;
 	};
 }
 
@@ -241,6 +155,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 	const backendsFetcher = useCallback(() => fetchBackends(), []);
 	const presetsFetcher = useCallback(() => fetchPresets(), []);
 	const stickyRoutesFetcher = useCallback(() => fetchStickyRoutes(), []);
+
 	const { data: models } = useListQuery<IModel>(modelsFetcher);
 	const { data: backends } = useListQuery<IBackend>(backendsFetcher);
 	const { data: presets } = useListQuery<IPreset>(presetsFetcher);
@@ -251,17 +166,43 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 	const [selectedBackendId, setSelectedBackendId] = useState<string | null>(editMode?.backendId ?? null);
 	const [serverName, setServerName] = useState<string>(editMode?.serverName ?? '');
 	const [serverAliasesInput, setServerAliasesInput] = useState<string>(editMode?.serverAlias?.join(', ') ?? '');
-	const [modelSearch, setModelSearch] = useState('');
-	const [showAdvanced, setShowAdvanced] = useState(false);
+	const [autoLaunch, setAutoLaunch] = useState<boolean>(editMode?.autoLaunch ?? false);
 	const [showPresets, setShowPresets] = useState(false);
 	const [presetName, setPresetName] = useState('');
 	const [launching, setLaunching] = useState(false);
 
 	// Params
-	const [params, setParams] = useState<ILaunchParams>(editMode?.params ?? { ...DEFAULT_LAUNCH_PARAMS });
+	const [params, setParams] = useState<ILaunchParams>(editMode?.params ?? { ...DEFAULT_LAUNCH_PARAMS, specDecode: { ...DEFAULT_SPEC_DECODE_PARAMS } });
 
 	const updateParam = <K extends keyof ILaunchParams>(key: K, value: ILaunchParams[K]) => {
 		setParams(prev => ({ ...prev, [key]: value }));
+	};
+
+	const updateSpecParam = <K extends keyof ISpecDecodeParams>(key: K, value: ISpecDecodeParams[K]) => {
+		setParams(prev => ({
+			...prev,
+			specDecode: { ...prev.specDecode, [key]: value },
+		}));
+	};
+
+	// Generic param change handler for LaunchParamsPanel
+	const handleTargetParamChange = (key: string, value: number | string | boolean) => {
+		updateParam(key as keyof ILaunchParams, value as ILaunchParams[keyof ILaunchParams]);
+	};
+
+	// Draft param change handler — maps to specDecode sub-fields
+	const handleDraftParamChange = (key: string, value: number | string | boolean) => {
+		// Map the generic param keys to specDecode field names
+		const draftKeyMap: Record<string, keyof ISpecDecodeParams> = {
+			gpuLayers: 'draftGpuLayers',
+			contextSize: 'draftContextSize',
+			device: 'draftDevice',
+		};
+		const mappedKey = draftKeyMap[key];
+		if (mappedKey) {
+			updateSpecParam(mappedKey, value as ISpecDecodeParams[keyof ISpecDecodeParams]);
+		}
+		// Draft doesn't use the other params (batch, threads, kv quant etc. are inherited from target)
 	};
 
 	const parseDefaultArgsToParams = (defaultArgs: string[]): Partial<ILaunchParams> => {
@@ -292,23 +233,26 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 		);
 	}, [models]);
 
-	const filteredEntries = useMemo(() => {
-		if (!modelSearch) return modelEntries;
-		const term = modelSearch.toLowerCase();
-		return modelEntries.filter(e => e.searchText.includes(term));
-	}, [modelEntries, modelSearch]);
-
-	const { collection } = useListCollection({
-		initialItems: filteredEntries.map(entry => ({
-			value: entry.file.filePath,
-			label: entry.file.fileName,
-			entry,
-		})),
-	});
-
 	const selectedEntry = modelEntries.find(e => e.file.filePath === selectedModelPath);
 	const selectedBackend = backends.find(b => b.id === selectedBackendId);
 
+	// Draft model entries — filtered by compatible architecture
+	const targetArchitecture = selectedEntry?.file.metadata?.architecture ?? null;
+
+	const draftModelEntries = useMemo(() => {
+		if (!targetArchitecture) return [];
+		return modelEntries.filter(e => {
+			// Must match architecture
+			if (e.file.metadata?.architecture !== targetArchitecture) return false;
+			// Exclude the target model itself
+			if (e.file.filePath === selectedModelPath) return false;
+			return true;
+		});
+	}, [modelEntries, targetArchitecture, selectedModelPath]);
+
+	const selectedDraftEntry = modelEntries.find(e => e.file.filePath === params.specDecode.draftModelPath);
+
+	// Backend defaults
 	useEffect(() => {
 		if (selectedBackendId && selectedBackend && !editMode) {
 			const defaultsFromBackend = parseDefaultArgsToParams(selectedBackend.defaultArgs);
@@ -316,60 +260,43 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 		}
 	}, [selectedBackendId, selectedBackend, editMode]);
 
-	// Reset device selection when backend changes if current device is not valid for new backend
+	// Reset device when backend changes
 	useEffect(() => {
 		if (selectedBackend && params.device) {
 			const deviceIsValid = selectedBackend.detectedDevices.some(d => d.id === params.device);
-			if (!deviceIsValid) {
-				updateParam('device', '');
-			}
+			if (!deviceIsValid) updateParam('device', '');
 		}
 	}, [selectedBackendId]);
 
-	// Flatten devices from the selected backend only for the device dropdown
+	// Device info from selected backend
 	const selectedBackendDevices = selectedBackend?.detectedDevices ?? [];
 	const deviceIdToName = Object.fromEntries(
 		selectedBackendDevices.map(d => [d.id, `${d.name} (${d.backendType}) [${d.id}]`])
 	);
-	const deviceOptions = selectedBackendDevices.length > 0
-		? selectedBackendDevices.map(d => d.id)
-		: [''];
+	const deviceOptions = selectedBackendDevices.map(d => d.id);
 
-	// VRAM estimate
-	const meta = selectedEntry?.file.metadata;
-	const vramEstimate = null; 
-	// const vramEstimate = meta && selectedBackend ? calculateVramEstimate({
-	// 	sizeInMb: selectedEntry.model.totalSizeMb,
-	// 	nLayers: meta.nLayers,
-	// 	nKvHeads: meta.nKvHeads,
-	// 	embeddingDim: meta.embeddingDim,
-	// 	contextLength: params.contextSize !== 0 ? params.contextSize : meta.contextLength,
-	// 	cacheType: kvQuantToNumeric(params.kvQuantK),
-	// 	gpuLayers: params.gpuLayers,
-	// }, selectedBackend.detectedDevices[0]?.vramFreeMb ?? selectedBackend.detectedDevices[0]?.vramTotalMb ?? 99999) : null;
+	// Model metadata
+	const meta = selectedEntry?.file.metadata ?? null;
+	const draftMeta = selectedDraftEntry?.file.metadata ?? null;
 
-	// Parse aliases from comma-separated input
+	// Aliases
 	const parseAliases = (input: string): string[] => {
-		return input.split(',')
-			.map(a => a.trim())
-			.filter(a => a.length > 0);
+		return input.split(',').map(a => a.trim()).filter(a => a.length > 0);
 	};
 
-	// Save without relaunch handler (edit mode only)
+	// Save without relaunch (edit mode)
 	const handleSaveWithoutRelaunch = async () => {
 		if (!selectedEntry || !selectedBackendId || !editMode) return;
 		setLaunching(true);
-
 		const aliases = parseAliases(serverAliasesInput);
-
 		const result = await updateServer(editMode.serverId, {
 			backendId: selectedBackendId,
 			modelPath: selectedEntry.file.filePath,
 			mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
 			params,
 			serverAlias: aliases,
-		}, false); // skip relaunch
-
+			autoLaunch,
+		}, false);
 		setLaunching(false);
 		if (result.ok) {
 			toast('success', 'Server config saved');
@@ -383,11 +310,8 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 	const handleLaunch = async () => {
 		if (!selectedEntry || !selectedBackendId) return;
 		setLaunching(true);
-
 		const aliases = parseAliases(serverAliasesInput);
-
 		if (editMode) {
-			// Relaunch existing server with updated params
 			const result = await updateServer(editMode.serverId, {
 				backendId: selectedBackendId,
 				modelPath: selectedEntry.file.filePath,
@@ -395,8 +319,8 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				serverName: serverName.trim() || undefined,
 				params,
 				serverAlias: aliases,
-			}, true); // relaunch
-
+				autoLaunch,
+			}, true);
 			setLaunching(false);
 			if (result.ok) {
 				toast('success', 'Server relaunched with changes');
@@ -405,7 +329,6 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				toast('error', result.error ?? 'Failed to relaunch server');
 			}
 		} else {
-			// Launch new server
 			const result = await launchServer({
 				backendId: selectedBackendId,
 				modelPath: selectedEntry.file.filePath,
@@ -413,8 +336,8 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				serverName: serverName.trim() || null,
 				params,
 				serverAlias: aliases,
+				autoLaunch,
 			});
-
 			setLaunching(false);
 			if (result.ok) {
 				toast('success', `Server launched on port ${result.data.port}`);
@@ -425,7 +348,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 		}
 	};
 
-	// Save preset handler
+	// Save preset
 	const handleSavePreset = async () => {
 		if (!presetName.trim() || !selectedEntry || !selectedBackendId) return;
 		const result = await createPreset({
@@ -448,7 +371,13 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 	const handleLoadPreset = (preset: IPreset) => {
 		setSelectedModelPath(preset.modelPath);
 		setSelectedBackendId(preset.backendId);
-		setParams(preset.params);
+		// Ensure specDecode exists for older presets
+		const loadedParams = {
+			...DEFAULT_LAUNCH_PARAMS,
+			...preset.params,
+			specDecode: { ...DEFAULT_SPEC_DECODE_PARAMS, ...preset.params.specDecode },
+		};
+		setParams(loadedParams);
 		setShowPresets(false);
 		toast('info', `Loaded preset "${preset.name}"`);
 	};
@@ -458,8 +387,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 	return (
 		<Box position="fixed" inset="0" zIndex="modal" display="flex" alignItems="center" justifyContent="center">
 			<Box position="absolute" inset="0" bg="rgba(0, 0, 0, 0.7)" backdropFilter="blur(8px)" onClick={onClose} />
-
-			<Box position="relative" w="920px" maxH="90vh" bg="#0f0f12" borderWidth="1px"
+			<Box position="relative" w="960px" maxH="90vh" bg="#0f0f12" borderWidth="1px"
 				borderColor="rgba(255, 255, 255, 0.08)" borderRadius="2xl"
 				shadow="0 24px 80px rgba(0, 0, 0, 0.6)" overflow="hidden" display="flex" flexDirection="column"
 			>
@@ -467,10 +395,10 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				<Flex px="6" py="4" justify="space-between" align="center" borderBottomWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" bg="rgba(255, 255, 255, 0.01)">
 					<HStack gap="3">
 						<Flex w="9" h="9" borderRadius="lg" alignItems="center" justifyContent="center"
-							bgGradient={editMode ? "to-br" : "to-br"}
-							gradientFrom={editMode ? "rgba(251, 191, 36, 0.2)" : "rgba(51, 129, 255, 0.2)"}
-							gradientTo={editMode ? "rgba(245, 158, 11, 0.2)" : "rgba(167, 139, 250, 0.2)"}
-							borderWidth="1px" borderColor={editMode ? "rgba(251, 191, 36, 0.2)" : "rgba(51, 129, 255, 0.2)"}
+							bgGradient="to-br"
+							gradientFrom={editMode ? 'rgba(251, 191, 36, 0.2)' : 'rgba(51, 129, 255, 0.2)'}
+							gradientTo={editMode ? 'rgba(245, 158, 11, 0.2)' : 'rgba(167, 139, 250, 0.2)'}
+							borderWidth="1px" borderColor={editMode ? 'rgba(251, 191, 36, 0.2)' : 'rgba(51, 129, 255, 0.2)'}
 						>
 							{editMode ? <RefreshCw size={18} color="#fbbf24" /> : <Zap size={18} color="#3381ff" />}
 						</Flex>
@@ -482,8 +410,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 					<HStack gap="2">
 						{!editMode && (
 							<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' }} borderRadius="lg" fontSize="12px" onClick={() => setShowPresets(!showPresets)}>
-								<Bookmark size={14} />
-								Presets
+								<Bookmark size={14} /> Presets
 							</Button>
 						)}
 						<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.3)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="md" onClick={onClose} minW="8" px="0">
@@ -492,7 +419,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 					</HStack>
 				</Flex>
 
-				{/* Preset panel (slides down) - only in create mode */}
+				{/* Preset panel */}
 				{showPresets && !editMode && (
 					<Box px="6" py="4" borderBottomWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" bg="rgba(251, 191, 36, 0.02)">
 						{presets.length > 0 ? (
@@ -515,7 +442,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				{/* Content */}
 				<Box flex="1" overflowY="auto" p="6">
 					<Flex gap="6">
-						{/* Left — Model + Backend */}
+						{/* Left — Model + Backend + Spec Decode */}
 						<VStack align="stretch" gap="5" flex="1" minW="0">
 							{/* Model picker */}
 							<Box>
@@ -523,18 +450,17 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 								{models.length === 0 ? (
 									<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No models scanned. Go to Settings and scan.</Text>
 								) : (
-									<ModelCombobox
-										entries={modelEntries}
-										selectedPath={selectedModelPath}
-										onSelect={setSelectedModelPath}
-									/>
+									<ModelCombobox entries={modelEntries} selectedPath={selectedModelPath} onSelect={setSelectedModelPath} />
 								)}
 								{selectedEntry?.file.metadata && (
 									<HStack mt="2" gap="4" px="3" py="2" bg="rgba(51, 129, 255, 0.04)" borderRadius="lg" borderWidth="1px" borderColor="rgba(51, 129, 255, 0.1)">
 										<HStack gap="1.5"><Layers size={12} color="rgba(255, 255, 255, 0.35)" /><Text fontSize="11px" color="rgba(255, 255, 255, 0.5)">{selectedEntry.file.metadata.nLayers} layers</Text></HStack>
 										<HStack gap="1.5"><Cpu size={12} color="rgba(255, 255, 255, 0.35)" /><Text fontSize="11px" color="rgba(255, 255, 255, 0.5)">{selectedEntry.file.metadata.paramCount}</Text></HStack>
+										{selectedEntry.file.metadata.contextLength > 0 && (
+											<HStack gap="1.5"><Text fontSize="11px" color="rgba(255, 255, 255, 0.4)">{(selectedEntry.file.metadata.contextLength / 1024).toFixed(0)}k ctx</Text></HStack>
+										)}
 										{selectedEntry.model.mmprojFile && (
-											<HStack gap="1.5"><Package size={12} color="#a78bfa" /><Text fontSize="11px" color="#a78bfa">mmproj detected</Text></HStack>
+											<HStack gap="1.5"><Package size={12} color="#a78bfa" /><Text fontSize="11px" color="#a78bfa">mmproj</Text></HStack>
 										)}
 									</HStack>
 								)}
@@ -542,35 +468,22 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 
 							{/* Server name */}
 							<Box>
-								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Server Name <Text as="span" color="rgba(255, 255, 255, 0.25)" fontWeight="400"> (optional)</Text></Text>
-								<Input
-									value={serverName}
-									onChange={e => setServerName(e.target.value)}
+								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Server Name <Text as="span" color="rgba(255, 255, 255, 0.25)" fontWeight="400">(optional)</Text></Text>
+								<Input value={serverName} onChange={e => setServerName(e.target.value)}
 									placeholder={selectedEntry?.file.fileName.replace('.gguf', '') ?? 'Leave empty for auto-generated name'}
-									bg="rgba(255, 255, 255, 0.03)"
-									borderColor="rgba(255, 255, 255, 0.08)"
-									color="rgba(255, 255, 255, 0.7)"
-									fontSize="13px"
-									borderRadius="lg"
-									_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
+									bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
+									fontSize="13px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
 									_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
 								/>
-								<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)" mt="1.5">Leave empty to use model filename. Used for display only.</Text>
 							</Box>
 
 							{/* Server aliases */}
 							<Box>
-								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Server Aliases <Text as="span" color="rgba(255, 255, 255, 0.25)" fontWeight="400"> (optional)</Text></Text>
-								<Input
-									value={serverAliasesInput}
-									onChange={e => setServerAliasesInput(e.target.value)}
+								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Server Aliases <Text as="span" color="rgba(255, 255, 255, 0.25)" fontWeight="400">(optional)</Text></Text>
+								<Input value={serverAliasesInput} onChange={e => setServerAliasesInput(e.target.value)}
 									placeholder="alias1, alias2, alias3"
-									bg="rgba(255, 255, 255, 0.03)"
-									borderColor="rgba(255, 255, 255, 0.08)"
-									color="rgba(255, 255, 255, 0.7)"
-									fontSize="13px"
-									borderRadius="lg"
-									_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
+									bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
+									fontSize="13px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
 									_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
 								/>
 								<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)" mt="1.5">Comma-separated aliases for proxy routing.</Text>
@@ -611,19 +524,9 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 								</VStack>
 							</Box>
 
-							{/* Device selection */}
+							{/* Port */}
 							<Box>
-								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">3. Select Device</Text>
-								{selectedBackendDevices.length > 0 ? (
-									<SelectField label="" value={params.device} options={deviceOptions} onChange={v => updateParam('device', v)} mono optionLabels={deviceIdToName} />
-								) : (
-									<Input placeholder="Default" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={params.device} onChange={e => updateParam('device', e.target.value)} />
-								)}
-							</Box>
-
-							{/* Port selection */}
-							<Box>
-								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">4. Port</Text>
+								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">3. Port</Text>
 								<HStack gap="1.5">
 									<Input type="number" value={params.port} onChange={e => updateParam('port', Number(e.target.value))} size="sm"
 										bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
@@ -633,99 +536,155 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 									<Text fontSize="11px" color="rgba(255, 255, 255, 0.25)" flexShrink={0}>0 = auto</Text>
 								</HStack>
 							</Box>
-						</VStack>
 
-						{/* Right — Params */}
-						<VStack align="stretch" gap="4" w="360px" flexShrink={0}>
-							<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em">Parameters</Text>
-
-							<Card>
-								<VStack align="stretch" gap="4">
-									<Flex gap="4">
-										<NumberField label="GPU Layers" value={params.gpuLayers} onChange={v => updateParam('gpuLayers', v)} min={0} max={999} />
-										<NumberField label="Context Size" value={params.contextSize} onChange={v => updateParam('contextSize', v)} min={0} step={1024} suffix="0 = auto" />
-									</Flex>
-									<Flex gap="4">
-										<NumberField label="Batch Size" value={params.batchSize} onChange={v => updateParam('batchSize', v)} min={1} step={256} />
-										<NumberField label="Micro Batch" value={params.ubatchSize} onChange={v => updateParam('ubatchSize', v)} min={1} step={64} />
-									</Flex>
-									<Flex gap="4">
-										<NumberField label="Threads" value={params.threads} onChange={v => updateParam('threads', v)} min={0} suffix="0 = auto" />
-										<NumberField label="Threads (Batch)" value={params.threadsBatch} onChange={v => updateParam('threadsBatch', v)} min={0} suffix="0 = auto" />
-									</Flex>
-								</VStack>
-							</Card>
-
-							<Card>
-								<VStack align="stretch" gap="3">
-									<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">Options</Text>
-									<HStack gap="2" flexWrap="wrap">
-										<ToggleChip label="Flash Attention" active={params.flashAttn} onClick={() => updateParam('flashAttn', !params.flashAttn)} />
-										<ToggleChip label="MLock" active={params.mlock} onClick={() => updateParam('mlock', !params.mlock)} />
-										<ToggleChip label="MMap" active={params.mmap} onClick={() => updateParam('mmap', !params.mmap)} />
-										<ToggleChip label="Direct I/O" active={params.directIo} onClick={() => updateParam('directIo', !params.directIo)} />
-										<ToggleChip label="No Warmup" active={params.noWarmup} onClick={() => updateParam('noWarmup', !params.noWarmup)} />
-										<ToggleChip label="Jinja" active={params.jinja} onClick={() => updateParam('jinja', !params.jinja)} />
-									</HStack>
-								</VStack>
-							</Card>
-
-							<Card>
-								<VStack align="stretch" gap="3">
-									<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">KV Cache Quantization</Text>
-									<Flex gap="4">
-										<SelectField label="K Type" value={params.kvQuantK} options={KV_QUANT_OPTIONS} onChange={v => updateParam('kvQuantK', v as EKvQuantType)} mono />
-										<SelectField label="V Type" value={params.kvQuantV} options={KV_QUANT_OPTIONS} onChange={v => updateParam('kvQuantV', v as EKvQuantType)} mono />
-									</Flex>
-								</VStack>
-							</Card>
-
-							{/* Advanced */}
+							{/* ============================================================ */}
+							{/* Speculative Decoding Section */}
+							{/* ============================================================ */}
 							<Box>
-								<Button w="100%" size="sm" variant="ghost" justifyContent="space-between" color="rgba(255, 255, 255, 0.35)" _hover={{ color: 'rgba(255, 255, 255, 0.6)', bg: 'rgba(255, 255, 255, 0.03)' }} borderRadius="lg" fontSize="12px" onClick={() => setShowAdvanced(!showAdvanced)}>
-									Advanced Options
-									{showAdvanced ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-								</Button>
-								{showAdvanced && (
-									<Card>
-										<VStack align="stretch" gap="3" mt="2">
+								<Flex align="center" gap="3" mb="3">
+									<Flex w="6" h="6" borderRadius="md" alignItems="center" justifyContent="center"
+										bg={params.specDecode.enabled ? 'rgba(167, 139, 250, 0.15)' : 'rgba(255, 255, 255, 0.04)'}
+									>
+										<Sparkles size={14} color={params.specDecode.enabled ? '#a78bfa' : 'rgba(255, 255, 255, 0.3)'} />
+									</Flex>
+									<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" flex="1">Speculative Decoding</Text>
+									<ToggleChip
+										label={params.specDecode.enabled ? 'Enabled' : 'Disabled'}
+										active={params.specDecode.enabled}
+										onClick={() => updateSpecParam('enabled', !params.specDecode.enabled)}
+									/>
+								</Flex>
+
+								{params.specDecode.enabled && (
+									<Box
+										p="4" borderRadius="xl"
+										bg="rgba(167, 139, 250, 0.03)"
+										borderWidth="1px" borderColor="rgba(167, 139, 250, 0.12)"
+									>
+										<VStack align="stretch" gap="4">
+											{/* Draft model picker */}
 											<Box>
-												<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Chat Template</Text>
-												<Input placeholder="Auto-detect" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={params.chatTemplate} onChange={e => updateParam('chatTemplate', e.target.value)} />
+												<Text fontSize="11px" color="rgba(167, 139, 250, 0.7)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Draft Model</Text>
+												{!targetArchitecture ? (
+													<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">Select a target model first to see compatible draft models.</Text>
+												) : draftModelEntries.length === 0 ? (
+													<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">
+														No compatible draft models found. Draft models must share the same architecture ({targetArchitecture}).
+													</Text>
+												) : (
+													<ModelCombobox
+														entries={draftModelEntries}
+														selectedPath={params.specDecode.draftModelPath || null}
+														onSelect={(path) => updateSpecParam('draftModelPath', path)}
+														placeholder="Search compatible draft models..."
+													/>
+												)}
+												{selectedDraftEntry?.file.metadata && (
+													<HStack mt="2" gap="4" px="3" py="2" bg="rgba(167, 139, 250, 0.04)" borderRadius="lg" borderWidth="1px" borderColor="rgba(167, 139, 250, 0.1)">
+														<HStack gap="1.5"><Layers size={12} color="rgba(167, 139, 250, 0.5)" /><Text fontSize="11px" color="rgba(167, 139, 250, 0.7)">{selectedDraftEntry.file.metadata.nLayers} layers</Text></HStack>
+														<HStack gap="1.5"><Cpu size={12} color="rgba(167, 139, 250, 0.5)" /><Text fontSize="11px" color="rgba(167, 139, 250, 0.7)">{selectedDraftEntry.file.metadata.paramCount}</Text></HStack>
+														<Text fontSize="11px" color="rgba(167, 139, 250, 0.5)" fontFamily='"Geist Mono", monospace'>{formatSize(selectedDraftEntry.model.totalSizeMb)}</Text>
+													</HStack>
+												)}
 											</Box>
+
+											{/* Draft device */}
+											{deviceOptions.length > 0 && (
+												<Box>
+													<SelectField
+														label="Draft Device"
+														value={params.specDecode.draftDevice}
+														options={['', ...deviceOptions]}
+														onChange={v => updateSpecParam('draftDevice', v)}
+														mono
+														optionLabels={{
+															'': 'Same as target',
+															...deviceIdToName,
+														}}
+													/>
+													<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)" mt="1">Leave empty to use target device.</Text>
+												</Box>
+											)}
+
+											{/* Draft GPU layers + context */}
+											<Flex gap="4">
+												{draftMeta ? (
+													<Box flex="1">
+														<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">
+															GPU Layers <Text as="span" color="rgba(255, 255, 255, 0.2)">/ {draftMeta.nLayers}</Text>
+														</Text>
+														<Input type="number" value={params.specDecode.draftGpuLayers} onChange={e => updateSpecParam('draftGpuLayers', Number(e.target.value))} size="sm"
+															bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
+															fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
+															_focus={{ borderColor: 'rgba(167, 139, 250, 0.4)', outline: 'none' }} min={0} max={draftMeta.nLayers}
+														/>
+													</Box>
+												) : (
+													<NumberField label="GPU Layers" value={params.specDecode.draftGpuLayers} onChange={v => updateSpecParam('draftGpuLayers', v)} min={0} max={999} />
+												)}
+												<NumberField label="Context Size" value={params.specDecode.draftContextSize} onChange={v => updateSpecParam('draftContextSize', v)} min={0} step={1024} suffix="0 = auto" />
+											</Flex>
+
+											{/* Spec decode tuning params */}
 											<Box>
-												<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Extra Arguments</Text>
-												<Input placeholder="--some-flag value" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={params.extraArgs} onChange={e => updateParam('extraArgs', e.target.value)} />
+												<Text fontSize="11px" color="rgba(167, 139, 250, 0.7)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Drafting Parameters</Text>
+												<Flex gap="4">
+													<NumberField label="Draft Max" value={params.specDecode.draftMax} onChange={v => updateSpecParam('draftMax', v)} min={1} max={128} />
+													<NumberField label="Draft Min" value={params.specDecode.draftMin} onChange={v => updateSpecParam('draftMin', v)} min={0} max={64} />
+													<Box flex="1">
+														<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Accept Threshold</Text>
+														<Input type="number" value={params.specDecode.draftPMin}
+															onChange={e => updateSpecParam('draftPMin', Number(e.target.value))} size="sm"
+															bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
+															fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
+															_focus={{ borderColor: 'rgba(167, 139, 250, 0.4)', outline: 'none' }}
+															min={0} max={1} step={0.05}
+														/>
+														<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)" mt="1">0.0 - 1.0</Text>
+													</Box>
+												</Flex>
 											</Box>
 										</VStack>
-									</Card>
+									</Box>
 								)}
 							</Box>
-
-							{/* VRAM Estimate */}
-							{/* {vramEstimate && (
-								<Box p="4" borderRadius="xl"
-									bg={vramEstimate.willFit ? 'rgba(52, 211, 153, 0.04)' : 'rgba(251, 113, 133, 0.04)'}
-									borderWidth="1px" borderColor={vramEstimate.willFit ? 'rgba(52, 211, 153, 0.15)' : 'rgba(251, 113, 133, 0.15)'}
-								>
-									<HStack justify="space-between" mb="2">
-										<HStack gap="1.5">
-											{vramEstimate.willFit ? <Gauge size={14} color="#34d399" /> : <AlertTriangle size={14} color="#fb7185" />}
-											<Text fontSize="12px" fontWeight="600" color={vramEstimate.willFit ? '#34d399' : '#fb7185'}>{vramEstimate.willFit ? 'Fits in VRAM' : 'May exceed VRAM'}</Text>
-										</HStack>
-										<Text fontSize="12px" fontFamily='"Geist Mono", monospace' color="rgba(255, 255, 255, 0.5)">~{(vramEstimate.safeEstimateMb / 1024).toFixed(1)} GB</Text>
-									</HStack>
-									<VramBar totalMb={vramEstimate.availableMb} usedMb={vramEstimate.safeEstimateMb} compact />
-									<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)" mt="1.5">Includes 577 MB safety buffer (95% confidence)</Text>
-								</Box>
-							)} */}
 						</VStack>
+
+						{/* Right — Target Params Panel */}
+						<Box w="380px" flexShrink={0}>
+							<LaunchParamsPanel
+								mode={EParamsMode.TARGET}
+								gpuLayers={params.gpuLayers}
+								contextSize={params.contextSize}
+								batchSize={params.batchSize}
+								ubatchSize={params.ubatchSize}
+								threads={params.threads}
+								threadsBatch={params.threadsBatch}
+								flashAttn={params.flashAttn}
+								mlock={params.mlock}
+								mmap={params.mmap}
+								directIo={params.directIo}
+								noWarmup={params.noWarmup}
+								jinja={params.jinja}
+								kvQuantK={params.kvQuantK}
+								kvQuantV={params.kvQuantV}
+								chatTemplate={params.chatTemplate}
+								extraArgs={params.extraArgs}
+								parallelSlots={params.parallelSlots}
+								modelNLayers={meta?.nLayers ?? null}
+								modelContextLength={meta?.contextLength ?? null}
+								deviceOptions={deviceOptions}
+								deviceIdToName={deviceIdToName}
+								selectedDevice={params.device}
+								onParamChange={handleTargetParamChange}
+							/>
+						</Box>
 					</Flex>
 				</Box>
 
 				{/* Footer */}
 				<Flex px="6" py="4" justify="space-between" align="center" borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" bg="rgba(255, 255, 255, 0.01)">
-					<HStack gap="2">
+					<HStack gap="4">
 						{selectedModelPath && selectedBackendId && !editMode && (
 							<HStack gap="2">
 								<Input placeholder="Preset name..." size="sm" w="180px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(251, 191, 36, 0.4)', outline: 'none' }} value={presetName} onChange={e => setPresetName(e.target.value)} />
@@ -734,66 +693,41 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 								</Button>
 							</HStack>
 						)}
+						<Switch.Root label="Auto-launch at startup" checked={autoLaunch} onCheckedChange={(details) => setAutoLaunch(details.checked)} color={autoLaunch ? '#34d399' : 'rgba(255, 255, 255, 0.4)'}>
+							<Switch.HiddenInput />
+							<Switch.Control />
+							<Switch.Label ml="2" fontSize="13px" color={autoLaunch ? '#34d399' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
+								Auto-launch at startup
+							</Switch.Label>
+						</Switch.Root>
 					</HStack>
 					<HStack gap="2">
 						<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="lg" fontSize="13px" onClick={onClose}>Cancel</Button>
 						{editMode ? (
 							<>
-								<Button
-									size="sm"
-									disabled={!canLaunch || launching}
-									bg="rgba(255, 255, 255, 0.08)"
-									color="#e4e4e7"
-									borderWidth="1px"
-									borderColor="rgba(255, 255, 255, 0.15)"
+								<Button size="sm" disabled={!canLaunch || launching}
+									bg="rgba(255, 255, 255, 0.08)" color="#e4e4e7" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.15)"
 									_hover={{ bg: 'rgba(255, 255, 255, 0.12)', borderColor: 'rgba(255, 255, 255, 0.25)' }}
-									_disabled={{ opacity: 0.3, cursor: 'not-allowed' }}
-									borderRadius="lg"
-									fontSize="13px"
-									fontWeight="600"
-									px="5"
+									_disabled={{ opacity: 0.3, cursor: 'not-allowed' }} borderRadius="lg" fontSize="13px" fontWeight="600" px="5"
 									onClick={handleSaveWithoutRelaunch}
-								>
-									Save
-								</Button>
-								<Button
-									size="sm"
-									disabled={!canLaunch || launching}
-									bgGradient="to-r"
-									gradientFrom="#fbbf24"
-									gradientTo="#f59e0b"
-									color="#18181b"
-									borderWidth="1px"
-									borderColor="rgba(251, 191, 36, 0.3)"
+								>Save</Button>
+								<Button size="sm" disabled={!canLaunch || launching}
+									bgGradient="to-r" gradientFrom="#fbbf24" gradientTo="#f59e0b" color="#18181b"
+									borderWidth="1px" borderColor="rgba(251, 191, 36, 0.3)"
 									_hover={{ opacity: 0.9, shadow: '0 4px 20px rgba(251, 191, 36, 0.3)' }}
-									_disabled={{ opacity: 0.3, cursor: 'not-allowed' }}
-									borderRadius="lg"
-									fontSize="13px"
-									fontWeight="600"
-									px="6"
-									transition="all 0.2s ease"
-									onClick={handleLaunch}
+									_disabled={{ opacity: 0.3, cursor: 'not-allowed' }} borderRadius="lg" fontSize="13px" fontWeight="600" px="6"
+									transition="all 0.2s ease" onClick={handleLaunch}
 								>
 									{launching ? <Spinner size="xs" /> : <RefreshCw size={14} />}
 									Relaunch with Changes
 								</Button>
 							</>
 						) : (
-							<Button
-								size="sm"
-								disabled={!canLaunch || launching}
-								bgGradient="to-r"
-								gradientFrom="#3381ff"
-								gradientTo="#5b6af5"
-								color="white"
+							<Button size="sm" disabled={!canLaunch || launching}
+								bgGradient="to-r" gradientFrom="#3381ff" gradientTo="#5b6af5" color="white"
 								_hover={{ opacity: 0.9, shadow: '0 4px 20px rgba(51, 129, 255, 0.3)' }}
-								_disabled={{ opacity: 0.3, cursor: 'not-allowed' }}
-								borderRadius="lg"
-								fontSize="13px"
-								fontWeight="600"
-								px="6"
-								transition="all 0.2s ease"
-								onClick={handleLaunch}
+								_disabled={{ opacity: 0.3, cursor: 'not-allowed' }} borderRadius="lg" fontSize="13px" fontWeight="600" px="6"
+								transition="all 0.2s ease" onClick={handleLaunch}
 							>
 								{launching ? <Spinner size="xs" /> : <Play size={14} />}
 								Launch

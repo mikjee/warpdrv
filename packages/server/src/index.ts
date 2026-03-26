@@ -4,7 +4,7 @@ import { store } from './util/store';
 import { settingsRouter } from './routes/settings';
 import { backendsRouter } from './routes/backends';
 import { modelsRouter, loadCachedModels } from './routes/models';
-import { serversRouter, reconcileServers } from './routes/servers';
+import { serversRouter, reconcileServers, launchAutoStartServers } from './routes/servers';
 import { presetsRouter } from './routes/presets';
 import { hubRouter } from './routes/hub';
 import type { ISettings } from '@warpcore/shared';
@@ -28,6 +28,9 @@ async function main() {
 
 	// Load cached model scan results
 	await loadCachedModels();
+
+	// Launch auto-start servers after all data has loaded
+	await launchAutoStartServers();
 
 	const app = express();
 

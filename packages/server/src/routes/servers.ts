@@ -55,6 +55,45 @@ export async function reconcileServers(): Promise<void> {
 	}
 }
 
+// Launch servers with autoLaunch=true that are not already running
+export async function launchAutoStartServers(): Promise<void> {
+	const servers = await store.list<IServer>(PREFIX);
+	for (const server of servers) {
+		if ((server.autoLaunch ?? false) && server.status === EServerStatus.STOPPED) {
+			const backend = await store.get<IBackend>('backends:' + server.backendId);
+			if (!backend) {
+				console.log(`[WarpCore] Skipping auto-launch for ${server.serverName}: backend not found`);
+				continue;
+			}
+
+			const args = buildArgs(
+				server.modelPath,
+				server.mmprojPath,
+				server.params,
+				backend.defaultArgs,
+			);
+
+			const pid = spawnServer(
+				server.id,
+				backend.path,
+				args,
+				async (status, error) => {
+					server.status = status;
+					if (error) server.error = error;
+					if (status === EServerStatus.RUNNING) server.startedAt = Date.now();
+					await store.put(PREFIX + server.id, server);
+				},
+			);
+
+			server.pid = pid || undefined;
+			server.status = EServerStatus.LOADING;
+			server.error = null;
+			await store.put(PREFIX + server.id, server);
+			console.log(`[WarpCore] Auto-launching server: ${server.serverName}`);
+		}
+	}
+}
+
 // GET /api/servers
 serversRouter.get('/', async (_req, res) => {
 	const servers = await store.list<IServer>(PREFIX);
@@ -108,6 +147,7 @@ serversRouter.post('/', async (req, res) => {
 		startedAt: null,
 		error: null,
 		stats: null,
+		autoLaunch: payload.autoLaunch ?? false,
 	};
 
 	// Build args and spawn
@@ -229,7 +269,7 @@ serversRouter.put('/:id', async (req, res) => {
 		return;
 	}
 
-	type TUpdatePayload = Partial<Pick<IServer, 'backendId' | 'modelPath' | 'mmprojPath' | 'serverName' | 'params' | 'serverAlias'>> & { relaunch?: boolean };
+	type TUpdatePayload = Partial<Pick<IServer, 'backendId' | 'modelPath' | 'mmprojPath' | 'serverName' | 'params' | 'serverAlias' | 'autoLaunch'>> & { relaunch?: boolean };
 	const updatePayload = req.body as TUpdatePayload;
 	const shouldRelaunch = updatePayload.relaunch ?? true;
 
@@ -273,6 +313,9 @@ serversRouter.put('/:id', async (req, res) => {
 			}
 		}
 		server.serverAlias = updatePayload.serverAlias;
+	}
+	if (updatePayload.autoLaunch !== undefined) {
+		server.autoLaunch = updatePayload.autoLaunch;
 	}
 
 	if (shouldRelaunch) {
