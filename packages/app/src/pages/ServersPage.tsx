@@ -160,20 +160,29 @@ export function ServersPage() {
 													{isRunning && <Box position="absolute" top="-1px" right="-1px" w="8px" h="8px" borderRadius="full" bg="#34d399" shadow="0 0 8px #34d399" />}
 												</Flex>
 												<Box>
-													<Text fontSize="15px" fontWeight="600" color="#e4e4e7">{server.serverName}</Text>
+													<HStack gap="2" alignItems="center">
+														<Text fontSize="15px" fontWeight="600" color="#e4e4e7">{server.serverName}</Text>
+														{server.serverAlias && server.serverAlias.length > 0 && (
+															<>
+																{server.serverAlias.map(alias => (
+																	<Badge key={alias} px="1.5" py="0.25" borderRadius="md" fontSize="10px" fontFamily='"Geist Mono", monospace' bg="rgba(99, 102, 241, 0.15)" color="#a5b4fc" borderWidth="1px" borderColor="rgba(99, 102, 241, 0.3)">{alias}</Badge>
+																))}
+															</>
+														)}
+													</HStack>
 													<HStack gap="3" mt="0.5">
 														<StatusBadge status={server.status as EServerStatus} port={server.port} />
-														{server.status !== EServerStatus.STOPPED && (
-															<HStack gap="1" color="rgba(255, 255, 255, 0.35)">
-																<Clock size={11} />
-																<Text fontSize="12px">{formatUptime(server.startedAt)}</Text>
-															</HStack>
-														)}
 														{server.error && (
 															<>
 																<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">|</Text>
 																<Text fontSize="11px" color="#fb7185" lineClamp={1}>{server.error}</Text>
 															</>
+														)}
+														{isRunning && (
+															<HStack gap="1" color="rgba(255, 255, 255, 0.35)">
+																<Clock size={11} />
+																<Text fontSize="12px">{formatUptime(server.startedAt)}</Text>
+															</HStack>
 														)}
 													</HStack>
 												</Box>

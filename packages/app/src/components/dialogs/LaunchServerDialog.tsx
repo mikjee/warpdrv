@@ -17,7 +17,8 @@ import {
 import { Card } from '../Card';
 import { VramBar } from '../VramBar';
 import { useListQuery } from '../../hooks/useQuery';
-import { fetchModels, fetchBackends, fetchPresets, launchServer, createPreset, updateServer } from '../../api/services';
+import { fetchModels, fetchBackends, fetchPresets, launchServer, createPreset, updateServer, fetchStickyRoutes, clearStickyRoute } from '../../api/services';
+import type { IStickyRouteInfo } from '../../api/services';
 import { useToast } from '../ToastProvider';
 
 const KV_QUANT_OPTIONS = Object.values(EKvQuantType);
@@ -227,6 +228,7 @@ interface ILaunchServerDialogProps {
 		modelPath: string;
 		mmprojPath: string | null;
 		serverName: string;
+		serverAlias: string[];
 		params: ILaunchParams;
 	};
 }
@@ -238,14 +240,17 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 	const modelsFetcher = useCallback(() => fetchModels(), []);
 	const backendsFetcher = useCallback(() => fetchBackends(), []);
 	const presetsFetcher = useCallback(() => fetchPresets(), []);
+	const stickyRoutesFetcher = useCallback(() => fetchStickyRoutes(), []);
 	const { data: models } = useListQuery<IModel>(modelsFetcher);
 	const { data: backends } = useListQuery<IBackend>(backendsFetcher);
 	const { data: presets } = useListQuery<IPreset>(presetsFetcher);
+	const { data: stickyRoutes } = useListQuery<IStickyRouteInfo>(stickyRoutesFetcher, { pollInterval: 0 });
 
 	// Selection state
 	const [selectedModelPath, setSelectedModelPath] = useState<string | null>(editMode?.modelPath ?? null);
 	const [selectedBackendId, setSelectedBackendId] = useState<string | null>(editMode?.backendId ?? null);
 	const [serverName, setServerName] = useState<string>(editMode?.serverName ?? '');
+	const [serverAliasesInput, setServerAliasesInput] = useState<string>(editMode?.serverAlias?.join(', ') ?? '');
 	const [modelSearch, setModelSearch] = useState('');
 	const [showAdvanced, setShowAdvanced] = useState(false);
 	const [showPresets, setShowPresets] = useState(false);
@@ -335,16 +340,26 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 	// 	gpuLayers: params.gpuLayers,
 	// }, selectedBackend.detectedDevices[0]?.vramFreeMb ?? selectedBackend.detectedDevices[0]?.vramTotalMb ?? 99999) : null;
 
+	// Parse aliases from comma-separated input
+	const parseAliases = (input: string): string[] => {
+		return input.split(',')
+			.map(a => a.trim())
+			.filter(a => a.length > 0);
+	};
+
 	// Save without relaunch handler (edit mode only)
 	const handleSaveWithoutRelaunch = async () => {
 		if (!selectedEntry || !selectedBackendId || !editMode) return;
 		setLaunching(true);
+
+		const aliases = parseAliases(serverAliasesInput);
 
 		const result = await updateServer(editMode.serverId, {
 			backendId: selectedBackendId,
 			modelPath: selectedEntry.file.filePath,
 			mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
 			params,
+			serverAlias: aliases,
 		}, false); // skip relaunch
 
 		setLaunching(false);
@@ -361,6 +376,8 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 		if (!selectedEntry || !selectedBackendId) return;
 		setLaunching(true);
 
+		const aliases = parseAliases(serverAliasesInput);
+
 		if (editMode) {
 			// Relaunch existing server with updated params
 			const result = await updateServer(editMode.serverId, {
@@ -369,6 +386,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
 				serverName: serverName.trim() || undefined,
 				params,
+				serverAlias: aliases,
 			}, true); // relaunch
 
 			setLaunching(false);
@@ -386,6 +404,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
 				serverName: serverName.trim() || null,
 				params,
+				serverAlias: aliases,
 			});
 
 			setLaunching(false);
@@ -529,6 +548,24 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 									_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
 								/>
 								<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)" mt="1.5">Leave empty to use model filename. Used for display only.</Text>
+							</Box>
+
+							{/* Server aliases */}
+							<Box>
+								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Server Aliases <Text as="span" color="rgba(255, 255, 255, 0.25)" fontWeight="400"> (optional)</Text></Text>
+								<Input
+									value={serverAliasesInput}
+									onChange={e => setServerAliasesInput(e.target.value)}
+									placeholder="alias1, alias2, alias3"
+									bg="rgba(255, 255, 255, 0.03)"
+									borderColor="rgba(255, 255, 255, 0.08)"
+									color="rgba(255, 255, 255, 0.7)"
+									fontSize="13px"
+									borderRadius="lg"
+									_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
+									_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
+								/>
+								<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)" mt="1.5">Comma-separated aliases for proxy routing.</Text>
 							</Box>
 
 							{/* Backend picker */}

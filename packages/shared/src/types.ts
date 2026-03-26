@@ -191,6 +191,7 @@ export interface IServerCreatePayload {
 	mmprojPath: string | null;
 	serverName: string | null; // null = auto-generate from model filename
 	params: ILaunchParams;
+	serverAlias?: string[]; // optional aliases for proxy routing
 }
 
 // ============================================================

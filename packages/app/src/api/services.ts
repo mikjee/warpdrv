@@ -95,7 +95,7 @@ export async function restartServer(id: string) {
 	return api.post<IServer>(`/servers/${id}/restart`);
 }
 
-export async function updateServer(id: string, data: Partial<Pick<IServer, 'backendId' | 'modelPath' | 'mmprojPath' | 'serverName' | 'params'>>, relaunch = true) {
+export async function updateServer(id: string, data: Partial<Pick<IServer, 'backendId' | 'modelPath' | 'mmprojPath' | 'serverName' | 'params' | 'serverAlias'>>, relaunch = true) {
 	return api.put<IServer>(`/servers/${id}`, { ...data, relaunch });
 }
 

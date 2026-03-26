@@ -10,6 +10,7 @@ import {
 	clearServerLogs,
 } from '../services/processManager';
 import { getServerStats } from '../services/statsPoller';
+import { clearStickyRoute } from '../services/modelProxy';
 import type {
 	IServer,
 	IServerCreatePayload,
@@ -99,7 +100,7 @@ serversRouter.post('/', async (req, res) => {
 		modelPath: payload.modelPath,
 		mmprojPath: payload.mmprojPath,
 		serverName,
-		serverAlias: [],
+		serverAlias: payload.serverAlias ?? [],
 		params,
 		port,
 		pid: undefined,
@@ -228,7 +229,7 @@ serversRouter.put('/:id', async (req, res) => {
 		return;
 	}
 
-	type TUpdatePayload = Partial<Pick<IServer, 'backendId' | 'modelPath' | 'mmprojPath' | 'serverName' | 'params'>> & { relaunch?: boolean };
+	type TUpdatePayload = Partial<Pick<IServer, 'backendId' | 'modelPath' | 'mmprojPath' | 'serverName' | 'params' | 'serverAlias'>> & { relaunch?: boolean };
 	const updatePayload = req.body as TUpdatePayload;
 	const shouldRelaunch = updatePayload.relaunch ?? true;
 
@@ -256,6 +257,22 @@ serversRouter.put('/:id', async (req, res) => {
 		if (updatePayload.params.port > 0) {
 			server.port = updatePayload.params.port;
 		}
+	}
+	if (updatePayload.serverAlias !== undefined) {
+		// Check for removed aliases and clear sticky routes for this server
+		const oldAliases = new Set(server.serverAlias);
+		const newAliases = new Set(updatePayload.serverAlias);
+		for (const alias of oldAliases) {
+			if (!newAliases.has(alias)) {
+				// Alias was removed - check if there's a sticky route for it pointing to this server
+				const routes = await getStickyRoutesResolved();
+				const route = routes.find(r => r.alias === alias && r.serverId === server.id);
+				if (route) {
+					clearStickyRoute(alias);
+				}
+			}
+		}
+		server.serverAlias = updatePayload.serverAlias;
 	}
 
 	if (shouldRelaunch) {
