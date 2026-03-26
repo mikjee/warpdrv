@@ -27,7 +27,7 @@ export function PageHeader({ title, subtitle, icon, actions }: IPageHeaderProps)
 						borderRadius="xl"
 						alignItems="center"
 						justifyContent="center"
-						bg="rgba(51, 129, 255, 0.08)"
+						// bg="rgba(51, 129, 255, 0.08)"
 						color="#3381ff"
 						borderWidth="1px"
 						borderColor="rgba(51, 129, 255, 0.15)"

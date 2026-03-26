@@ -9,15 +9,21 @@ interface ICardProps {
 	borderColor?: string;
 	onClick?: () => void;
 	selected?: boolean;
+	hasGradient?: boolean;
+	gradientFrom?: string;
+	gradientTo?: string;
 }
 
-export function Card({ children, variant = 'default', accentColor, onClick, selected, bg, borderColor }: ICardProps) {
+export function Card({ children, variant = 'default', accentColor, onClick, selected, bg, borderColor, hasGradient, gradientFrom, gradientTo }: ICardProps) {
 	const isClickable = !!onClick;
 
 	return (
 		<Box
 			position="relative"
-			bg={bg ?? '#111114'}
+			bg={hasGradient && gradientFrom && gradientTo ? undefined : bg ?? '#111114'}
+			bgGradient={hasGradient && gradientFrom && gradientTo ? 'to-br' : undefined}
+			gradientFrom={hasGradient ? gradientFrom : undefined}
+			gradientTo={hasGradient ? gradientTo : undefined}
 			borderRadius="xl"
 			borderWidth="1px"
 			borderColor={selected ? 'rgba(51, 129, 255, 0.4)' : borderColor ?? 'rgba(255, 255, 255, 0.06)'}

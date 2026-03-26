@@ -28,6 +28,9 @@ const NAV_ITEMS: INavItem[] = [
 	{ path: '/backends', label: 'Backends', icon: <Blocks size={18} /> },
 	{ path: '/devices', label: 'Devices', icon: <Cpu size={18} /> },
 	{ path: '/hub', label: 'Hub', icon: <Globe size={18} /> },
+];
+
+const NAV_ITEMS_BOTTOM: INavItem[] = [
 	{ path: '/settings', label: 'Settings', icon: <Settings size={18} /> },
 	{ path: '/about', label: 'About', icon: <Info size={18} /> },
 ];
@@ -40,7 +43,7 @@ function SidebarLink({ item }: { item: INavItem }) {
 		<NavLink to={item.path} style={{ textDecoration: 'none', width: '100%' }}>
 			<HStack
 				gap="3"
-				px="3"
+				px="4"
 				py="2.5"
 				borderRadius="lg"
 				cursor="pointer"
@@ -73,32 +76,29 @@ export function Shell() {
 				direction="column"
 				w="220px"
 				minW="220px"
-				bg="#0c0c0f"
+				// bg="#0c0c0f"
 				borderRightWidth="1px"
 				borderColor="rgba(255, 255, 255, 0.06)"
 				p="4"
 				gap="1"
 			>
 				{/* Logo */}
-				<HStack gap="2.5" px="2" py="3" mb="4">
-					<Flex w="8" h="8" borderRadius="lg" overflow="hidden">
+				<HStack gap="3" px="3" py="5" mb="5">
+					<Flex w="12" h="12" borderRadius="lg" overflow="hidden" mr="3">
 						<img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
 					</Flex>
 					<Box>
 						<Text
-							fontSize="15px"
+							fontSize="16px"
 							fontWeight="700"
 							letterSpacing="-0.02em"
 							lineHeight="1.1"
 							bgGradient="to-r"
 							gradientFrom="#e4e4e7"
-							gradientTo="rgba(255, 255, 255, 0.6)"
+							gradientTo="orange.500"
 							bgClip="text"
 						>
-							warpcore.ai
-						</Text>
-						<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)" fontWeight="500" letterSpacing="0.05em" textTransform="uppercase">
-							v0.1.0
+							warpcore &gt;&gt;
 						</Text>
 					</Box>
 				</HStack>
@@ -111,17 +111,12 @@ export function Shell() {
 				</VStack>
 
 				{/* Footer */}
-				<Box px="2" py="2" borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.04)">
-					<a
-						href="https://www.github.com/mikjee"
-						target="_blank"
-						rel="noopener noreferrer"
-						style={{ textDecoration: 'none' }}
-					>
-						<Text fontSize="11px" color="rgba(255, 255, 255, 0.2)" _hover={{ color: 'rgba(255, 255, 255, 0.4)' }}>
-							@mikjee
-						</Text>
-					</a>
+				<Box px="2" py="2">
+					<VStack gap="1" align="stretch">
+						{NAV_ITEMS_BOTTOM.map(item => (
+							<SidebarLink key={item.path} item={item} />
+						))}
+					</VStack>
 				</Box>
 			</Flex>
 
