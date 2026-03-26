@@ -220,6 +220,9 @@ export interface IPresetCreatePayload {
 // Settings
 // ============================================================
 
+export type TSortField = 'name' | 'recency' | 'backend';
+export type TSortOrder = 'asc' | 'desc';
+
 export interface ISettings {
 	modelRoots: string[];
 	portRangeStart: number;
@@ -229,6 +232,8 @@ export interface ISettings {
 	autoLaunch: boolean;
 	proxyPort: number;
 	proxyEnabled: boolean;
+	serversSortField: TSortField;
+	serversSortOrder: TSortOrder;
 }
 
 export const DEFAULT_SETTINGS: ISettings = {
@@ -240,6 +245,8 @@ export const DEFAULT_SETTINGS: ISettings = {
 	autoLaunch: false,
 	proxyPort: 1234,
 	proxyEnabled: true,
+	serversSortField: 'name',
+	serversSortOrder: 'asc',
 };
 
 // ============================================================

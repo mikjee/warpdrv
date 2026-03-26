@@ -1,7 +1,7 @@
 import { store } from '../util/store';
 
 const SCHEMA_KEY = '_schemaVersion';
-const CURRENT_SCHEMA = 3;
+const CURRENT_SCHEMA = 4;
 
 // Each migration transforms data from version N to N+1
 // Add new migrations as the data shape evolves
@@ -47,6 +47,16 @@ const migrations: Record<number, TMigrationFn> = {
 		if (settings) {
 			if (settings.proxyPort === undefined) settings.proxyPort = 1234;
 			if (settings.proxyEnabled === undefined) settings.proxyEnabled = true;
+			await store.put('settings:general', settings);
+		}
+	},
+
+	// Migration v4: add servers sort settings
+	4: async () => {
+		const settings = await store.get<Record<string, unknown>>('settings:general');
+		if (settings) {
+			if (settings.serversSortField === undefined) settings.serversSortField = 'name';
+			if (settings.serversSortOrder === undefined) settings.serversSortOrder = 'asc';
 			await store.put('settings:general', settings);
 		}
 	},

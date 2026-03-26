@@ -5,6 +5,13 @@
 	"windows": ["main"],
 	"permissions": [
 		"core:default",
+		"core:window:allow-start-dragging",
+		"core:window:allow-minimize",
+		"core:window:allow-toggle-maximize",
+		"core:window:allow-is-maximized",
+		"core:window:allow-hide",
+		"core:window:allow-close",
+		"core:window:allow-start-resize-dragging",
 		"shell:allow-open",
 		"shell:allow-execute",
 		"shell:allow-spawn",

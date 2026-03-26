@@ -4,7 +4,7 @@ import {
 	Activity, Gauge, Cpu, Blocks, Terminal, Edit, Search, ChevronDown, ArrowUpAZ, ArrowDownZA
 } from 'lucide-react';
 import { FaBrain, FaBookOpen } from 'react-icons/fa6';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
 import { StatusBadge } from '../components/StatusBadge';
@@ -13,8 +13,8 @@ import { LaunchServerDialog } from '../components/dialogs/LaunchServerDialog';
 import { ServerLogs } from '../components/dialogs/ServerLogs';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
 import { useListQuery, useMutation } from '../hooks/useQuery';
-import { fetchServers, fetchBackends, fetchModels, stopServer, restartServer, removeServer } from '../api/services';
-import type { IServer, IBackend, IModel } from '@warpcore/shared';
+import { fetchServers, fetchBackends, fetchModels, stopServer, restartServer, removeServer, fetchSettings, updateSettings } from '../api/services';
+import type { IServer, IBackend, IModel, TSortField, TSortOrder } from '@warpcore/shared';
 import { EServerStatus } from '@warpcore/shared';
 
 function formatUptime(startedAt: number | null): string {
@@ -36,16 +36,13 @@ function StatPill({ icon, label, value }: { icon: React.ReactNode; label: string
 	);
 }
 
-type SortField = 'name' | 'recency' | 'backend';
-type SortOrder = 'asc' | 'desc';
-
-const FIELD_LABELS: Record<SortField, string> = {
+const FIELD_LABELS: Record<TSortField, string> = {
 	name: 'Name',
 	recency: 'Recently Used',
 	backend: 'Backend',
 };
 
-function toggleSortOrder(order: SortOrder): SortOrder {
+function toggleSortOrder(order: TSortOrder): TSortOrder {
 	return order === 'asc' ? 'desc' : 'asc';
 }
 
@@ -58,9 +55,24 @@ export function ServersPage() {
 
 	// Filter and sort state
 	const [searchQuery, setSearchQuery] = useState('');
-	const [sortField, setSortField] = useState<SortField>('name');
-	const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+	const [sortField, setSortField] = useState<TSortField>('name');
+	const [sortOrder, setSortOrder] = useState<TSortOrder>('asc');
 	const [runningOnly, setRunningOnly] = useState(false);
+
+	// Load persisted sort settings on mount
+	useEffect(() => {
+		fetchSettings().then((result) => {
+			if (result.ok && result.data) {
+				setSortField(result.data.serversSortField);
+				setSortOrder(result.data.serversSortOrder);
+			}
+		});
+	}, []);
+
+	// Save sort settings when they change
+	useEffect(() => {
+		updateSettings({ serversSortField: sortField, serversSortOrder: sortOrder });
+	}, [sortField, sortOrder]);
 
 	// Build lookup maps
 	const backendMap = new Map(backends.map(b => [b.id, b]));
@@ -107,7 +119,7 @@ export function ServersPage() {
 
 		// Apply sorting
 		result.sort((a, b) => {
-			let comparison: number;
+			let comparison = 0;
 
 			switch (sortField) {
 				case 'name':
@@ -229,7 +241,7 @@ export function ServersPage() {
 					<HStack gap="1.5">
 						{(() => {
 							const sortCollection = createListCollection({
-								items: (Object.keys(FIELD_LABELS) as SortField[]).map(f => ({ value: f, label: FIELD_LABELS[f] })),
+								items: (Object.keys(FIELD_LABELS) as TSortField[]).map(f => ({ value: f, label: FIELD_LABELS[f] })),
 								itemToString: (item) => item.label,
 							});
 							return (
@@ -237,7 +249,7 @@ export function ServersPage() {
 									collection={sortCollection}
 									value={[sortField]}
 									onValueChange={(details) => {
-										const val = details.value?.[0] as SortField;
+										const val = details.value?.[0] as TSortField;
 										if (val) setSortField(val);
 									}}
 								>

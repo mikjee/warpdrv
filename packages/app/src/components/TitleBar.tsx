@@ -1,9 +1,13 @@
-import { useState, useEffect } from 'react';
-import { Flex, Text, HStack, Box } from '@chakra-ui/react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Flex, Text, HStack } from '@chakra-ui/react';
 import { Minus, Square, X, Copy } from 'lucide-react';
 
 // Only true when running inside Tauri webview
 const isTauri = !!(window as any).__TAURI_INTERNALS__;
+
+// Minimum pixels of mouse movement before initiating window drag.
+// Prevents startDragging from eating mouseup on simple clicks.
+const DRAG_THRESHOLD = 4;
 
 function WindowButton({ onClick, children, isClose }: {
 	onClick: () => void;
@@ -27,7 +31,11 @@ function WindowButton({ onClick, children, isClose }: {
 				bg: isClose ? 'rgba(255, 60, 60, 0.3)' : 'rgba(255, 255, 255, 0.08)',
 				color: isClose ? '#ff6b6b' : 'rgba(255, 255, 255, 0.9)',
 			}}
-			onClick={onClick}
+			onClick={(e) => {
+				e.stopPropagation();
+				e.preventDefault();
+				onClick();
+			}}
 		>
 			{children}
 		</Flex>
@@ -36,6 +44,8 @@ function WindowButton({ onClick, children, isClose }: {
 
 export function TitleBar() {
 	const [isMaximized, setIsMaximized] = useState(false);
+	const dragOrigin = useRef<{ x: number; y: number } | null>(null);
+	const isDragging = useRef(false);
 
 	useEffect(() => {
 		if (!isTauri) return;
@@ -46,10 +56,8 @@ export function TitleBar() {
 			const { getCurrentWindow } = await import('@tauri-apps/api/window');
 			const win = getCurrentWindow();
 
-			// Check initial state
 			setIsMaximized(await win.isMaximized());
 
-			// Listen for resize events to track maximize state
 			unlisten = await win.onResized(async () => {
 				setIsMaximized(await win.isMaximized());
 			});
@@ -58,6 +66,53 @@ export function TitleBar() {
 		return () => {
 			if (unlisten) unlisten();
 		};
+	}, []);
+
+	// Track mouse movement after mousedown to decide if this is a drag
+	useEffect(() => {
+		const handleMouseMove = async (e: MouseEvent) => {
+			if (!dragOrigin.current || isDragging.current) return;
+
+			const dx = Math.abs(e.clientX - dragOrigin.current.x);
+			const dy = Math.abs(e.clientY - dragOrigin.current.y);
+
+			if (dx >= DRAG_THRESHOLD || dy >= DRAG_THRESHOLD) {
+				isDragging.current = true;
+				const { getCurrentWindow } = await import('@tauri-apps/api/window');
+				getCurrentWindow().startDragging();
+			}
+		};
+
+		const handleMouseUp = () => {
+			dragOrigin.current = null;
+			isDragging.current = false;
+		};
+
+		window.addEventListener('mousemove', handleMouseMove);
+		window.addEventListener('mouseup', handleMouseUp);
+
+		return () => {
+			window.removeEventListener('mousemove', handleMouseMove);
+			window.removeEventListener('mouseup', handleMouseUp);
+		};
+	}, []);
+
+	const handleMouseDown = useCallback((e: React.MouseEvent) => {
+		if (e.button !== 0) return;
+		const target = e.target as HTMLElement;
+		if (target.closest('button')) return;
+
+		dragOrigin.current = { x: e.clientX, y: e.clientY };
+		isDragging.current = false;
+	}, []);
+
+	// Double click to toggle maximize
+	const handleDoubleClick = useCallback(async (e: React.MouseEvent) => {
+		const target = e.target as HTMLElement;
+		if (target.closest('button')) return;
+
+		const { getCurrentWindow } = await import('@tauri-apps/api/window');
+		getCurrentWindow().toggleMaximize();
 	}, []);
 
 	if (!isTauri) return null;
@@ -87,8 +142,8 @@ export function TitleBar() {
 			justify="space-between"
 			borderBottomWidth="1px"
 			borderColor="rgba(255, 255, 255, 0.06)"
-			// @ts-ignore — Tauri v2 recognizes this attribute for window dragging
-			data-tauri-drag-region=""
+			onMouseDown={handleMouseDown}
+			onDoubleClick={handleDoubleClick}
 			style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
 		>
 			{/* Title */}
