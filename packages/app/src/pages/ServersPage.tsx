@@ -1,10 +1,10 @@
-import { Box, Text, HStack, VStack, Flex, Button, Spinner, Badge } from '@chakra-ui/react';
+import { Box, Text, HStack, VStack, Flex, Button, Spinner, Badge, Input, Switch, InputGroup, Combobox, createListCollection, Portal } from '@chakra-ui/react';
 import {
 	Play, Square, RotateCcw, Plus, Server, Clock, Trash2,
-	Activity, Gauge, Cpu, Blocks, Terminal, Edit
+	Activity, Gauge, Cpu, Blocks, Terminal, Edit, Search, ChevronDown, ArrowUpAZ, ArrowDownZA
 } from 'lucide-react';
 import { FaBrain, FaBookOpen } from 'react-icons/fa6';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
 import { StatusBadge } from '../components/StatusBadge';
@@ -36,12 +36,31 @@ function StatPill({ icon, label, value }: { icon: React.ReactNode; label: string
 	);
 }
 
+type SortField = 'name' | 'recency' | 'backend';
+type SortOrder = 'asc' | 'desc';
+
+const FIELD_LABELS: Record<SortField, string> = {
+	name: 'Name',
+	recency: 'Recently Used',
+	backend: 'Backend',
+};
+
+function toggleSortOrder(order: SortOrder): SortOrder {
+	return order === 'asc' ? 'desc' : 'asc';
+}
+
 export function ServersPage() {
 	const fetcher = useCallback(() => fetchServers(), []);
 	const { data: servers, loading, refetch } = useListQuery<IServer>(fetcher, { pollInterval: 3000 });
 
 	const { data: backends } = useListQuery<IBackend>(useCallback(() => fetchBackends(), []), { pollInterval: 0 });
 	const { data: models } = useListQuery<IModel>(useCallback(() => fetchModels(), []), { pollInterval: 0 });
+
+	// Filter and sort state
+	const [searchQuery, setSearchQuery] = useState('');
+	const [sortField, setSortField] = useState<SortField>('name');
+	const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+	const [runningOnly, setRunningOnly] = useState(false);
 
 	// Build lookup maps
 	const backendMap = new Map(backends.map(b => [b.id, b]));
@@ -51,6 +70,67 @@ export function ServersPage() {
 			modelByPath.set(m.primaryFile.filePath, m);
 		}
 	});
+
+	// Fuzzy search matching against multiple fields
+	function matchesSearch(server: IServer, query: string): boolean {
+		if (!query.trim()) return true;
+		const q = query.toLowerCase();
+		const backend = backendMap.get(server.backendId);
+		const model = modelByPath.get(server.modelPath);
+
+		// Search against: serverName, aliases, backend name, device, model name/path
+		const searchableParts = [
+			server.serverName,
+			...(server.serverAlias ?? []),
+			backend?.name ?? '',
+			getDeviceName(server),
+			model?.name ?? '',
+			model?.primaryFile?.filePath ?? server.modelPath,
+		];
+
+		return searchableParts.some(part => part?.toLowerCase().includes(q));
+	}
+
+	// Filter and sort servers
+	const filteredServers = useMemo(() => {
+		let result = [...servers];
+
+		// Apply search filter
+		if (searchQuery.trim()) {
+			result = result.filter(s => matchesSearch(s, searchQuery));
+		}
+
+		// Apply running-only filter
+		if (runningOnly) {
+			result = result.filter(s => s.status === EServerStatus.RUNNING);
+		}
+
+		// Apply sorting
+		result.sort((a, b) => {
+			let comparison: number;
+
+			switch (sortField) {
+				case 'name':
+					comparison = a.serverName.localeCompare(b.serverName);
+					break;
+				case 'recency':
+					const aStarted = a.startedAt ?? 0;
+					const bStarted = b.startedAt ?? 0;
+					comparison = bStarted - aStarted; // newer first by default (desc)
+					break;
+				case 'backend': {
+					const backendA = backendMap.get(a.backendId)?.name ?? '';
+					const backendB = backendMap.get(b.backendId)?.name ?? '';
+					comparison = backendA.localeCompare(backendB);
+					break;
+				}
+			}
+
+			return sortOrder === 'asc' ? comparison : -comparison;
+		});
+
+		return result;
+	}, [servers, searchQuery, sortField, sortOrder, runningOnly, backendMap]);
 
 	// Get backend type from detected devices
 	function getBackendType(backendId: string): string {
@@ -122,25 +202,151 @@ export function ServersPage() {
 					</Button>
 				}
 			/>
+
+			{/* Subheader: Search, Sort, Running Only */}
+			<Box px="8" py="4" borderBottomWidth="1px" borderColor="rgba(255, 255, 255, 0.06)">
+				<Flex gap="4" align="center" flexWrap="wrap">
+					{/* Search Input */}
+					<Box flex="1" minW="200px" maxW="300px">
+						<InputGroup startElement={<Search size={14} color="rgba(255, 255, 255, 0.3)" />}>
+							<Input
+								placeholder="Search servers..."
+								size="sm"
+								bg="rgba(255, 255, 255, 0.03)"
+								borderColor="rgba(255, 255, 255, 0.08)"
+								color="rgba(255, 255, 255, 0.7)"
+								fontSize="13px"
+								borderRadius="lg"
+								_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
+								_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
+								value={searchQuery}
+								onChange={e => setSearchQuery(e.target.value)}
+							/>
+						</InputGroup>
+					</Box>
+
+					{/* Sort Field Dropdown + Order Buttons */}
+					<HStack gap="1.5">
+						{(() => {
+							const sortCollection = createListCollection({
+								items: (Object.keys(FIELD_LABELS) as SortField[]).map(f => ({ value: f, label: FIELD_LABELS[f] })),
+								itemToString: (item) => item.label,
+							});
+							return (
+								<Combobox.Root
+									collection={sortCollection}
+									value={[sortField]}
+									onValueChange={(details) => {
+										const val = details.value?.[0] as SortField;
+										if (val) setSortField(val);
+									}}
+								>
+									<Combobox.Control>
+										<Combobox.Trigger asChild>
+											<Button
+												variant="outline"
+												size="sm"
+												w="130px"
+												justifyContent="space-between"
+												bg="rgba(255, 255, 255, 0.03)"
+												borderColor="rgba(255, 255, 255, 0.08)"
+												color="rgba(255, 255, 255, 0.7)"
+												fontSize="13px"
+												borderRadius="lg"
+											>
+												{FIELD_LABELS[sortField]}
+												<ChevronDown size={14} />
+											</Button>
+										</Combobox.Trigger>
+									</Combobox.Control>
+									<Portal>
+										<Combobox.Positioner>
+											<Combobox.Content
+												maxH="200px" overflowY="auto"
+												bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
+												borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
+											>
+												{sortCollection.items.map((item) => (
+													<Combobox.Item
+														key={item.value}
+														item={item}
+														px="3" py="2" borderRadius="md" cursor="pointer"
+														_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
+														_highlighted={{ bg: 'rgba(51, 129, 255, 0.08)' }}
+													>
+														<Text fontSize="12px" color="#e4e4e7">{item.label}</Text>
+														<Combobox.ItemIndicator />
+													</Combobox.Item>
+												))}
+											</Combobox.Content>
+										</Combobox.Positioner>
+									</Portal>
+								</Combobox.Root>
+							);
+						})()}
+						<HStack gap="0.5" flexShrink={0}>
+							<Button
+								size="sm"
+								variant="ghost"
+								p="1" minW="auto"
+								color={sortOrder === 'asc' ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'}
+								bg={sortOrder === 'asc' ? 'rgba(51, 129, 255, 0.08)' : 'transparent'}
+								_hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }}
+								borderRadius="md"
+								onClick={() => setSortOrder(toggleSortOrder(sortOrder))}
+							>
+								<ArrowUpAZ size={14} />
+							</Button>
+							<Button
+								size="sm"
+								variant="ghost"
+								p="1" minW="auto"
+								color={sortOrder === 'desc' ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'}
+								bg={sortOrder === 'desc' ? 'rgba(51, 129, 255, 0.08)' : 'transparent'}
+								_hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }}
+								borderRadius="md"
+								onClick={() => setSortOrder(toggleSortOrder(sortOrder))}
+							>
+								<ArrowDownZA size={14} />
+							</Button>
+						</HStack>
+					</HStack>
+
+					{/* Running Only Toggle */}
+					<Switch.Root label="Show only running servers" checked={runningOnly} onCheckedChange={(details) => setRunningOnly(details.checked)} color={runningOnly ? '#34d399' : 'rgba(255, 255, 255, 0.4)'}>
+						<Switch.HiddenInput />
+						<Switch.Control />
+						<Switch.Label ml="2" fontSize="13px" color={runningOnly ? '#34d399' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
+							Running only
+						</Switch.Label>
+					</Switch.Root>
+
+					{/* Results count */}
+					<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)" fontFamily='"Geist Mono", monospace'>
+						{filteredServers.length} {filteredServers.length === 1 ? 'server' : 'servers'}
+					</Text>
+				</Flex>
+			</Box>
+
 			<Box p="8">
-				{loading && servers.length === 0 ? (
+				{loading && filteredServers.length === 0 ? (
 					<Flex h="200px" alignItems="center" justifyContent="center">
 						<Spinner size="lg" color="rgba(255, 255, 255, 0.2)" />
 					</Flex>
-				) : servers.length === 0 ? (
+				) : filteredServers.length === 0 ? (
 					<Flex
 						h="300px" alignItems="center" justifyContent="center"
 						borderWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" borderRadius="xl" borderStyle="dashed"
 					>
 						<VStack gap="3" color="rgba(255, 255, 255, 0.2)">
 							<Server size={40} />
-							<Text fontSize="14px">No servers running</Text>
-							<Text fontSize="12px" color="rgba(255, 255, 255, 0.15)">Click "Launch Server" to get started</Text>
+							<Text fontSize="14px">{servers.length === 0 ? 'No servers running' : 'No matching servers'}</Text>
+							<Text fontSize="12px" color="rgba(255, 255, 255, 0.15)">{servers.length === 0 ? 'Click "Launch Server" to get started' : 'Try adjusting your filters or search query'}</Text>
 						</VStack>
 					</Flex>
 				) : (
 					<VStack align="stretch" gap="4">
-						{servers.map(server => {
+						{filteredServers.map(server => {
 							const isRunning = server.status === EServerStatus.RUNNING;
 							const isLoading = server.status === EServerStatus.LOADING;
 
