@@ -127,4 +127,46 @@ export async function deletePreset(id: string) {
 	return api.del<null>(`/presets/${id}`);
 }
 
+// ============================================================
+// Proxy
+// ============================================================
+
+export interface IProxyStatus {
+	enabled: boolean;
+	port: number;
+	running: boolean; // whether the proxy server instance is actually running
+	healthy: boolean; // actual health from /health endpoint probe (only meaningful when running)
+	error: string | null; // error message if proxy failed to start
+}
+
+export interface IStickyRouteInfo {
+	alias: string;
+	serverId: string;
+	serverName: string | null;
+}
+
+export async function fetchProxyStatus() {
+	return api.get<IProxyStatus>('/proxy/status');
+}
+
+export async function fetchStickyRoutes() {
+	return api.getList<IStickyRouteInfo>('/proxy/routes');
+}
+
+export async function clearStickyRoute(alias: string) {
+	return api.del<{ cleared: boolean }>(`/proxy/routes/${encodeURIComponent(alias)}`);
+}
+
+export async function clearAllStickyRoutes() {
+	return api.del<null>('/proxy/routes');
+}
+
+export async function startProxy() {
+	return api.post<null>('/proxy/start');
+}
+
+export async function stopProxy() {
+	return api.post<null>('/proxy/stop');
+}
+
 export * from './hub-services';

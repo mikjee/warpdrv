@@ -8,6 +8,7 @@ import { BackendsPage } from './pages/BackendsPage';
 import { ServersPage } from './pages/ServersPage';
 import { HubPage } from './pages/HubPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { ProxyPage } from './pages/ProxyPage';
 import { fetchSettings, scanModels } from './api/services';
 import { useToast } from './components/ToastProvider';
 
@@ -40,6 +41,7 @@ export function App() {
 				<Route path="/backends" element={<BackendsPage />} />
 				<Route path="/servers" element={<ServersPage />} />
 				<Route path="/hub" element={<HubPage />} />
+				<Route path="/proxy" element={<ProxyPage />} />
 				<Route path="/settings" element={<SettingsPage />} />
 			</Route>
 		</Routes>

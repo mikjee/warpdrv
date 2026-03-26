@@ -10,6 +10,10 @@ const SETTINGS_KEY = 'settings:general';
 // Sticky routing: alias -> serverId
 const stickyRoutes = new Map<string, string>();
 
+// Store the proxy server instance for dynamic start/stop
+let proxyServerInstance: http.Server | null = null;
+let proxyError: string | null = null; // in-memory error state
+
 // Find a running server for the given alias
 async function resolveServer(alias: string): Promise<IServer | null> {
 	const servers = await store.list<IServer>(SERVERS_PREFIX);
@@ -101,14 +105,40 @@ function extractModelFromBody(req: express.Request): string | null {
 	return null;
 }
 
-export async function startModelProxy(): Promise<http.Server | null> {
-	const settings = await store.get<ISettings>(SETTINGS_KEY) ?? DEFAULT_SETTINGS;
+export interface IStickyRouteInfo {
+	alias: string;
+	serverId: string;
+	serverName: string | null; // null if server no longer exists
+}
 
-	if (!settings.proxyEnabled) {
-		console.log('[WarpCore] Model proxy disabled in settings');
-		return null;
+// Get sticky routes with resolved server names from store
+export async function getStickyRoutesResolved(): Promise<IStickyRouteInfo[]> {
+	const servers = await store.list<IServer>(SERVERS_PREFIX);
+	const serverMap = new Map(servers.map(s => [s.id, s.serverName]));
+
+	const routes: IStickyRouteInfo[] = [];
+	for (const [alias, serverId] of stickyRoutes.entries()) {
+		routes.push({
+			alias,
+			serverId,
+			serverName: serverMap.get(serverId) || null,
+		});
 	}
+	return routes;
+}
 
+// Clear a specific sticky route by alias
+export function clearStickyRoute(alias: string): boolean {
+	return stickyRoutes.delete(alias);
+}
+
+// Clear all sticky routes
+export function clearAllStickyRoutes(): void {
+	stickyRoutes.clear();
+}
+
+// Create the proxy app (shared between start and restart)
+function createProxyApp(): express.Express {
 	const app = express();
 
 	// Parse JSON body but keep it available for piping
@@ -141,7 +171,12 @@ export async function startModelProxy(): Promise<http.Server | null> {
 	});
 
 	// Catch-all for /v1/* — route by model alias
-	app.all('/v1/*', async (req, res) => {
+	// Express 5 router uses different syntax - use a middleware approach
+	app.use('/v1/', async (req, res, next) => {
+		// Skip the /models endpoint which is handled separately
+		if (req.path === '/models' || req.path.startsWith('/models')) {
+			return next();
+		}
 		const model = extractModelFromBody(req);
 
 		if (!model) {
@@ -222,17 +257,61 @@ export async function startModelProxy(): Promise<http.Server | null> {
 		res.json({ status: 'ok', service: 'warpcore-proxy' });
 	});
 
+	return app;
+}
+
+export interface StartProxyResult {
+	success: boolean;
+	server?: http.Server;
+	error?: string;
+}
+
+export async function startModelProxy(): Promise<StartProxyResult> {
+	const settings = await store.get<ISettings>(SETTINGS_KEY) ?? DEFAULT_SETTINGS;
+
+	const app = createProxyApp();
 	const port = settings.proxyPort ?? 1234;
 
 	return new Promise((resolve) => {
 		const server = app.listen(port, '0.0.0.0', () => {
 			console.log(`[WarpCore] Model proxy listening on 0.0.0.0:${port}`);
-			resolve(server);
+			proxyServerInstance = server;
+			proxyError = null;
+			resolve({ success: true, server });
 		});
 
 		server.on('error', (err) => {
-			console.error(`[WarpCore] Model proxy failed to start: ${err.message}`);
-			resolve(null);
+			const errorMsg = err.message || 'Unknown error';
+			console.error(`[WarpCore] Model proxy failed to start: ${errorMsg}`);
+			proxyError = errorMsg;
+			resolve({ success: false, error: errorMsg });
 		});
 	});
+}
+
+export async function stopModelProxy(): Promise<void> {
+	if (!proxyServerInstance) {
+		proxyError = null;
+		console.log('[WarpCore] Model proxy not running');
+		return;
+	}
+
+	const server = proxyServerInstance;
+	proxyServerInstance = null;
+	proxyError = null;
+
+	return new Promise((resolve) => {
+		server.close(() => {
+			console.log('[WarpCore] Model proxy stopped');
+			resolve();
+		});
+	});
+}
+
+export function getModelProxyInstance(): http.Server | null {
+	return proxyServerInstance;
+}
+
+export function getProxyError(): string | null {
+	return proxyError;
 }

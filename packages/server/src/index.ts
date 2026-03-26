@@ -11,6 +11,7 @@ import type { ISettings } from '@warpcore/shared';
 import { DEFAULT_SETTINGS } from '@warpcore/shared';
 import { runMigrations } from './services/migrationRunner';
 import { updateRouter } from './routes/update';
+import { proxyRouter } from './routes/proxy';
 import { startModelProxy } from './services/modelProxy';
 
 const SETTINGS_KEY = 'settings:general';
@@ -41,6 +42,7 @@ async function main() {
 	app.use('/api/presets', presetsRouter);
 	app.use('/api/hub', hubRouter);
 	app.use('/api/update', updateRouter);
+	app.use('/api/proxy', proxyRouter);
 
 	// Stats endpoint — returns live stats for a running server
 	app.get('/api/servers/:id/stats', (req, res) => {
@@ -66,8 +68,10 @@ async function main() {
 		console.log(`[WarpCore] API server listening on ${host}:${port}`);
 	});
 
-	// Start model proxy
-	await startModelProxy();
+	// Start model proxy if enabled in settings
+	if (currentSettings.proxyEnabled) {
+		await startModelProxy();
+	}
 }
 
 main().catch(err => {

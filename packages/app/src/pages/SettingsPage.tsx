@@ -5,10 +5,12 @@ import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
 import { useQuery, useMutation } from '../hooks/useQuery';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
-import { fetchSettings, updateSettings } from '../api/services';
+import { fetchSettings, updateSettings, startProxy, stopProxy } from '../api/services';
 import type { ISettings } from '@warpcore/shared';
+import { useToast } from '../components/ToastProvider';
 
 export function SettingsPage() {
+	const { toast } = useToast();
 	const fetcher = useCallback(() => fetchSettings(), []);
 	const { data: settings, loading, refetch } = useQuery<ISettings>(fetcher);
 
@@ -17,6 +19,8 @@ export function SettingsPage() {
 	const [portEnd, setPortEnd] = useState(8099);
 	const [apiHost, setApiHost] = useState('0.0.0.0');
 	const [apiPort, setApiPort] = useState(4400);
+	const [proxyEnabled, setProxyEnabled] = useState(false);
+	const [proxyPort, setProxyPort] = useState(1234);
 	const [autoLaunch, setAutoLaunch] = useState(false);
 	const [newRoot, setNewRoot] = useState('');
 	const [saved, setSaved] = useState(false);
@@ -33,6 +37,8 @@ export function SettingsPage() {
 			setPortEnd(settings.portRangeEnd);
 			setApiHost(settings.apiHost);
 			setApiPort(settings.apiPort);
+			setProxyEnabled(settings.proxyEnabled ?? false);
+			setProxyPort(settings.proxyPort ?? 1234);
 			setAutoLaunch(settings.autoLaunch ?? false);
 		}
 	}, [settings]);
@@ -64,14 +70,31 @@ export function SettingsPage() {
 			setNewRoot('');
 		}
 
-		await saveMut.mutate({
+		const result = await saveMut.mutate({
 			modelRoots,
 			portRangeStart: portStart,
 			portRangeEnd: portEnd,
 			apiHost,
 			apiPort,
+			proxyEnabled,
+			proxyPort,
 			autoLaunch,
 		});
+
+		if (saveMut.error) {
+			toast('error', saveMut.error);
+			return;
+		}
+
+		// Start/stop proxy if enabled state changed
+		const oldProxyEnabled = settings?.proxyEnabled ?? false;
+		if (proxyEnabled !== oldProxyEnabled) {
+			if (proxyEnabled) {
+				await startProxy();
+			} else {
+				await stopProxy();
+			}
+		}
 
 		// Apply autostart setting via Tauri plugin built-in commands
 		try {
@@ -197,6 +220,28 @@ export function SettingsPage() {
 								<Input value={apiHost} onChange={e => setApiHost(e.target.value)} size="sm" w="140px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
 								<Text fontSize="13px" color="rgba(255, 255, 255, 0.25)">:</Text>
 								<Input value={apiPort} onChange={e => setApiPort(Number(e.target.value))} type="number" size="sm" w="100px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
+							</HStack>
+						</VStack>
+					</Card>
+
+					{/* Proxy */}
+					<Card>
+						<VStack align="stretch" gap="4">
+							<HStack justify="space-between" alignItems="center" mb="2">
+								<Box flex="1">
+									<Text fontSize="14px" fontWeight="600" color="#e4e4e7">Model Proxy</Text>
+									<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)">
+										OpenAI-compatible proxy for routing requests by model alias
+									</Text>
+								</Box>
+								<Switch.Root checked={proxyEnabled} onCheckedChange={(details) => setProxyEnabled(details.checked)}>
+									<Switch.HiddenInput />
+									<Switch.Control />
+								</Switch.Root>
+							</HStack>
+							<HStack gap="3">
+								<Text fontSize="13px" color="rgba(255, 255, 255, 0.4)">Proxy Port:</Text>
+								<Input value={proxyPort} onChange={e => setProxyPort(Number(e.target.value))} type="number" size="sm" w="100px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} disabled={!proxyEnabled} />
 							</HStack>
 						</VStack>
 					</Card>
