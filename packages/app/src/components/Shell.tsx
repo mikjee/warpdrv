@@ -10,6 +10,7 @@ import {
 	Globe,
 	Info,
 } from 'lucide-react';
+import { BsRouter } from "react-icons/bs";
 import { UpdateBanner } from './UpdateBanner';
 import type { ReactNode } from 'react';
 
@@ -21,7 +22,7 @@ interface INavItem {
 
 const NAV_ITEMS: INavItem[] = [
 	{ path: '/servers', label: 'Servers', icon: <Play size={18} /> },
-	{ path: '/proxy', label: 'Proxy', icon: <Zap size={18} /> },
+	{ path: '/proxy', label: 'Router', icon: <BsRouter size={18} /> },
 	{ path: '/models', label: 'Models', icon: <FolderOpen size={18} /> },
 	{ path: '/backends', label: 'Backends', icon: <Blocks size={18} /> },
 	{ path: '/devices', label: 'Devices', icon: <Cpu size={18} /> },

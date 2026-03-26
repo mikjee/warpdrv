@@ -112,7 +112,54 @@ No auto-updater or signing keys. Simple version check:
 4. Upload .AppImage and .deb to the release
 5. Push release.json to main branch (triggers update check for running instances)
 
-## Hub (HuggingFace Browser)
+## Model Proxy
+
+OpenAI-compatible API that routes requests to backend llama-server instances by model alias:
+
+- Runs on configurable port (default 1234) via `proxyPort` in settings
+- Enabled/disabled via `proxyEnabled` flag in settings
+- Exposes OpenAI-compatible `/v1/*` endpoints
+- `GET /v1/models` lists all registered aliases across all servers
+- Requests routed by `model` field in POST body (e.g., `{"model": "alias-name", ...}`)
+- **Sticky routing:** Once an alias resolves to a server, it sticks to that server until it stops
+- If sticky server dies, route clears and next request picks another running server with same alias
+- If no server with alias is running, returns 503; if alias doesn't exist, returns 404 with available aliases
+- Streams responses directly from llama-server (supports streaming completions)
+- Error handling: 502 if target server not responding, clears sticky route on failure
+
+### Proxy API Routes
+
+```
+GET    /api/proxy/status        — Proxy status (enabled, port, running, healthy, error)
+GET    /api/proxy/routes        — List current sticky routes (alias → server mapping)
+DELETE /api/proxy/routes        — Clear all sticky routes
+DELETE /api/proxy/routes/:alias — Clear specific sticky route by alias
+POST   /api/proxy/start         — Start proxy server
+POST   /api/proxy/stop          — Stop proxy server
+```
+
+### Proxy Request Flow
+
+1. Client sends request to `http://localhost:{proxyPort}/v1/chat/completions` with `{"model": "my-alias", ...}`
+2. Proxy extracts `model` field from request body
+3. Checks sticky route map for alias → serverId mapping
+4. If sticky exists and server running, use it; otherwise find first healthy running server with that alias
+5. Sets sticky route for future requests
+6. Forwards request to `http://127.0.0.1:{serverPort}/v1/chat/completions`
+7. Streams response directly back to client
+
+### Hub API Routes
+
+```
+GET    /api/hub/search?q=&sort=&params_min=&params_max=
+GET    /api/hub/model/:author/:name
+POST   /api/hub/download
+GET    /api/hub/downloads
+POST   /api/hub/downloads/:id/pause
+POST   /api/hub/downloads/:id/resume
+POST   /api/hub/downloads/:id/cancel
+DELETE /api/hub/downloads/history
+```
 
 Browse and download GGUF models from HuggingFace:
 
@@ -168,6 +215,11 @@ GET/POST/DELETE  /api/presets
 GET              /api/update/check
 GET              /api/update/version
 GET              /api/health
+GET              /api/proxy/status
+GET/DELETE       /api/proxy/routes
+GET/DELETE       /api/proxy/routes/:alias
+POST             /api/proxy/start
+POST             /api/proxy/stop
 ```
 
 ## Data Persistence (JSON File)
@@ -215,6 +267,9 @@ This was built for a specific setup but should work generically:
 - Tauri desktop wrapper with tray, close-to-tray, server auto-respawn
 - Update check banner with version comparison
 - Release script for building and versioning
+- Model proxy server with OpenAI-compatible routing by alias
+- Sticky routing (alias → server mapping persists until server stops)
+- Proxy status/routes management API
 
 ## What's NOT Yet Implemented
 

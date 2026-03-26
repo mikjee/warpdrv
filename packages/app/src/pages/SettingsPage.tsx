@@ -229,18 +229,20 @@ export function SettingsPage() {
 						<VStack align="stretch" gap="4">
 							<HStack justify="space-between" alignItems="center" mb="2">
 								<Box flex="1">
-									<Text fontSize="14px" fontWeight="600" color="#e4e4e7">Model Proxy</Text>
+									<Text fontSize="14px" fontWeight="600" color="#e4e4e7">Router</Text>
 									<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)">
-										OpenAI-compatible proxy for routing requests by model alias
+										OpenAI-compatible proxy for routing requests by server alias
 									</Text>
 								</Box>
-								<Switch.Root checked={proxyEnabled} onCheckedChange={(details) => setProxyEnabled(details.checked)}>
-									<Switch.HiddenInput />
-									<Switch.Control />
-								</Switch.Root>
 							</HStack>
 							<HStack gap="3">
-								<Text fontSize="13px" color="rgba(255, 255, 255, 0.4)">Proxy Port:</Text>
+								<Switch.Root label='Start router on App launch' checked={proxyEnabled} onCheckedChange={(details) => setProxyEnabled(details.checked)} color={proxyEnabled ? '#34d399' : 'rgba(255, 255, 255, 0.4)'}>
+									<Switch.HiddenInput />
+									<Switch.Control />
+									<Switch.Label ml="2" fontSize="13px" color={proxyEnabled ? '#34d399' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
+										Start router on App launch
+									</Switch.Label>
+								</Switch.Root>
 								<Input value={proxyPort} onChange={e => setProxyPort(Number(e.target.value))} type="number" size="sm" w="100px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} disabled={!proxyEnabled} />
 							</HStack>
 						</VStack>

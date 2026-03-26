@@ -287,6 +287,7 @@ export function ServersPage() {
 						modelPath: editingServer.modelPath,
 						mmprojPath: editingServer.mmprojPath ?? null,
 						serverName: editingServer.serverName,
+						serverAlias: editingServer.serverAlias ?? [],
 						params: editingServer.params,
 					}}
 				/>

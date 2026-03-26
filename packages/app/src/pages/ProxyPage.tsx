@@ -8,6 +8,7 @@ import { useQuery, useListQuery, useMutation } from '../hooks/useQuery';
 import { fetchProxyStatus, fetchStickyRoutes, clearStickyRoute, clearAllStickyRoutes, startProxy, stopProxy } from '../api/services';
 import type { IProxyStatus, IStickyRouteInfo } from '../api/services';
 import { useToast } from '../components/ToastProvider';
+import { BsRouter } from 'react-icons/bs';
 
 function StatPill({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
 	return (
@@ -138,9 +139,9 @@ export function ProxyPage() {
 	return (
 		<Box>
 			<PageHeader
-				title="Proxy"
+				title="Router"
 				subtitle={status ? getStatusSubtitle(status, routes?.length ?? 0) : '-'}
-				icon={<Globe size={20} />}
+				icon={<BsRouter size={20} />}
 				actions={
 					status?.enabled && routes?.length > 0 ? (
 						<Button
@@ -173,11 +174,11 @@ export function ProxyPage() {
 										borderWidth="1px"
 										borderColor={status ? getIconBorder(status) : 'rgba(255, 255, 255, 0.06)'}
 									>
-										<Globe size={18} color={status ? getIconColor(status) : 'rgba(255, 255, 255, 0.3)'} />
+										<BsRouter size={18} color={status ? getIconColor(status) : 'rgba(255, 255, 255, 0.3)'} />
 										{!status?.error && status?.running && status?.healthy && <Box position="absolute" top="-1px" right="-1px" w="8px" h="8px" borderRadius="full" bg="#34d399" shadow="0 0 8px #34d399" />}
 									</Flex>
 									<Box>
-										<Text fontSize="15px" fontWeight="600" color="#e4e4e7">Model Proxy Server</Text>
+										<Text fontSize="15px" fontWeight="600" color="#e4e4e7">Alias Routing</Text>
 										<HStack gap="3" mt="0.5">
 											<ProxyStatusBadge status={status ?? { enabled: false, port: 0, running: false, healthy: false, error: null }} />
 										</HStack>
@@ -199,7 +200,7 @@ export function ProxyPage() {
 										disabled={startMut.loading}
 									>
 										<Play size={14} />
-										Start Proxy
+										Start Router
 									</Button>
 								) : (
 									<Button
@@ -214,7 +215,7 @@ export function ProxyPage() {
 										disabled={stopMut.loading}
 									>
 										<Square size={14} />
-										Stop Proxy
+										Stop Router
 									</Button>
 								)}
 							</Flex>
@@ -241,7 +242,7 @@ export function ProxyPage() {
 										>
 											<VStack gap="2" color="rgba(255, 255, 255, 0.2)">
 												<Text fontSize="13px">No sticky routes yet</Text>
-												<Text fontSize="11px" color="rgba(255, 255, 255, 0.15)">Routes are created when requests go through the proxy</Text>
+												<Text fontSize="11px" color="rgba(255, 255, 255, 0.15)">Sticky routes are created when requests go through the router</Text>
 											</VStack>
 										</Flex>
 									) : (
