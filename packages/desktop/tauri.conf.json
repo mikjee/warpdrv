@@ -16,6 +16,7 @@
 				"minWidth": 800,
 				"minHeight": 600,
 				"visible": false,
+				"shadow": true,
 				"decorations": false,
 				"resizable": true,
 				"useHttpsScheme": true
