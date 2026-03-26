@@ -58,6 +58,7 @@ export function ServersPage() {
 	const [sortField, setSortField] = useState<TSortField>('name');
 	const [sortOrder, setSortOrder] = useState<TSortOrder>('asc');
 	const [runningOnly, setRunningOnly] = useState(false);
+	const [settingsLoaded, setSettingsLoaded] = useState(false);
 
 	// Load persisted sort settings on mount
 	useEffect(() => {
@@ -66,13 +67,15 @@ export function ServersPage() {
 				setSortField(result.data.serversSortField);
 				setSortOrder(result.data.serversSortOrder);
 			}
+			setSettingsLoaded(true);
 		});
 	}, []);
 
-	// Save sort settings when they change
+	// Save sort settings when they change (only after initial load)
 	useEffect(() => {
+		if (!settingsLoaded) return;
 		updateSettings({ serversSortField: sortField, serversSortOrder: sortOrder });
-	}, [sortField, sortOrder]);
+	}, [settingsLoaded, sortField, sortOrder]);
 
 	// Build lookup maps
 	const backendMap = new Map(backends.map(b => [b.id, b]));
