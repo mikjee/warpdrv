@@ -371,7 +371,7 @@ export function ServersPage() {
 								<Card
 									key={server.id}
 									hasGradient={isRunning}
-									gradientFrom="rgba(52, 211, 153, 0.08)"
+									gradientFrom="rgba(52, 211, 153, 0.025)"
 									gradientTo="transparent"
 									borderColor={isRunning ? 'rgba(52, 211, 153, 0.3)' : undefined}
 								>

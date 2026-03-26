@@ -20,7 +20,7 @@ export function Card({ children, variant = 'default', accentColor, onClick, sele
 	return (
 		<Box
 			position="relative"
-			bg={hasGradient && gradientFrom && gradientTo ? undefined : bg ?? '#111114'}
+			bg={hasGradient && gradientFrom && gradientTo ? undefined : bg ?? '#101010'}
 			bgGradient={hasGradient && gradientFrom && gradientTo ? 'to-br' : undefined}
 			gradientFrom={hasGradient ? gradientFrom : undefined}
 			gradientTo={hasGradient ? gradientTo : undefined}
