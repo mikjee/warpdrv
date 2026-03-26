@@ -1,4 +1,5 @@
-import { Box, Flex, Text, VStack, HStack, Icon } from '@chakra-ui/react';
+import { useState } from 'react';
+import { Box, Flex, Text, VStack, HStack } from '@chakra-ui/react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import {
 	Cpu,
@@ -6,27 +7,84 @@ import {
 	Blocks,
 	Play,
 	Settings,
-	Zap,
 	Globe,
 	Info,
+	Server,
 } from 'lucide-react';
-import { BsRouter } from "react-icons/bs";
+import { BsRouter } from 'react-icons/bs';
+import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff } from 'react-icons/vsc';
 import { UpdateBanner } from './UpdateBanner';
 import { TitleBar } from './TitleBar';
+import { useSummary } from '../hooks/useSummary';
 import type { ReactNode } from 'react';
+import type { ISummaryData } from '../api/summary-services';
 
 interface INavItem {
 	path: string;
 	label: string;
 	icon: ReactNode;
+	badge?: (summary: ISummaryData | null) => ReactNode;
+}
+
+// Small count badge
+function CountBadge({ count }: { count: number }) {
+	if (count === 0) return null;
+	return (
+		<Flex
+			alignItems="center"
+			justifyContent="center"
+			minW="18px"
+			h="18px"
+			px="1"
+			borderRadius="full"
+			bg="rgba(51, 129, 255, 0.15)"
+			color="#3381ff"
+			fontSize="10px"
+			fontWeight="700"
+			lineHeight="1"
+			ml="auto"
+			flexShrink={0}
+		>
+			{count}
+		</Flex>
+	);
+}
+
+// Green/red status dot
+function StatusDot({ online }: { online: boolean }) {
+	return (
+		<Box
+			w="5px"
+			h="5px"
+			borderRadius="full"
+			bg={online ? '#22c55e' : 'transparent'}
+			boxShadow={online ? '0 0 6px rgba(34, 197, 94, 0.5)' : 'none'}
+			ml="auto"
+			flexShrink={0}
+		/>
+	);
 }
 
 const NAV_ITEMS: INavItem[] = [
-	{ path: '/servers', label: 'Servers', icon: <Play size={18} /> },
-	{ path: '/proxy', label: 'Router', icon: <BsRouter size={18} /> },
+	{
+		path: '/servers',
+		label: 'Servers',
+		icon: <Server size={18} />,
+		badge: (s) => s ? <StatusDot online={s.servers.running > 0} /> : null,
+	},
+	{
+		path: '/proxy',
+		label: 'Router',
+		icon: <BsRouter size={18} />,
+		badge: (s) => s ? <StatusDot online={s.router.online} /> : null,
+	},
 	{ path: '/models', label: 'Models', icon: <FolderOpen size={18} /> },
 	{ path: '/backends', label: 'Backends', icon: <Blocks size={18} /> },
-	{ path: '/devices', label: 'Devices', icon: <Cpu size={18} /> },
+	{
+		path: '/devices',
+		label: 'Devices',
+		icon: <Cpu size={18} />,
+	},
 	{ path: '/hub', label: 'Hub', icon: <Globe size={18} /> },
 ];
 
@@ -35,98 +93,170 @@ const NAV_ITEMS_BOTTOM: INavItem[] = [
 	{ path: '/about', label: 'About', icon: <Info size={18} /> },
 ];
 
-function SidebarLink({ item }: { item: INavItem }) {
+function SidebarLink({
+	item,
+	collapsed,
+	summary,
+}: {
+	item: INavItem;
+	collapsed: boolean;
+	summary: ISummaryData | null;
+}) {
 	const location = useLocation();
 	const isActive = location.pathname === item.path;
+	const badgeNode = item.badge ? item.badge(summary) : null;
 
 	return (
 		<NavLink to={item.path} style={{ textDecoration: 'none', width: '100%' }}>
 			<HStack
-				gap="3"
-				px="4"
+				gap={collapsed ? '0' : '3'}
+				px={collapsed ? '0' : '3'}
 				py="2.5"
 				borderRadius="lg"
 				cursor="pointer"
 				transition="all 0.15s ease"
-				bg={isActive ? 'rgba(51, 129, 255, 0.1)' : 'transparent'}
-				color={isActive ? '#3381ff' : 'rgba(255, 255, 255, 0.5)'}
+				bg={isActive ? 'rgba(255, 255, 255, 0.04)' : 'transparent'}
+				color={isActive ? '#ccc' : 'rgba(255, 255, 255, 0.5)'}
 				borderWidth="1px"
-				borderColor={isActive ? 'rgba(51, 129, 255, 0.2)' : 'transparent'}
+				borderColor={isActive ? 'rgba(90, 90, 90, 0.2)' : 'transparent'}
+				justifyContent={collapsed ? 'center' : 'flex-start'}
 				_hover={{
-					bg: isActive ? 'rgba(51, 129, 255, 0.1)' : 'rgba(255, 255, 255, 0.04)',
-					color: isActive ? '#3381ff' : 'rgba(255, 255, 255, 0.8)',
+					bg: 'rgba(255, 255, 255, 0.04)',
+					color: 'rgba(255, 255, 255, 0.8)',
 				}}
 			>
-				{item.icon}
-				<Text fontSize="13px" fontWeight={isActive ? '600' : '400'}>
-					{item.label}
-				</Text>
+				<Box position="relative" flexShrink={0}>
+					<Flex alignItems="center" justifyContent="center" w="18px">
+						{item.icon}
+					</Flex>
+					{collapsed && badgeNode && (
+						<Box position="absolute" top="-6px" right="-8px">
+							{badgeNode}
+						</Box>
+					)}
+				</Box>
+				{!collapsed && (
+					<Text fontSize="13px" fontWeight={isActive ? '600' : '400'} flex="1">
+						{item.label}
+					</Text>
+				)}
+				{!collapsed && badgeNode}
 			</HStack>
 		</NavLink>
 	);
 }
 
 export function Shell() {
+	const [collapsed, setCollapsed] = useState(false);
+	const { data: summary } = useSummary();
+
 	return (
 		<Flex direction="column" h="100vh" overflow="hidden">
 			<TitleBar />
 			<Flex flex="1" overflow="hidden">
-			{/* Sidebar */}
-			<Flex
-				direction="column"
-				w="220px"
-				minW="220px"
-				// bg="#0c0c0f"
-				borderRightWidth="1px"
-				borderColor="rgba(255, 255, 255, 0.06)"
-				p="4"
-				gap="1"
-			>
-				{/* Logo */}
-				<HStack gap="3" px="3" py="5" mb="5">
-					<Flex w="12" h="12" borderRadius="lg" overflow="hidden" mr="3">
-						<img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-					</Flex>
-					<Box>
-						<Text
-							fontSize="16px"
-							fontWeight="700"
-							letterSpacing="-0.02em"
-							lineHeight="1.1"
-							bgGradient="to-r"
-							gradientFrom="#e4e4e7"
-							gradientTo="orange.500"
-							bgClip="text"
+				{/* Sidebar */}
+				<Flex
+					bg={"#0a0a0a"}
+					direction="column"
+					w={collapsed ? '60px' : '220px'}
+					minW={collapsed ? '60px' : '220px'}
+					borderRightWidth="1px"
+					borderColor="rgba(255, 255, 255, 0.06)"
+					px={collapsed ? '2' : '4'}
+					pt={'8'}
+					pb={("2")}
+					gap="1"
+					transition="all 0.2s ease"
+				>
+					{/* Collapse toggle + logo text */}
+					<HStack
+						gap="3"
+						px={collapsed ? '0' : '4'}
+						py="3"
+						mb="8"
+						justifyContent={collapsed ? 'center' : 'flex-start'}
+					>
+						<Flex
+							as="button"
+							w="8"
+							h="8"
+							alignItems="center"
+							justifyContent="center"
+							borderRadius="md"
+							cursor="pointer"
+							color="rgba(255, 255, 255, 0.4)"
+							_hover={{ color: 'rgba(255, 255, 255, 0.8)', bg: 'rgba(255, 255, 255, 0.04)' }}
+							transition="all 0.15s ease"
+							onClick={() => setCollapsed(prev => !prev)}
+							flexShrink={0}
+							position={"relative"}
+							top="1px"
 						>
-							warpcore &gt;&gt;
-						</Text>
-					</Box>
-				</HStack>
+							{collapsed
+								? <VscLayoutSidebarLeftOff size={20} />
+								: <VscLayoutSidebarLeft size={20} />
+							}
+						</Flex>
+						{!collapsed && (
+							<Text
+								fontSize="16px"
+								fontWeight="700"
+								letterSpacing="-0.02em"
+								lineHeight="1.1"
+								bgGradient="to-r"
+								gradientFrom="#9c9c9c"
+								gradientTo="gray.900"
+								bgClip="text"
+							>
+								warpcore &gt;&gt;
+							</Text>
+						)}
+					</HStack>
 
-				{/* Nav */}
-				<VStack gap="1" align="stretch" flex="1">
-					{NAV_ITEMS.map(item => (
-						<SidebarLink key={item.path} item={item} />
-					))}
-				</VStack>
+					{/* Logo - commented out, replaced by collapse toggle above */}
+					{/* <HStack gap="3" px="3" py="5" mb="5">
+						<Flex w="12" h="12" borderRadius="lg" overflow="hidden" mr="3">
+							<img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+						</Flex>
+						<Box>
+							<Text
+								fontSize="16px"
+								fontWeight="700"
+								letterSpacing="-0.02em"
+								lineHeight="1.1"
+								bgGradient="to-r"
+								gradientFrom="#e4e4e7"
+								gradientTo="orange.500"
+								bgClip="text"
+							>
+								warpcore &gt;&gt;
+							</Text>
+						</Box>
+					</HStack> */}
 
-				{/* Footer */}
-				<Box px="2" py="2">
-					<VStack gap="1" align="stretch">
-						{NAV_ITEMS_BOTTOM.map(item => (
-							<SidebarLink key={item.path} item={item} />
+					{/* Nav */}
+					<VStack gap="1" align="stretch" flex="1">
+						{NAV_ITEMS.map(item => (
+							<SidebarLink key={item.path} item={item} collapsed={collapsed} summary={summary} />
 						))}
 					</VStack>
-				</Box>
-			</Flex>
 
-			{/* Main content */}
-			<Box flex="1" overflow="auto" bg="#09090b">
-				<UpdateBanner />
-				<Outlet />
-			</Box>
+					{/* Footer */}
+					<Box px={collapsed ? '0' : '2'} py="2">
+						<VStack gap="1" align="stretch">
+							{NAV_ITEMS_BOTTOM.map(item => (
+								<SidebarLink key={item.path} item={item} collapsed={collapsed} summary={summary} />
+							))}
+						</VStack>
+					</Box>
+				</Flex>
+
+				{/* Main content */}
+				<Box flex="1" overflow="auto" bg="#0c0c0c">
+					<UpdateBanner />
+					<Outlet />
+				</Box>
 			</Flex>
 		</Flex>
 	);
 }
-

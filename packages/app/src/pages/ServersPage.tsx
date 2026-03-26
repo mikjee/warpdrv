@@ -197,7 +197,7 @@ export function ServersPage() {
 			<PageHeader
 				title="Servers"
 				subtitle={`${servers.filter(s => s.status === EServerStatus.RUNNING).length} running`}
-				icon={<Play size={20} />}
+				icon={<Server size={20} />}
 				actions={
 					<Button
 						size="sm"
@@ -212,7 +212,7 @@ export function ServersPage() {
 						transition="all 0.2s ease"
 						onClick={() => setShowLaunch(true)}
 					>
-						<Plus size={15} />
+						<Play size={15} />
 						Launch Server
 					</Button>
 				}

@@ -315,3 +315,7 @@ export function getModelProxyInstance(): http.Server | null {
 export function getProxyError(): string | null {
 	return proxyError;
 }
+
+export function isProxyOnline(): boolean {
+	return proxyServerInstance !== null && proxyError === null;
+}

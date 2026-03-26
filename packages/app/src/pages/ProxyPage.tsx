@@ -178,7 +178,7 @@ export function ProxyPage() {
 										{!status?.error && status?.running && status?.healthy && <Box position="absolute" top="-1px" right="-1px" w="8px" h="8px" borderRadius="full" bg="#34d399" shadow="0 0 8px #34d399" />}
 									</Flex>
 									<Box>
-										<Text fontSize="15px" fontWeight="600" color="#e4e4e7">Alias Routing</Text>
+										<Text fontSize="15px" fontWeight="600" color="#e4e4e7">Server Alias</Text>
 										<HStack gap="3" mt="0.5">
 											<ProxyStatusBadge status={status ?? { enabled: false, port: 0, running: false, healthy: false, error: null }} />
 										</HStack>

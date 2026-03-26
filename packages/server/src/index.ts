@@ -13,6 +13,7 @@ import { runMigrations } from './services/migrationRunner';
 import { updateRouter } from './routes/update';
 import { proxyRouter } from './routes/proxy';
 import { startModelProxy } from './services/modelProxy';
+import { summaryRouter } from './routes/summary';
 
 const SETTINGS_KEY = 'settings:general';
 
@@ -46,6 +47,7 @@ async function main() {
 	app.use('/api/hub', hubRouter);
 	app.use('/api/update', updateRouter);
 	app.use('/api/proxy', proxyRouter);
+	app.use('/api/summary', summaryRouter);
 
 	// Stats endpoint — returns live stats for a running server
 	app.get('/api/servers/:id/stats', (req, res) => {

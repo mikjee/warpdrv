@@ -17,9 +17,9 @@ export function PageHeader({ title, subtitle, icon, actions }: IPageHeaderProps)
 			py="6"
 			borderBottomWidth="1px"
 			borderColor="rgba(255, 255, 255, 0.06)"
-			bg="rgba(255, 255, 255, 0.01)"
+			//bg="rgba(255, 255, 255, 0.01)"
 		>
-			<HStack gap="3">
+			<HStack gap="4">
 				{icon && (
 					<Flex
 						w="10"
@@ -28,7 +28,8 @@ export function PageHeader({ title, subtitle, icon, actions }: IPageHeaderProps)
 						alignItems="center"
 						justifyContent="center"
 						// bg="rgba(51, 129, 255, 0.08)"
-						color="#3381ff"
+						// color="#3381ff"
+						color={"#afafaf"}
 						borderWidth="1px"
 						borderColor="rgba(51, 129, 255, 0.15)"
 					>
@@ -36,11 +37,11 @@ export function PageHeader({ title, subtitle, icon, actions }: IPageHeaderProps)
 					</Flex>
 				)}
 				<Box>
-					<Text fontSize="20px" fontWeight="700" letterSpacing="-0.02em" color="#e4e4e7">
+					<Text fontSize="20px" fontWeight="500" letterSpacing="-0.02em" color="#afafaf">
 						{title}
 					</Text>
 					{subtitle && (
-						<Text fontSize="13px" color="rgba(255, 255, 255, 0.4)" mt="0.5">
+						<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)" mt="-1">
 							{subtitle}
 						</Text>
 					)}
