@@ -2,7 +2,7 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { DownloaderHelper } from 'node-downloader-helper';
-import { EDownloadStatus, type IDownload, type TDownloadId } from '@warpcore/shared';
+import { EDownloadStatus, type IDownload, type TDownloadId, type IResumeState } from '@warpcore/shared';
 import { store } from '../util/store';
 
 const DOWNLOADS_PREFIX = 'downloads:';
@@ -61,11 +61,14 @@ export async function startDownload(
 		error: null,
 		startedAt: Date.now(),
 		completedAt: null,
+		resumeState: null,
 	};
 
 	const helper = new DownloaderHelper(url, destDir, {
 		fileName: filename,
 		override: false,
+		removeOnStop: false, // Keep partial file when paused
+		removeOnFail: false, // Keep partial file on failure
 		resumeIfFileExists: true,
 		resumeOnIncomplete: true,
 		resumeOnIncompleteMaxRetry: 3,
@@ -106,6 +109,14 @@ export async function startDownload(
 	helper.on('stop', () => {
 		dl.status = EDownloadStatus.PAUSED;
 		dl.speedBps = 0;
+		// Capture resume state before discarding the helper
+		const resumeState = helper.getResumeState();
+		dl.resumeState = {
+			downloaded: resumeState.downloaded,
+			filePath: resumeState.filePath,
+			fileName: resumeState.fileName,
+			total: resumeState.total,
+		} as IResumeState;
 		activeDownloaders.delete(id);
 		persistDownload(dl);
 	});
@@ -137,11 +148,20 @@ export async function resumeDownload(id: TDownloadId): Promise<boolean> {
 	const url = hfDownloadUrl(dl.author, dl.modelName, dl.filename);
 	const destDir = path.dirname(dl.destPath);
 
+	// Check if we have saved resume state and the partial file exists
+	const hasResumeState = dl.resumeState !== null && fs.existsSync(dl.resumeState.filePath);
+	const partialPath = dl.resumeState?.filePath ?? (dl.destPath + '.download');
+	const hasPartialFile = fs.existsSync(partialPath);
+	const partialSize = hasPartialFile ? fs.statSync(partialPath).size : 0;
+
+	// Start fresh if no valid resume state or partial file is missing/empty
+	const startFresh = !hasResumeState || !hasPartialFile || partialSize === 0;
+
 	const helper = new DownloaderHelper(url, destDir, {
 		fileName: dl.filename,
-		override: false,
-		resumeIfFileExists: true,
-		resumeOnIncomplete: true,
+		override: startFresh,
+		removeOnStop: false,
+		removeOnFail: false,
 	});
 
 	helper.on('progress', (stats) => {
@@ -173,23 +193,46 @@ export async function resumeDownload(id: TDownloadId): Promise<boolean> {
 	helper.on('stop', () => {
 		dl.status = EDownloadStatus.PAUSED;
 		dl.speedBps = 0;
+		// Capture resume state
+		const resumeState = helper.getResumeState();
+		dl.resumeState = {
+			downloaded: resumeState.downloaded,
+			filePath: resumeState.filePath,
+			fileName: resumeState.fileName,
+			total: resumeState.total,
+		} as IResumeState;
 		activeDownloaders.delete(id);
 		persistDownload(dl);
 	});
 
 	activeDownloaders.set(id, helper);
 	dl.status = EDownloadStatus.DOWNLOADING;
-	await persistDownload(dl);
 
-	helper.resume().catch(() => {
+	// Reset progress if starting fresh
+	if (startFresh) {
+		dl.downloadedBytes = 0;
+		dl.progress = 0;
+		dl.resumeState = null;
 		helper.start().catch((err) => {
 			dl.status = EDownloadStatus.FAILED;
 			dl.error = String(err);
 			activeDownloaders.delete(id);
 			persistDownload(dl);
 		});
-	});
+	} else {
+		// Use resumeFromFile with saved state
+		helper.resumeFromFile(partialPath, {
+			total: dl.fileSizeBytes,
+			fileName: dl.filename,
+		}).catch((err) => {
+			dl.status = EDownloadStatus.FAILED;
+			dl.error = String(err);
+			activeDownloaders.delete(id);
+			persistDownload(dl);
+		});
+	}
 
+	await persistDownload(dl);
 	return true;
 }
 
@@ -206,8 +249,8 @@ export async function cancelDownload(id: TDownloadId): Promise<boolean> {
 	dl.completedAt = Date.now();
 	await persistDownload(dl);
 
-	// Clean up partial file
-	const partial = dl.destPath + '.download';
+	// Clean up partial file - use resumeState.filePath if available, otherwise fallback to default
+	const partial = dl.resumeState?.filePath ?? (dl.destPath + '.download');
 	try { fs.unlinkSync(partial); } catch {}
 
 	return true;

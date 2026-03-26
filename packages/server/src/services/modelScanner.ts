@@ -158,20 +158,31 @@ export async function scanAllModelRoots(roots: string[]): Promise<IModel[]> {
 		console.warn('[modelScanner] Failed to load cache:', err);
 	}
 
+	const beforeCount = cachedModels.length;
+
 	// Scan all roots
-	const all: IModel[] = [];
+	const scanned: IModel[] = [];
 	for (const root of roots) {
 		const models = await scanModelRoot(root, cachedModels);
-		all.push(...models);
+		scanned.push(...models);
 	}
+
+	// Build set of scanned model IDs
+	const scannedIds = new Set(scanned.map(m => m.id));
+
+	// Remove models that are no longer accessible (not in scanned results)
+	const removed = cachedModels.filter(m => !scannedIds.has(m.id)).length;
 
 	// Save updated cache
 	try {
-		await store.put(MODELS_CACHE_KEY, all);
-		console.log(`[modelScanner] Saved cache: ${all.length} models`);
+		await store.put(MODELS_CACHE_KEY, scanned);
+		const msg = `[modelScanner] Saved cache: ${scanned.length} models`;
+		if (removed > 0) console.log(`${msg} (removed ${removed} from removed directories)`);
+		else if (scanned.length !== beforeCount) console.log(`${msg} (${scanned.length - beforeCount} changed)`);
+		else console.log(msg);
 	} catch (err) {
 		console.warn('[modelScanner] Failed to save cache:', err);
 	}
 
-	return all;
+	return scanned;
 }

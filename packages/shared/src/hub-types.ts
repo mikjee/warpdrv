@@ -50,6 +50,14 @@ export interface IHubModelDetail {
 	readme: string;
 }
 
+// Resume state from node-downloader-helper
+export interface IResumeState {
+	downloaded: number;
+	filePath: string;
+	fileName: string;
+	total: number;
+}
+
 // Active/historical download
 export interface IDownload {
 	id: TDownloadId;
@@ -67,6 +75,7 @@ export interface IDownload {
 	error: string | null;
 	startedAt: number;
 	completedAt: number | null;
+	resumeState: IResumeState | null;
 }
 
 // Download request payload

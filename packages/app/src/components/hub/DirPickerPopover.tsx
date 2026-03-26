@@ -1,4 +1,4 @@
-import { Box, Text, VStack, HStack, Flex } from '@chakra-ui/react';
+import { Box, Text, VStack, HStack, Flex, Portal } from '@chakra-ui/react';
 import { FolderOpen, Check } from 'lucide-react';
 
 interface IDirPickerPopoverProps {
@@ -10,16 +10,17 @@ interface IDirPickerPopoverProps {
 
 export function DirPickerPopover({ roots, existsInRoot, onSelect, onClose }: IDirPickerPopoverProps) {
 	return (
-		<>
-			{/* Backdrop */}
-			<Box position="fixed" inset="0" zIndex="popover" onClick={onClose} />
+		<Portal>
+			<>
+				{/* Backdrop */}
+				<Box position="fixed" inset="0" zIndex="popover" onClick={onClose} />
 
-			<Box
-				position="absolute" right="0" top="100%" mt="2"
-				bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
-				borderRadius="xl" shadow="0 12px 40px rgba(0, 0, 0, 0.5)"
-				zIndex="popover" py="2" minW="320px"
-			>
+				<Box
+					position="fixed" left="50%" top="50%" transform="translate(-50%, -50%)"
+					bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
+					borderRadius="xl" shadow="0 12px 40px rgba(0, 0, 0, 0.5)"
+					zIndex="popover" py="2" minW="320px"
+				>
 				<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" px="3" pb="2">
 					Download to
 				</Text>
@@ -56,6 +57,7 @@ export function DirPickerPopover({ roots, existsInRoot, onSelect, onClose }: IDi
 					})}
 				</VStack>
 			</Box>
-		</>
+			</>
+		</Portal>
 	);
 }
