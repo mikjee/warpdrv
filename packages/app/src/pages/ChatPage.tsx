@@ -92,9 +92,7 @@ const threadListAdapter: RemoteThreadListAdapter = {
 	},
 
 	async initialize(threadId) {
-		const res = await createThread({ title: 'New Chat' });
-		if (!res.ok) return { remoteId: threadId, externalId: undefined };
-		return { remoteId: res.data.id, externalId: undefined };
+		return { remoteId: threadId, externalId: undefined };
 	},
 
 	async rename(remoteId, newTitle) {
@@ -174,6 +172,10 @@ function HistoryProvider({ children }: { children: ReactNode }) {
 		async append(item) {
 			const { remoteId } = await aui.threadListItem().initialize();
 			if (!remoteId) return;
+			const existing = await fetchThread(remoteId);
+			if (!existing.ok || !existing.data) {
+				await createThread({ id: remoteId, title: 'New Chat' });
+			}
 			const msg = item.message;
 			const textParts = msg.content.filter((p: any) => p.type === 'text');
 			const content = textParts.map((p: any) => (p as any).text).join('');

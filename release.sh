@@ -65,6 +65,7 @@ npx @yao-pkg/pkg dist/server.cjs \
 	--output dist/warpcore-server \
 	--compress GZip
 
+cp "$REPO_ROOT/node_modules/sql.js/dist/sql-wasm.wasm" "$SERVER_DIR/dist/sql-wasm.wasm"
 echo "Server binary: $SERVER_DIR/dist/warpcore-server"
 ls -lh "$SERVER_DIR/dist/warpcore-server"
 
@@ -74,6 +75,7 @@ echo "=== Step 3/4: Preparing Tauri sidecar ==="
 mkdir -p "$DESKTOP_DIR/binaries"
 
 cp "$SERVER_DIR/dist/warpcore-server" "$DESKTOP_DIR/binaries/warpcore-server-$TARGET_TRIPLE"
+cp "$REPO_ROOT/node_modules/sql.js/dist/sql-wasm.wasm" "$DESKTOP_DIR/binaries/sql-wasm.wasm"
 chmod +x "$DESKTOP_DIR/binaries/warpcore-server-$TARGET_TRIPLE"
 
 rm -r "$DESKTOP_DIR/app-dist" 2>/dev/null || true

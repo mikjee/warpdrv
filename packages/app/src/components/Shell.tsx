@@ -178,9 +178,9 @@ export function Shell() {
 					borderRightWidth="1px"
 					borderColor="rgba(255, 255, 255, 0.06)"
 					px={collapsed ? '2' : '4'}
-					pt={'8'}
-					pb={("2")}
-					gap="1"
+					pt={'5'}
+					pb={("0")}
+					gap="0"
 					transition="all 0.2s ease"
 				>
 					{/* Collapse toggle + logo text */}

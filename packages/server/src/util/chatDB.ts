@@ -102,14 +102,39 @@ const SCHEMA = `
 `;
 
 export async function initChatDb(): Promise<void> {
-	const SQL = await initSqlJs();
+	let SQL;
+	try {
+		SQL = await initSqlJs();
+	} catch {
+		// Fallback for bundled/pkg environments
+		const wasmPath = path.join(path.dirname(process.execPath), 'sql-wasm.wasm');
+		if (fs.existsSync(wasmPath)) {
+			const wasmBinary = fs.readFileSync(wasmPath).buffer as ArrayBuffer;
+			SQL = await initSqlJs({ wasmBinary });
+		} else {
+			const candidates = [
+				path.join(path.dirname(process.execPath), '..', 'lib', 'WarpCore', 'binaries', 'sql-wasm.wasm'),
+				path.join(path.dirname(process.execPath), 'binaries', 'sql-wasm.wasm'),
+			];
+			let found = false;
+			for (const c of candidates) {
+				if (fs.existsSync(c)) {
+					const wasmBinary = fs.readFileSync(c).buffer as ArrayBuffer;
+					SQL = await initSqlJs({ wasmBinary });
+					found = true;
+					break;
+				}
+			}
+			if (!found) throw new Error('sql-wasm.wasm not found');
+		}
+	}
 
 	// Load existing DB from disk if it exists
 	if (fs.existsSync(DB_PATH)) {
 		const fileBuffer = fs.readFileSync(DB_PATH);
-		db = new SQL.Database(fileBuffer);
+		db = new SQL!.Database(fileBuffer);
 	} else {
-		db = new SQL.Database();
+		db = new SQL!.Database();
 	}
 
 	// Enable foreign keys

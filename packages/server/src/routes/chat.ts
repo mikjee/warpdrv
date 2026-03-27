@@ -52,7 +52,7 @@ chatRouter.post('/threads', async (req, res) => {
 	try {
 		const body = req.body as IChatThreadCreatePayload;
 		const now = Date.now();
-		const id = crypto.randomUUID();
+		const id = body.id ?? crypto.randomUUID();
 		const thread: IChatThread = {
 			id,
 			title: body.title ?? 'New Chat',

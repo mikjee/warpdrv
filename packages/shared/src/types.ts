@@ -319,6 +319,7 @@ export interface IChatFolder {
 }
 
 export interface IChatThreadCreatePayload {
+	id?: string;
 	title?: string;
 	folderId?: string | null;
 	serverId?: string | null;
