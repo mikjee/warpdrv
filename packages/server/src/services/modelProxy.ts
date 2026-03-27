@@ -1,5 +1,6 @@
 import http from 'http';
 import express from 'express';
+import cors from 'cors';
 import { store } from '../util/store';
 import type { IServer, ISettings } from '@warpcore/shared';
 import { EServerStatus, DEFAULT_SETTINGS } from '@warpcore/shared';
@@ -140,6 +141,9 @@ export function clearAllStickyRoutes(): void {
 // Create the proxy app (shared between start and restart)
 function createProxyApp(): express.Express {
 	const app = express();
+
+	// Enable CORS for browser clients
+	app.use(cors());
 
 	// Parse JSON body but keep it available for piping
 	app.use((req, res, next) => {

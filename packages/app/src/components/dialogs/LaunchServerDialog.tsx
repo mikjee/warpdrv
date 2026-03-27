@@ -13,6 +13,7 @@ import {
 	DEFAULT_LAUNCH_PARAMS, DEFAULT_SPEC_DECODE_PARAMS,
 	calculateVramEstimate, kvQuantToNumeric,
 	type IPreset,
+	parseDefaultArgsToParams as sharedParseDefaultArgsToParams,
 } from '@warpcore/shared';
 import { Card } from '../Card';
 import { VramBar } from '../VramBar';
@@ -205,18 +206,6 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 		// Draft doesn't use the other params (batch, threads, kv quant etc. are inherited from target)
 	};
 
-	const parseDefaultArgsToParams = (defaultArgs: string[]): Partial<ILaunchParams> => {
-		const argsSet = new Set(defaultArgs);
-		return {
-			flashAttn: argsSet.has('-fa'),
-			mlock: argsSet.has('--mlock'),
-			mmap: !argsSet.has('--no-mmap'),
-			directIo: argsSet.has('-dio'),
-			noWarmup: argsSet.has('--no-warmup'),
-			jinja: argsSet.has('--jinja'),
-		};
-	};
-
 	// Flatten models to selectable file entries
 	const modelEntries = useMemo(() => {
 		if (!models) return [];
@@ -252,11 +241,19 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 
 	const selectedDraftEntry = modelEntries.find(e => e.file.filePath === params.specDecode.draftModelPath);
 
-	// Backend defaults
+	// Backend defaults — reset toggle flags to backend defaults when backend changes
 	useEffect(() => {
 		if (selectedBackendId && selectedBackend && !editMode) {
-			const defaultsFromBackend = parseDefaultArgsToParams(selectedBackend.defaultArgs);
-			setParams(prev => ({ ...prev, ...defaultsFromBackend }));
+			const defaultsFromBackend = sharedParseDefaultArgsToParams(selectedBackend.defaultArgs);
+			setParams(prev => ({
+				...prev,
+				flashAttn: defaultsFromBackend.flashAttn ?? false,
+				mlock: defaultsFromBackend.mlock ?? false,
+				mmap: defaultsFromBackend.mmap ?? false,
+				directIo: defaultsFromBackend.directIo ?? false,
+				noWarmup: defaultsFromBackend.noWarmup ?? false,
+				jinja: defaultsFromBackend.jinja ?? false,
+			}));
 		}
 	}, [selectedBackendId, selectedBackend, editMode]);
 

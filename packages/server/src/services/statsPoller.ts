@@ -46,7 +46,10 @@ export function startStatsPolling(serverId: string, port: number): void {
 		const base = `http://127.0.0.1:${port}`;
 
 		const health = await fetchJson<IHealthResponse>(`${base}/health`);
-		if (!health) return;
+		if (!health) {
+			statsMap.delete(serverId); // Clear stale stats on failure
+			return;
+		}
 
 		const slots = await fetchJson<ISlotResponse[]>(`${base}/slots`);
 

@@ -1,6 +1,6 @@
-import { Box, Text, HStack, VStack, Flex, Button, Spinner, Badge, Input, Switch, InputGroup, Combobox, createListCollection, Portal } from '@chakra-ui/react';
+import { Box, Text, HStack, VStack, Flex, Button, Spinner, Badge, Input, Switch, InputGroup, Combobox, createListCollection, Portal, Popover } from '@chakra-ui/react';
 import {
-	Play, Square, RotateCcw, Plus, Server, Clock, Trash2,
+	Play, Square, RotateCcw, Server, Clock, Trash2, X, Plus,
 	Activity, Gauge, Cpu, Blocks, Terminal, Edit, Search, ChevronDown, ArrowUpAZ, ArrowDownZA, Sparkles
 } from 'lucide-react';
 import { FaBrain, FaBookOpen } from 'react-icons/fa6';
@@ -13,7 +13,7 @@ import { LaunchServerDialog } from '../components/dialogs/LaunchServerDialog';
 import { ServerLogs } from '../components/dialogs/ServerLogs';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
 import { useListQuery, useMutation } from '../hooks/useQuery';
-import { fetchServers, fetchBackends, fetchModels, stopServer, restartServer, removeServer, fetchSettings, updateSettings } from '../api/services';
+import { fetchServers, fetchBackends, fetchModels, stopServer, restartServer, removeServer, updateServer, fetchSettings, updateSettings, clearStickyRoute } from '../api/services';
 import type { IServer, IBackend, IModel, TSortField, TSortOrder } from '@warpcore/shared';
 import { EServerStatus } from '@warpcore/shared';
 
@@ -179,6 +179,9 @@ export function ServersPage() {
 	const [logsServerId, setLogsServerId] = useState<string | null>(null);
 	const [editingServerId, setEditingServerId] = useState<string | null>(null);
 	const [deletingServerId, setDeletingServerId] = useState<string | null>(null);
+	const [removingAlias, setRemovingAlias] = useState<{ serverId: string; alias: string } | null>(null);
+	const [addingAlias, setAddingAlias] = useState<{ serverId: string; serverName: string } | null>(null);
+	const [newAliasValue, setNewAliasValue] = useState('');
 	const logsServer = servers.find(s => s.id === logsServerId);
 	const editingServer = servers.find(s => s.id === editingServerId);
 	const deletingServer = servers.find(s => s.id === deletingServerId);
@@ -186,11 +189,73 @@ export function ServersPage() {
 	const stopMut = useMutation<string, IServer>(useCallback((id: string) => stopServer(id), []));
 	const restartMut = useMutation<string, IServer>(useCallback((id: string) => restartServer(id), []));
 	const removeMut = useMutation<string, null>(useCallback((id: string) => removeServer(id), []));
+	const updateServerMut = useMutation<[string, Partial<Pick<IServer, 'serverAlias'>>], IServer>(
+		useCallback(([id, data]) => updateServer(id, data, false), [])
+	);
 
 	const handleStop = async (id: string) => { await stopMut.mutate(id); await refetch(); };
 	const handleRestart = async (id: string) => { await restartMut.mutate(id); await refetch(); };
 	const handleRemove = async (id: string) => { await removeMut.mutate(id); await refetch(); setDeletingServerId(null); };
 	const confirmDelete = (id: string) => { setDeletingServerId(id); };
+
+	// Handle removing an alias from a server
+	const handleRemoveAlias = async () => {
+		if (!removingAlias) return;
+		const { serverId, alias } = removingAlias;
+		const server = servers.find(s => s.id === serverId);
+		if (!server) return;
+
+		// Clear sticky route for this alias if proxy is using it
+		await clearStickyRoute(alias).catch(() => {});
+
+		// Remove the alias from the server without relaunching
+		const newAliases = (server.serverAlias ?? []).filter(a => a !== alias);
+		await updateServerMut.mutate([serverId, { serverAlias: newAliases }]);
+		await refetch();
+		setRemovingAlias(null);
+	};
+
+	const confirmRemoveAlias = (serverId: string, alias: string) => {
+		setRemovingAlias({ serverId, alias });
+	};
+
+	// Handle adding a new alias to a server (supports comma-separated values)
+	const handleAddAlias = async () => {
+		if (!addingAlias || !newAliasValue.trim()) return;
+		const { serverId } = addingAlias;
+		const server = servers.find(s => s.id === serverId);
+		if (!server) return;
+
+		const existingAliases = server.serverAlias ?? [];
+		const newAliasesToAdd: string[] = [];
+
+		// Split by comma and process each alias
+		newAliasValue.split(',').forEach(part => {
+			const alias = part.trim();
+			if (alias && !existingAliases.some(a => a.toLowerCase() === alias.toLowerCase())) {
+				newAliasesToAdd.push(alias);
+			}
+		});
+
+		if (newAliasesToAdd.length > 0) {
+			const updatedAliases = [...existingAliases, ...newAliasesToAdd];
+			await updateServerMut.mutate([serverId, { serverAlias: updatedAliases }]);
+			await refetch();
+		}
+
+		setAddingAlias(null);
+		setNewAliasValue('');
+	};
+
+	const openAddAliasPopover = (serverId: string, serverName: string) => {
+		setAddingAlias({ serverId, serverName });
+		setNewAliasValue('');
+	};
+
+	const closeAddAliasPopover = () => {
+		setAddingAlias(null);
+		setNewAliasValue('');
+	};
 
 	return (
 		<Box>
@@ -394,10 +459,69 @@ export function ServersPage() {
 														{server.serverAlias && server.serverAlias.length > 0 && (
 															<>
 																{server.serverAlias.map(alias => (
-																	<Badge key={alias} px="1.5" py="0.25" borderRadius="md" fontSize="10px" fontFamily='"Geist Mono", monospace' bg="rgba(99, 102, 241, 0.15)" color="#a5b4fc" borderWidth="1px" borderColor="rgba(99, 102, 241, 0.3)">{alias}</Badge>
+																	<Badge key={alias} px="1.5" py="0.25" borderRadius="md" fontSize="10px" fontFamily='"Geist Mono", monospace' bg="rgba(99, 102, 241, 0.15)" color="#a5b4fc" borderWidth="1px" borderColor="rgba(99, 102, 241, 0.3)">
+																		{alias}
+																		<Button
+																			size="xs"
+																			variant="ghost"
+																			p="0"
+																			minW="auto"
+																			h="14px"
+																			w="14px"
+																			ml="2"
+																			color="#a5b4fc"
+																			_hover={{ color: '#fb7185', bg: 'rgba(251, 113, 133, 0.1)' }}
+																			borderRadius="md"
+																			onClick={(e) => { e.stopPropagation(); confirmRemoveAlias(server.id, alias); }}
+																		>
+																			<X size={9} />
+																		</Button>
+																	</Badge>
 																))}
 															</>
 														)}
+														<Popover.Root lazyMount unmountOnExit open={addingAlias?.serverId === server.id} onOpenChange={(details) => { if (!details.open) closeAddAliasPopover(); }}>
+															<Popover.Trigger asChild>
+																<Badge px="1.5" py="0.25" borderRadius="md" fontSize="10px" fontFamily='"Geist Mono", monospace' bg="rgba(99, 102, 241, 0.1)" color="#a5b4fc" borderWidth="1px" borderColor="rgba(99, 102, 241, 0.25)" cursor="pointer" onClick={(e) => { e.stopPropagation(); openAddAliasPopover(server.id, server.serverName); }}>
+																	<Plus size={10} />
+																</Badge>
+															</Popover.Trigger>
+															<Portal>
+																<Popover.Positioner>
+																	<Popover.Content maxW="320px" bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)" borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)">
+																		<Popover.Arrow />
+																		<Popover.Body p="4">
+																			<Text fontSize="12px" fontWeight="medium" color="#e4e4e7" mb="3">Add alias for "{server.serverName}"</Text>
+																			<HStack gap="2">
+																				<Input
+																					value={newAliasValue}
+																					onChange={(e) => setNewAliasValue(e.target.value)}
+																					onKeyDown={(e) => { if (e.key === 'Enter') handleAddAlias(); }}
+																					placeholder="Enter comma separated aliases..."
+																					size="sm"
+																					bg="rgba(255, 255, 255, 0.03)"
+																					borderColor="rgba(255, 255, 255, 0.1)"
+																					color="#e4e4e7"
+																					fontSize="12px"
+																					_placeholder={{ color: 'rgba(255, 255, 255, 0.3)' }}
+																				/>
+																				<Button
+																					size="sm"
+																					bgGradient="to-r"
+																					gradientFrom="#3381ff"
+																					gradientTo="#5b6af5"
+																					color="white"
+																					fontSize="12px"
+																					onClick={handleAddAlias}
+																				>
+																					Add
+																				</Button>
+																			</HStack>
+																		</Popover.Body>
+																	</Popover.Content>
+																</Popover.Positioner>
+															</Portal>
+														</Popover.Root>
 													</HStack>
 													<HStack gap="3" mt="0.5">
 														<StatusBadge status={server.status as EServerStatus} port={server.port} />
@@ -484,7 +608,7 @@ export function ServersPage() {
 										</HStack>
 
 										{/* Stats */}
-										{server.stats && server.stats.tokensGenerated != null && (
+										{server.stats && (server.stats.slots ?? []).length > 0 && (
 											<HStack gap="2" flexWrap="wrap">
 												<StatPill icon={<Activity size={12} />} label="Slots" value={`${server.stats.slotsProcessing}/${server.stats.slotsProcessing + server.stats.slotsIdle}`} />
 												{(server.stats.slots ?? []).map(slot => {
@@ -545,6 +669,17 @@ export function ServersPage() {
 					isLoading={removeMut.loading}
 					onCancel={() => setDeletingServerId(null)}
 					onConfirm={() => handleRemove(deletingServer.id)}
+				/>
+			)}
+
+			{removingAlias && (
+				<ConfirmDialog
+					title="Remove Alias?"
+					message={`This will remove the alias "${removingAlias.alias}" from the server. This won't affect the running server.`}
+					isOpen={true}
+					isLoading={updateServerMut.loading}
+					onCancel={() => setRemovingAlias(null)}
+					onConfirm={handleRemoveAlias}
 				/>
 			)}
 		</Box>

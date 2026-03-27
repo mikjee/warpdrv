@@ -5,19 +5,10 @@ import {
 import {
 	X, Blocks, Terminal, FolderSearch, Plus, CheckCircle, AlertCircle,
 } from 'lucide-react';
-import { EValidationStatus } from '@warpcore/shared';
+import { EValidationStatus, ALL_COMMON_FLAGS, TOGGLE_FLAG_MAPPINGS, getFlagMapping } from '@warpcore/shared';
 import { Card } from '../Card';
 import { createBackend, updateBackend } from '../../api/services';
 import { useToast } from '../ToastProvider';
-
-const COMMON_FLAGS = [
-	{ flag: '-ngl 999', label: 'Full GPU offload' },
-	{ flag: '-fa 1', label: 'Flash Attention' },
-	{ flag: '-dio', label: 'Direct I/O' },
-	{ flag: '--no-warmup', label: 'Skip warmup' },
-	{ flag: '--mlock', label: 'Lock memory' },
-	{ flag: '--mmap', label: 'Memory map' },
-];
 
 interface IBackendDialogProps {
 	onClose: () => void;
@@ -76,11 +67,20 @@ export function BackendDialog({ onClose, editData }: IBackendDialogProps) {
 		setDefaultArgs(defaultArgs.filter((_, i) => i !== idx));
 	};
 
-	const handleAddCommonFlag = (flag: string) => {
+	const handleToggleCommonFlag = (flag: string) => {
 		const parts = flag.split(' ');
-		const next = [...defaultArgs];
-		for (const part of parts) if (!next.includes(part)) next.push(part);
-		setDefaultArgs(next);
+		const allPresent = parts.every(p => defaultArgs.includes(p));
+
+		if (allPresent) {
+			// Remove all parts of the flag
+			const next = defaultArgs.filter(arg => !parts.includes(arg));
+			setDefaultArgs(next);
+		} else {
+			// Add missing parts
+			const next = [...defaultArgs];
+			for (const part of parts) if (!next.includes(part)) next.push(part);
+			setDefaultArgs(next);
+		}
 	};
 
 	const handleSave = async () => {
@@ -147,7 +147,7 @@ export function BackendDialog({ onClose, editData }: IBackendDialogProps) {
 						<Box>
 							<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Default Arguments</Text>
 							<HStack gap="1.5" mb="3" flexWrap="wrap">
-								{COMMON_FLAGS.map(({ flag, label }) => {
+								{ALL_COMMON_FLAGS.map(({ flag, label }) => {
 									const parts = flag.split(' ');
 									const added = parts.every(p => defaultArgs.includes(p));
 									return (
@@ -155,8 +155,8 @@ export function BackendDialog({ onClose, editData }: IBackendDialogProps) {
 											bg={added ? 'rgba(52, 211, 153, 0.08)' : 'rgba(255, 255, 255, 0.03)'}
 											color={added ? '#34d399' : 'rgba(255, 255, 255, 0.35)'}
 											borderWidth="1px" borderColor={added ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.06)'}
-											_hover={added ? {} : { bg: 'rgba(255, 255, 255, 0.06)', color: 'rgba(255, 255, 255, 0.6)' }}
-											onClick={() => !added && handleAddCommonFlag(flag)} cursor={added ? 'default' : 'pointer'}
+											_hover={{ bg: added ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.08)', color: added ? '#4ade80' : 'rgba(255, 255, 255, 0.7)' }}
+											onClick={() => handleToggleCommonFlag(flag)} cursor="pointer"
 										>
 											{added && <CheckCircle size={10} />} {label}
 										</Button>
