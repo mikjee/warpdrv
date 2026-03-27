@@ -233,7 +233,6 @@ export interface ISettings {
 	portRangeEnd: number;
 	apiHost: string;
 	apiPort: number;
-	autoLaunch: boolean;
 	proxyPort: number;
 	proxyEnabled: boolean;
 	serversSortField: TSortField;
@@ -245,7 +244,6 @@ export const DEFAULT_SETTINGS: ISettings = {
 	portRangeEnd: 8099,
 	apiHost: '0.0.0.0',
 	apiPort: 4400,
-	autoLaunch: false,
 	proxyPort: 1234,
 	proxyEnabled: true,
 	serversSortField: 'name',

@@ -1,7 +1,7 @@
 import { store } from '../util/store';
 import { DEFAULT_SPEC_DECODE_PARAMS } from '@warpcore/shared';
 const SCHEMA_KEY = '_schemaVersion';
-const CURRENT_SCHEMA = 5;
+const CURRENT_SCHEMA = 6;
 // Each migration transforms data from version N to N+1
 // Add new migrations as the data shape evolves
 type TMigrationFn = () => Promise<void>;
@@ -76,6 +76,14 @@ const migrations: Record<number, TMigrationFn> = {
 				if (params.specDecode === undefined) params.specDecode = { ...DEFAULT_SPEC_DECODE_PARAMS };
 				await store.put('presets:' + preset.id, preset);
 			}
+		}
+	},
+	// Migration v6: remove autoLaunch from settings (now managed by OS autostart directly)
+	6: async () => {
+		const settings = await store.get<Record<string, unknown>>('settings:general');
+		if (settings && 'autoLaunch' in settings) {
+			delete settings.autoLaunch;
+			await store.put('settings:general', settings);
 		}
 	},
 };
