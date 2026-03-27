@@ -11,6 +11,8 @@ import type { ISettings } from '@warpcore/shared';
 import { DEFAULT_SETTINGS } from '@warpcore/shared';
 import { runMigrations } from './services/migrationRunner';
 import { updateRouter } from './routes/update';
+import { chatRouter } from './routes/chat';
+import { initChatDb } from './util/chatDB';
 import { proxyRouter } from './routes/proxy';
 import { startModelProxy } from './services/modelProxy';
 import { summaryRouter } from './routes/summary';
@@ -26,6 +28,7 @@ async function main() {
 
 	// Reconcile any servers that were running before restart
 	await reconcileServers();
+	await initChatDb();
 
 	// Load cached model scan results
 	await loadCachedModels();
@@ -47,6 +50,7 @@ async function main() {
 	app.use('/api/hub', hubRouter);
 	app.use('/api/update', updateRouter);
 	app.use('/api/proxy', proxyRouter);
+	app.use('/api/chat', chatRouter);
 	app.use('/api/summary', summaryRouter);
 
 	// Stats endpoint — returns live stats for a running server

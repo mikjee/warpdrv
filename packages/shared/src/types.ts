@@ -3,6 +3,7 @@ import {
 	EKvQuantType,
 	EValidationStatus,
 	EDeviceBackendType,
+	EChatRole,
 } from './enums';
 // ============================================================
 // Identifiers
@@ -281,4 +282,51 @@ export interface IApiListResponse<T> {
 	data: T[];
 	total: number;
 	error: string | null;
+}
+
+// ============================================================
+// Chat
+// ============================================================
+export type TChatThreadId = string;
+export type TChatMessageId = string;
+export type TChatFolderId = string;
+
+export interface IChatThread {
+	id: TChatThreadId;
+	title: string;
+	folderId: TChatFolderId | null;
+	serverId: TServerId | null;
+	systemPrompt: string;
+	tags: string[]; // stored as JSON in SQLite
+	createdAt: number;
+	updatedAt: number;
+}
+
+export interface IChatMessage {
+	id: TChatMessageId;
+	threadId: TChatThreadId;
+	role: EChatRole;
+	content: string;
+	createdAt: number;
+}
+
+export interface IChatFolder {
+	id: TChatFolderId;
+	name: string;
+	parentId: TChatFolderId | null;
+	sortOrder: number;
+	createdAt: number;
+}
+
+export interface IChatThreadCreatePayload {
+	title?: string;
+	folderId?: string | null;
+	serverId?: string | null;
+	systemPrompt?: string;
+	tags?: string[];
+}
+
+export interface IChatMessageCreatePayload {
+	role: EChatRole;
+	content: string;
 }

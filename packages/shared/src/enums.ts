@@ -34,3 +34,10 @@ export enum EDeviceBackendType {
 
 // Re-export from hub-types
 export { EDownloadStatus } from './hub-types';
+
+// Chat message roles
+export enum EChatRole {
+	SYSTEM = 'system',
+	USER = 'user',
+	ASSISTANT = 'assistant',
+}
