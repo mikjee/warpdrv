@@ -52,11 +52,19 @@ const modelAdapter: ChatModelAdapter = {
 			baseURL: `http://localhost:${currentPort}/v1`,
 			apiKey: 'warpcore',
 		});
+		
+		const convertedMessages = messages.map((m) => {
+			const textParts = m.content.filter((p: any) => p.type === 'text');
+			const text = textParts.map((p: any) => (p as any).text).join('');
+			return { role: m.role as 'system' | 'user' | 'assistant', content: text };
+		});
+
 		const result = streamText({
 			model: provider.chat('model'),
-			messages,
+			messages: convertedMessages,
 			abortSignal,
 		});
+
 		let fullText = '';
 		for await (const chunk of (await result).textStream) {
 			fullText += chunk;
@@ -322,7 +330,7 @@ export function ChatPage() {
 	const selected = servers.find((s) => s.id === selectedId);
 	const runningServers = servers.filter((s) => s.status === EServerStatus.RUNNING);
 
-	if (!selectedId && runningServers.length > 0) {
+	if (!selectedId && runningServers.length > 0 && runningServers[0]) {
 		setSelectedId(runningServers[0].id);
 	}
 

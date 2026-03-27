@@ -1,6 +1,7 @@
-import sqlite3 from 'sqlite3';
+import initSqlJs, { type Database } from 'sql.js';
 import path from 'path';
 import os from 'os';
+import fs from 'fs';
 
 // Resolve data dir (same logic as store.ts)
 function getDataDir(): string {
@@ -12,34 +13,55 @@ function getDataDir(): string {
 
 const DB_PATH = path.join(getDataDir(), 'chat.db');
 
-let db: sqlite3.Database | null = null;
+let db: Database | null = null;
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
-// Core async wrappers
-function run(sql: string, params: unknown[] = []): Promise<sqlite3.RunResult> {
-	return new Promise((resolve, reject) => {
-		db!.run(sql, params, function (err) {
-			if (err) reject(err);
-			else resolve(this);
-		});
-	});
+// Debounced save to disk — sql.js is in-memory, we persist manually
+function scheduleSave() {
+	if (saveTimer) clearTimeout(saveTimer);
+	saveTimer = setTimeout(() => {
+		if (!db) return;
+		const data = db.export();
+		const buffer = Buffer.from(data);
+		fs.writeFileSync(DB_PATH, buffer);
+	}, 500);
 }
 
-function get<T>(sql: string, params: unknown[] = []): Promise<T | null> {
-	return new Promise((resolve, reject) => {
-		db!.get(sql, params, (err, row) => {
-			if (err) reject(err);
-			else resolve((row as T) ?? null);
-		});
-	});
+function saveNow() {
+	if (saveTimer) clearTimeout(saveTimer);
+	if (!db) return;
+	const data = db.export();
+	const buffer = Buffer.from(data);
+	fs.writeFileSync(DB_PATH, buffer);
 }
 
-function all<T>(sql: string, params: unknown[] = []): Promise<T[]> {
-	return new Promise((resolve, reject) => {
-		db!.all(sql, params, (err, rows) => {
-			if (err) reject(err);
-			else resolve((rows as T[]) ?? []);
-		});
-	});
+// Async wrappers matching the old API
+async function run(sql: string, params: unknown[] = []): Promise<void> {
+	db!.run(sql, params as any[]);
+	scheduleSave();
+}
+
+async function get<T>(sql: string, params: unknown[] = []): Promise<T | null> {
+	const stmt = db!.prepare(sql);
+	stmt.bind(params as any[]);
+	if (stmt.step()) {
+		const row = stmt.getAsObject() as T;
+		stmt.free();
+		return row;
+	}
+	stmt.free();
+	return null;
+}
+
+async function all<T>(sql: string, params: unknown[] = []): Promise<T[]> {
+	const stmt = db!.prepare(sql);
+	stmt.bind(params as any[]);
+	const results: T[] = [];
+	while (stmt.step()) {
+		results.push(stmt.getAsObject() as T);
+	}
+	stmt.free();
+	return results;
 }
 
 // Schema
@@ -80,24 +102,29 @@ const SCHEMA = `
 `;
 
 export async function initChatDb(): Promise<void> {
-	return new Promise((resolve, reject) => {
-		db = new sqlite3.Database(DB_PATH, (err) => {
-			if (err) {
-				reject(err);
-				return;
-			}
-			// Enable WAL mode for better concurrent read/write
-			db!.run('PRAGMA journal_mode=WAL', () => {
-				// Enable foreign keys
-				db!.run('PRAGMA foreign_keys=ON', () => {
-					db!.exec(SCHEMA, (err) => {
-						if (err) reject(err);
-						else resolve();
-					});
-				});
-			});
-		});
-	});
+	const SQL = await initSqlJs();
+
+	// Load existing DB from disk if it exists
+	if (fs.existsSync(DB_PATH)) {
+		const fileBuffer = fs.readFileSync(DB_PATH);
+		db = new SQL.Database(fileBuffer);
+	} else {
+		db = new SQL.Database();
+	}
+
+	// Enable foreign keys
+	db.run('PRAGMA foreign_keys = ON');
+
+	// Run schema
+	db.exec(SCHEMA);
+
+	// Initial save
+	saveNow();
+
+	// Save on process exit
+	process.on('exit', saveNow);
+	process.on('SIGINT', () => { saveNow(); process.exit(); });
+	process.on('SIGTERM', () => { saveNow(); process.exit(); });
 }
 
 export const chatDb = { run, get, all };
