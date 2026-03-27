@@ -12,6 +12,7 @@ import {
 	Server,
 } from 'lucide-react';
 import { BsRouter } from 'react-icons/bs';
+import { MessageSquare } from 'lucide-react';
 import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff } from 'react-icons/vsc';
 import { UpdateBanner } from './UpdateBanner';
 import { TitleBar } from './TitleBar';
@@ -79,6 +80,7 @@ function StatusDot({ online, hasError }: { online: boolean; hasError?: boolean }
 }
 
 const NAV_ITEMS: INavItem[] = [
+	{ path: '/chat', label: 'Chat', icon: <MessageSquare size={18} /> },
 	{
 		path: '/servers',
 		label: 'Servers',

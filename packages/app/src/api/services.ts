@@ -13,6 +13,10 @@ import type {
 	IHubModelDetail,
 	IDownload,
 	IDownloadRequestPayload,
+	IChatThread,
+	IChatThreadCreatePayload,
+	IChatMessage,
+	IChatMessageCreatePayload,
 } from '@warpcore/shared';
 
 // ============================================================
@@ -170,3 +174,23 @@ export async function stopProxy() {
 }
 
 export * from './hub-services';
+
+// Chat
+export async function fetchThreads() {
+	return api.getList<IChatThread>('/chat/threads');
+}
+export async function createThread(data?: IChatThreadCreatePayload) {
+	return api.post<IChatThread>('/chat/threads', data ?? {});
+}
+export async function fetchThread(id: string) {
+	return api.get<IChatThread & { messages: IChatMessage[] }>(`/chat/threads/${id}`);
+}
+export async function updateThread(id: string, data: Partial<IChatThreadCreatePayload>) {
+	return api.put<IChatThread>(`/chat/threads/${id}`, data);
+}
+export async function deleteThread(id: string) {
+	return api.del<null>(`/chat/threads/${id}`);
+}
+export async function appendMessages(threadId: string, messages: IChatMessageCreatePayload[]) {
+	return api.post<IChatMessage[]>(`/chat/threads/${threadId}/messages`, messages);
+}
