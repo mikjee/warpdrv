@@ -102,39 +102,33 @@ const SCHEMA = `
 `;
 
 export async function initChatDb(): Promise<void> {
+	const isPkg = (process as any).pkg !== undefined;
 	let SQL;
-	try {
-		SQL = await initSqlJs();
-	} catch {
-		// Fallback for bundled/pkg environments
-		const wasmPath = path.join(path.dirname(process.execPath), 'sql-wasm.wasm');
-		if (fs.existsSync(wasmPath)) {
-			const wasmBinary = fs.readFileSync(wasmPath).buffer as ArrayBuffer;
-			SQL = await initSqlJs({ wasmBinary });
-		} else {
-			const candidates = [
-				path.join(path.dirname(process.execPath), '..', 'lib', 'WarpCore', 'binaries', 'sql-wasm.wasm'),
-				path.join(path.dirname(process.execPath), 'binaries', 'sql-wasm.wasm'),
-			];
-			let found = false;
-			for (const c of candidates) {
-				if (fs.existsSync(c)) {
-					const wasmBinary = fs.readFileSync(c).buffer as ArrayBuffer;
-					SQL = await initSqlJs({ wasmBinary });
-					found = true;
-					break;
-				}
+	if (isPkg) {
+		const candidates = [
+			path.join(path.dirname(process.execPath), 'sql-wasm.wasm'),
+			path.join(path.dirname(process.execPath), '..', 'lib', 'WarpCore', 'binaries', 'sql-wasm.wasm'),
+			path.join(path.dirname(process.execPath), 'binaries', 'sql-wasm.wasm'),
+		];
+		let wasmBinary: ArrayBuffer | null = null;
+		for (const c of candidates) {
+			if (fs.existsSync(c)) {
+				wasmBinary = fs.readFileSync(c).buffer as ArrayBuffer;
+				break;
 			}
-			if (!found) throw new Error('sql-wasm.wasm not found');
 		}
+		if (!wasmBinary) throw new Error('sql-wasm.wasm not found next to executable');
+		SQL = await initSqlJs({ wasmBinary });
+	} else {
+		SQL = await initSqlJs();
 	}
 
 	// Load existing DB from disk if it exists
 	if (fs.existsSync(DB_PATH)) {
 		const fileBuffer = fs.readFileSync(DB_PATH);
-		db = new SQL!.Database(fileBuffer);
+		db = new SQL.Database(fileBuffer);
 	} else {
-		db = new SQL!.Database();
+		db = new SQL.Database();
 	}
 
 	// Enable foreign keys
