@@ -19,7 +19,8 @@
 				"shadow": true,
 				"decorations": false,
 				"resizable": true,
-				"useHttpsScheme": true
+				"useHttpsScheme": true,
+				"devtools": true
 			}
 		],
 		"security": {

@@ -1,8 +1,8 @@
 import type { IApiResponse } from '@warpcore/shared';
 
 export interface ISummaryData {
-	servers: { running: number };
-	router: { online: boolean };
+	servers: { running: number; errors: number };
+	router: { online: boolean; hasError: boolean };
 	devices: { unique: number };
 }
 

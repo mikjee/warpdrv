@@ -343,8 +343,7 @@ serversRouter.put('/:id', async (req, res) => {
 		server.status = EServerStatus.LOADING;
 		server.error = null;
 	} else {
-		// Just update config without relaunching
-		server.status = EServerStatus.STOPPED;
+		// Just update config without relaunching — preserve current status and PID
 	}
 
 	await store.put(PREFIX + server.id, server);

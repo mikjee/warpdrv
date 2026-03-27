@@ -5,7 +5,7 @@ import {
 import { Slider } from '@chakra-ui/react';
 import {
 	Globe, Search, ChevronDown, Package, AlertCircle, Settings,
-	ArrowUpDown, Download,
+	ArrowUpDown, Download, ArrowUpAZ, ArrowDownAZ,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { ISettings, IHubModel } from '@warpcore/shared';
@@ -19,18 +19,23 @@ import type { IDownload } from '@warpcore/shared';
 import { EDownloadStatus } from '@warpcore/shared';
 import { useToast } from '../components/ToastProvider';
 
-enum EHubSort {
+enum EHubSortField {
 	DOWNLOADS = 'downloads',
 	LIKES = 'likes',
 	MODIFIED = 'modified',
 	CREATED = 'created',
 }
 
-const SORT_OPTIONS: { value: EHubSort; label: string }[] = [
-	{ value: EHubSort.DOWNLOADS, label: 'Most Downloads' },
-	{ value: EHubSort.LIKES, label: 'Most Likes' },
-	{ value: EHubSort.MODIFIED, label: 'Recently Updated' },
-	{ value: EHubSort.CREATED, label: 'Recently Created' },
+enum ESortOrder {
+	DESC = 'desc',
+	ASC = 'asc',
+}
+
+const SORT_FIELD_OPTIONS: { value: EHubSortField; label: string }[] = [
+	{ value: EHubSortField.DOWNLOADS, label: 'Downloads' },
+	{ value: EHubSortField.LIKES, label: 'Likes' },
+	{ value: EHubSortField.MODIFIED, label: 'Last Modified' },
+	{ value: EHubSortField.CREATED, label: 'Created Date' },
 ];
 
 const PARAM_STEPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 17, 20, 24, 27, 30, 36, 45, 90, 140, 280, 560, 1000];
@@ -53,7 +58,8 @@ export function HubPage() {
 
 	// Search state
 	const [query, setQuery] = useState('');
-	const [sort, setSort] = useState<EHubSort>(EHubSort.DOWNLOADS);
+	const [sortField, setSortField] = useState<EHubSortField>(EHubSortField.DOWNLOADS);
+	const [sortOrder, setSortOrder] = useState<ESortOrder>(ESortOrder.DESC);
 	const [showSortMenu, setShowSortMenu] = useState(false);
 	const [paramsRange, setParamsRange] = useState<[number, number]>([0, PARAM_STEPS.length - 1]);
 	const [results, setResults] = useState<IHubModel[]>([]);
@@ -66,7 +72,7 @@ export function HubPage() {
 		if (!query.trim()) return;
 		setSearching(true);
 		setSearchExecuted(true);
-		const result = await searchHub(query.trim(), sort, PARAM_STEPS[paramsRange[0]] || 0, PARAM_STEPS[paramsRange[1]] || 1000);
+		const result = await searchHub(query.trim(), sortField, sortOrder, PARAM_STEPS[paramsRange[0]] || 0, PARAM_STEPS[paramsRange[1]] || 1000);
 		if (result.ok) {
 			setResults(result.data);
 			setSelectedModelId(null);
@@ -74,6 +80,40 @@ export function HubPage() {
 			toast('error', result.error ?? 'Search failed');
 		}
 		setSearching(false);
+	};
+
+	const handleSortFieldChange = async (newField: EHubSortField) => {
+		setSortField(newField);
+		if (searchExecuted && query.trim()) {
+			setSearching(true);
+			const result = await searchHub(query.trim(), newField, sortOrder, PARAM_STEPS[paramsRange[0]] || 0, PARAM_STEPS[paramsRange[1]] || 1000);
+			if (result.ok) {
+				setResults(result.data);
+			} else {
+				toast('error', result.error ?? 'Search failed');
+			}
+			setSearching(false);
+		}
+	};
+
+	const handleSortOrderToggle = async () => {
+		const newOrder: ESortOrder = sortOrder === ESortOrder.DESC ? ESortOrder.ASC : ESortOrder.DESC;
+		setSortOrder(newOrder);
+
+		// For downloads/likes, we can reverse locally without re-fetching (HF API doesn't support asc)
+		if ((sortField === EHubSortField.DOWNLOADS || sortField === EHubSortField.LIKES) && searchExecuted && results.length > 0) {
+			setResults([...results].reverse());
+		} else if (searchExecuted && query.trim()) {
+			// For other fields, re-fetch with new order
+			setSearching(true);
+			const result = await searchHub(query.trim(), sortField, newOrder, PARAM_STEPS[paramsRange[0]] || 0, PARAM_STEPS[paramsRange[1]] || 1000);
+			if (result.ok) {
+				setResults(result.data);
+			} else {
+				toast('error', result.error ?? 'Search failed');
+			}
+			setSearching(false);
+		}
 	};
 
 	// Guard — no model dirs
@@ -99,7 +139,7 @@ export function HubPage() {
 		);
 	}
 
-	const selectedSortLabel = SORT_OPTIONS.find(o => o.value === sort)?.label ?? 'Sort';
+	const selectedSortLabel = SORT_FIELD_OPTIONS.find(o => o.value === sortField)?.label ?? 'Sort';
 
 	return (
 		<Box>
@@ -159,35 +199,6 @@ export function HubPage() {
 					</Button>
 				</HStack>
 
-				{/* Sort */}
-				<Box position="relative">
-					<Button
-						size="sm" variant="outline" bg="rgba(255, 255, 255, 0.03)"
-						borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.5)"
-						fontSize="12px" borderRadius="lg" _hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
-						onClick={() => setShowSortMenu(!showSortMenu)}
-					>
-						<ArrowUpDown size={13} /> {selectedSortLabel} <ChevronDown size={12} />
-					</Button>
-					{showSortMenu && (
-						<>
-							<Box position="fixed" inset="0" zIndex="dropdown" onClick={() => setShowSortMenu(false)} />
-							<Box position="absolute" top="100%" right="0" mt="1" bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)" borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" zIndex="dropdown" py="1" minW="160px">
-								{SORT_OPTIONS.map(opt => (
-									<Box key={opt.value} px="3" py="1.5" fontSize="12px"
-										color={sort === opt.value ? '#3381ff' : 'rgba(255, 255, 255, 0.6)'}
-										bg={sort === opt.value ? 'rgba(51, 129, 255, 0.08)' : 'transparent'}
-										cursor="pointer" _hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
-										onClick={() => { setSort(opt.value); setShowSortMenu(false); }}
-									>
-										{opt.label}
-									</Box>
-								))}
-							</Box>
-						</>
-					)}
-				</Box>
-
 				{/* Param range */}
 				<HStack gap="2" alignItems="center">
 					<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">Params</Text>
@@ -214,33 +225,78 @@ export function HubPage() {
 
 			{/* Results + Detail */}
 			<Flex h="calc(100vh - 153px)">
-				<Box w="400px" minW="400px" borderRightWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" overflowY="auto" p="4">
+				<Box w="400px" minW="400px" borderRightWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" display="flex" flexDirection="column">
 					{!searchExecuted ? (
-						<Flex h="100%" alignItems="center" justifyContent="center">
+						<Flex flex="1" alignItems="center" justifyContent="center">
 							<VStack gap="3" color="rgba(255, 255, 255, 0.15)">
 								<Globe size={40} />
 								<Text fontSize="13px">Search HuggingFace for GGUF models</Text>
 							</VStack>
 						</Flex>
 					) : searching ? (
-						<Flex h="200px" alignItems="center" justifyContent="center">
+						<Flex flex="1" alignItems="center" justifyContent="center">
 							<Spinner size="md" color="rgba(255, 255, 255, 0.2)" />
 						</Flex>
 					) : results.length === 0 ? (
-						<Flex h="200px" alignItems="center" justifyContent="center">
+						<Flex flex="1" alignItems="center" justifyContent="center">
 							<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No results found</Text>
 						</Flex>
 					) : (
-						<VStack align="stretch" gap="2">
-							<Text fontSize="11px" color="rgba(255, 255, 255, 0.25)" mb="1">{results.length} results</Text>
-							{results.map((model: IHubModel) => (
-								<HubModelCard
-									key={model.id} model={model}
-									selected={selectedModelId === model.id}
-									onClick={() => setSelectedModelId(model.id)}
-								/>
-							))}
-						</VStack>
+						<>
+							<Box px="4" py="3" borderBottomWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" bg="rgba(255, 255, 255, 0.01)">
+								<Flex justify="space-between" alignItems="center">
+									<Text fontSize="11px" color="rgba(255, 255, 255, 0.25)">{results.length} results</Text>
+									<HStack gap="1">
+										<Box position="relative">
+											<Button
+												size="sm" variant="outline" bg="rgba(255, 255, 255, 0.03)"
+												borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.5)"
+												fontSize="11px" borderRadius="lg" _hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
+												onClick={() => setShowSortMenu(!showSortMenu)} px="2" py="1" h="auto"
+											>
+												<ArrowUpDown size={11} /> {selectedSortLabel} <ChevronDown size={10} />
+											</Button>
+											{showSortMenu && (
+												<>
+													<Box position="fixed" inset="0" zIndex="dropdown" onClick={() => setShowSortMenu(false)} />
+													<Box position="absolute" top="100%" right="0" mt="1" bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)" borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" zIndex="dropdown" py="1" minW="140px">
+														{SORT_FIELD_OPTIONS.map(opt => (
+															<Box key={opt.value} px="3" py="1.5" fontSize="11px"
+																color={sortField === opt.value ? '#3381ff' : 'rgba(255, 255, 255, 0.6)'}
+																bg={sortField === opt.value ? 'rgba(51, 129, 255, 0.08)' : 'transparent'}
+																cursor="pointer" _hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
+																onClick={() => { handleSortFieldChange(opt.value); setShowSortMenu(false); }}
+															>
+																{opt.label}
+															</Box>
+														))}
+													</Box>
+												</>
+											)}
+										</Box>
+										<Button
+											size="sm" variant="outline" bg="rgba(255, 255, 255, 0.03)"
+											borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.5)"
+											fontSize="11px" borderRadius="lg" _hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
+											onClick={handleSortOrderToggle} px="1.5" py="1" h="auto" title={sortOrder === ESortOrder.DESC ? 'Descending' : 'Ascending'}
+										>
+											{sortOrder === ESortOrder.DESC ? <ArrowDownAZ size={12} /> : <ArrowUpAZ size={12} />}
+										</Button>
+									</HStack>
+								</Flex>
+							</Box>
+							<Box flex="1" overflowY="auto" p="4">
+								<VStack align="stretch" gap="2">
+									{results.map((model: IHubModel) => (
+										<HubModelCard
+											key={model.id} model={model}
+											selected={selectedModelId === model.id}
+											onClick={() => setSelectedModelId(model.id)}
+										/>
+									))}
+								</VStack>
+							</Box>
+						</>
 					)}
 				</Box>
 

@@ -101,26 +101,24 @@ export function NumberField({ label, value, onChange, suffix, min, max, step }: 
 }
 
 // ============================================================
-// Logarithmic slider for context size
+// Square root slider for context size
 // ============================================================
-// Maps a 0-100 slider position to a log-scale value between min and max
-function logSliderToValue(position: number, minVal: number, maxVal: number): number {
+// Maps a 0-100 slider position to a sqrt-scale value between min and max
+// More linear than logarithmic, but still gives finer control at lower values
+function sqrtSliderToValue(position: number, minVal: number, maxVal: number): number {
 	if (position <= 0) return minVal;
 	if (position >= 100) return maxVal;
-	const minLog = Math.log(Math.max(minVal, 1));
-	const maxLog = Math.log(Math.max(maxVal, 1));
-	const value = Math.exp(minLog + (position / 100) * (maxLog - minLog));
+	const t = position / 100;
+	const value = minVal + t * t * (maxVal - minVal);
 	// Round to nearest 256 for context size
 	return Math.round(value / 256) * 256;
 }
 
-function valueToLogSlider(value: number, minVal: number, maxVal: number): number {
+function valueToSqrtSlider(value: number, minVal: number, maxVal: number): number {
 	if (value <= minVal) return 0;
 	if (value >= maxVal) return 100;
-	const minLog = Math.log(Math.max(minVal, 1));
-	const maxLog = Math.log(Math.max(maxVal, 1));
-	const valueLog = Math.log(Math.max(value, 1));
-	return ((valueLog - minLog) / (maxLog - minLog)) * 100;
+	const t = Math.sqrt((value - minVal) / (maxVal - minVal));
+	return t * 100;
 }
 
 // ============================================================
@@ -131,13 +129,13 @@ function SliderNumberField({ label, value, onChange, min, max, step, suffix, log
 	min: number; max: number; step?: number; suffix?: string; logarithmic?: boolean;
 }) {
 	const sliderVal = logarithmic
-		? valueToLogSlider(value, min, max)
+		? valueToSqrtSlider(value, min, max)
 		: ((value - min) / (max - min)) * 100;
 
 	const handleSliderChange = (details: { value: number[] }) => {
 		const pos = details.value[0] ?? 0;
 		if (logarithmic) {
-			onChange(logSliderToValue(pos, min, max));
+			onChange(sqrtSliderToValue(pos, min, max));
 		} else {
 			const val = Math.round(min + (pos / 100) * (max - min));
 			onChange(val);

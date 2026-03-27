@@ -50,8 +50,21 @@ function CountBadge({ count }: { count: number }) {
 	);
 }
 
-// Green/red status dot
-function StatusDot({ online }: { online: boolean }) {
+// Green/red status dot with error state support
+function StatusDot({ online, hasError }: { online: boolean; hasError?: boolean }) {
+	if (hasError) {
+		return (
+			<Box
+				w="5px"
+				h="5px"
+				borderRadius="full"
+				bg="#ef4444"
+				boxShadow="0 0 6px rgba(239, 68, 68, 0.6)"
+				ml="auto"
+				flexShrink={0}
+			/>
+		);
+	}
 	return (
 		<Box
 			w="5px"
@@ -70,13 +83,13 @@ const NAV_ITEMS: INavItem[] = [
 		path: '/servers',
 		label: 'Servers',
 		icon: <Server size={18} />,
-		badge: (s) => s ? <StatusDot online={s.servers.running > 0} /> : null,
+		badge: (s) => s ? <StatusDot online={s.servers.running > 0} hasError={s.servers.errors > 0} /> : null,
 	},
 	{
 		path: '/proxy',
 		label: 'Router',
 		icon: <BsRouter size={18} />,
-		badge: (s) => s ? <StatusDot online={s.router.online} /> : null,
+		badge: (s) => s ? <StatusDot online={s.router.online} hasError={s.router.hasError} /> : null,
 	},
 	{ path: '/models', label: 'Models', icon: <FolderOpen size={18} /> },
 	{ path: '/backends', label: 'Backends', icon: <Blocks size={18} /> },

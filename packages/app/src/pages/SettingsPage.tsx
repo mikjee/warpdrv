@@ -9,15 +9,19 @@ import { fetchSettings, updateSettings, startProxy, stopProxy } from '../api/ser
 import type { ISettings } from '@warpcore/shared';
 import { useToast } from '../components/ToastProvider';
 
-// Import Tauri invoke for autostart checks
-let invoke: ((cmd: string, args?: Record<string, unknown>) => Promise<unknown>) | null = null;
-
-async function getInvoke() {
-	if (!invoke) {
-		const { invoke: inv } = await import('@tauri-apps/api/core');
-		invoke = inv;
+// Feature detection: try to import Tauri's autostart plugin.
+// Returns the API functions if running in Tauri, null otherwise.
+async function getAutostartApi(): Promise<{ isEnabled: () => Promise<boolean>; enable: () => Promise<void>; disable: () => Promise<void> } | null> {
+	try {
+		const mod = await import('@tauri-apps/plugin-autostart');
+		return {
+			isEnabled: mod.isEnabled,
+			enable: mod.enable,
+			disable: mod.disable,
+		};
+	} catch {
+		return null;
 	}
-	return invoke;
 }
 
 export function SettingsPage() {
@@ -56,14 +60,14 @@ export function SettingsPage() {
 	// Check actual OS autostart status (desktop app only) - this is the source of truth
 	useEffect(() => {
 		const checkOsAutoLaunch = async () => {
+			const api = await getAutostartApi();
+			if (!api) return; // Not running in Tauri
+
 			try {
-				const inv = await getInvoke();
-				if (!inv) return;
-				const result = await inv('autostart:is_enabled');
-				setAutoLaunch(result as boolean);
+				const result = await api.isEnabled();
+				setAutoLaunch(result);
 			} catch (err) {
-				// Not a desktop app or autostart not available - keep null
-				console.log('[Settings] Not a desktop app or autostart not available');
+				console.error('[Settings] Failed to check autostart status:', err);
 			}
 		};
 		checkOsAutoLaunch();
@@ -121,23 +125,22 @@ export function SettingsPage() {
 			}
 		}
 
-		// Apply autostart setting via Tauri plugin built-in commands (desktop only)
-		try {
-			const inv = await getInvoke();
-			if (inv && autoLaunch !== null) {
+		// Apply autostart setting via Tauri plugin (desktop only)
+		const api = await getAutostartApi();
+		if (api && autoLaunch !== null) {
+			try {
 				if (autoLaunch) {
-					await inv('autostart:enable');
-					console.log('[Settings] Autostart enabled successfully');
+					await api.enable();
 				} else {
-					await inv('autostart:disable');
-					console.log('[Settings] Autostart disabled successfully');
+					await api.disable();
 				}
 				// Refresh the toggle to reflect actual OS status
-				const isEnabled = await inv('autostart:is_enabled');
-				setAutoLaunch(isEnabled as boolean);
+				const isEnabled = await api.isEnabled();
+				setAutoLaunch(isEnabled);
+			} catch (err) {
+				console.error('[Settings] Failed to apply autostart setting:', err);
+				toast('error', `Failed to update autostart: ${String(err)}`);
 			}
-		} catch (err) {
-			console.error('[Settings] Failed to apply autostart setting:', err);
 		}
 
 		setSaved(true);
@@ -282,11 +285,16 @@ export function SettingsPage() {
 					<Card>
 						<VStack align="stretch" gap="4">
 							<HStack justify="space-between" alignItems="center">
-								<Box>
+								<Box flex="1">
 									<Text fontSize="14px" fontWeight="600" color="#e4e4e7">Launch on Startup</Text>
 									<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)">
 										Start WarpCore automatically when you log in
 									</Text>
+									{autoLaunch === null && (
+										<Text fontSize="11px" color="#fb7185" mt="1">
+											Desktop API not available - toggle disabled
+										</Text>
+									)}
 								</Box>
 								<Switch.Root checked={autoLaunch ?? false} onCheckedChange={(details) => setAutoLaunch(details.checked)} disabled={autoLaunch === null}>
 									<Switch.HiddenInput />

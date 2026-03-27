@@ -70,7 +70,7 @@ export function HubModelCard({ model, selected, onClick }: IHubModelCardProps) {
 					</HStack>
 					<HStack gap="1" color="rgba(255, 255, 255, 0.25)">
 						<Clock size={11} />
-						<Text fontSize="11px">{formatDate(model.lastModified)}</Text>
+						<Text fontSize="11px">{formatDate(model.createdAt)}</Text>
 					</HStack>
 				</HStack>
 

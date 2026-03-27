@@ -24,10 +24,11 @@ const HF_API = 'https://huggingface.co/api';
 
 export const hubRouter = Router();
 
-// GET /api/hub/search?q=&sort=&params_min=&params_max=
+// GET /api/hub/search?q=&sort=&order=&params_min=&params_max=
 hubRouter.get('/search', async (req, res) => {
 	const q = (req.query.q as string) ?? '';
 	const sort = (req.query.sort as string) ?? 'downloads';
+	const order = (req.query.order as string) ?? 'desc';
 	const paramsMin = parseInt(req.query.params_min as string) || 0;
 	const paramsMax = parseInt(req.query.params_max as string) || 0;
 
@@ -37,12 +38,14 @@ hubRouter.get('/search', async (req, res) => {
 	}
 
 	try {
+		const direction = order === 'asc' ? '1' : '-1';
+
 		const params = new URLSearchParams({
 			search: q.trim(),
 			filter: 'gguf',
 			sort: sort === 'modified' ? 'lastModified' : sort === 'created' ? 'createdAt' : sort,
-			direction: '-1',
-			limit: '30',
+			direction,
+			limit: '100',
 		});
 
 		const response = await fetch(`${HF_API}/models?${params}`);

@@ -3,8 +3,8 @@ import type {
 	IHubModel, IHubModelDetail, IDownload, IDownloadRequestPayload,
 } from '@warpcore/shared';
 
-export async function searchHub(q: string, sort: string, paramsMin: number, paramsMax: number) {
-	const params = new URLSearchParams({ q, sort });
+export async function searchHub(q: string, sortField: string, sortOrder: string, paramsMin: number, paramsMax: number) {
+	const params = new URLSearchParams({ q, sort: sortField, order: sortOrder });
 	if (paramsMin > 0) params.set('params_min', String(paramsMin));
 	if (paramsMax > 0) params.set('params_max', String(paramsMax));
 	return api.getList<IHubModel>(`/hub/search?${params}`);

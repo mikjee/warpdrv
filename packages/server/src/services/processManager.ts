@@ -61,8 +61,11 @@ export function buildArgs(
 	if (params.kvQuantV !== EKvQuantType.F16) args.push('--cache-type-v', params.kvQuantV);
 	if (params.chatTemplate) args.push('--chat-template', params.chatTemplate);
 	if (params.device) args.push('--device', params.device);
-	// Parallel slots
-	if (params.parallelSlots > 0) args.push('-np', String(params.parallelSlots));
+	// Parallel slots - add --kv-unified to share context across all slots instead of splitting it
+	if (params.parallelSlots > 0) {
+		args.push('-np', String(params.parallelSlots));
+		args.push('--kv-unified');
+	}
 	// Speculative decoding
 	if (params.specDecode?.enabled && params.specDecode.draftModelPath) {
 		args.push('--model-draft', params.specDecode.draftModelPath);
