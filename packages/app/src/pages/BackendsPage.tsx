@@ -71,7 +71,7 @@ export function BackendsPage() {
 					</Button>
 				}
 			/>
-			<Box p="8">
+			<Box p="4">
 				{loading && backends.length === 0 ? (
 					<Flex h="200px" alignItems="center" justifyContent="center">
 						<Spinner size="lg" color="rgba(255, 255, 255, 0.2)" />

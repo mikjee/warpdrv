@@ -162,7 +162,7 @@ export function SettingsPage() {
 	return (
 		<Box>
 			<PageHeader title="Settings" subtitle="WarpCore configuration" icon={<Settings size={20} />} />
-			<Box p="8" maxW="700px">
+			<Box p="4">
 				<VStack align="stretch" gap="6">
 					{/* Model directories */}
 					<Card>

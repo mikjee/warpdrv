@@ -137,10 +137,10 @@ export function TitleBar() {
 			h="36px"
 			minH="36px"
 			w="100%"
-			bg="#09090b"
+			bg="#0e0e0e"
 			align="center"
 			justify="space-between"
-			borderBottomWidth="1px"
+			// borderBottomWidth="1px"
 			borderColor="rgba(255, 255, 255, 0.06)"
 			onMouseDown={handleMouseDown}
 			onDoubleClick={handleDoubleClick}
@@ -155,7 +155,7 @@ export function TitleBar() {
 				letterSpacing="0.02em"
 				pointerEvents="none"
 			>
-				WarpCore
+				warpcore
 			</Text>
 
 			{/* Window controls */}

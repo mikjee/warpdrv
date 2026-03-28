@@ -171,14 +171,14 @@ export function Shell() {
 			<Flex flex="1" overflow="hidden">
 				{/* Sidebar */}
 				<Flex
-					bg={"#0a0a0a"}
+					bg={"#0e0e0e"}
 					direction="column"
 					w={collapsed ? '60px' : '220px'}
 					minW={collapsed ? '60px' : '220px'}
 					borderRightWidth="1px"
 					borderColor="rgba(255, 255, 255, 0.06)"
 					px={collapsed ? '2' : '4'}
-					pt={'5'}
+					pt={'3'}
 					pb={("0")}
 					gap="0"
 					transition="all 0.2s ease"
@@ -186,9 +186,9 @@ export function Shell() {
 					{/* Collapse toggle + logo text */}
 					<HStack
 						gap="3"
-						px={collapsed ? '0' : '4'}
+						px={collapsed ? '0' : '2'}
 						py="3"
-						mb="8"
+						mb="4"
 						justifyContent={collapsed ? 'center' : 'flex-start'}
 					>
 						<Flex
@@ -212,7 +212,7 @@ export function Shell() {
 								: <VscLayoutSidebarLeft size={20} />
 							}
 						</Flex>
-						{!collapsed && (
+						{/* {!collapsed && (
 							<Text
 								fontSize="16px"
 								fontWeight="700"
@@ -225,7 +225,7 @@ export function Shell() {
 							>
 								warpcore &gt;&gt;
 							</Text>
-						)}
+						)} */}
 					</HStack>
 
 					{/* Logo - commented out, replaced by collapse toggle above */}
@@ -267,7 +267,7 @@ export function Shell() {
 				</Flex>
 
 				{/* Main content */}
-				<Box flex="1" overflow="auto" bg="#0c0c0c">
+				<Box flex="1" overflow="auto" bg="#0e0e0e">
 					<UpdateBanner />
 					<Outlet />
 				</Box>

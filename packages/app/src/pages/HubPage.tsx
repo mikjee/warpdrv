@@ -170,11 +170,10 @@ export function HubPage() {
 
 			{/* Search bar */}
 			<Flex
-				px="8" py="4" borderBottomWidth="1px" borderColor="rgba(255, 255, 255, 0.06)"
-				bg="rgba(255, 255, 255, 0.01)" gap="3" align="center" flexWrap="wrap"
+				p="4" gap="3" align="center" flexWrap="wrap"
 			>
 				<HStack flex="1" minW="280px" gap="2">
-					<Box position="relative" flex="1">
+					<Box position="relative">
 						<Input
 							placeholder="Search models or users..."
 							size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)"
@@ -183,6 +182,7 @@ export function HubPage() {
 							_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
 							value={query} onChange={e => setQuery(e.target.value)}
 							onKeyDown={e => e.key === 'Enter' && handleSearch()}
+							maxW={"300px"}
 						/>
 						<Box position="absolute" left="3" top="50%" transform="translateY(-50%)" color="rgba(255, 255, 255, 0.25)">
 							<Search size={14} />
@@ -204,7 +204,7 @@ export function HubPage() {
 					<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">Params</Text>
 					<Slider.Root
 						w="150px"
-						size="lg"
+						size="sm"
 						colorPalette="blue"
 						value={paramsRange}
 						min={0}
@@ -224,7 +224,7 @@ export function HubPage() {
 			</Flex>
 
 			{/* Results + Detail */}
-			<Flex h="calc(100vh - 153px)">
+			<Flex h="calc(100vh - 153px)" borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" overflow="hidden">
 				<Box w="400px" minW="400px" borderRightWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" display="flex" flexDirection="column">
 					{!searchExecuted ? (
 						<Flex flex="1" alignItems="center" justifyContent="center">

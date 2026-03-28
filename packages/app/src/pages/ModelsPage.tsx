@@ -287,13 +287,13 @@ export function ModelsPage() {
 							disabled={scanMut.loading}
 						>
 							{scanMut.loading ? <Spinner size="xs" /> : <Search size={15} />}
-							Scan
+							Re-Scan Folders
 						</Button>
 					</HStack>
 				}
 			/>
 
-			<Box px="6" py="2">
+			<Box p="4">
 				{/* Table header */}
 				<Flex
 					px="4"

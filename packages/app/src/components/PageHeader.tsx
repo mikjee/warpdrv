@@ -11,13 +11,16 @@ interface IPageHeaderProps {
 export function PageHeader({ title, subtitle, icon, actions }: IPageHeaderProps) {
 	return (
 		<Flex
+			position={"sticky"}
+			top="0"
+			zIndex={"99"}
 			justify="space-between"
 			align="center"
-			px="8"
-			py="6"
+			px="4"
+			py="4"
 			borderBottomWidth="1px"
 			borderColor="rgba(255, 255, 255, 0.06)"
-			//bg="rgba(255, 255, 255, 0.01)"
+			bg="#0e0e0e"
 		>
 			<HStack gap="4">
 				{icon && (
@@ -30,7 +33,7 @@ export function PageHeader({ title, subtitle, icon, actions }: IPageHeaderProps)
 						// bg="rgba(51, 129, 255, 0.08)"
 						// color="#3381ff"
 						color={"#afafaf"}
-						borderWidth="1px"
+						//borderWidth="1px"
 						borderColor="rgba(51, 129, 255, 0.15)"
 					>
 						{icon}

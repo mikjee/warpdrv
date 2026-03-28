@@ -160,7 +160,7 @@ export function ProxyPage() {
 					) : null
 				}
 			/>
-			<Box p="8">
+			<Box p="4">
 				<VStack align="stretch" gap="4">
 					{/* Proxy Status Card */}
 					<Card>

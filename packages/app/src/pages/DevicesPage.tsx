@@ -35,7 +35,7 @@ export function DevicesPage() {
 					</Box>
 				}
 			/>
-			<Box p="8">
+			<Box p="4">
 				{loading && devices.length === 0 ? (
 					<Flex h="200px" alignItems="center" justifyContent="center">
 						<Spinner size="lg" color="rgba(255, 255, 255, 0.2)" />

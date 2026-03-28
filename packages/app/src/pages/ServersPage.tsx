@@ -26,12 +26,18 @@ function formatUptime(startedAt: number | null): string {
 	return `${hours}h ${mins % 60}m`;
 }
 
+function formatCount(n: number): string {
+	if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+	if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+	return String(n);
+}
+
 function StatPill({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
 	return (
-		<HStack gap="1.5" px="2.5" py="1.5" borderRadius="lg" bg="rgba(255, 255, 255, 0.03)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.05)">
+		<HStack gap="1.5" px="2" py="1" borderRadius="lg" bg="rgba(255, 255, 255, 0.03)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.05)">
 			<Box color="rgba(255, 255, 255, 0.3)">{icon}</Box>
-			<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)">{label}</Text>
-			<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace'>{value}</Text>
+			{/* <Text fontSize="11px" color="rgba(255, 255, 255, 0.35)">{label}</Text> */}
+			<Text fontSize="12px" fontWeight="400" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace'>{value}</Text>
 		</HStack>
 	);
 }
@@ -284,28 +290,9 @@ export function ServersPage() {
 			/>
 
 			{/* Subheader: Search, Sort, Running Only */}
-			<Box px="8" py="4" borderBottomWidth="1px" borderColor="rgba(255, 255, 255, 0.06)">
+			<Box p="4" borderColor="rgba(255, 255, 255, 0.06)" borderBottomWidth={"1px"}>
 				<Flex justify="space-between" align="center">
 					<Flex gap="4" align="center" flexWrap="wrap">
-						{/* Search Input */}
-						<Box flex="1" minW="200px" maxW="300px">
-							<InputGroup startElement={<Search size={14} color="rgba(255, 255, 255, 0.3)" />}>
-								<Input
-									placeholder="Search servers..."
-									size="sm"
-									bg="rgba(255, 255, 255, 0.03)"
-									borderColor="rgba(255, 255, 255, 0.08)"
-									color="rgba(255, 255, 255, 0.7)"
-									fontSize="13px"
-									borderRadius="lg"
-									_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
-									_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
-									value={searchQuery}
-									onChange={e => setSearchQuery(e.target.value)}
-								/>
-							</InputGroup>
-						</Box>
-
 						{/* Sort Field Dropdown + Order Buttons */}
 						<HStack gap="1.5">
 							{(() => {
@@ -327,7 +314,7 @@ export function ServersPage() {
 												<Button
 													variant="outline"
 													size="sm"
-													w="130px"
+													w="150px"
 													justifyContent="space-between"
 													bg="rgba(255, 255, 255, 0.03)"
 													borderColor="rgba(255, 255, 255, 0.08)"
@@ -344,7 +331,7 @@ export function ServersPage() {
 											<Combobox.Positioner>
 												<Combobox.Content
 													maxH="200px" overflowY="auto"
-													bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
+													bg="#181818" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
 													borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
 												>
 													{sortCollection.items.map((item) => (
@@ -353,7 +340,7 @@ export function ServersPage() {
 															item={item}
 															px="3" py="2" borderRadius="md" cursor="pointer"
 															_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
-															_highlighted={{ bg: 'rgba(51, 129, 255, 0.08)' }}
+															_highlighted={{ bg: '#181818' }}
 														>
 															<Text fontSize="12px" color="#e4e4e7">{item.label}</Text>
 															<Combobox.ItemIndicator />
@@ -403,14 +390,35 @@ export function ServersPage() {
 						</Switch.Root>
 					</Flex>
 
-					{/* Results count */}
-					<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)" fontFamily='"Geist Mono", monospace'>
-						{filteredServers.length} {filteredServers.length === 1 ? 'server' : 'servers'}
-					</Text>
+					<Flex gap="4" align="center" flexWrap="wrap">
+						{/* Results count */}
+						<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)" fontFamily='"Geist Mono", monospace'>
+							{filteredServers.length} {filteredServers.length === 1 ? 'server' : 'servers'}
+						</Text>
+
+						{/* Search Input */}
+						<Box flex="1" minW="200px" maxW="300px">
+							<InputGroup startElement={<Search size={14} color="rgba(255, 255, 255, 0.3)" />}>
+								<Input
+									placeholder="Search servers..."
+									size="sm"
+									bg="rgba(255, 255, 255, 0.03)"
+									borderColor="rgba(255, 255, 255, 0.08)"
+									color="rgba(255, 255, 255, 0.7)"
+									fontSize="13px"
+									borderRadius="lg"
+									_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
+									_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
+									value={searchQuery}
+									onChange={e => setSearchQuery(e.target.value)}
+								/>
+							</InputGroup>
+						</Box>
+					</Flex>
 				</Flex>
 			</Box>
 
-			<Box p="8">
+			<Box p="4">
 				{loading && filteredServers.length === 0 ? (
 					<Flex h="200px" alignItems="center" justifyContent="center">
 						<Spinner size="lg" color="rgba(255, 255, 255, 0.2)" />
@@ -590,16 +598,16 @@ export function ServersPage() {
 												const deviceName = getDeviceName(server);
 												const modelMaxCtx = getModelMaxContext(server);
 												const configuredCtx = server.params.contextSize;
-												const displayCtx = configuredCtx === 0 ? (modelMaxCtx ?? 'auto') : configuredCtx;
+												const displayCtx = configuredCtx === 0 ? 
+													(modelMaxCtx ? formatCount(modelMaxCtx) : 'auto') : formatCount(configuredCtx);
 
 												return (
 													<>
-														<StatPill icon={<FaBrain size={12} />} label="Model" value={model?.name ?? server.serverName} />
+														<StatPill icon={<FaBrain size={12} />} label="Model" value={model?.name ?? "Model Not Found!"} />
 														{server.params.specDecode?.enabled && draftModel && (
 															<StatPill icon={<Sparkles size={12} />} label="Draft" value={draftModel.name} />
 														)}
-														<StatPill icon={<Blocks size={12} />} label="Backend" value={backend?.name ?? server.backendId} />
-														<StatPill icon={<Gauge size={12} />} label="Type" value={backendType} />
+														<StatPill icon={<Blocks size={12} />} label="Backend" value={backend?.name ? `${backend.name} (${backendType})` : "Backend Not Found!"} />
 														<StatPill icon={<Cpu size={12} />} label="Device" value={deviceName} />
 														<StatPill icon={<FaBookOpen size={12} />} label="Context" value={`${displayCtx}`} />
 													</>

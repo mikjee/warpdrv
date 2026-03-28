@@ -11,7 +11,7 @@ export function AboutPage() {
 				subtitle="WarpCore v0.1.0"
 				icon={<Github size={20} />}
 			/>
-			<Box p="8" maxW="600px">
+			<Box p="4">
 				<VStack align="stretch" gap="6">
 					{/* Attribution */}
 					<Card>
