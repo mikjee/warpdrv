@@ -1,15 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Shell } from './components/Shell';
-import { AboutPage } from './pages/AboutPage';
-import { DevicesPage } from './pages/DevicesPage';
-import { ModelsPage } from './pages/ModelsPage';
-import { BackendsPage } from './pages/BackendsPage';
-import { ServersPage } from './pages/ServersPage';
-import { HubPage } from './pages/HubPage';
-import { SettingsPage } from './pages/SettingsPage';
-import { ProxyPage } from './pages/ProxyPage';
-import { ChatPage } from './pages/ChatPage';
 import { fetchSettings, scanModels } from './api/services';
 import { useToast } from './components/ToastProvider';
 
@@ -36,15 +27,16 @@ export function App() {
 		<Routes>
 			<Route element={<Shell />}>
 				<Route index element={<Navigate to="/servers" replace />} />
-				<Route path="/about" element={<AboutPage />} />
-				<Route path="/devices" element={<DevicesPage />} />
-				<Route path="/models" element={<ModelsPage />} />
-				<Route path="/backends" element={<BackendsPage />} />
-				<Route path="/servers" element={<ServersPage />} />
-				<Route path="/hub" element={<HubPage />} />
-				<Route path="/proxy" element={<ProxyPage />} />
-				<Route path="/chat" element={<ChatPage />} />
-				<Route path="/settings" element={<SettingsPage />} />
+				{/* Routes exist for URL matching/navigation; Shell handles rendering via PAGE_REGISTRY */}
+				<Route path="/about" />
+				<Route path="/devices" />
+				<Route path="/models" />
+				<Route path="/backends" />
+				<Route path="/servers" />
+				<Route path="/hub" />
+				<Route path="/proxy" />
+				<Route path="/chat" />
+				<Route path="/settings" />
 			</Route>
 		</Routes>
 	);

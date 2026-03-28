@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Box, Flex, Text, VStack, HStack } from '@chakra-ui/react';
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
 	Cpu,
 	FolderOpen,
@@ -18,8 +18,37 @@ import { UpdateBanner } from './UpdateBanner';
 import { TitleBar } from './TitleBar';
 import { useSummary } from '../hooks/useSummary';
 import { fetchSettings, updateSettings } from '../api/services';
-import type { ReactNode } from 'react';
+import type { ReactNode, ComponentType } from 'react';
 import type { ISummaryData } from '../api/summary-services';
+
+// Page imports for registry
+import { AboutPage } from '../pages/AboutPage';
+import { DevicesPage } from '../pages/DevicesPage';
+import { ModelsPage } from '../pages/ModelsPage';
+import { BackendsPage } from '../pages/BackendsPage';
+import { ServersPage } from '../pages/ServersPage';
+import { HubPage } from '../pages/HubPage';
+import { SettingsPage } from '../pages/SettingsPage';
+import { ProxyPage } from '../pages/ProxyPage';
+import { ChatPage } from '../pages/ChatPage';
+
+// Page lifecycle config: closeOnSwitch=false means page persists (hidden but not unmounted)
+type TPageConfig = {
+	component: ComponentType;
+	closeOnSwitch: boolean;
+};
+
+const PAGE_REGISTRY: Record<string, TPageConfig> = {
+	'/chat': { component: ChatPage, closeOnSwitch: false },
+	'/servers': { component: ServersPage, closeOnSwitch: true },
+	'/proxy': { component: ProxyPage, closeOnSwitch: true },
+	'/hub': { component: HubPage, closeOnSwitch: true },
+	'/models': { component: ModelsPage, closeOnSwitch: true },
+	'/backends': { component: BackendsPage, closeOnSwitch: true },
+	'/devices': { component: DevicesPage, closeOnSwitch: true },
+	'/settings': { component: SettingsPage, closeOnSwitch: true },
+	'/about': { component: AboutPage, closeOnSwitch: true },
+};
 
 interface INavItem {
 	path: string;
@@ -163,22 +192,51 @@ function SidebarLink({
 }
 
 export function Shell() {
-	const [collapsed, setCollapsed] = useState(false);
+	const [collapsed, setCollapsed] = useState<boolean | null>(null);
 	const { data: summary } = useSummary();
+	const location = useLocation();
+	const currentPath = location.pathname;
 
 	// Load sidebar collapsed state from settings on mount
 	useEffect(() => {
-		fetchSettings().then(settings => {
-			if (settings.sidebarCollapsed !== undefined) {
-				setCollapsed(settings.sidebarCollapsed);
-			}
-		}).catch(() => {});
+		fetchSettings().then(response => {
+			setCollapsed(response.data.sidebarCollapsed ?? false);
+		}).catch(() => {
+			setCollapsed(false);
+		});
 	}, []);
 
-	// Save sidebar collapsed state to settings when it changes
+	// Save sidebar collapsed state to settings when it changes (only after initial load)
 	useEffect(() => {
-		updateSettings({ sidebarCollapsed: collapsed }).catch(() => {});
+		if (collapsed !== null) {
+			updateSettings({ sidebarCollapsed: collapsed }).catch(() => {});
+		}
 	}, [collapsed]);
+
+	const isCollapsed = collapsed ?? false;
+
+	// Render pages based on closeOnSwitch config
+	const renderPages = () => {
+		return Object.entries(PAGE_REGISTRY).map(([path, config]) => {
+			const isActive = currentPath === path;
+
+			if (!config.closeOnSwitch) {
+				// Persistent: always mounted, toggle visibility with display
+				return (
+					<Box key={path} display={isActive ? 'block' : 'none'} h="100%">
+						<config.component />
+					</Box>
+				);
+			}
+
+			// Non-persistent: only render when active (unmounts on switch)
+			if (isActive) {
+				return <config.component key={path} />;
+			}
+
+			return null;
+		});
+	};
 
 	return (
 		<Flex direction="column" h="100vh" overflow="hidden">
@@ -188,11 +246,11 @@ export function Shell() {
 				<Flex
 					bg={"#0e0e0e"}
 					direction="column"
-					w={collapsed ? '60px' : '220px'}
-					minW={collapsed ? '60px' : '220px'}
+					w={isCollapsed ? '60px' : '220px'}
+					minW={isCollapsed ? '60px' : '220px'}
 					borderRightWidth="1px"
 					borderColor="rgba(255, 255, 255, 0.06)"
-					px={collapsed ? '2' : '4'}
+					px={isCollapsed ? '2' : '4'}
 					pt={'3'}
 					pb={("0")}
 					gap="0"
@@ -201,10 +259,10 @@ export function Shell() {
 					{/* Collapse toggle + logo text */}
 					<HStack
 						gap="3"
-						px={collapsed ? '0' : '2'}
+						px={isCollapsed ? '0' : '2'}
 						py="3"
 						mb="4"
-						justifyContent={collapsed ? 'center' : 'flex-start'}
+						justifyContent={isCollapsed ? 'center' : 'flex-start'}
 					>
 						<Flex
 							as="button"
@@ -222,7 +280,7 @@ export function Shell() {
 							position={"relative"}
 							top="1px"
 						>
-							{collapsed
+							{isCollapsed
 								? <VscLayoutSidebarLeftOff size={20} />
 								: <VscLayoutSidebarLeft size={20} />
 							}
@@ -267,15 +325,15 @@ export function Shell() {
 					{/* Nav */}
 					<VStack gap="1" align="stretch" flex="1">
 						{NAV_ITEMS.map(item => (
-							<SidebarLink key={item.path} item={item} collapsed={collapsed} summary={summary} />
+							<SidebarLink key={item.path} item={item} collapsed={isCollapsed} summary={summary} />
 						))}
 					</VStack>
 
 					{/* Footer */}
-					<Box px={collapsed ? '0' : '2'} py="2">
+					<Box px={isCollapsed ? '0' : '2'} py="2">
 						<VStack gap="1" align="stretch">
 							{NAV_ITEMS_BOTTOM.map(item => (
-								<SidebarLink key={item.path} item={item} collapsed={collapsed} summary={summary} />
+								<SidebarLink key={item.path} item={item} collapsed={isCollapsed} summary={summary} />
 							))}
 						</VStack>
 					</Box>
@@ -284,7 +342,7 @@ export function Shell() {
 				{/* Main content */}
 				<Box flex="1" overflow="auto" bg="#0e0e0e">
 					<UpdateBanner />
-					<Outlet />
+					{renderPages()}
 				</Box>
 			</Flex>
 		</Flex>
