@@ -59,33 +59,76 @@ fn find_server_binary() -> Option<(String, Vec<String>)> {
     None
 }
 
+fn get_server_port() -> u16 {
+	// Check env var first (for dev/override), then read from settings, default to 4400
+	if let Ok(env_port) = std::env::var("CONTROL_API_PORT") {
+		if let Ok(port) = env_port.parse::<u16>() {
+			if port >= 1 && port <= 65535 {
+				return port;
+			}
+		}
+	}
+
+	// Try to read from settings file
+	let config_dir = match std::env::var("XDG_CONFIG_HOME") {
+		Ok(path) if !path.is_empty() => PathBuf::from(path),
+		_ => std::env::var_os("HOME")
+			.map(|h| PathBuf::from(h).join(".config"))
+			.filter(|p| p.exists())
+			.unwrap_or_else(|| std::env::current_dir().ok().unwrap()),
+	};
+
+	let data_path = config_dir.join("warpcore").join("warpcore-data.json");
+	if !data_path.exists() {
+		return 4400;
+	}
+
+	if let Ok(content) = std::fs::read_to_string(&data_path) {
+		// Simple JSON parsing - look for "apiPort":NUMBER pattern
+		if let Some(api_port_str) = content.split("\"apiPort\"").nth(1).and_then(|s| s.split(':').next()) {
+			let trimmed = api_port_str.trim().split(',').next().unwrap_or("").split('}').next().unwrap_or("").trim();
+			if let Ok(port) = trimmed.parse::<u16>() {
+				if port >= 1 && port <= 65535 {
+					return port;
+				}
+			}
+		}
+	}
+
+	4400
+}
+
 fn spawn_server() -> Option<Child> {
-    let (bin, args) = find_server_binary()?;
+	let (bin, args) = find_server_binary()?;
 
-    let log_file = std::fs::File::create("/tmp/warpcore-server.log").unwrap();
-    let err_file = log_file.try_clone().unwrap();
+	let log_file = std::fs::File::create("/tmp/warpcore-server.log").unwrap();
+	let err_file = log_file.try_clone().unwrap();
 
-    // Find resource dir (Tauri puts resources in ../lib/WarpCore/ relative to the binary)
-    let resource_dir = env::current_exe().ok()
-        .and_then(|p| p.parent().map(|d| d.join("../lib/WarpCore").to_string_lossy().to_string()))
-        .unwrap_or_else(|| ".".to_string());
+	// Find resource dir (Tauri puts resources in ../lib/WarpCore/ relative to the binary)
+	let resource_dir = env::current_exe().ok()
+		.and_then(|p| p.parent().map(|d| d.join("../lib/WarpCore").to_string_lossy().to_string()))
+		.unwrap_or_else(|| ".".to_string());
 
-    let mut cmd = Command::new(&bin);
-    cmd.args(&args)
-        .env("WARPCORE_RESOURCE_DIR", &resource_dir)
-        .stdout(log_file)
-        .stderr(err_file);
+	// Get port from env var or settings, and pass to server process
+	let server_port = get_server_port();
 
-    match cmd.spawn() {
-        Ok(c) => {
-            println!("[WarpCore] Server spawned: {} {:?} (PID {})", bin, args, c.id());
-            Some(c)
-        }
-        Err(e) => {
-            eprintln!("[WarpCore] Failed to spawn server: {}", e);
-            None
-        }
-    }
+	let mut cmd = Command::new(&bin);
+	cmd.args(&args)
+		.env("WARPCORE_RESOURCE_DIR", &resource_dir)
+		.env("CONTROL_API_PORT", server_port.to_string())
+		.stdout(log_file)
+		.stderr(err_file);
+
+	match cmd.spawn() {
+		Ok(c) => {
+			println!("[WarpCore] Server spawned: {} {:?} (PID {}) on port {}", bin, args, c.id(), server_port);
+			Some(c)
+		}
+		Err(e) => {
+			eprintln!("[WarpCore] Failed to spawn server: {}", e);
+			None
+		}
+	}
 }
 
 fn wait_for_server(port: u16, timeout_secs: u64) -> bool {
@@ -296,7 +339,8 @@ fn save_window_size(width: u32, height: u32) -> bool {
 }
 
 fn main() {
-    let server_port: u16 = 4400;
+	let server_port = get_server_port();
+	println!("[WarpCore] Using API port: {} (from env or settings)", server_port);
 
     // Check if launched with --hidden flag (from autostart)
     let launched_hidden = std::env::args().any(|arg| arg == "--hidden");

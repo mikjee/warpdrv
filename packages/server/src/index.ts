@@ -70,11 +70,21 @@ async function main() {
 	});
 
 	const currentSettings = await store.get<ISettings>(SETTINGS_KEY) ?? DEFAULT_SETTINGS;
-	const port = currentSettings.apiPort;
-	const host = currentSettings.apiHost;
+
+	// Port: env var overrides settings, defaults to 4400
+	const envPort = process.env.CONTROL_API_PORT;
+	const port = envPort ? parseInt(envPort, 10) : (currentSettings.apiPort ?? DEFAULT_SETTINGS.apiPort);
+	if (isNaN(port) || port < 1 || port > 65535) {
+		console.error(`[WarpCore] Invalid CONTROL_API_PORT: ${envPort}. Using default 4400.`);
+	}
+
+	const host = currentSettings.apiHost ?? DEFAULT_SETTINGS.apiHost;
 
 	app.listen(port, host, () => {
 		console.log(`[WarpCore] API server listening on ${host}:${port}`);
+		if (envPort) {
+			console.log(`[WarpCore] Port set via CONTROL_API_PORT environment variable`);
+		}
 	});
 
 	// Start model proxy if enabled in settings
