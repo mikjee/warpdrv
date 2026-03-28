@@ -1,5 +1,5 @@
 import { Box, Text, HStack, VStack, Flex, Input, Button, Spinner, Switch } from '@chakra-ui/react';
-import { Settings, FolderOpen, Plus, Trash2, Save, Check } from 'lucide-react';
+import { Settings, FolderOpen, Plus, Trash2, Save, Check, FolderInput } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
@@ -80,6 +80,34 @@ export function SettingsPage() {
 		if (trimmed && !modelRoots.includes(trimmed)) {
 			setModelRoots([...modelRoots, trimmed]);
 			setNewRoot('');
+		}
+	};
+
+	const handleBrowseDirectory = async () => {
+		if (typeof window !== 'undefined' && (window as any).__TAURI__) {
+			try {
+				const importTauriOpener = new Function('return import("@tauri-apps/plugin-opener")');
+				const mod = await importTauriOpener();
+				const path = await mod.open({ directory: true });
+				if (path && !modelRoots.includes(path)) {
+					setNewRoot(path);
+				}
+			} catch (err) {
+				console.error('[Settings] Failed to open directory picker:', err);
+			}
+		} else if (typeof window !== 'undefined' && 'showDirectoryPicker' in window) {
+			try {
+				const handle = await (window as any).showDirectoryPicker();
+				if (handle) {
+					setNewRoot(handle.name);
+				}
+			} catch (err: any) {
+				if (err.name !== 'AbortError') {
+					console.error('[Settings] Failed to open directory picker:', err);
+				}
+			}
+		} else {
+			toast('error', 'Directory picker not supported in this browser. Please type the path manually.');
 		}
 	};
 
@@ -214,6 +242,9 @@ export function SettingsPage() {
 										onChange={e => setNewRoot(e.target.value)}
 										onKeyDown={e => e.key === 'Enter' && handleAddRoot()}
 									/>
+									<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#a78bfa', bg: 'rgba(167, 139, 250, 0.08)' }} borderRadius="lg" minW="8" px="0" onClick={handleBrowseDirectory} title="Browse directory">
+										<FolderInput size={14} />
+									</Button>
 									<Button
 										size="sm"
 										variant="ghost"

@@ -3,7 +3,7 @@ import {
 	Box, Text, HStack, VStack, Flex, Input, Button, Badge, Textarea, Spinner,
 } from '@chakra-ui/react';
 import {
-	X, Blocks, Terminal, FolderSearch, Plus, CheckCircle, AlertCircle,
+	X, Blocks, Terminal, FolderSearch, Plus, CheckCircle, AlertCircle, FileInput,
 } from 'lucide-react';
 import { EValidationStatus, ALL_COMMON_FLAGS, TOGGLE_FLAG_MAPPINGS, getFlagMapping } from '@warpcore/shared';
 import { Card } from '../Card';
@@ -79,7 +79,34 @@ export function BackendDialog({ onClose, editData }: IBackendDialogProps) {
 			// Add missing parts
 			const next = [...defaultArgs];
 			for (const part of parts) if (!next.includes(part)) next.push(part);
-			setDefaultArgs(next);
+		}
+	};
+
+	const handleBrowseFile = async () => {
+		if (typeof window !== 'undefined' && (window as any).__TAURI__) {
+			try {
+				const importTauriOpener = new Function('return import("@tauri-apps/plugin-opener")');
+				const mod = await importTauriOpener();
+				const filePath = await mod.open({ directory: false });
+				if (filePath) {
+					setPath(filePath);
+				}
+			} catch (err) {
+				console.error('[BackendDialog] Failed to open file picker:', err);
+			}
+		} else if (typeof window !== 'undefined' && 'showOpenFilePicker' in window) {
+			try {
+				const [handle] = await (window as any).showOpenFilePicker();
+				if (handle) {
+					setPath(handle.name);
+				}
+			} catch (err: any) {
+				if (err.name !== 'AbortError') {
+					console.error('[BackendDialog] Failed to open file picker:', err);
+				}
+			}
+		} else {
+			toast('error', 'File picker not supported in this browser. Please type the path manually.');
 		}
 	};
 
@@ -135,7 +162,12 @@ export function BackendDialog({ onClose, editData }: IBackendDialogProps) {
 
 						<Box>
 							<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Binary Path</Text>
-							<Input placeholder="/path/to/llama-server" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={path} onChange={e => setPath(e.target.value)} />
+							<HStack gap="2">
+								<Input placeholder="/path/to/llama-server" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={path} onChange={e => setPath(e.target.value)} flex="1" />
+								<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#a78bfa', bg: 'rgba(167, 139, 250, 0.08)' }} borderRadius="lg" minW="8" px="0" onClick={handleBrowseFile} title="Browse file">
+									<FileInput size={14} />
+								</Button>
+							</HStack>
 							<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)" mt="1">Binary is validated and devices are discovered when saved</Text>
 						</Box>
 

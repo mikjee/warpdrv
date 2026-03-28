@@ -44,7 +44,7 @@ export function PageHeader({ title, subtitle, icon, actions }: IPageHeaderProps)
 						{title}
 					</Text>
 					{subtitle && (
-						<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)" mt="-1">
+						<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)">
 							{subtitle}
 						</Text>
 					)}
