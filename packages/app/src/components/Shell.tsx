@@ -148,7 +148,7 @@ function SidebarLink({
 	summary: ISummaryData | null;
 }) {
 	const location = useLocation();
-	const isActive = location.pathname === item.path;
+	const isActive = location.pathname === item.path || (location.pathname === '/' && item.path === '/servers');
 	const badgeNode = item.badge ? item.badge(summary) : null;
 
 	return (
@@ -218,7 +218,7 @@ export function Shell() {
 	// Render pages based on closeOnSwitch config
 	const renderPages = () => {
 		return Object.entries(PAGE_REGISTRY).map(([path, config]) => {
-			const isActive = currentPath === path;
+			const isActive = currentPath === path || (currentPath === '/' && path === '/servers');
 
 			if (!config.closeOnSwitch) {
 				// Persistent: always mounted, toggle visibility with display

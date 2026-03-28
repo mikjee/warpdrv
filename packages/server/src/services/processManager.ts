@@ -51,7 +51,7 @@ export function buildArgs(
 	if (params.ubatchSize > 0 && !argsSet.has('-ub')) args.push('-ub', String(params.ubatchSize));
 	if (params.threads > 0 && !argsSet.has('-t')) args.push('-t', String(params.threads));
 	if (params.threadsBatch > 0 && !argsSet.has('-tb')) args.push('-tb', String(params.threadsBatch));
-	if (params.flashAttn && !argsSet.has('-fa')) args.push('-fa', 'on');
+	if (params.flashAttn && !argsSet.has('-fa')) args.push('-fa=on');
 	if (params.mlock && !argsSet.has('--mlock')) args.push('--mlock');
 	if (!params.mmap && !argsSet.has('--no-mmap') && !argsSet.has('--mmap')) args.push('--no-mmap');
 	if (params.directIo && !argsSet.has('-dio')) args.push('-dio');
