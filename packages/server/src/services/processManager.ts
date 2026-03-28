@@ -43,6 +43,14 @@ export function buildArgs(
 ): string[] {
 	const args: string[] = [...defaultArgs];
 	const argsSet = new Set(defaultArgs);
+	// Remove -fa and its value from defaultArgs if present (will add properly formatted version below)
+	if (argsSet.has('-fa')) {
+		const idx = args.indexOf('-fa');
+		if (idx !== -1) {
+			args.splice(idx, 2); // remove -fa and its following value
+			argsSet.delete('-fa');
+		}
+	}
 	args.push('-m', modelPath);
 	if (mmprojPath) args.push('--mmproj', mmprojPath);
 	if (params.gpuLayers > 0 && !argsSet.has('-ngl')) args.push('-ngl', String(params.gpuLayers));
@@ -51,7 +59,7 @@ export function buildArgs(
 	if (params.ubatchSize > 0 && !argsSet.has('-ub')) args.push('-ub', String(params.ubatchSize));
 	if (params.threads > 0 && !argsSet.has('-t')) args.push('-t', String(params.threads));
 	if (params.threadsBatch > 0 && !argsSet.has('-tb')) args.push('-tb', String(params.threadsBatch));
-	if (params.flashAttn && !argsSet.has('-fa')) args.push('-fa=on');
+	if (params.flashAttn && !argsSet.has('-fa')) args.push('-fa', 'on');
 	if (params.mlock && !argsSet.has('--mlock')) args.push('--mlock');
 	if (!params.mmap && !argsSet.has('--no-mmap') && !argsSet.has('--mmap')) args.push('--no-mmap');
 	if (params.directIo && !argsSet.has('-dio')) args.push('-dio');
