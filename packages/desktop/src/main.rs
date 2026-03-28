@@ -263,50 +263,24 @@ fn save_window_size(width: u32, height: u32) -> bool {
 
     match std::fs::read_to_string(&data_path) {
         Ok(content) => {
-            // Replace existing windowWidth and windowHeight values, or add them before the last }
-            let mut new_content = content.clone();
-
-            // Try to replace existing values first
-            if new_content.contains("\"windowWidth\"") {
-                if let Some(width_end) = new_content.find(",\n\t\"windowHeight\"") {
-                    if let Some(start) = new_content.rfind("\"windowWidth\":") {
-                        let end = start + width_end - start;
-                        new_content = format!(
-                            "{}{}{}",
-                            &new_content[..start],
-                            format!("windowWidth\": {}", width),
-                            &new_content[end..]
-                        );
-                    }
+            // Use proper JSON parsing to safely update window size without corrupting other data
+            let mut json: serde_json::Value = match serde_json::from_str(&content) {
+                Ok(v) => v,
+                Err(e) => {
+                    eprintln!("[WarpCore] Failed to parse warpcore-data.json: {}", e);
+                    return false;
                 }
-            } else {
-                // Add before the last closing brace of settings object
-                if let Some(last_brace) = new_content.rfind('}') {
-                    new_content = format!(
-                        "{}\n\t\"windowWidth\": {},\n\t\"windowHeight\": {}\n{}",
-                        &new_content[..last_brace],
-                        width,
-                        height,
-                        &new_content[last_brace..]
-                    );
+            };
+
+            // Update settings:general windowWidth and windowHeight
+            if let Some(settings) = json.get_mut("settings:general") {
+                if let Some(settings_obj) = settings.as_object_mut() {
+                    settings_obj.insert("windowWidth".to_string(), serde_json::json!(width));
+                    settings_obj.insert("windowHeight".to_string(), serde_json::json!(height));
                 }
             }
 
-            if new_content.contains("\"windowHeight\"") {
-                if let Some(height_end) = new_content.find(",\n}") {
-                    if let Some(start) = new_content.rfind("\"windowHeight\":") {
-                        let end = start + height_end - start;
-                        new_content = format!(
-                            "{}{}{}",
-                            &new_content[..start],
-                            format!("windowHeight\": {}", height),
-                            &new_content[end..]
-                        );
-                    }
-                }
-            }
-
-            match std::fs::write(&data_path, new_content) {
+            match std::fs::write(&data_path, serde_json::to_string_pretty(&json).unwrap_or(content)) {
                 Ok(_) => true,
                 Err(e) => {
                     eprintln!("[WarpCore] Failed to save window size: {}", e);
