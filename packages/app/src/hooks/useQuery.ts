@@ -6,6 +6,7 @@ interface IUseQueryOptions {
 	pollInterval?: number;
 	// Skip initial fetch
 	enabled?: boolean;
+	deepCompare?: boolean;
 }
 
 interface IUseQueryResult<T> {
@@ -31,13 +32,17 @@ export function useQuery<T>(
 		setLoading(prev => prev || data === null);
 		const result = await fetcher();
 		if (result.ok) {
-			setData(result.data);
+			if (options?.deepCompare) {
+				setData(prev => JSON.stringify(prev) === JSON.stringify(result.data) ? prev : result.data);
+			} else {
+				setData(result.data);
+			}
 			setError(null);
 		} else {
 			setError(result.error);
 		}
 		setLoading(false);
-	}, [fetcher, enabled, data]);
+	}, [fetcher, enabled]);
 
 	useEffect(() => {
 		if (!enabled) return;
@@ -72,13 +77,16 @@ export function useListQuery<T>(
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	const lastJsonRef = useRef<string>('');
 	const enabled = options?.enabled ?? true;
 
 	const refetch = useCallback(async () => {
 		if (!enabled) return;
-		setLoading(prev => prev || data.length === 0);
 		const result = await fetcher();
 		if (result.ok) {
+			const json = options?.deepCompare ? JSON.stringify(result.data) : '';
+			if (options?.deepCompare && json === lastJsonRef.current) return;
+			lastJsonRef.current = json;
 			setData(result.data);
 			setTotal(result.total);
 			setError(null);
@@ -86,12 +94,11 @@ export function useListQuery<T>(
 			setError(result.error);
 		}
 		setLoading(false);
-	}, [fetcher, enabled, data.length]);
+	}, [fetcher, enabled]);
 
 	useEffect(() => {
 		if (!enabled) return;
 		refetch();
-
 		if (options?.pollInterval && options.pollInterval > 0) {
 			intervalRef.current = setInterval(refetch, options.pollInterval);
 			return () => {

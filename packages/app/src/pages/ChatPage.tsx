@@ -32,9 +32,22 @@ import {
 	updateThreadConfig,
 } from '../api/services';
 import type { IServer, IChatPreset, IChatInferenceParams, IThreadConfig } from '@warpcore/shared';
-import { EServerStatus, EChatRole, EResponseFormat, EReasoningFormat } from '@warpcore/shared';
+import { EServerStatus, EChatRole, EResponseFormat, EReasoningFormat, EReasoningEffort } from '@warpcore/shared';
 import { ChatConfigSidebar, DEFAULT_INFERENCE_PARAMS } from '../components/ChatConfigSidebar';
 import '../styles/assistant-ui.css';
+import { createContext, useContext } from 'react';
+
+interface IChatConfig {
+	reasoningEffort: EReasoningEffort;
+	onReasoningEffortChange: (v: EReasoningEffort) => void;
+	contextSize: number;
+}
+
+export const ChatConfigContext = createContext<IChatConfig>({
+	reasoningEffort: EReasoningEffort.NONE,
+	onReasoningEffortChange: () => {},
+	contextSize: 0,
+});
 
 // ============================================================
 // Model adapter — direct to llama-server, no proxy
@@ -74,6 +87,7 @@ const modelAdapter: ChatModelAdapter = {
 			model: provider.chat('model'),
 			messages: allMessages,
 			abortSignal,
+			includeRawChunks: true,
 			temperature: p.temperature,
 			topP: p.topP,
 			topK: p.topK,
@@ -89,43 +103,85 @@ const modelAdapter: ChatModelAdapter = {
 					...(p.cachePrompt ? { cache_prompt: true } : {}),
 					...(p.responseFormat !== EResponseFormat.TEXT ? { response_format: { type: p.responseFormat } } : {}),
 					...(p.reasoningFormat !== EReasoningFormat.NONE ? { reasoning_format: p.reasoningFormat } : {}),
-					...(p.enableThinking ? { chat_template_kwargs: { enable_thinking: true } } : {}),
+					...(p.enableThinking || p.reasoningEffort !== EReasoningEffort.NONE
+						? { chat_template_kwargs: {
+							...(p.enableThinking ? { enable_thinking: true } : {}),
+							...(p.reasoningEffort !== EReasoningEffort.NONE ? { reasoning_effort: p.reasoningEffort } : {}),
+						} }
+						: {}),
 				},
 			},
 		});
+
 		let fullText = '';
-		const genStart = performance.now();
-		let firstChunkTime: number | null = null;
-		for await (const chunk of (await result).textStream) {
-			if (firstChunkTime === null) firstChunkTime = performance.now();
-			fullText += chunk;
-			yield { content: [{ type: 'text' as const, text: fullText }] };
+		let reasoningText = '';
+		let timings: any = null;
+		for await (const part of (await result).fullStream) {
+
+			// console.log('[PART]', part);
+			if (part.type === 'reasoning-start' || part.type === 'reasoning-end') {
+				// no-op, just markers
+			} else if (part.type === 'reasoning-delta') {
+				reasoningText += part.text;
+				const content: any[] = [];
+				if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
+				if (fullText) content.push({ type: 'text' as const, text: fullText });
+				if (content.length > 0) yield { content };
+			} else if (part.type === 'text-delta') {
+				fullText += part.text;
+				const content: any[] = [];
+				if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
+				content.push({ type: 'text' as const, text: fullText });
+				yield { content };
+			} else if (part.type === 'raw') {
+				try {
+					const raw = part.rawValue as any;
+					if (raw?.timings) timings = raw.timings;
+					const delta = raw?.choices?.[0]?.delta;
+					if (delta?.reasoning_content) {
+						reasoningText += delta.reasoning_content;
+						const content: any[] = [];
+						if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
+						if (fullText) content.push({ type: 'text' as const, text: fullText });
+						if (content.length > 0) yield { content };
+					}
+				} catch { /* ignore */ }
+			}
 		}
-		const genEnd = performance.now();
+
 		const usage = await (await result).usage;
-		const completionTokens = usage?.outputTokens ?? 0;
-		const promptTokens = usage?.inputTokens ?? 0;
-		const totalStreamTime = genEnd - genStart;
-		const tokensPerSecond = (completionTokens > 0 && firstChunkTime)
-			? Math.round((completionTokens / (genEnd - firstChunkTime)) * 1000 * 100) / 100
-			: 0;
+		const reasoningTokens = (usage as any)?.outputTokenDetails?.reasoningTokens ?? 0;
+
+		const ppSpeed = timings?.prompt_per_second ?? 0;
+		const tgSpeed = timings?.predicted_per_second ?? 0;
+		const promptTokens = timings?.prompt_n ?? usage?.inputTokens ?? 0;
+		const completionTokens = timings?.predicted_n ?? usage?.outputTokens ?? 0;
+		const ppMs = timings?.prompt_ms ?? 0;
+		const tgMs = timings?.predicted_ms ?? 0;
+
+		const finalContent: any[] = [];
+		if (reasoningText) finalContent.push({ type: 'reasoning' as const, reasoning: reasoningText });
+		finalContent.push({ type: 'text' as const, text: fullText });
+
 		yield {
-			content: [{ type: 'text' as const, text: fullText }],
+			content: finalContent,
 			metadata: {
 				unstable_state: {},
 				custom: {
 					promptTokens,
 					completionTokens,
-					promptPerSecond: (firstChunkTime && promptTokens > 0)
-						? Math.round((promptTokens / (firstChunkTime - genStart)) * 1000 * 100) / 100
-						: 0,
+					reasoningTokens,
+					ppSpeed: Math.round(ppSpeed * 100) / 100,
+					tgSpeed: Math.round(tgSpeed * 100) / 100,
+					ttftMs: Math.round(ppMs),
+					totalMs: Math.round(ppMs + tgMs),
 				},
 				timing: {
-					streamStartTime: genStart,
-					firstTokenTime: firstChunkTime ?? undefined,
-					totalStreamTime,
+					streamStartTime: 0,
+					firstTokenTime: undefined,
+					totalStreamTime: ppMs + tgMs,
 					tokenCount: completionTokens,
-					tokensPerSecond,
+					tokensPerSecond: Math.round(tgSpeed * 100) / 100,
 					totalChunks: 0,
 					toolCallCount: 0,
 				},
@@ -223,7 +279,7 @@ function HistoryProvider({ children }: { children: ReactNode }) {
 						content: [{ type: 'text' as const, text: m.content }],
 						createdAt: new Date(m.createdAt),
 						status: { type: 'complete' as const },
-						metadata: { unstable_state: {}, custom: {} },
+						metadata: { unstable_state: {}, custom: m.stats ? JSON.parse(m.stats) : {} },
 						attachments: [],
 					},
 				})),
@@ -240,9 +296,11 @@ function HistoryProvider({ children }: { children: ReactNode }) {
 			const textParts = msg.content.filter((p: any) => p.type === 'text');
 			const content = textParts.map((p: any) => (p as any).text).join('');
 			if (!content) return;
+			const stats = (msg.metadata as any)?.custom ?? null;
 			await appendMessages(remoteId, [{
 				role: msg.role as EChatRole,
 				content,
+				stats: stats ? JSON.stringify(stats) : undefined,
 			}]);
 		},
 	}), [aui]);
@@ -277,7 +335,7 @@ function ServerSelector({
 	const selected = servers.find((s) => s.id === selectedId);
 
 	return (
-		<Box position="relative">
+		<Box position="relative" style={{ left: "calc(400px - 50vw)" }}>
 			<HStack
 				gap="2"
 				px="3"
@@ -291,7 +349,7 @@ function ServerSelector({
 				onClick={() => setOpen(!open)}
 				fontSize="13px"
 				color="rgba(255,255,255,0.7)"
-				minW="200px"
+				minW="500px"
 			>
 				{selected ? (
 					<>
@@ -399,7 +457,7 @@ function ConfigManager({
 // ChatInner — main chat layout
 // ============================================================
 
-function ChatInner() {
+function ChatInner({ contextSize }: { contextSize: number }) {
 	const [configOpen, setConfigOpen] = useState(false);
 	const [inferenceParams, setInferenceParams] = useState<IChatInferenceParams>({ ...DEFAULT_INFERENCE_PARAMS });
 	const [systemPrompt, setSystemPrompt] = useState('');
@@ -472,7 +530,14 @@ function ChatInner() {
 		},
 	});
 
+	const chatConfigValue = useMemo(() => ({
+		reasoningEffort: inferenceParams.reasoningEffort,
+		onReasoningEffortChange: (v: EReasoningEffort) => handleParamsChange({ ...inferenceParams, reasoningEffort: v }),
+		contextSize,
+	}), [inferenceParams, contextSize]);
+
 	return (
+		<ChatConfigContext.Provider value={chatConfigValue}>
 		<AssistantRuntimeProvider runtime={runtime}>
 			<ConfigManager onConfigLoaded={handleConfigLoaded} />
 			<TooltipProvider>
@@ -482,7 +547,7 @@ function ChatInner() {
 						minW="260px"
 						borderRightWidth="1px"
 						borderColor="rgba(255,255,255,0.06)"
-						bg="rgba(0,0,0,0.15)"
+						// bg="rgba(0,0,0,0.15)"
 						overflow="auto"
 						p="3"
 					>
@@ -504,12 +569,13 @@ function ChatInner() {
 				</Flex>
 			</TooltipProvider>
 		</AssistantRuntimeProvider>
+		</ChatConfigContext.Provider>
 	);
 }
 
 export function ChatPage() {
 	const fetcher = useCallback(() => fetchServers(), []);
-	const { data: servers } = useListQuery<IServer>(fetcher, { pollInterval: 5000 });
+	const { data: servers } = useListQuery<IServer>(fetcher, { pollInterval: 5000, deepCompare: true });
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 
 	const selected = servers.find((s) => s.id === selectedId);
@@ -533,7 +599,9 @@ export function ChatPage() {
 				}
 			/>
 			<Flex flex="1" overflow="hidden">
-				<ChatInner />
+				<Flex flex="1" overflow="hidden">
+					<ChatInner contextSize={selected?.params?.contextSize ?? 0} />
+				</Flex>			
 			</Flex>
 		</Flex>
 	);

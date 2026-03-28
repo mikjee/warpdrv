@@ -37,10 +37,19 @@ function rowToThread(row: IThreadRow): IChatThread {
 // GET /api/chat/threads — list all threads (metadata only, no messages)
 chatRouter.get('/threads', async (_req, res) => {
 	try {
-		const rows = await chatDb.all<IThreadRow>(
-			'SELECT * FROM threads ORDER BY updatedAt DESC'
+		const rows = await chatDb.all<IThreadRow & { messageCount: number; totalTokens: number }>(
+			`SELECT t.*, COALESCE(mc.cnt, 0) as messageCount, COALESCE(mc.tokens, 0) as totalTokens
+			 FROM threads t
+			 LEFT JOIN (
+				SELECT threadId, COUNT(*) as cnt,
+				SUM(CASE WHEN stats IS NOT NULL THEN
+					COALESCE(json_extract(stats, '$.promptTokens'), 0) + COALESCE(json_extract(stats, '$.completionTokens'), 0)
+				ELSE 0 END) as tokens
+				FROM messages GROUP BY threadId
+			 ) mc ON t.id = mc.threadId
+			 ORDER BY t.updatedAt DESC`
 		);
-		const threads = rows.map(rowToThread);
+		const threads = rows.map((r) => ({ ...rowToThread(r), messageCount: r.messageCount, totalTokens: r.totalTokens }));
 		res.json({ ok: true, data: threads, total: threads.length, error: null });
 	} catch (err) {
 		res.status(500).json({ ok: false, data: [], total: 0, error: String(err) });
@@ -162,18 +171,19 @@ chatRouter.post('/threads/:id/messages', async (req, res) => {
 			? req.body
 			: [req.body];
 		const now = Date.now();
-		const messages: IChatMessage[] = payloads.map((p, i) => ({
+		const messages = payloads.map((p, i) => ({
 			id: crypto.randomUUID(),
 			threadId,
 			role: p.role,
 			content: p.content,
+			stats: p.stats ?? null,
 			createdAt: now + i, // preserve ordering within batch
 		}));
 		for (const msg of messages) {
 			await chatDb.run(
-				`INSERT INTO messages (id, threadId, role, content, createdAt)
-				 VALUES (?, ?, ?, ?, ?)`,
-				[msg.id, msg.threadId, msg.role, msg.content, msg.createdAt]
+				`INSERT INTO messages (id, threadId, role, content, stats, createdAt)
+				 VALUES (?, ?, ?, ?, ?, ?)`,
+				[msg.id, msg.threadId, msg.role, msg.content, msg.stats ?? null, msg.createdAt]
 			);
 		}
 		// Touch thread updatedAt

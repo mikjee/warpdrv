@@ -24,6 +24,7 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   CheckIcon,
+  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CopyIcon,
@@ -33,12 +34,19 @@ import {
   RefreshCwIcon,
   SquareIcon,
 } from "lucide-react";
-import type { FC } from "react";
+import { useContext, useState, type FC } from "react";
+import { ChatConfigContext } from "@/pages/ChatPage";
+import { EReasoningEffort } from "@warpcore/shared";
+import { useMessageTiming } from "@assistant-ui/react";
+import { BrainCircuitIcon, ClockIcon } from "lucide-react";
+import { encodingForModel } from 'js-tiktoken';
+
+const tokenEncoder = encodingForModel('gpt-4o');
 
 export const Thread: FC = () => {
   return (
     <ThreadPrimitive.Root
-      className="aui-root aui-thread-root @container flex h-full flex-col bg-background"
+      className="aui-root aui-thread-root @container flex h-full flex-col"
       style={{
         ["--thread-max-width" as string]: "44rem",
         ["--composer-radius" as string]: "24px",
@@ -47,7 +55,7 @@ export const Thread: FC = () => {
     >
       <ThreadPrimitive.Viewport
         turnAnchor="top"
-        className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll scroll-smooth px-4 pt-4"
+        className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll scroll-smooth px-6 pt-4"
       >
         <AuiIf condition={(s) => s.thread.isEmpty}>
           <ThreadWelcome />
@@ -57,7 +65,7 @@ export const Thread: FC = () => {
           {() => <ThreadMessage />}
         </ThreadPrimitive.Messages>
 
-        <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer sticky bottom-0 mx-auto mt-auto flex w-full max-w-(--thread-max-width) flex-col gap-4 overflow-visible rounded-t-(--composer-radius) bg-background pb-4 md:pb-6">
+        <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer sticky bottom-0 mx-auto mt-auto flex w-full max-w-(--thread-max-width) flex-col gap-4 overflow-visible rounded-t-(--composer-radius) pb-4 md:pb-6">
           <ThreadScrollToBottom />
           <Composer />
         </ThreadPrimitive.ViewportFooter>
@@ -132,33 +140,103 @@ const ThreadSuggestionItem: FC = () => {
   );
 };
 
+const ContextUsageBar: FC = () => {
+  const { contextSize } = useContext(ChatConfigContext);
+  const messages = useAuiState((s) => s.thread.messages);
+  const composerText = useAuiState((s) => s.composer.text);
+
+  let baseline = 0;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg?.role === 'assistant') {
+      const custom = (msg.metadata as any)?.custom;
+      if (custom?.promptTokens != null) {
+        baseline = (custom.promptTokens ?? 0) + (custom.completionTokens ?? 0);
+        break;
+      }
+    }
+  }
+
+  const inputTokens = composerText ? tokenEncoder.encode(composerText).length : 0;
+  const total = baseline + inputTokens;
+  const ctxLabel = contextSize > 0 ? (contextSize > 1000 ? `${(contextSize / 1000).toFixed(0)}k` : String(contextSize)) : '?';
+  const pct = contextSize > 0 ? Math.min((total / contextSize) * 100, 100) : 0;
+  const color = pct > 90 ? '#ef4444' : pct > 70 ? '#f59e0b' : 'rgba(255,255,255,0.15)';
+
+  return (
+    <div className="flex items-center gap-2 px-1 pt-1" title={`Context: ${total.toLocaleString()} / ${contextSize > 0 ? contextSize.toLocaleString() : '?'} tokens`}>
+      <div className="flex-1 h-1 rounded-full bg-muted/30 overflow-hidden">
+        <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, backgroundColor: color }} />
+      </div>
+      <span className="text-[10px] font-mono text-muted-foreground/40 shrink-0">
+        {total > 1000 ? `${(total / 1000).toFixed(1)}k` : total} / {ctxLabel}
+      </span>
+    </div>
+  );
+};
+
 const Composer: FC = () => {
   return (
     <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
       <ComposerPrimitive.AttachmentDropzone asChild>
         <div
           data-slot="composer-shell"
-          className="flex w-full flex-col gap-2 rounded-(--composer-radius) border bg-background p-(--composer-padding) transition-shadow focus-within:border-ring/75 focus-within:ring-2 focus-within:ring-ring/20 data-[dragging=true]:border-ring data-[dragging=true]:border-dashed data-[dragging=true]:bg-accent/50"
+          className="flex w-full flex-col gap-2 rounded-xl border p-(--composer-padding) transition-shadow focus-within:border-ring/75 focus-within:ring-2 focus-within:ring-ring/20 data-[dragging=true]:border-ring data-[dragging=true]:border-dashed data-[dragging=true]:bg-accent/50"
+          style={{
+            background: "#111",
+            boxShadow: "0px 10px 10px 10px rgba(0,0,0,0.15)"
+          }}
         >
           <ComposerAttachments />
-          <ComposerPrimitive.Input
+         <ComposerPrimitive.Input
             placeholder="Send a message..."
             className="aui-composer-input max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-sm outline-none placeholder:text-muted-foreground/80"
             rows={1}
             autoFocus
             aria-label="Message input"
+            autoComplete="off"
           />
           <ComposerAction />
+          <ContextUsageBar />
         </div>
       </ComposerPrimitive.AttachmentDropzone>
     </ComposerPrimitive.Root>
   );
 };
 
+const ReasoningEffortToggle: FC = () => {
+  const { reasoningEffort, onReasoningEffortChange } = useContext(ChatConfigContext);
+  const levels: EReasoningEffort[] = [EReasoningEffort.NONE, EReasoningEffort.LOW, EReasoningEffort.MEDIUM, EReasoningEffort.HIGH];
+  const idx = levels.indexOf(reasoningEffort);
+  const next = () => onReasoningEffortChange(levels[(idx + 1) % levels.length]!);
+  const label = reasoningEffort === EReasoningEffort.NONE ? 'off' : reasoningEffort;
+  const color = reasoningEffort === EReasoningEffort.NONE
+    ? 'text-muted-foreground/40'
+    : reasoningEffort === EReasoningEffort.LOW
+      ? 'text-blue-400'
+      : reasoningEffort === EReasoningEffort.MEDIUM
+        ? 'text-amber-400'
+        : 'text-red-400';
+  return (
+    <button
+      type="button"
+      onClick={next}
+      className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors hover:bg-accent ${color}`}
+      title={`Reasoning effort: ${label} (click to cycle)`}
+    >
+      <BrainCircuitIcon className="size-3.5" />
+      <span className="font-medium">{label}</span>
+    </button>
+  );
+};
+
 const ComposerAction: FC = () => {
   return (
     <div className="aui-composer-action-wrapper relative flex items-center justify-between">
-      <ComposerAddAttachment />
+      <div className="flex items-center gap-1">
+        <ComposerAddAttachment />
+        <ReasoningEffortToggle />
+      </div>
       <AuiIf condition={(s) => !s.thread.isRunning}>
         <ComposerPrimitive.Send asChild>
           <TooltipIconButton
@@ -201,15 +279,39 @@ const MessageError: FC = () => {
   );
 };
 
+const MessageStats: FC = () => {
+  const custom = useAuiState((s) => s.message.role === 'assistant' ? (s.message.metadata as any)?.custom : undefined);
+  if (!custom) return null;
+  const { ppSpeed, tgSpeed, promptTokens, completionTokens, reasoningTokens, ttftMs, totalMs } = custom;
+  if (!ppSpeed && !tgSpeed && !promptTokens) return null;
+  return (
+    <div className="flex items-center gap-3 mr-2 text-muted-foreground/50 text-xs font-mono">
+      {ppSpeed > 0 && (
+        <span title="Prompt processing speed">pp {ppSpeed.toFixed(1)} t/s</span>
+      )}
+      {tgSpeed > 0 && (
+        <span title="Token generation speed">tg {tgSpeed.toFixed(1)} t/s</span>
+      )}
+     {completionTokens != null && completionTokens > 0 && (
+        <span title="Token count">{completionTokens} tok</span>
+      )}
+      {totalMs > 0 && (
+        <span title="Total time">{(totalMs / 1000).toFixed(1)}s</span>
+      )}
+    </div>
+  );
+};
+
 const AssistantMessage: FC = () => {
   return (
     <MessagePrimitive.Root
-      className="aui-assistant-message-root fade-in slide-in-from-bottom-1 relative mx-auto w-full max-w-(--thread-max-width) animate-in py-3 duration-150"
+      className="aui-assistant-message-root fade-in slide-in-from-bottom-1 relative mx-auto w-full  animate-in py-3 duration-150"
       data-role="assistant"
     >
       <div className="aui-assistant-message-content wrap-break-word px-2 text-foreground leading-relaxed">
-        <MessagePrimitive.Parts>
+       <MessagePrimitive.Parts>
           {({ part }) => {
+            if (part.type === "reasoning") return <ReasoningBlock />;
             if (part.type === "text") return <MarkdownText />;
             if (part.type === "tool-call")
               return part.toolUI ?? <ToolFallback {...part} />;
@@ -219,11 +321,39 @@ const AssistantMessage: FC = () => {
         <MessageError />
       </div>
 
-      <div className="aui-assistant-message-footer mt-1 ml-2 flex min-h-6 items-center">
+     <div className="aui-assistant-message-footer mt-1 ml-2 flex min-h-6 items-center">
+        <MessageStats />
         <BranchPicker />
         <AssistantActionBar />
       </div>
     </MessagePrimitive.Root>
+  );
+};
+
+const ReasoningBlock: FC = () => {
+  const reasoning = useAuiState((s) => {
+    const part = s.part;
+    return part?.type === 'reasoning' ? (part as any).reasoning : '';
+  });
+  const [open, setOpen] = useState(false);
+  if (!reasoning) return null;
+  return (
+    <div className="mb-3 rounded-lg border border-border/50 bg-muted/30">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <BrainCircuitIcon className="size-3.5" />
+        <span>Thinking{reasoning.length > 100 ? ` (${Math.ceil(reasoning.length / 4)} tokens est.)` : ''}</span>
+        <ChevronDownIcon className={`size-3.5 ml-auto transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="px-3 pb-3 text-xs text-muted-foreground/80 whitespace-pre-wrap max-h-64 overflow-y-auto">
+          {reasoning}
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -278,7 +408,7 @@ const AssistantActionBar: FC = () => {
 const UserMessage: FC = () => {
   return (
     <MessagePrimitive.Root
-      className="aui-user-message-root fade-in slide-in-from-bottom-1 mx-auto grid w-full max-w-(--thread-max-width) animate-in auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] content-start gap-y-2 px-2 py-3 duration-150 [&:where(>*)]:col-start-2"
+      className="aui-user-message-root fade-in slide-in-from-bottom-1 mx-auto grid w-full animate-in auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] content-start gap-y-2 px-2 py-3 duration-150 [&:where(>*)]:col-start-2"
       data-role="user"
     >
       <UserMessageAttachments />
@@ -316,7 +446,7 @@ const UserActionBar: FC = () => {
 const EditComposer: FC = () => {
   return (
     <MessagePrimitive.Root className="aui-edit-composer-wrapper mx-auto flex w-full max-w-(--thread-max-width) flex-col px-2 py-3">
-      <ComposerPrimitive.Root className="aui-edit-composer-root ml-auto flex w-full max-w-[85%] flex-col rounded-2xl bg-muted">
+      <ComposerPrimitive.Root className="aui-edit-composer-root ml-auto flex w-full max-w-[85%] flex-col bg-muted">
         <ComposerPrimitive.Input
           className="aui-edit-composer-input min-h-14 w-full resize-none bg-transparent p-4 text-foreground text-sm outline-none"
           autoFocus

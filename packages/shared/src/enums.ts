@@ -53,3 +53,10 @@ export enum EReasoningFormat {
 	PARSED = 'parsed',
 	RAW = 'raw',
 }
+
+export enum EReasoningEffort {
+	NONE = 'none',
+	LOW = 'low',
+	MEDIUM = 'medium',
+	HIGH = 'high',
+}

@@ -8,7 +8,8 @@ import {
 	deleteChatPreset,
 } from '../api/services';
 import type { IChatPreset, IChatInferenceParams } from '@warpcore/shared';
-import { EResponseFormat, EReasoningFormat } from '@warpcore/shared';
+import { EResponseFormat, EReasoningFormat, EReasoningEffort } from '@warpcore/shared';
+import { VscLayoutSidebarRightOff } from 'react-icons/vsc';
 
 // ============================================================
 // Default params — must match the one in ChatPage
@@ -31,6 +32,7 @@ export const DEFAULT_INFERENCE_PARAMS: IChatInferenceParams = {
 	mirostatTau: 5.0,
 	mirostatEta: 0.1,
 	cachePrompt: true,
+	reasoningEffort: EReasoningEffort.NONE
 };
 
 interface IChatConfigSidebarProps {
@@ -238,15 +240,15 @@ export function ChatConfigSidebar({
 	if (!open) {
 		return (
 			<Box
-				w="36px" minW="36px" h="100%"
+				w="60px" minW="60px" h="100%"
 				borderLeftWidth="1px" borderColor="rgba(255,255,255,0.06)"
-				bg="rgba(0,0,0,0.15)"
+				// bg="rgba(0,0,0,0.15)"
 				display="flex" alignItems="flex-start" justifyContent="center"
-				pt="3" cursor="pointer"
+				pt="6" cursor="pointer"
 				onClick={onToggle}
 				_hover={{ bg: 'rgba(255,255,255,0.03)' }}
 			>
-				<Settings size={16} style={{ opacity: 0.4 }} />
+				<VscLayoutSidebarRightOff size={20} style={{ opacity: 0.4 }} />
 			</Box>
 		);
 	}
@@ -409,6 +411,17 @@ export function ChatConfigSidebar({
 					<SectionHeader title="Thinking Models" />
 					<VStack gap="2.5" align="stretch">
 						<ParamToggle label="Enable Thinking" value={params.enableThinking} onChange={(v) => updateParam('enableThinking', v)} />
+						<ParamSelect
+							label="Reasoning Effort"
+							value={params.reasoningEffort}
+							options={[
+								{ value: EReasoningEffort.NONE, label: 'None' },
+								{ value: EReasoningEffort.LOW, label: 'Low' },
+								{ value: EReasoningEffort.MEDIUM, label: 'Medium' },
+								{ value: EReasoningEffort.HIGH, label: 'High' },
+							]}
+							onChange={(v) => updateParam('reasoningEffort', v as EReasoningEffort)}
+						/>
 						<ParamSelect
 							label="Reasoning Format"
 							value={params.reasoningFormat}

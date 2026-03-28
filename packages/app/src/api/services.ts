@@ -20,6 +20,7 @@ import type {
 	IThreadConfig,
 	IChatPreset,
 	IChatPresetCreatePayload,
+	IChatFolder,
 } from '@warpcore/shared';
 
 // ============================================================
@@ -218,4 +219,18 @@ export async function fetchThreadConfig(threadId: string) {
 }
 export async function updateThreadConfig(threadId: string, data: { presetId?: string | null; systemPrompt?: string; params?: string }) {
 	return api.put<IThreadConfig>(`/chat/threads/${threadId}/config`, data);
+}
+
+// Folders
+export async function fetchFolders() {
+	return api.getList<IChatFolder>('/chat/folders');
+}
+export async function createFolder(name: string, parentId?: string | null) {
+	return api.post<IChatFolder>('/chat/folders', { name, parentId: parentId ?? null });
+}
+export async function updateFolder(id: string, data: Partial<{ name: string; parentId: string | null; sortOrder: number }>) {
+	return api.put<IChatFolder>(`/chat/folders/${id}`, data);
+}
+export async function deleteFolder(id: string) {
+	return api.del<null>(`/chat/folders/${id}`);
 }

@@ -6,6 +6,7 @@ import {
 	EChatRole,
 	EResponseFormat,
 	EReasoningFormat,
+	EReasoningEffort,
 } from './enums';
 // ============================================================
 // Identifiers
@@ -305,9 +306,11 @@ export interface IChatThread {
 	id: TChatThreadId;
 	title: string;
 	folderId: TChatFolderId | null;
-	serverId: TServerId | null;
+	serverId: string | null;
 	systemPrompt: string;
-	tags: string[]; // stored as JSON in SQLite
+	tags: string[];
+	messageCount: number;
+	totalTokens: number;
 	createdAt: number;
 	updatedAt: number;
 }
@@ -317,6 +320,7 @@ export interface IChatMessage {
 	threadId: TChatThreadId;
 	role: EChatRole;
 	content: string;
+	stats: string | null;
 	createdAt: number;
 }
 
@@ -340,6 +344,7 @@ export interface IChatThreadCreatePayload {
 export interface IChatMessageCreatePayload {
 	role: EChatRole;
 	content: string;
+	stats?: string;
 }
 
 // ============================================================
@@ -359,6 +364,7 @@ export interface IChatInferenceParams {
 	responseFormat: EResponseFormat;
 	reasoningFormat: EReasoningFormat;
 	enableThinking: boolean;
+	reasoningEffort: EReasoningEffort;
 	mirostatMode: number;
 	mirostatTau: number;
 	mirostatEta: number;
