@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Box, Flex, Text, HStack } from '@chakra-ui/react';
 import { MessageSquare, ChevronDown } from 'lucide-react';
 import {
@@ -6,6 +6,7 @@ import {
 	useLocalRuntime,
 	useRemoteThreadListRuntime,
 	useAui,
+	useAuiState,
 	RuntimeAdapterProvider,
 	type ChatModelAdapter,
 	type RemoteThreadListAdapter,
@@ -27,9 +28,12 @@ import {
 	updateThread,
 	deleteThread,
 	appendMessages,
+	fetchThreadConfig,
+	updateThreadConfig,
 } from '../api/services';
-import type { IServer } from '@warpcore/shared';
-import { EServerStatus, EChatRole } from '@warpcore/shared';
+import type { IServer, IChatPreset, IChatInferenceParams, IThreadConfig } from '@warpcore/shared';
+import { EServerStatus, EChatRole, EResponseFormat, EReasoningFormat } from '@warpcore/shared';
+import { ChatConfigSidebar, DEFAULT_INFERENCE_PARAMS } from '../components/ChatConfigSidebar';
 import '../styles/assistant-ui.css';
 
 // ============================================================
@@ -42,6 +46,9 @@ export function setActivePort(port: number | null) {
 	currentPort = port;
 }
 
+let activeInferenceParams: IChatInferenceParams = { ...DEFAULT_INFERENCE_PARAMS };
+let activeSystemPrompt: string = '';
+
 const modelAdapter: ChatModelAdapter = {
 	async *run({ messages, abortSignal }) {
 		if (!currentPort) {
@@ -52,24 +59,78 @@ const modelAdapter: ChatModelAdapter = {
 			baseURL: `http://localhost:${currentPort}/v1`,
 			apiKey: 'warpcore',
 		});
-		
+
 		const convertedMessages = messages.map((m) => {
 			const textParts = m.content.filter((p: any) => p.type === 'text');
 			const text = textParts.map((p: any) => (p as any).text).join('');
 			return { role: m.role as 'system' | 'user' | 'assistant', content: text };
 		});
 
+		const p = activeInferenceParams;
+		const allMessages = activeSystemPrompt
+			? [{ role: 'system' as const, content: activeSystemPrompt }, ...convertedMessages]
+			: convertedMessages;
 		const result = streamText({
 			model: provider.chat('model'),
-			messages: convertedMessages,
+			messages: allMessages,
 			abortSignal,
+			temperature: p.temperature,
+			topP: p.topP,
+			topK: p.topK,
+			maxOutputTokens: p.maxTokens > 0 ? p.maxTokens : undefined,
+			frequencyPenalty: p.frequencyPenalty,
+			presencePenalty: p.presencePenalty,
+			seed: p.seed >= 0 ? p.seed : undefined,
+			providerOptions: {
+				openai: {
+					...(p.repeatPenalty !== 1.0 ? { repeat_penalty: p.repeatPenalty } : {}),
+					...(p.minP > 0 ? { min_p: p.minP } : {}),
+					...(p.mirostatMode > 0 ? { mirostat: p.mirostatMode, mirostat_tau: p.mirostatTau, mirostat_eta: p.mirostatEta } : {}),
+					...(p.cachePrompt ? { cache_prompt: true } : {}),
+					...(p.responseFormat !== EResponseFormat.TEXT ? { response_format: { type: p.responseFormat } } : {}),
+					...(p.reasoningFormat !== EReasoningFormat.NONE ? { reasoning_format: p.reasoningFormat } : {}),
+					...(p.enableThinking ? { chat_template_kwargs: { enable_thinking: true } } : {}),
+				},
+			},
 		});
-
 		let fullText = '';
+		const genStart = performance.now();
+		let firstChunkTime: number | null = null;
 		for await (const chunk of (await result).textStream) {
+			if (firstChunkTime === null) firstChunkTime = performance.now();
 			fullText += chunk;
 			yield { content: [{ type: 'text' as const, text: fullText }] };
 		}
+		const genEnd = performance.now();
+		const usage = await (await result).usage;
+		const completionTokens = usage?.outputTokens ?? 0;
+		const promptTokens = usage?.inputTokens ?? 0;
+		const totalStreamTime = genEnd - genStart;
+		const tokensPerSecond = (completionTokens > 0 && firstChunkTime)
+			? Math.round((completionTokens / (genEnd - firstChunkTime)) * 1000 * 100) / 100
+			: 0;
+		yield {
+			content: [{ type: 'text' as const, text: fullText }],
+			metadata: {
+				unstable_state: {},
+				custom: {
+					promptTokens,
+					completionTokens,
+					promptPerSecond: (firstChunkTime && promptTokens > 0)
+						? Math.round((promptTokens / (firstChunkTime - genStart)) * 1000 * 100) / 100
+						: 0,
+				},
+				timing: {
+					streamStartTime: genStart,
+					firstTokenTime: firstChunkTime ?? undefined,
+					totalStreamTime,
+					tokenCount: completionTokens,
+					tokensPerSecond,
+					totalChunks: 0,
+					toolCallCount: 0,
+				},
+			},
+		};
 	},
 };
 
@@ -153,7 +214,6 @@ function HistoryProvider({ children }: { children: ReactNode }) {
 			const res = await fetchThread(remoteId);
 			if (!res.ok || !res.data) return { messages: [] };
 			const msgs = (res.data as any).messages ?? [];
-			// Convert to ExportedMessageRepository format
 			return {
 				messages: msgs.map((m: any, idx: number) => ({
 					parentId: idx === 0 ? null : msgs[idx - 1].id,
@@ -291,7 +351,119 @@ function ServerSelector({
 	);
 }
 
+// ============================================================
+// ConfigManager — lives inside AssistantRuntimeProvider
+// Uses useAuiState to reactively detect thread switches
+// ============================================================
+
+function ConfigManager({
+	onConfigLoaded,
+}: {
+	onConfigLoaded: (threadId: string, config: { presetId: string | null; systemPrompt: string; params: IChatInferenceParams }) => void;
+}) {
+	const threadId = useAuiState((s) => s.threadListItem?.remoteId);
+	const lastLoadedRef = useRef<string | null>(null);
+
+	useEffect(() => {
+		if (!threadId) return;
+		if (threadId === lastLoadedRef.current) return;
+		lastLoadedRef.current = threadId;
+
+		fetchThreadConfig(threadId).then((res) => {
+			if (res.ok && res.data) {
+				const config = res.data as IThreadConfig;
+				let params = DEFAULT_INFERENCE_PARAMS;
+				try {
+					const parsed = typeof config.params === 'string' ? JSON.parse(config.params) : config.params;
+					params = { ...DEFAULT_INFERENCE_PARAMS, ...parsed };
+				} catch { /* use defaults */ }
+				onConfigLoaded(threadId, {
+					presetId: config.presetId,
+					systemPrompt: config.systemPrompt,
+					params,
+				});
+			} else {
+				onConfigLoaded(threadId, {
+					presetId: null,
+					systemPrompt: '',
+					params: { ...DEFAULT_INFERENCE_PARAMS },
+				});
+			}
+		});
+	}, [threadId, onConfigLoaded]);
+
+	return null;
+}
+
+// ============================================================
+// ChatInner — main chat layout
+// ============================================================
+
 function ChatInner() {
+	const [configOpen, setConfigOpen] = useState(false);
+	const [inferenceParams, setInferenceParams] = useState<IChatInferenceParams>({ ...DEFAULT_INFERENCE_PARAMS });
+	const [systemPrompt, setSystemPrompt] = useState('');
+	const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+
+	// Refs for debounced save — avoids stale closures
+	const currentThreadIdRef = useRef<string | null>(null);
+	const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const isLoadingRef = useRef(false);
+
+	// Sync module-level vars so the model adapter can read them
+	useEffect(() => { activeInferenceParams = inferenceParams; }, [inferenceParams]);
+	useEffect(() => { activeSystemPrompt = systemPrompt; }, [systemPrompt]);
+
+	// Called by ConfigManager when active thread changes
+	const handleConfigLoaded = useCallback((threadId: string, config: { presetId: string | null; systemPrompt: string; params: IChatInferenceParams }) => {
+		// Cancel any pending save for the previous thread
+		if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+		isLoadingRef.current = true;
+		currentThreadIdRef.current = threadId;
+		setSelectedPresetId(config.presetId);
+		setSystemPrompt(config.systemPrompt);
+		setInferenceParams(config.params);
+		// Re-enable saves after React finishes this batch of state updates
+		requestAnimationFrame(() => { isLoadingRef.current = false; });
+	}, []);
+
+	// Save to backend — all values passed as args, nothing from closures
+	function doSave(tid: string, params: IChatInferenceParams, prompt: string, presetId: string | null) {
+		updateThreadConfig(tid, {
+			presetId: presetId,
+			systemPrompt: prompt,
+			params: JSON.stringify(params),
+		});
+	}
+
+	function scheduleSave(newParams: IChatInferenceParams, newPrompt: string, newPresetId: string | null) {
+		if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+		const tid = currentThreadIdRef.current;
+		if (!tid || isLoadingRef.current) return;
+		saveTimerRef.current = setTimeout(() => doSave(tid, newParams, newPrompt, newPresetId), 400);
+	}
+
+	function handleParamsChange(newParams: IChatInferenceParams) {
+		setInferenceParams(newParams);
+		scheduleSave(newParams, systemPrompt, selectedPresetId);
+	}
+
+	function handleSystemPromptChange(newPrompt: string) {
+		setSystemPrompt(newPrompt);
+		scheduleSave(inferenceParams, newPrompt, selectedPresetId);
+	}
+
+	function handlePresetSelect(presetId: string | null, preset: IChatPreset | null) {
+		setSelectedPresetId(presetId);
+		if (preset) {
+			setInferenceParams(preset.params);
+			setSystemPrompt(preset.systemPrompt);
+			scheduleSave(preset.params, preset.systemPrompt, presetId);
+		} else {
+			scheduleSave(inferenceParams, systemPrompt, null);
+		}
+	}
+
 	const runtime = useRemoteThreadListRuntime({
 		runtimeHook: () => useLocalRuntime(modelAdapter),
 		adapter: {
@@ -302,6 +474,7 @@ function ChatInner() {
 
 	return (
 		<AssistantRuntimeProvider runtime={runtime}>
+			<ConfigManager onConfigLoaded={handleConfigLoaded} />
 			<TooltipProvider>
 				<Flex flex="1" h="100%" overflow="hidden" className="dark">
 					<Box
@@ -318,6 +491,16 @@ function ChatInner() {
 					<Box flex="1" overflow="hidden">
 						<Thread />
 					</Box>
+					<ChatConfigSidebar
+						open={configOpen}
+						onToggle={() => setConfigOpen(!configOpen)}
+						params={inferenceParams}
+						systemPrompt={systemPrompt}
+						selectedPresetId={selectedPresetId}
+						onParamsChange={handleParamsChange}
+						onSystemPromptChange={handleSystemPromptChange}
+						onPresetSelect={handlePresetSelect}
+					/>
 				</Flex>
 			</TooltipProvider>
 		</AssistantRuntimeProvider>

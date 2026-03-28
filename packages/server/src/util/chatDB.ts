@@ -92,6 +92,7 @@ const SCHEMA = `
 		threadId TEXT NOT NULL,
 		role TEXT NOT NULL,
 		content TEXT NOT NULL,
+		stats TEXT,
 		createdAt INTEGER NOT NULL,
 		FOREIGN KEY (threadId) REFERENCES threads(id) ON DELETE CASCADE
 	);
@@ -99,6 +100,13 @@ const SCHEMA = `
 	CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(threadId, createdAt);
 	CREATE INDEX IF NOT EXISTS idx_threads_folder ON threads(folderId);
 	CREATE INDEX IF NOT EXISTS idx_threads_updated ON threads(updatedAt);
+	CREATE TABLE IF NOT EXISTS thread_configs (
+		threadId TEXT PRIMARY KEY,
+		presetId TEXT,
+		systemPrompt TEXT NOT NULL DEFAULT '',
+		params TEXT NOT NULL DEFAULT '{}',
+		FOREIGN KEY (threadId) REFERENCES threads(id) ON DELETE CASCADE
+	);
 `;
 
 export async function initChatDb(): Promise<void> {
@@ -136,6 +144,18 @@ export async function initChatDb(): Promise<void> {
 
 	// Run schema
 	db.exec(SCHEMA);
+	
+	// Migration: add stats column to messages if missing
+	try {
+		const cols = db.exec("PRAGMA table_info(messages)");
+		const colNames = cols[0]?.values.map((row: any) => row[1]) ?? [];
+		if (!colNames.includes('stats')) {
+			db.run("ALTER TABLE messages ADD COLUMN stats TEXT");
+		}
+	} catch {
+		// ignore if already exists
+	}
+	// Initial save
 
 	// Initial save
 	saveNow();

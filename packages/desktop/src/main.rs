@@ -172,8 +172,160 @@ fn base64_encode(data: &[u8]) -> String {
     result
 }
 
+// Read startMinimized setting from warpcore-data.json
+fn read_start_minimized_setting() -> bool {
+    // Get config dir based on platform
+    let config_dir = match std::env::var("XDG_CONFIG_HOME") {
+        Ok(path) if !path.is_empty() => PathBuf::from(path),
+        _ => std::env::var_os("HOME")
+            .map(|h| PathBuf::from(h).join(".config"))
+            .filter(|p| p.exists())
+            .unwrap_or_else(|| std::env::current_dir().ok().unwrap()),
+    };
+
+    let data_path = config_dir.join("warpcore").join("warpcore-data.json");
+
+    if !data_path.exists() {
+        return false;
+    }
+
+    match std::fs::read_to_string(&data_path) {
+        Ok(content) => {
+            // Simple JSON parsing without external deps - look for "startMinimized":true pattern
+            content.contains("\"startMinimized\":true") || content.contains("\"startMinimized\": true")
+        }
+        Err(_) => false,
+    }
+}
+
+// Read window size settings from warpcore-data.json
+fn read_window_size_settings() -> Option<(u32, u32)> {
+    let config_dir = match std::env::var("XDG_CONFIG_HOME") {
+        Ok(path) if !path.is_empty() => PathBuf::from(path),
+        _ => std::env::var_os("HOME")
+            .map(|h| PathBuf::from(h).join(".config"))
+            .filter(|p| p.exists())
+            .unwrap_or_else(|| std::env::current_dir().ok().unwrap()),
+    };
+
+    let data_path = config_dir.join("warpcore").join("warpcore-data.json");
+
+    if !data_path.exists() {
+        return None;
+    }
+
+    match std::fs::read_to_string(&data_path) {
+        Ok(content) => {
+            // Extract windowWidth and windowHeight from JSON using simple pattern matching
+            let width_str = content
+                .split("\"windowWidth\"")
+                .nth(1)
+                .and_then(|s| s.split(':').next())
+                .and_then(|s| s.trim().split(',').next())
+                .and_then(|s| s.trim().split('}').next())
+                .and_then(|s| s.trim().parse::<u32>().ok());
+
+            let height_str = content
+                .split("\"windowHeight\"")
+                .nth(1)
+                .and_then(|s| s.split(':').next())
+                .and_then(|s| s.trim().split(',').next())
+                .and_then(|s| s.trim().split('}').next())
+                .and_then(|s| s.trim().parse::<u32>().ok());
+
+            if let (Some(width), Some(height)) = (width_str, height_str) {
+                // Validate reasonable bounds (min window size is 800x600 per tauri.conf.json)
+                if width >= 800 && height >= 600 {
+                    return Some((width, height));
+                }
+            }
+            None
+        }
+        Err(_) => None,
+    }
+}
+
+// Save window size to warpcore-data.json
+fn save_window_size(width: u32, height: u32) -> bool {
+    let config_dir = match std::env::var("XDG_CONFIG_HOME") {
+        Ok(path) if !path.is_empty() => PathBuf::from(path),
+        _ => std::env::var_os("HOME")
+            .map(|h| PathBuf::from(h).join(".config"))
+            .filter(|p| p.exists())
+            .unwrap_or_else(|| std::env::current_dir().ok().unwrap()),
+    };
+
+    let data_path = config_dir.join("warpcore").join("warpcore-data.json");
+
+    if !data_path.exists() {
+        return false;
+    }
+
+    match std::fs::read_to_string(&data_path) {
+        Ok(content) => {
+            // Replace existing windowWidth and windowHeight values, or add them before the last }
+            let mut new_content = content.clone();
+
+            // Try to replace existing values first
+            if new_content.contains("\"windowWidth\"") {
+                if let Some(width_end) = new_content.find(",\n\t\"windowHeight\"") {
+                    if let Some(start) = new_content.rfind("\"windowWidth\":") {
+                        let end = start + width_end - start;
+                        new_content = format!(
+                            "{}{}{}",
+                            &new_content[..start],
+                            format!("windowWidth\": {}", width),
+                            &new_content[end..]
+                        );
+                    }
+                }
+            } else {
+                // Add before the last closing brace of settings object
+                if let Some(last_brace) = new_content.rfind('}') {
+                    new_content = format!(
+                        "{}\n\t\"windowWidth\": {},\n\t\"windowHeight\": {}\n{}",
+                        &new_content[..last_brace],
+                        width,
+                        height,
+                        &new_content[last_brace..]
+                    );
+                }
+            }
+
+            if new_content.contains("\"windowHeight\"") {
+                if let Some(height_end) = new_content.find(",\n}") {
+                    if let Some(start) = new_content.rfind("\"windowHeight\":") {
+                        let end = start + height_end - start;
+                        new_content = format!(
+                            "{}{}{}",
+                            &new_content[..start],
+                            format!("windowHeight\": {}", height),
+                            &new_content[end..]
+                        );
+                    }
+                }
+            }
+
+            match std::fs::write(&data_path, new_content) {
+                Ok(_) => true,
+                Err(e) => {
+                    eprintln!("[WarpCore] Failed to save window size: {}", e);
+                    false
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("[WarpCore] Failed to read settings for window size: {}", e);
+            false
+        }
+    }
+}
+
 fn main() {
     let server_port: u16 = 4400;
+
+    // Check if launched with --hidden flag (from autostart)
+    let launched_hidden = std::env::args().any(|arg| arg == "--hidden");
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -190,15 +342,33 @@ fn main() {
         .manage(ServerProcess(Mutex::new(None)))
         .manage(ServerPort(server_port))
         .setup(move |app| {
-            // Show loading page immediately
+            // Determine if we should start minimized:
+            // - Must be launched via autostart (--hidden flag)
+            // - AND startMinimized setting must be true
+            let should_start_minimized = launched_hidden && read_start_minimized_setting();
+
+            // Show loading page immediately (or hide if starting minimized)
             if let Some(window) = app.get_webview_window("main") {
+                // Apply saved window size if available
+                if let Some((saved_width, saved_height)) = read_window_size_settings() {
+                    let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize::new(
+                        saved_width as f64,
+                        saved_height as f64,
+                    )));
+                    println!("[WarpCore] Restored window size: {}x{}", saved_width, saved_height);
+                }
+
                 let html = loading_html(server_port);
                 let data_url = format!(
                     "data:text/html;base64,{}",
                     base64_encode(html.as_bytes())
                 );
                 let _ = window.navigate(data_url.parse().unwrap());
-                let _ = window.show();
+                if !should_start_minimized {
+                    let _ = window.show();
+                } else {
+                    println!("[WarpCore] Starting minimized (to tray)");
+                }
             }
 
             // Spawn server in background
@@ -300,6 +470,14 @@ fn main() {
                         }
                     }
                     "quit" => {
+                        // Save current window size before quitting
+                        if let Some(window) = app.get_webview_window("main") {
+                            if let Ok(size) = window.inner_size() {
+                                let _ = save_window_size(size.width, size.height);
+                                println!("[WarpCore] Saved window size: {}x{}", size.width, size.height);
+                            }
+                        }
+
                         // First, stop all llama-server instances via API
                         if is_server_running(server_port) {
                             let _ = reqwest::blocking::Client::new()
@@ -334,11 +512,16 @@ fn main() {
                 })
                 .build(app)?;
 
-            // Close to tray
+            // Close to tray (save window size before hiding)
             if let Some(window) = app.get_webview_window("main") {
                 let w = window.clone();
                 window.on_window_event(move |event| {
                     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        // Save current window size before hiding to tray
+                        if let Ok(size) = w.inner_size() {
+                            let _ = save_window_size(size.width, size.height);
+                            println!("[WarpCore] Saved window size: {}x{}", size.width, size.height);
+                        }
                         api.prevent_close();
                         let _ = w.hide();
                     }

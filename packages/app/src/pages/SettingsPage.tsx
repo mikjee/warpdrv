@@ -37,6 +37,7 @@ export function SettingsPage() {
 	const [proxyEnabled, setProxyEnabled] = useState(false);
 	const [proxyPort, setProxyPort] = useState(1234);
 	const [autoLaunch, setAutoLaunch] = useState<boolean | null>(null); // null = loading/not desktop, true/false = OS autostart status
+	const [startMinimized, setStartMinimized] = useState(false);
 	const [newRoot, setNewRoot] = useState('');
 	const [saved, setSaved] = useState(false);
 
@@ -54,6 +55,7 @@ export function SettingsPage() {
 			setApiPort(settings.apiPort);
 			setProxyEnabled(settings.proxyEnabled ?? false);
 			setProxyPort(settings.proxyPort ?? 1234);
+			setStartMinimized(settings.startMinimized ?? false);
 		}
 	}, [settings]);
 
@@ -108,6 +110,7 @@ export function SettingsPage() {
 			apiPort,
 			proxyEnabled,
 			proxyPort,
+				startMinimized,
 		});
 
 		if (saveMut.error) {
@@ -301,6 +304,21 @@ export function SettingsPage() {
 									<Switch.Control />
 								</Switch.Root>
 							</HStack>
+							{/* Start minimized */}
+							<Box pt="2" borderTop="1px solid rgba(255, 255, 255, 0.08)">
+								<HStack justify="space-between" alignItems="center">
+									<Box flex="1">
+										<Text fontSize="13px" fontWeight="500" color="#e4e4e7">Start Minimized</Text>
+										<Text fontSize="11px" color="rgba(255, 255, 255, 0.4)">
+											Start to tray without showing window (requires Launch on Startup)
+										</Text>
+									</Box>
+									<Switch.Root checked={startMinimized} onCheckedChange={(details) => setStartMinimized(details.checked)} disabled={!autoLaunch || autoLaunch === null}>
+										<Switch.HiddenInput />
+										<Switch.Control />
+									</Switch.Root>
+								</HStack>
+							</Box>
 						</VStack>
 					</Card>
 				</VStack>

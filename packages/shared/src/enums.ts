@@ -41,3 +41,15 @@ export enum EChatRole {
 	USER = 'user',
 	ASSISTANT = 'assistant',
 }
+
+export enum EResponseFormat {
+	TEXT = 'text',
+	JSON_OBJECT = 'json_object',
+	JSON_SCHEMA = 'json_schema',
+}
+
+export enum EReasoningFormat {
+	NONE = 'none',
+	PARSED = 'parsed',
+	RAW = 'raw',
+}

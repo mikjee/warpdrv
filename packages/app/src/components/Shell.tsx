@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Flex, Text, VStack, HStack } from '@chakra-ui/react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import {
@@ -17,6 +17,7 @@ import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff } from 'react-icons/vsc';
 import { UpdateBanner } from './UpdateBanner';
 import { TitleBar } from './TitleBar';
 import { useSummary } from '../hooks/useSummary';
+import { fetchSettings, updateSettings } from '../api/services';
 import type { ReactNode } from 'react';
 import type { ISummaryData } from '../api/summary-services';
 
@@ -164,6 +165,20 @@ function SidebarLink({
 export function Shell() {
 	const [collapsed, setCollapsed] = useState(false);
 	const { data: summary } = useSummary();
+
+	// Load sidebar collapsed state from settings on mount
+	useEffect(() => {
+		fetchSettings().then(settings => {
+			if (settings.sidebarCollapsed !== undefined) {
+				setCollapsed(settings.sidebarCollapsed);
+			}
+		}).catch(() => {});
+	}, []);
+
+	// Save sidebar collapsed state to settings when it changes
+	useEffect(() => {
+		updateSettings({ sidebarCollapsed: collapsed }).catch(() => {});
+	}, [collapsed]);
 
 	return (
 		<Flex direction="column" h="100vh" overflow="hidden">

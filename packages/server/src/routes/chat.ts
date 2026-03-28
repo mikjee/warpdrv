@@ -274,3 +274,119 @@ chatRouter.delete('/folders/:id', async (req, res) => {
 		res.status(500).json({ ok: false, data: null, error: String(err) });
 	}
 });
+
+// ============================================================
+// Chat Presets (JSON file-backed)
+// ============================================================
+import {
+	listChatPresets,
+	getChatPreset,
+	createChatPreset,
+	updateChatPreset,
+	deleteChatPreset,
+} from '../util/chatPresets';
+import type { IChatPresetCreatePayload, IThreadConfig } from '@warpcore/shared';
+
+// GET /api/chat/presets
+chatRouter.get('/presets', (_req, res) => {
+	try {
+		const presets = listChatPresets();
+		res.json({ ok: true, data: presets, total: presets.length, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+// GET /api/chat/presets/:id
+chatRouter.get('/presets/:id', (req, res) => {
+	try {
+		const preset = getChatPreset(req.params.id);
+		if (!preset) return res.status(404).json({ ok: false, data: null, error: 'Not found' });
+		res.json({ ok: true, data: preset, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+// POST /api/chat/presets
+chatRouter.post('/presets', (req, res) => {
+	try {
+		const preset = createChatPreset(req.body as IChatPresetCreatePayload);
+		res.json({ ok: true, data: preset, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+// PUT /api/chat/presets/:id
+chatRouter.put('/presets/:id', (req, res) => {
+	try {
+		const preset = updateChatPreset(req.params.id, req.body as Partial<IChatPresetCreatePayload>);
+		if (!preset) return res.status(404).json({ ok: false, data: null, error: 'Not found' });
+		res.json({ ok: true, data: preset, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+// DELETE /api/chat/presets/:id
+chatRouter.delete('/presets/:id', (req, res) => {
+	try {
+		const ok = deleteChatPreset(req.params.id);
+		if (!ok) return res.status(404).json({ ok: false, data: null, error: 'Not found' });
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+// ============================================================
+// Thread Configs (per-thread inference params, SQLite-backed)
+// ============================================================
+
+// GET /api/chat/threads/:id/config
+chatRouter.get('/threads/:id/config', async (req, res) => {
+	try {
+		const config = await chatDb.get<IThreadConfig>(
+			'SELECT * FROM thread_configs WHERE threadId = ?',
+			[req.params.id]
+		);
+		res.json({ ok: true, data: config, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+// PUT /api/chat/threads/:id/config
+chatRouter.put('/threads/:id/config', async (req, res) => {
+	try {
+		const body = req.body as { presetId?: string | null; systemPrompt?: string; params?: string };
+		const existing = await chatDb.get<IThreadConfig>(
+			'SELECT * FROM thread_configs WHERE threadId = ?',
+			[req.params.id]
+		);
+		if (existing) {
+			const sets: string[] = [];
+			const vals: unknown[] = [];
+			if (body.presetId !== undefined) { sets.push('presetId = ?'); vals.push(body.presetId); }
+			if (body.systemPrompt !== undefined) { sets.push('systemPrompt = ?'); vals.push(body.systemPrompt); }
+			if (body.params !== undefined) { sets.push('params = ?'); vals.push(body.params); }
+			if (sets.length > 0) {
+				vals.push(req.params.id);
+				await chatDb.run(`UPDATE thread_configs SET ${sets.join(', ')} WHERE threadId = ?`, vals);
+			}
+		} else {
+			await chatDb.run(
+				'INSERT INTO thread_configs (threadId, presetId, systemPrompt, params) VALUES (?, ?, ?, ?)',
+				[req.params.id, body.presetId ?? null, body.systemPrompt ?? '', body.params ?? '{}']
+			);
+		}
+		const config = await chatDb.get<IThreadConfig>(
+			'SELECT * FROM thread_configs WHERE threadId = ?',
+			[req.params.id]
+		);
+		res.json({ ok: true, data: config, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});

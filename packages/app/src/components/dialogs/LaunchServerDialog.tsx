@@ -290,6 +290,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 			backendId: selectedBackendId,
 			modelPath: selectedEntry.file.filePath,
 			mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
+			serverName: serverName.trim() || undefined,
 			params,
 			serverAlias: aliases,
 			autoLaunch,

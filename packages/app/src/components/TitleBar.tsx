@@ -140,7 +140,7 @@ export function TitleBar() {
 			bg="#0e0e0e"
 			align="center"
 			justify="space-between"
-			// borderBottomWidth="1px"
+			borderBottomWidth="1px"
 			borderColor="rgba(255, 255, 255, 0.06)"
 			onMouseDown={handleMouseDown}
 			onDoubleClick={handleDoubleClick}

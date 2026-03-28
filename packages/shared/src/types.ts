@@ -4,6 +4,8 @@ import {
 	EValidationStatus,
 	EDeviceBackendType,
 	EChatRole,
+	EResponseFormat,
+	EReasoningFormat,
 } from './enums';
 // ============================================================
 // Identifiers
@@ -238,6 +240,10 @@ export interface ISettings {
 	proxyEnabled: boolean;
 	serversSortField: TSortField;
 	serversSortOrder: TSortOrder;
+	startMinimized?: boolean; // only effective when auto-launch at startup is enabled
+	sidebarCollapsed?: boolean; // sidebar collapsed state
+	windowWidth?: number; // desktop window width (desktop only)
+	windowHeight?: number; // desktop window height (desktop only)
 }
 export const DEFAULT_SETTINGS: ISettings = {
 	modelRoots: [],
@@ -249,6 +255,10 @@ export const DEFAULT_SETTINGS: ISettings = {
 	proxyEnabled: true,
 	serversSortField: 'name',
 	serversSortOrder: 'asc',
+	startMinimized: false,
+	sidebarCollapsed: false,
+	windowWidth: 1100,
+	windowHeight: 750,
 };
 // ============================================================
 // VRAM Calculator
@@ -330,4 +340,56 @@ export interface IChatThreadCreatePayload {
 export interface IChatMessageCreatePayload {
 	role: EChatRole;
 	content: string;
+}
+
+// ============================================================
+// Chat Inference Params & Presets
+// ============================================================
+export interface IChatInferenceParams {
+	temperature: number;
+	topP: number;
+	topK: number;
+	minP: number;
+	repeatPenalty: number;
+	frequencyPenalty: number;
+	presencePenalty: number;
+	maxTokens: number;
+	stopSequences: string[];
+	seed: number;
+	responseFormat: EResponseFormat;
+	reasoningFormat: EReasoningFormat;
+	enableThinking: boolean;
+	mirostatMode: number;
+	mirostatTau: number;
+	mirostatEta: number;
+	cachePrompt: boolean;
+}
+
+export interface IChatPreset {
+	id: string;
+	name: string;
+	systemPrompt: string;
+	params: IChatInferenceParams;
+	createdAt: number;
+	updatedAt: number;
+}
+
+export interface IChatPresetCreatePayload {
+	name: string;
+	systemPrompt: string;
+	params: IChatInferenceParams;
+}
+
+export interface IThreadConfig {
+	threadId: string;
+	presetId: string | null;
+	systemPrompt: string;
+	params: IChatInferenceParams;
+}
+
+export interface IChatMessageStats {
+	promptTokens: number;
+	completionTokens: number;
+	promptPerSecond: number;
+	predictedPerSecond: number;
 }

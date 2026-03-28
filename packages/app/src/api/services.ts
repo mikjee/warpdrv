@@ -17,6 +17,9 @@ import type {
 	IChatThreadCreatePayload,
 	IChatMessage,
 	IChatMessageCreatePayload,
+	IThreadConfig,
+	IChatPreset,
+	IChatPresetCreatePayload,
 } from '@warpcore/shared';
 
 // ============================================================
@@ -193,4 +196,26 @@ export async function deleteThread(id: string) {
 }
 export async function appendMessages(threadId: string, messages: IChatMessageCreatePayload[]) {
 	return api.post<IChatMessage[]>(`/chat/threads/${threadId}/messages`, messages);
+}
+
+// Chat Presets
+export async function fetchChatPresets() {
+	return api.getList<IChatPreset>('/chat/presets');
+}
+export async function createChatPreset(data: IChatPresetCreatePayload) {
+	return api.post<IChatPreset>('/chat/presets', data);
+}
+export async function updateChatPreset(id: string, data: Partial<IChatPresetCreatePayload>) {
+	return api.put<IChatPreset>(`/chat/presets/${id}`, data);
+}
+export async function deleteChatPreset(id: string) {
+	return api.del<null>(`/chat/presets/${id}`);
+}
+
+// Thread Config
+export async function fetchThreadConfig(threadId: string) {
+	return api.get<IThreadConfig>(`/chat/threads/${threadId}/config`);
+}
+export async function updateThreadConfig(threadId: string, data: { presetId?: string | null; systemPrompt?: string; params?: string }) {
+	return api.put<IThreadConfig>(`/chat/threads/${threadId}/config`, data);
 }

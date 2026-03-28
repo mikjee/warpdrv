@@ -28,12 +28,12 @@ export function StatusBadge({ status, port }: { status: EServerStatus; port?: nu
 	return (
 		<HStack
 			gap="1.5"
-			px="2.5"
+			// px="2.5"
 			py="1"
-			borderRadius="full"
-			bg={`color-mix(in srgb, ${config.color} 10%, transparent)`}
-			borderWidth="1px"
-			borderColor={`color-mix(in srgb, ${config.color} 20%, transparent)`}
+			// borderRadius="full"
+			// bg={`color-mix(in srgb, ${config.color} 10%, transparent)`}
+			// borderWidth="1px"
+			// borderColor={`color-mix(in srgb, ${config.color} 20%, transparent)`}
 		>
 			<Box
 				w="6px"

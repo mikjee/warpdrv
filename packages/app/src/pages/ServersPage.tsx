@@ -459,7 +459,7 @@ export function ServersPage() {
 													borderColor={isRunning ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.06)'}
 												>
 													<Server size={18} color={isRunning ? '#34d399' : 'rgba(255, 255, 255, 0.3)'} />
-													{isRunning && <Box position="absolute" top="-1px" right="-1px" w="8px" h="8px" borderRadius="full" bg="#34d399" shadow="0 0 8px #34d399" />}
+													{/* {isRunning && <Box position="absolute" top="-1px" right="-1px" w="8px" h="8px" borderRadius="full" bg="#34d399" shadow="0 0 8px #34d399" />} */}
 												</Flex>
 												<Box>
 													<HStack gap="2" alignItems="center">
