@@ -16,8 +16,10 @@ import { initChatDb } from './util/chatDB';
 import { proxyRouter } from './routes/proxy';
 import { startModelProxy } from './services/modelProxy';
 import { summaryRouter } from './routes/summary';
+import { SSEManager } from './services/sseManager';
 
 const SETTINGS_KEY = 'settings:general';
+const sseManager = new SSEManager();
 
 async function main() {
 	await runMigrations();
@@ -53,6 +55,13 @@ async function main() {
 	app.use('/api/chat', chatRouter);
 	app.use('/api/summary', summaryRouter);
 
+	// SSE endpoint
+	app.get('/api/events', (req, res) => {
+		sseManager.handleConnection(req, res, () => {
+			console.log('[SSE] Client disconnected');
+		});
+	});
+
 	// Stats endpoint — returns live stats for a running server
 	app.get('/api/servers/:id/stats', (req, res) => {
 		const { getServerStats } = require('./services/statsPoller');
@@ -79,6 +88,19 @@ async function main() {
 	}
 
 	const host = currentSettings.apiHost ?? DEFAULT_SETTINGS.apiHost;
+
+	// Register SSE channels
+	function registerSSEChannels(): void {
+		// Phase 0.5 test - emit every second
+		sseManager.onInterval('test', () => ({
+			timestamp: Date.now(),
+			count: Date.now() % 1000,
+		}), 1000);
+
+		// Phase 1: Add servers, downloads, devices, proxy channels here
+	}
+
+	registerSSEChannels();
 
 	app.listen(port, host, () => {
 		console.log(`[WarpCore] API server listening on ${host}:${port}`);

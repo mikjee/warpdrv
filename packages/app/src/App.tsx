@@ -3,10 +3,14 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Shell } from './components/Shell';
 import { fetchSettings, scanModels } from './api/services';
 import { useToast } from './components/ToastProvider';
+import { useEventSource } from './hooks/useEventSource';
 
 export function App() {
 	const { toast } = useToast();
 	const startupScanDone = useRef(false);
+
+	// Initialize SSE connection
+	useEventSource();
 
 	// Run one model scan on app startup if model directories are configured
 	useEffect(() => {
