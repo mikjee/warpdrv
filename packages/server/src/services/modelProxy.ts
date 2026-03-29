@@ -4,6 +4,7 @@ import cors from 'cors';
 import { store } from '../util/store';
 import type { IServer, ISettings } from '@warpcore/shared';
 import { EServerStatus, DEFAULT_SETTINGS } from '@warpcore/shared';
+import { sseManager } from './sseManagerInstance';
 
 const SERVERS_PREFIX = 'servers:';
 const SETTINGS_KEY = 'settings:general';
@@ -26,14 +27,17 @@ async function resolveServer(alias: string): Promise<IServer | null> {
 
 	if (candidates.length === 0) return null;
 
-	// Check sticky route first
-	const stickyId = stickyRoutes.get(alias);
-	if (stickyId) {
-		const sticky = candidates.find(s => s.id === stickyId && s.status === EServerStatus.RUNNING);
-		if (sticky) return sticky;
-		// Sticky server is gone, clear it
-		stickyRoutes.delete(alias);
-	}
+// Check sticky route first
+		const stickyId = stickyRoutes.get(alias);
+		if (stickyId) {
+			const sticky = candidates.find(s => s.id === stickyId && s.status === EServerStatus.RUNNING);
+			if (sticky) return sticky;
+			// Sticky server is gone, clear it
+			stickyRoutes.delete(alias);
+			getStickyRoutesResolved().then(routes => {
+				sseManager.emit('proxy:routes', { routes });
+			}).catch(() => {});
+		}
 
 	// Find a running server without error state
 	const running = candidates.filter(s => s.status === EServerStatus.RUNNING);
@@ -43,10 +47,16 @@ async function resolveServer(alias: string): Promise<IServer | null> {
 	const healthy = running.filter(s => !s.error);
 	const chosen = healthy.length > 0 ? healthy[0]! : running[0]!;
 
-	// Set sticky route
-	stickyRoutes.set(alias, chosen.id);
-	return chosen;
-}
+// Set sticky route
+		const oldServerId = stickyRoutes.get(alias);
+		if (oldServerId !== chosen.id) {
+			stickyRoutes.set(alias, chosen.id);
+			getStickyRoutesResolved().then(routes => {
+				sseManager.emit('proxy:routes', { routes });
+			}).catch(() => {});
+		}
+		return chosen;
+	}
 
 // Get all unique aliases from all servers
 async function getAllAliases(): Promise<string[]> {
@@ -130,12 +140,21 @@ export async function getStickyRoutesResolved(): Promise<IStickyRouteInfo[]> {
 
 // Clear a specific sticky route by alias
 export function clearStickyRoute(alias: string): boolean {
-	return stickyRoutes.delete(alias);
+	const deleted = stickyRoutes.delete(alias);
+	if (deleted) {
+		getStickyRoutesResolved().then(routes => {
+			sseManager.emit('proxy:routes', { routes });
+		}).catch(() => {});
+	}
+	return deleted;
 }
 
 // Clear all sticky routes
 export function clearAllStickyRoutes(): void {
 	stickyRoutes.clear();
+	getStickyRoutesResolved().then(routes => {
+		sseManager.emit('proxy:routes', { routes });
+	}).catch(() => {});
 }
 
 // Create the proxy app (shared between start and restart)
@@ -277,17 +296,21 @@ export async function startModelProxy(): Promise<StartProxyResult> {
 	const port = settings.proxyPort ?? 1234;
 
 	return new Promise((resolve) => {
-		const server = app.listen(port, '0.0.0.0', () => {
+		const server = app.listen(port, '0.0.0.0', async () => {
 			console.log(`[WarpCore] Model proxy listening on 0.0.0.0:${port}`);
 			proxyServerInstance = server;
 			proxyError = null;
+			const status = await getProxyStatus();
+			sseManager.emit('proxy:update', status);
 			resolve({ success: true, server });
 		});
 
-		server.on('error', (err) => {
+		server.on('error', async (err) => {
 			const errorMsg = err.message || 'Unknown error';
 			console.error(`[WarpCore] Model proxy failed to start: ${errorMsg}`);
 			proxyError = errorMsg;
+			const status = await getProxyStatus();
+			sseManager.emit('proxy:update', status);
 			resolve({ success: false, error: errorMsg });
 		});
 	});
@@ -304,9 +327,11 @@ export async function stopModelProxy(): Promise<void> {
 	proxyServerInstance = null;
 	proxyError = null;
 
-	return new Promise((resolve) => {
-		server.close(() => {
+	return new Promise(async (resolve) => {
+		server.close(async () => {
 			console.log('[WarpCore] Model proxy stopped');
+			const status = await getProxyStatus();
+			sseManager.emit('proxy:update', status);
 			resolve();
 		});
 	});
@@ -322,4 +347,21 @@ export function getProxyError(): string | null {
 
 export function isProxyOnline(): boolean {
 	return proxyServerInstance !== null && proxyError === null;
+}
+
+export async function getProxyStatus(): Promise<{ status: any; routes: IStickyRouteInfo[] }> {
+	const settings = await store.get<ISettings>(SETTINGS_KEY) ?? DEFAULT_SETTINGS;
+	const running = !!proxyServerInstance;
+	const routes = await getStickyRoutesResolved();
+
+	return {
+		status: {
+			enabled: settings.proxyEnabled,
+			port: settings.proxyPort,
+			running,
+			healthy: running && proxyError === null,
+			error: proxyError,
+		},
+		routes,
+	};
 }

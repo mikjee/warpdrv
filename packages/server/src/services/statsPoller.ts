@@ -96,3 +96,11 @@ export function stopStatsPolling(serverId: string): void {
 export function getServerStats(serverId: string): IServerStats | null {
 	return statsMap.get(serverId) ?? null;
 }
+
+export function getAllServerStats(): Record<string, IServerStats> {
+	const result: Record<string, IServerStats> = {};
+	for (const [id, stats] of statsMap.entries()) {
+		result[id] = stats;
+	}
+	return result;
+}

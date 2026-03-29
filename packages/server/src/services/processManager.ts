@@ -3,6 +3,10 @@ import http from 'http';
 import type { IServer, ILaunchParams } from '@warpcore/shared';
 import { EServerStatus, EKvQuantType } from '@warpcore/shared';
 import { startStatsPolling, stopStatsPolling } from './statsPoller';
+import { store } from '../util/store';
+import { sseManager } from './sseManagerInstance';
+
+const SERVERS_PREFIX = 'servers:';
 // Health poller — checks /health endpoint until server is ready or timeout
 function pollHealth(
 	port: number,
@@ -34,6 +38,24 @@ const processes = new Map<string, ChildProcess>();
 // In-memory log buffers (last N lines per server)
 const logBuffers = new Map<string, string[]>();
 const MAX_LOG_LINES = 500;
+
+// Emit full server update via SSE
+async function emitServerUpdate(serverId: string, status: EServerStatus, error: string | null, startedAt?: number | null): Promise<void> {
+	try {
+		const server = await store.get<IServer>(`${SERVERS_PREFIX}${serverId}`);
+		if (server) {
+			const updated: IServer = {
+				...server,
+				status,
+				error,
+				...(startedAt !== undefined && { startedAt }),
+			};
+			sseManager.emit('servers:update', { [serverId]: updated });
+		}
+	} catch {
+		// Ignore errors - SSE is optional
+	}
+}
 // Build the llama-server command line args from params
 export function buildArgs(
 	modelPath: string,
@@ -117,11 +139,17 @@ export function spawnServer(
 		};
 		child.stdout?.on('data', (data: Buffer) => {
 			const lines = data.toString().split('\n').filter(Boolean);
-			for (const line of lines) appendLog(line);
+			for (const line of lines) {
+				appendLog(line);
+				sseManager.emit('servers:logs', { [serverId]: [line] });
+			}
 		});
 		child.stderr?.on('data', (data: Buffer) => {
 			const lines = data.toString().split('\n').filter(Boolean);
-			for (const line of lines) appendLog(line);
+			for (const line of lines) {
+				appendLog(line);
+				sseManager.emit('servers:logs', { [serverId]: [line] });
+			}
 		});
 		// Extract port from args for health polling
 		const portIdx = args.indexOf('--port');
@@ -131,16 +159,21 @@ export function spawnServer(
 		if (port > 0) {
 			healthInterval = pollHealth(
 				port,
-				() => {
+				async () => {
 					onStatusChange(EServerStatus.RUNNING);
+					await emitServerUpdate(serverId, EServerStatus.RUNNING, null, Date.now());
 					startStatsPolling(serverId, port);
 				},
-				(err) => onStatusChange(EServerStatus.ERROR, err),
+				async (err) => {
+					onStatusChange(EServerStatus.ERROR, err);
+					await emitServerUpdate(serverId, EServerStatus.ERROR, err, null);
+				},
 			);
 		}
-		child.on('error', (err) => {
+		child.on('error', async (err) => {
 			if (healthInterval) clearInterval(healthInterval);
 			onStatusChange(EServerStatus.ERROR, err.message);
+			await emitServerUpdate(serverId, EServerStatus.ERROR, err.message, null);
 		});
 		child.on('exit', (code) => {
 			if (healthInterval) clearInterval(healthInterval);
@@ -148,14 +181,18 @@ export function spawnServer(
 			processes.delete(serverId);
 			if (code !== 0 && code !== null) {
 				onStatusChange(EServerStatus.ERROR, `Process exited with code ${code}`);
+				emitServerUpdate(serverId, EServerStatus.ERROR, `Process exited with code ${code}`, null).catch(() => {});
 			} else {
 				onStatusChange(EServerStatus.STOPPED);
+				emitServerUpdate(serverId, EServerStatus.STOPPED, null, null).catch(() => {});
 			}
 		});
 		onStatusChange(EServerStatus.LOADING);
+		emitServerUpdate(serverId, EServerStatus.LOADING, null, null).catch(() => {});
 		return child.pid ?? null;
 	} catch (err) {
 		onStatusChange(EServerStatus.ERROR, String(err));
+		emitServerUpdate(serverId, EServerStatus.ERROR, String(err), null).catch(() => {});
 		return null;
 	}
 }

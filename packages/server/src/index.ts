@@ -7,19 +7,20 @@ import { modelsRouter, loadCachedModels } from './routes/models';
 import { serversRouter, reconcileServers, launchAutoStartServers } from './routes/servers';
 import { presetsRouter } from './routes/presets';
 import { hubRouter } from './routes/hub';
-import type { ISettings } from '@warpcore/shared';
-import { DEFAULT_SETTINGS } from '@warpcore/shared';
+import type { ISettings, IServer, IDownload, IDevice, IBackend } from '@warpcore/shared';
+import { DEFAULT_SETTINGS, EServerStatus, EDownloadStatus } from '@warpcore/shared';
 import { runMigrations } from './services/migrationRunner';
 import { updateRouter } from './routes/update';
 import { chatRouter } from './routes/chat';
 import { initChatDb } from './util/chatDB';
 import { proxyRouter } from './routes/proxy';
-import { startModelProxy } from './services/modelProxy';
+import { startModelProxy, getProxyStatus } from './services/modelProxy';
 import { summaryRouter } from './routes/summary';
-import { SSEManager } from './services/sseManager';
+import { sseManager } from './services/sseManagerInstance';
+import { getAllServerStats, getServerStats } from './services/statsPoller';
+import { getAllDownloads, getAllDownloadsRecord } from './services/downloadManager';
 
 const SETTINGS_KEY = 'settings:general';
-const sseManager = new SSEManager();
 
 async function main() {
 	await runMigrations();
@@ -97,7 +98,63 @@ async function main() {
 			count: Date.now() % 1000,
 		}), 1000);
 
-		// Phase 1: Add servers, downloads, devices, proxy channels here
+		// Phase 1: Servers
+		const SERVERS_PREFIX = 'servers:';
+
+		sseManager.onConnect('servers:list', async () => {
+			const servers = await store.list<IServer>(`${SERVERS_PREFIX}`);
+			const result: Record<string, IServer> = {};
+			for (const s of servers) {
+				result[s.id] = { ...s, stats: (s.status === EServerStatus.RUNNING || s.status === EServerStatus.LOADING) ? getServerStats(s.id) : null };
+			}
+			return result;
+		});
+
+		sseManager.onInterval('servers:stats', () => {
+			const stats = getAllServerStats();
+			return Object.keys(stats).length > 0 ? stats : null;
+		}, 1500);
+
+		// Phase 1: Proxy
+		sseManager.onConnect('proxy:init', async () => {
+			return await getProxyStatus();
+		});
+
+		// Phase 1: Downloads
+		sseManager.onConnect('downloads:init', async () => {
+			const downloads = await getAllDownloads();
+			return downloads.reduce((acc, dl) => {
+				acc[dl.id] = dl;
+				return acc;
+			}, {} as Record<string, IDownload>);
+		});
+
+		sseManager.onInterval('downloads:progress', () => {
+			const all = getAllDownloadsRecord();
+			const active: Record<string, IDownload> = {};
+			for (const id of Object.keys(all)) {
+				const dl = all[id];
+				if (!dl) continue;
+				if (dl.status === EDownloadStatus.DOWNLOADING || dl.status === EDownloadStatus.PAUSED) {
+					active[id] = dl;
+				}
+			}
+			return Object.keys(active).length > 0 ? active : null;
+		}, 1000);
+
+		// Phase 1: Devices
+		const BACKENDS_PREFIX = 'backends:';
+
+		sseManager.onConnect('devices:init', async () => {
+			const backends = await store.list<IBackend>(BACKENDS_PREFIX);
+			return backends.flatMap(b => b.detectedDevices ?? []);
+		});
+
+		sseManager.onInterval('devices:vram', async () => {
+			const backends = await store.list<IBackend>(BACKENDS_PREFIX);
+			const devices = backends.flatMap(b => b.detectedDevices ?? []);
+			return devices.length > 0 ? devices : null;
+		}, 5000);
 	}
 
 	registerSSEChannels();

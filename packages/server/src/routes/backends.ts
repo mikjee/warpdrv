@@ -4,8 +4,19 @@ import { store } from '../util/store';
 import { validateBackend } from '../services/backendValidator';
 import type { IBackend, IBackendCreatePayload, IBackendUpdatePayload } from '@warpcore/shared';
 import { EValidationStatus } from '@warpcore/shared';
+import { sseManager } from '../services/sseManagerInstance';
 
 const PREFIX = 'backends:';
+
+async function emitDevicesUpdate(): Promise<void> {
+	try {
+		const backends = await store.list<IBackend>(PREFIX);
+		const devices = backends.flatMap(b => b.detectedDevices ?? []);
+		sseManager.emit('devices:init', devices);
+	} catch {
+		// Ignore errors - SSE is optional
+	}
+}
 
 export const backendsRouter = Router();
 
@@ -54,6 +65,7 @@ backendsRouter.post('/', async (req, res) => {
 	};
 
 	await store.put(PREFIX + id, backend);
+	await emitDevicesUpdate();
 	res.status(201).json({ ok: true, data: backend, error: null });
 });
 
@@ -81,6 +93,7 @@ backendsRouter.put('/:id', async (req, res) => {
 	}
 
 	await store.put(PREFIX + existing.id, updated);
+	await emitDevicesUpdate();
 	res.json({ ok: true, data: updated, error: null });
 });
 
@@ -91,7 +104,8 @@ backendsRouter.delete('/:id', async (req, res) => {
 		res.status(404).json({ ok: false, data: null, error: 'Backend not found' });
 		return;
 	}
-	await store.del(PREFIX + req.params.id);
+await store.del(PREFIX + req.params.id);
+	await emitDevicesUpdate();
 	res.json({ ok: true, data: null, error: null });
 });
 
@@ -109,6 +123,7 @@ backendsRouter.post('/:id/validate', async (req, res) => {
 	existing.detectedDevices = validation.devices;
 	existing.updatedAt = Date.now();
 
-	await store.put(PREFIX + existing.id, existing);
+await store.put(PREFIX + existing.id, existing);
+	await emitDevicesUpdate();
 	res.json({ ok: true, data: existing, error: validation.error });
 });
