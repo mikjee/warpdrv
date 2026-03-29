@@ -259,32 +259,43 @@ fn read_window_size_settings() -> Option<(u32, u32)> {
 
     match std::fs::read_to_string(&data_path) {
         Ok(content) => {
-            // Extract windowWidth and windowHeight from JSON using simple pattern matching
-            let width_str = content
-                .split("\"windowWidth\"")
-                .nth(1)
-                .and_then(|s| s.split(':').next())
-                .and_then(|s| s.trim().split(',').next())
-                .and_then(|s| s.trim().split('}').next())
-                .and_then(|s| s.trim().parse::<u32>().ok());
-
-            let height_str = content
-                .split("\"windowHeight\"")
-                .nth(1)
-                .and_then(|s| s.split(':').next())
-                .and_then(|s| s.trim().split(',').next())
-                .and_then(|s| s.trim().split('}').next())
-                .and_then(|s| s.trim().parse::<u32>().ok());
-
-            if let (Some(width), Some(height)) = (width_str, height_str) {
-                // Validate reasonable bounds (min window size is 800x600 per tauri.conf.json)
-                if width >= 800 && height >= 600 {
-                    return Some((width, height));
+            // Parse the outer JSON file
+            let json: serde_json::Value = match serde_json::from_str(&content) {
+                Ok(v) => v,
+                Err(e) => {
+                    eprintln!("[WarpCore] Failed to parse warpcore-data.json: {}", e);
+                    return None;
                 }
+            };
+
+            // settings:general is stored as a stringified JSON string (per store.ts convention)
+            let settings_str = match json.get("settings:general") {
+                Some(serde_json::Value::String(s)) => s,
+                _ => return None,
+            };
+
+            // Parse the nested settings object
+            let settings: serde_json::Value = match serde_json::from_str(settings_str) {
+                Ok(v) => v,
+                Err(e) => {
+                    eprintln!("[WarpCore] Failed to parse nested settings JSON: {}", e);
+                    return None;
+                }
+            };
+
+            let width = settings.get("windowWidth").and_then(|v| v.as_u64()).map(|w| w as u32)?;
+            let height = settings.get("windowHeight").and_then(|v| v.as_u64()).map(|h| h as u32)?;
+
+            // Validate reasonable bounds (min window size is 800x600 per tauri.conf.json)
+            if width >= 800 && height >= 600 {
+                return Some((width, height));
             }
             None
         }
-        Err(_) => None,
+        Err(e) => {
+            eprintln!("[WarpCore] Failed to read settings file: {}", e);
+            None
+        }
     }
 }
 
@@ -316,10 +327,24 @@ fn save_window_size(width: u32, height: u32) -> bool {
             };
 
             // Update settings:general windowWidth and windowHeight
-            if let Some(settings) = json.get_mut("settings:general") {
-                if let Some(settings_obj) = settings.as_object_mut() {
-                    settings_obj.insert("windowWidth".to_string(), serde_json::json!(width));
-                    settings_obj.insert("windowHeight".to_string(), serde_json::json!(height));
+            // Note: settings:general is stored as a stringified JSON string (per store.ts convention)
+            if let Some(settings_value) = json.get_mut("settings:general") {
+                if let Some(settings_str) = settings_value.as_str() {
+                    match serde_json::from_str::<serde_json::Value>(settings_str) {
+                        Ok(mut settings_obj) => {
+                            if let Some(settings_map) = settings_obj.as_object_mut() {
+                                settings_map.insert("windowWidth".to_string(), serde_json::json!(width));
+                                settings_map.insert("windowHeight".to_string(), serde_json::json!(height));
+                                // Re-stringify and update back to the parent JSON
+                                *settings_value = serde_json::Value::String(
+                                    serde_json::to_string(&settings_obj).unwrap_or_else(|_| settings_str.to_string())
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("[WarpCore] Failed to parse nested settings JSON: {}", e);
+                        }
+                    }
                 }
             }
 

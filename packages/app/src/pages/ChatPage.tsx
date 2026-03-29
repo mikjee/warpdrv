@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Box, Flex, Text, HStack } from '@chakra-ui/react';
 import { MessageSquare, ChevronDown } from 'lucide-react';
 import {
@@ -457,7 +457,7 @@ function ConfigManager({
 // ChatInner — main chat layout
 // ============================================================
 
-function ChatInner({ contextSize }: { contextSize: number }) {
+const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	const [configOpen, setConfigOpen] = useState(false);
 	const [inferenceParams, setInferenceParams] = useState<IChatInferenceParams>({ ...DEFAULT_INFERENCE_PARAMS });
 	const [systemPrompt, setSystemPrompt] = useState('');
@@ -571,7 +571,7 @@ function ChatInner({ contextSize }: { contextSize: number }) {
 		</AssistantRuntimeProvider>
 		</ChatConfigContext.Provider>
 	);
-}
+});
 
 export function ChatPage() {
 	const fetcher = useCallback(() => fetchServers(), []);

@@ -282,6 +282,10 @@ export function ServersPage() {
 						fontWeight="600"
 						transition="all 0.2s ease"
 						onClick={() => setShowLaunch(true)}
+						display={"flex"}
+						flexDirection={"row"}
+						alignItems={"center"}
+						justifyContent={"center"}
 					>
 						<Play size={15} />
 						Launch Server

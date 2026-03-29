@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Box, Flex, Text, HStack, VStack, Input, Textarea } from '@chakra-ui/react';
+import { Box, Flex, Text, HStack, VStack, Input, Textarea, IconButton } from '@chakra-ui/react';
 import { Settings, ChevronRight, ChevronLeft, Save, Trash2, Plus, RotateCcw } from 'lucide-react';
 import {
 	fetchChatPresets,
@@ -242,13 +242,22 @@ export function ChatConfigSidebar({
 			<Box
 				w="60px" minW="60px" h="100%"
 				borderLeftWidth="1px" borderColor="rgba(255,255,255,0.06)"
-				// bg="rgba(0,0,0,0.15)"
 				display="flex" alignItems="flex-start" justifyContent="center"
-				pt="6" cursor="pointer"
-				onClick={onToggle}
-				_hover={{ bg: 'rgba(255,255,255,0.03)' }}
+				pt="2"
 			>
-				<VscLayoutSidebarRightOff size={20} style={{ opacity: 0.4 }} />
+				<Flex onClick={onToggle}
+				p="2.5"
+				borderRadius="lg"
+				cursor="pointer"
+				transition="all 0.15s ease"
+				bg={'transparent'}
+				color={'rgba(255, 255, 255, 0.5)'}
+				_hover={{
+					bg: 'rgba(255, 255, 255, 0.04)',
+					color: 'rgba(255, 255, 255, 0.8)',
+				}} >
+					<VscLayoutSidebarRightOff size={18} style={{ opacity: 0.4 }} />
+				</Flex>
 			</Box>
 		);
 	}

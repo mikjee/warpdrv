@@ -34,21 +34,45 @@ function useThreadsAndFolders() {
 	const [threads, setThreads] = useState<IChatThread[]>([]);
 	const [folders, setFolders] = useState<IChatFolder[]>([]);
 
-	const reload = useCallback(async () => {
-		const [tRes, fRes] = await Promise.all([fetchThreads(), fetchFolders()]);
-		if (tRes.ok) setThreads(tRes.data);
-		if (fRes.ok) setFolders(fRes.data);
+	useEffect(() => {
+		Promise.all([fetchThreads(), fetchFolders()]).then(([tRes, fRes]) => {
+			if (tRes.ok) setThreads(tRes.data);
+			if (fRes.ok) setFolders(fRes.data);
+		});
 	}, []);
 
-	useEffect(() => { reload(); }, [reload]);
+	async function patchThread(id: string, patch: Partial<IChatThread>) {
+		await updateThread(id, patch);
+		setThreads(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t));
+	}
 
-	// Re-poll every 10s for external changes
-	useEffect(() => {
-		const iv = setInterval(reload, 10000);
-		return () => clearInterval(iv);
-	}, [reload]);
+	async function removeThread(id: string) {
+		await deleteThread(id);
+		setThreads(prev => prev.filter(t => t.id !== id));
+	}
 
-	return { threads, folders, reload };
+	async function removeAllThreads() {
+		for (const t of threads) await deleteThread(t.id);
+		setThreads([]);
+	}
+
+	async function addFolder(name: string) {
+		const res = await createFolder(name);
+		if (res.ok) setFolders(prev => [...prev, res.data]);
+	}
+
+	async function patchFolder(id: string, patch: Partial<IChatFolder>) {
+		await updateFolder(id, patch);
+		setFolders(prev => prev.map(f => f.id === id ? { ...f, ...patch } : f));
+	}
+
+	async function removeFolder(id: string) {
+		await deleteFolder(id);
+		setFolders(prev => prev.filter(f => f.id !== id));
+		setThreads(prev => prev.map(t => t.folderId === id ? { ...t, folderId: null } : t));
+	}
+
+	return { threads, folders, patchThread, removeThread, removeAllThreads, addFolder, patchFolder, removeFolder };
 }
 
 // ============================================================
@@ -332,18 +356,17 @@ function EnhancedThreadListItem({ thread, onRename, onStartDrag }: {
 // ============================================================
 // Main ThreadList component
 // ============================================================
+
 export const ThreadList: FC = () => {
-	const { threads, folders, reload } = useThreadsAndFolders();
+	const threadsAPI = useThreadsAndFolders();
 	const [search, setSearch] = useState('');
 	const [sortField, setSortField] = useState<TSortField>('updatedAt');
 	const [sortDir, setSortDir] = useState<TSortDir>('desc');
-	const [showFilters, setShowFilters] = useState(false);
 	const [confirmDelete, setConfirmDelete] = useState<{ type: 'folder' | 'allChats'; id?: string } | null>(null);
 	const [draggingThread, setDraggingThread] = useState<string | null>(null);
 	const [rootDragOver, setRootDragOver] = useState(false);
 
-	// Filter and sort threads
-	const filteredThreads = threads.filter((t) => {
+	const filteredThreads = threadsAPI.threads.filter((t) => {
 		if (!search) return true;
 		return t.title.toLowerCase().includes(search.toLowerCase());
 	});
@@ -353,7 +376,7 @@ export const ThreadList: FC = () => {
 		if (sortField === 'updatedAt') cmp = a.updatedAt - b.updatedAt;
 		else if (sortField === 'createdAt') cmp = a.createdAt - b.createdAt;
 		else if (sortField === 'title') cmp = a.title.localeCompare(b.title);
-    else if (sortField === 'messageCount') cmp = a.totalTokens - b.totalTokens;
+		else if (sortField === 'messageCount') cmp = a.totalTokens - b.totalTokens;
 		return sortDir === 'desc' ? -cmp : cmp;
 	});
 
@@ -361,18 +384,15 @@ export const ThreadList: FC = () => {
 	const threadsByFolder = (folderId: string) => sortedThreads.filter((t) => t.folderId === folderId);
 
 	async function handleRenameThread(id: string, title: string) {
-		await updateThread(id, { title });
-		reload();
+		await threadsAPI.patchThread(id, { title });
 	}
 
 	async function handleRenameFolder(id: string, name: string) {
-		await updateFolder(id, { name });
-		reload();
+		await threadsAPI.patchFolder(id, { name });
 	}
 
 	async function handleCreateFolder() {
-		await createFolder('New Folder');
-		reload();
+		await threadsAPI.addFolder('New Folder');
 	}
 
 	async function handleDeleteFolder(id: string) {
@@ -380,8 +400,7 @@ export const ThreadList: FC = () => {
 	}
 
 	async function handleConfirmDeleteFolder(id: string) {
-		await deleteFolder(id);
-		reload();
+		await threadsAPI.removeFolder(id);
 		setConfirmDelete(null);
 	}
 
@@ -390,16 +409,12 @@ export const ThreadList: FC = () => {
 	}
 
 	async function handleConfirmDeleteAllChats() {
-		for (const t of threads) {
-			await deleteThread(t.id);
-		}
-		reload();
+		await threadsAPI.removeAllThreads();
 		setConfirmDelete(null);
 	}
 
 	async function handleDropThread(threadId: string, folderId: string | null) {
-		await updateThread(threadId, { folderId });
-		reload();
+		await threadsAPI.patchThread(threadId, { folderId });
 		setDraggingThread(null);
 	}
 
@@ -407,7 +422,9 @@ export const ThreadList: FC = () => {
 		e.preventDefault();
 		setRootDragOver(true);
 	}
+
 	function handleRootDragLeave() { setRootDragOver(false); }
+
 	function handleRootDrop(e: DragEvent<HTMLDivElement>) {
 		e.preventDefault();
 		setRootDragOver(false);
@@ -425,12 +442,11 @@ export const ThreadList: FC = () => {
 		updatedAt: 'Updated',
 		createdAt: 'Created',
 		title: 'Name',
-    messageCount: 'Tokens',
+		messageCount: 'Tokens',
 	};
 
 	return (
 		<ThreadListPrimitive.Root className="aui-root aui-thread-list-root flex flex-col gap-0">
-			{/* Search */}
 			<Box mb="2">
 				<HStack
 					gap="1" px="2" py="1.5"
@@ -456,7 +472,6 @@ export const ThreadList: FC = () => {
 				</HStack>
 			</Box>
 
-			{/* Sort & filter bar */}
 			<HStack gap="1" mb="2" px="1" justify="space-between">
 				<HStack gap="1">
 					<Box
@@ -488,20 +503,10 @@ export const ThreadList: FC = () => {
 					>
 						<FolderPlusIcon size={13} />
 					</Box>
-					{/* <Box
-						as="button" p="1" borderRadius="md"
-						color="rgba(255,255,255,0.2)"
-						_hover={{ color: 'rgba(220,80,80,0.6)' }}
-						onClick={handleDeleteAllChats}
-						title="Delete all chats"
-					>
-						<TrashIcon size={12} />
-					</Box> */}
 				</HStack>
 			</HStack>
 
-			{/* Folders */}
-			{folders.map((f) => (
+			{threadsAPI.folders.map((f) => (
 				<FolderSection
 					key={f.id}
 					folder={f}
@@ -519,7 +524,6 @@ export const ThreadList: FC = () => {
 				</FolderSection>
 			))}
 
-			{/* Root threads (no folder) */}
 			<Box
 				onDragOver={handleRootDragOver as any}
 				onDragLeave={handleRootDragLeave}
@@ -527,7 +531,6 @@ export const ThreadList: FC = () => {
 				bg={rootDragOver ? 'rgba(100,150,255,0.05)' : 'transparent'}
 				borderRadius="md"
 				transition="background 0.15s"
-				// minH="40px"
 			>
 				<AuiIf condition={(s) => s.threads.isLoading}>
 					<VStack gap="1" p="1">
@@ -543,7 +546,6 @@ export const ThreadList: FC = () => {
 				</AuiIf>
 			</Box>
 
-			{/* New thread button at bottom */}
 			<Box mt="2" pt="2" borderTopWidth="1px" borderColor="rgba(255,255,255,0.04)">
 				<ThreadListPrimitive.New asChild>
 					<Box
@@ -563,7 +565,6 @@ export const ThreadList: FC = () => {
 				</ThreadListPrimitive.New>
 			</Box>
 
-			{/* Confirm dialog */}
 			{confirmDelete && (
 				<Portal>
 					<ConfirmDialog
@@ -583,6 +584,7 @@ export const ThreadList: FC = () => {
 		</ThreadListPrimitive.Root>
 	);
 };
+
 
 // ============================================================
 // Helper: renders only items matching a thread filter

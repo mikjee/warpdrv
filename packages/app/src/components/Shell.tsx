@@ -281,8 +281,8 @@ export function Shell() {
 							top="1px"
 						>
 							{isCollapsed
-								? <VscLayoutSidebarLeftOff size={20} />
-								: <VscLayoutSidebarLeft size={20} />
+								? <VscLayoutSidebarLeftOff size={18} />
+								: <VscLayoutSidebarLeft size={18} />
 							}
 						</Flex>
 						{/* {!collapsed && (
