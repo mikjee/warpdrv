@@ -1,6 +1,18 @@
 #!/bin/bash
 set -e
 
+# Bundle format selection.
+# Pass bundle formats as arguments: ./release.sh deb appimage
+# Defaults to 'deb' only if no arguments given.
+# AppImage is excluded by default because it takes a long time to build.
+if [ $# -eq 0 ]; then
+	BUNDLE_FORMATS=("deb")
+else
+	BUNDLE_FORMATS=("$@")
+fi
+
+echo "Bundle formats: ${BUNDLE_FORMATS[*]}"
+
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 RELEASE_JSON="$REPO_ROOT/release.json"
 DESKTOP_DIR="$REPO_ROOT/packages/desktop"
@@ -66,14 +78,13 @@ npx @yao-pkg/pkg dist/server.cjs \
 	--compress GZip
 
 cp "$REPO_ROOT/node_modules/sql.js/dist/sql-wasm.wasm" "$SERVER_DIR/dist/sql-wasm.wasm"
+
 echo "Server binary: $SERVER_DIR/dist/warpcore-server"
 ls -lh "$SERVER_DIR/dist/warpcore-server"
 
 echo ""
 echo "=== Step 3/4: Preparing Tauri sidecar ==="
-
 mkdir -p "$DESKTOP_DIR/binaries"
-
 cp "$SERVER_DIR/dist/warpcore-server" "$DESKTOP_DIR/binaries/warpcore-server-$TARGET_TRIPLE"
 cp "$REPO_ROOT/node_modules/sql.js/dist/sql-wasm.wasm" "$DESKTOP_DIR/binaries/sql-wasm.wasm"
 chmod +x "$DESKTOP_DIR/binaries/warpcore-server-$TARGET_TRIPLE"
@@ -87,31 +98,16 @@ echo "Frontend: $DESKTOP_DIR/app-dist/"
 echo ""
 echo "=== Step 4/4: Building Tauri app ==="
 cd "$DESKTOP_DIR"
-npx tauri build
+
+# Build only the requested bundle formats
+BUNDLE_ARGS=""
+for fmt in "${BUNDLE_FORMATS[@]}"; do
+	BUNDLE_ARGS="$BUNDLE_ARGS --bundles $fmt"
+done
+
+npx tauri build $BUNDLE_ARGS
 
 echo ""
 echo "============================================"
 echo "  Build complete: v$NEW_VERSION"
 echo "============================================"
-echo ""
-
-BUNDLE_DIR="$DESKTOP_DIR/target/release/bundle"
-echo "Artifacts:"
-if [ -d "$BUNDLE_DIR/appimage" ]; then
-	for f in "$BUNDLE_DIR/appimage/"*.AppImage; do
-		echo "  AppImage: $f ($(du -h "$f" | cut -f1))"
-	done
-fi
-if [ -d "$BUNDLE_DIR/deb" ]; then
-	for f in "$BUNDLE_DIR/deb/"*.deb; do
-		echo "  Deb:      $f ($(du -h "$f" | cut -f1))"
-	done
-fi
-
-echo ""
-echo "Next steps:"
-echo "  1. Test: $BUNDLE_DIR/appimage/*.AppImage"
-echo "  2. Create GitHub release: v$NEW_VERSION"
-echo "  3. Upload the artifacts above"
-echo "  4. git add release.json && git commit && git push"
-echo ""

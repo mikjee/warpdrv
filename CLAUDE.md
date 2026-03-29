@@ -36,7 +36,6 @@ Requires Rust toolchain and system deps (libwebkit2gtk-4.1-dev, libgtk-3-dev, li
 ```bash
 # Start server + app first
 npm run dev
-
 # Then in another terminal
 cd packages/desktop && npx tauri dev
 ```
@@ -59,6 +58,8 @@ VSCode: Use "warpcore-all (single terminal)" launch config for debugging both se
 - @huggingface/hub for HF API (model search, file listing)
 - node-downloader-helper for model downloads (pause/resume/progress)
 - markdown-to-jsx + DOMPurify for README rendering
+- assistant-ui + Vercel AI SDK for chat UI (see Chat section)
+- sql.js (WASM) for chat persistence (no native addons, bundles with pkg)
 
 ## Key Design Decisions
 
@@ -71,6 +72,52 @@ VSCode: Use "warpcore-all (single terminal)" launch config for debugging both se
 - VRAM calculator runs client-side for instant feedback, uses formula from <https://oobabooga.github.io/blog/posts/gguf-vram-formula/>
 - Data stored in `~/.config/warpcore/warpcore-data.json` (platform-appropriate config dir)
 - Schema migrations run on startup — numbered functions, never delete user data, only transform
+
+## Chat Feature
+
+The chat page is a convenience feature for testing servers and evaluating models. Thread management is intentionally minimal.
+
+### Stack
+
+- `@assistant-ui/react` + `@assistant-ui/react-ai-sdk` for the chat UI (thread list, composer, message rendering, branching, editing, attachments, markdown, code blocks — all provided by the library, not maintained by us)
+- Vercel AI SDK (`ai` + `@ai-sdk/openai`) for streaming — `createOpenAI` pointed directly at the llama-server port from the browser, using `provider.chat('model')` to force Chat Completions API (AI SDK v6 defaults to Responses API which llama-server doesn't support)
+- `sql.js` (SQLite compiled to WASM) for chat persistence on the backend — no native addons, bundles cleanly with esbuild + `@yao-pkg/pkg`
+- Tailwind scoped via `@layer` ordering so it doesn't clobber Chakra UI styles on other pages
+
+### Backend
+
+- `packages/server/src/util/chatDb.ts` — sql.js wrapper with debounced saves to `~/.config/warpcore/chat.db`
+- `packages/server/src/routes/chat.ts` — REST router mounted at `/api/chat`
+- SQLite schema: `threads`, `messages`, `folders`, `thread_configs` tables
+- Chat presets stored via `chatPresets.ts` (JSON file service)
+- In pkg builds, sql.js WASM binary is loaded from filesystem candidates next to the executable (detects `process.pkg` and searches known paths)
+
+### Frontend
+
+- `ChatPage.tsx` — `useLocalRuntime` + `useRemoteThreadListRuntime`, server selector dropdown, assistant-ui shadcn components
+- `ChatConfigSidebar.tsx` — collapsible right panel with full inference params (temperature, top_p, top_k, min_p, repeat_penalty, frequency_penalty, presence_penalty, max_tokens, seed, mirostat, response_format, reasoning_format, enable_thinking, cache_prompt), system prompt editor, preset save/load/delete
+- Config persistence per-thread via `thread_configs` table, debounced save, loaded on thread switch using `useAuiState` for reactive thread ID detection
+- Per-message timing stats captured via metadata (tokens/second, prompt tokens, completion tokens)
+- Empty-thread-on-launch bug fixed by deferring backend thread creation to first message append
+
+### Shared Types
+
+- `IChatThread`, `IChatMessage`, `IChatFolder`, `IChatInferenceParams`, `IChatPreset`, `IThreadConfig`, `IChatMessageStats`
+- `EChatRole`, `EResponseFormat`, `EReasoningFormat` enums
+- Chat thread/message/folder create payloads
+
+### Chat API Routes
+
+```
+GET/POST         /api/chat/threads
+GET/PUT/DELETE   /api/chat/threads/:id
+GET/POST         /api/chat/threads/:id/messages
+GET/PUT          /api/chat/threads/:id/config
+GET/POST         /api/chat/folders
+PUT/DELETE       /api/chat/folders/:id
+GET/POST/DELETE  /api/chat/presets
+GET/PUT/DELETE   /api/chat/presets/:id
+```
 
 ## Desktop (Tauri)
 
@@ -88,8 +135,13 @@ The Tauri package is a thin native shell around the web app:
 ### Building for Release
 
 ```bash
-./release.sh    # bumps version, builds frontend, builds Tauri, outputs .AppImage + .deb
+./release.sh              # builds deb only (default)
+./release.sh deb          # same as above, explicit
+./release.sh appimage     # AppImage only
+./release.sh deb appimage # both deb and AppImage
 ```
+
+The script accepts bundle format names as positional arguments passed to `npx tauri build --bundles`. With no arguments it defaults to `deb` only because AppImage takes a long time to build. To add more formats, pass any format that Tauri's `--bundles` flag supports (e.g. `deb`, `appimage`, `rpm`, `dmg`, `msi`, `nsis`, `updater`).
 
 Artifacts land in `packages/desktop/target/release/bundle/`. Upload to GitHub Releases manually.
 
@@ -106,10 +158,10 @@ No auto-updater or signing keys. Simple version check:
 
 ### Release Workflow
 
-1. Run `./release.sh` — bumps version in release.json, tauri.conf.json, package.json, builds everything
+1. Run `./release.sh` (or `./release.sh deb appimage` for both formats) — bumps version in release.json, tauri.conf.json, package.json, builds everything
 2. Test the build locally
 3. Create GitHub release tagged with the version
-4. Upload .AppImage and .deb to the release
+4. Upload artifacts to the release
 5. Push release.json to main branch (triggers update check for running instances)
 
 ## Model Proxy
@@ -221,6 +273,14 @@ GET/DELETE       /api/proxy/routes
 GET/DELETE       /api/proxy/routes/:alias
 POST             /api/proxy/start
 POST             /api/proxy/stop
+GET/POST         /api/chat/threads
+GET/PUT/DELETE   /api/chat/threads/:id
+GET/POST         /api/chat/threads/:id/messages
+GET/PUT          /api/chat/threads/:id/config
+GET/POST         /api/chat/folders
+PUT/DELETE       /api/chat/folders/:id
+GET/POST/DELETE  /api/chat/presets
+GET/PUT/DELETE   /api/chat/presets/:id
 ```
 
 ## Data Persistence (JSON File)
@@ -236,43 +296,4 @@ downloads:{id}      — IDownload
 _schemaVersion      — number (migration tracking)
 ```
 
-## Hardware Context
-
-This was built for a specific setup but should work generically:
-
-- AMD Strix Halo (gfx1151) with ROCm — needs `--no-warmup` and `-dio` flags
-- NVIDIA RTX Pro 5000 Blackwell (SM120) with CUDA 13.2
-- Multiple backends can run simultaneously on different GPUs
-- CUDA and HIP cannot coexist in one llama.cpp binary — separate builds needed
-
-## What's Implemented
-
-- Shared types, enums, VRAM formula, hub types
-- Express API with all CRUD routes + hub routes + update route
-- JSON file persistence with schema migrations
-- Process manager (spawn/kill/logs) with health polling
-- GGUF header parser
-- Model directory scanner with shard/mmproj detection
-- Backend validator (--version, --list-devices parsing)
-- Full React UI: Devices, Models, Backends, Servers, Settings, Hub pages
-- Launch Server dialog with full params, VRAM estimate, preset save/load
-- Add/Edit Backend dialog with validation
-- Preset save/load
-- Server logs viewer panel
-- Data fetching hooks with polling
-- API client with typed fetch wrapper
-- Toast notification system
-- HuggingFace model browser with search, detail, download
-- Download manager with progress, pause/resume/cancel, history
-- Markdown README rendering with DOMPurify sanitization
-- Tauri desktop wrapper with tray, close-to-tray, server auto-respawn
-- Update check banner with version comparison
-- Release script for building and versioning
-- Model proxy server with OpenAI-compatible routing by alias
-- Sticky routing (alias → server mapping persists until server stops)
-- Proxy status/routes management API
-
-## What's NOT Yet Implemented
-
-- Docker build containers for cross-platform releases (Windows, macOS)
-- macOS code signing and notarization
+Chat data is stored separately in `~/.config/warpcore/chat.db` (SQLite via sql.js).
