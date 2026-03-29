@@ -85,9 +85,9 @@ export function BackendDialog({ onClose, editData }: IBackendDialogProps) {
 	const handleBrowseFile = async () => {
 		if (typeof window !== 'undefined' && (window as any).__TAURI__) {
 			try {
-				const importTauriOpener = new Function('return import("@tauri-apps/plugin-opener")');
-				const mod = await importTauriOpener();
-				const filePath = await mod.open({ directory: false });
+				const importTauriDialog = new Function('return import("@tauri-apps/plugin-dialog")');
+				const mod = await importTauriDialog();
+				const filePath = await mod.open({ kind: 'file', multiple: false });
 				if (filePath) {
 					setPath(filePath);
 				}

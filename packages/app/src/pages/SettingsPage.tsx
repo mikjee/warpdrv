@@ -86,9 +86,9 @@ export function SettingsPage() {
 	const handleBrowseDirectory = async () => {
 		if (typeof window !== 'undefined' && (window as any).__TAURI__) {
 			try {
-				const importTauriOpener = new Function('return import("@tauri-apps/plugin-opener")');
-				const mod = await importTauriOpener();
-				const path = await mod.open({ directory: true });
+				const importTauriDialog = new Function('return import("@tauri-apps/plugin-dialog")');
+				const mod = await importTauriDialog();
+				const path = await mod.open({ kind: 'directory', multiple: false });
 				if (path && !modelRoots.includes(path)) {
 					setNewRoot(path);
 				}

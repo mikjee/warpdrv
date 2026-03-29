@@ -189,7 +189,8 @@ DELETE /api/hub/downloads/history
 ## TypeScript Conventions
 
 - Use Hard tab width 4 for coding, not space, only tabs. IMPORTANT
-- `I` prefix for interfaces, `T` for types, `E` for enums
+- Do NOT use sed command for editing files due to risk of bad edits and breaking code syntax.
+- use prefixes for type declarations - `I` prefix for interfaces, `T` for types, `E` for enums
 - `Record<>` instead of `Map`
 - Named types for IDs: `TBackendId`, `TServerId`, etc.
 - Enum values in UPPER_SNAKE_CASE
