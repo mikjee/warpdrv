@@ -157,9 +157,9 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 	const presetsFetcher = useCallback(() => fetchPresets(), []);
 	const stickyRoutesFetcher = useCallback(() => fetchStickyRoutes(), []);
 
-	const { data: models } = useListQuery<IModel>(modelsFetcher);
-	const { data: backends } = useListQuery<IBackend>(backendsFetcher);
-	const { data: presets } = useListQuery<IPreset>(presetsFetcher);
+	const { data: models } = useListQuery<IModel>(modelsFetcher, { pollInterval: 0 });
+	const { data: backends } = useListQuery<IBackend>(backendsFetcher, { pollInterval: 0 });
+	const { data: presets } = useListQuery<IPreset>(presetsFetcher, { pollInterval: 0 });
 	const { data: stickyRoutes } = useListQuery<IStickyRouteInfo>(stickyRoutesFetcher, { pollInterval: 0 });
 
 	// Selection state

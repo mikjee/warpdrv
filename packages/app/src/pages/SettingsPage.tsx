@@ -27,7 +27,7 @@ async function getAutostartApi(): Promise<{ isEnabled: () => Promise<boolean>; e
 export function SettingsPage() {
 	const { toast } = useToast();
 	const fetcher = useCallback(() => fetchSettings(), []);
-	const { data: settings, loading, refetch } = useQuery<ISettings>(fetcher);
+	const { data: settings, loading, refetch } = useQuery<ISettings>(fetcher, { pollInterval: 0 });
 
 	const [modelRoots, setModelRoots] = useState<string[]>([]);
 	const [portStart, setPortStart] = useState(8085);

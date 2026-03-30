@@ -191,7 +191,7 @@ function SortHeader({
 
 export function ModelsPage() {
 	const fetcher = useCallback(() => fetchModels(), []);
-	const { data: models, loading, refetch } = useListQuery<IModel>(fetcher);
+	const { data: models, loading, refetch } = useListQuery<IModel>(fetcher, { pollInterval: 0 });
 	const scanMut = useMutation<void, IModel[]>(
 		useCallback(() => scanModels() as Promise<any>, [])
 	);
@@ -205,8 +205,12 @@ export function ModelsPage() {
 	}, []);
 
 	const handleScan = async () => {
-		await scanMut.mutate(undefined as any);
-		await refetch();
+		const result = await scanMut.mutate(undefined as any);
+		if (result !== null) {
+			await refetch();
+		} else if (scanMut.error) {
+			console.error('Scan failed:', scanMut.error);
+		}
 	};
 
 	const filtered = useMemo(() => {

@@ -48,7 +48,7 @@ async function emitServerUpdate(serverId: string, status: EServerStatus, error: 
 				...server,
 				status,
 				error,
-				...(startedAt !== undefined && { startedAt }),
+				...(startedAt != null && { startedAt }),
 			};
 			sseManager.emit('servers:update', { [serverId]: updated });
 		}

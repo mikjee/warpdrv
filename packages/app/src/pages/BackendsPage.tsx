@@ -19,7 +19,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function BackendsPage() {
 	const fetcher = useCallback(() => fetchBackends(), []);
-	const { data: backends, loading, refetch } = useListQuery<IBackend>(fetcher);
+	const { data: backends, loading, refetch } = useListQuery<IBackend>(fetcher, { pollInterval: 0 });
 
 	const [showAddDialog, setShowAddDialog] = useState(false);
 	const [editingBackend, setEditingBackend] = useState<IBackend | null>(null);
