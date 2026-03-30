@@ -65,10 +65,12 @@ export const Thread: FC = () => {
           {() => <ThreadMessage />}
         </ThreadPrimitive.Messages>
 
-        <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer sticky bottom-0 mx-auto mt-auto flex w-full max-w-(--thread-max-width) flex-col gap-4 overflow-visible rounded-t-(--composer-radius) pb-4 md:pb-6">
-          <ThreadScrollToBottom />
-          <Composer />
-        </ThreadPrimitive.ViewportFooter>
+        <div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,#0e0e0e_35%,#0e0e0e_100%)]">
+          <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer w-full max-w-(--thread-max-width) flex flex-col gap-4 overflow-visible">
+            <ThreadScrollToBottom />
+            <Composer />
+          </ThreadPrimitive.ViewportFooter>
+        </div>
       </ThreadPrimitive.Viewport>
     </ThreadPrimitive.Root>
   );

@@ -34,6 +34,14 @@ function formatSize(mb: number): string {
 	return mb + ' MB';
 }
 
+function getModelDisplayName(modelName: string, file: IModel['files'][number]): string {
+	if (file.shardIndex !== null && file.shardTotal !== null && file.shardTotal > 1) {
+		const quant = file.metadata?.quantType ?? '';
+		return quant ? `${modelName} ${quant}` : modelName;
+	}
+	return modelName;
+}
+
 type TModelEntry = {
 	model: IModel;
 	file: IModel['files'][number];
@@ -115,8 +123,8 @@ function ModelCombobox({ entries, selectedPath, onSelect, placeholder }: {
 								>
 									<HStack gap="3" w="100%">
 										<Box flex="1" minW="0">
-											<Text fontSize="12px" fontWeight="500" color="#e4e4e7" lineClamp={1}>{entry.file.fileName}</Text>
-											<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)" mt="0.5">{entry.model.user}/{entry.model.name}</Text>
+											<Text fontSize="12px" fontWeight="500" color="#e4e4e7" lineClamp={1}>{getModelDisplayName(entry.model.name, entry.file)}</Text>
+											<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)" mt="0.5">{entry.model.user}</Text>
 										</Box>
 										<HStack gap="2" flexShrink={0}>
 											<Badge px="1.5" py="0" borderRadius="sm" fontSize="10px" fontWeight="600" bg={`color-mix(in srgb, ${quantColor} 12%, transparent)`} color={quantColor}>{qt}</Badge>

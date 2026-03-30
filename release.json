@@ -1,5 +1,5 @@
 {
-	"version": "0.1.7",
+	"version": "0.1.8",
 	"updateCheckUrl": "https://raw.githubusercontent.com/OWNER/warpcore/main/release.json",
 	"downloadUrl": "https://github.com/OWNER/warpcore/releases/latest",
 	"notes": ""

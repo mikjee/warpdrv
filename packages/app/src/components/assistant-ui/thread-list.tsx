@@ -42,8 +42,11 @@ function useThreadsAndFolders() {
 	}, []);
 
 	async function patchThread(id: string, patch: Partial<IChatThread>) {
-		await updateThread(id, patch);
-		setThreads(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t));
+		const res = await updateThread(id, patch);
+		if (res.ok) {
+			setThreads(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t));
+		}
+		return res;
 	}
 
 	async function removeThread(id: string) {
@@ -384,7 +387,10 @@ export const ThreadList: FC = () => {
 	const threadsByFolder = (folderId: string) => sortedThreads.filter((t) => t.folderId === folderId);
 
 	async function handleRenameThread(id: string, title: string) {
-		await threadsAPI.patchThread(id, { title });
+		const res = await threadsAPI.patchThread(id, { title });
+		if (!res?.ok) {
+			console.error('Failed to rename thread:', id);
+		}
 	}
 
 	async function handleRenameFolder(id: string, name: string) {

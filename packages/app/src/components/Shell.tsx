@@ -130,7 +130,40 @@ const NAV_ITEMS: INavItem[] = [
 		label: 'Devices',
 		icon: <Cpu size={18} />,
 	},
-	{ path: '/hub', label: 'Hub', icon: <Globe size={18} /> },
+	{
+		path: '/hub',
+		label: 'Hub',
+		icon: <Globe size={18} />,
+		badge: (s) => {
+			if ((s?.downloads.active ?? 0) > 0) {
+				return (
+					<Box
+						w="5px"
+						h="5px"
+						borderRadius="full"
+						bg="#3381ff"
+						boxShadow="0 0 6px rgba(51, 129, 255, 0.6)"
+						ml="auto"
+						flexShrink={0}
+					/>
+				);
+			}
+			if ((s?.downloads.completed ?? 0) > 0) {
+				return (
+					<Box
+						w="5px"
+						h="5px"
+						borderRadius="full"
+						bg="#22c55e"
+						boxShadow="0 0 6px rgba(34, 197, 94, 0.5)"
+						ml="auto"
+						flexShrink={0}
+					/>
+				);
+			}
+			return null;
+		},
+	},
 ];
 
 const NAV_ITEMS_BOTTOM: INavItem[] = [

@@ -448,10 +448,10 @@ export function ServersPage() {
 							return (
 								<Card
 									key={server.id}
-									hasGradient={isRunning}
-									gradientFrom="rgba(52, 211, 153, 0.025)"
+									hasGradient={isRunning || isLoading}
+									gradientFrom={isRunning ? "rgba(52, 211, 153, 0.025)" : "rgba(251, 191, 36, 0.025)"}
 									gradientTo="transparent"
-									borderColor={isRunning ? 'rgba(52, 211, 153, 0.3)' : undefined}
+									borderColor={isRunning ? 'rgba(52, 211, 153, 0.3)' : isLoading ? 'rgba(251, 191, 36, 0.3)' : undefined}
 								>
 									<VStack align="stretch" gap="4">
 										<Flex justify="space-between" align="start">
@@ -459,11 +459,11 @@ export function ServersPage() {
 												<Flex
 													w="10" h="10" borderRadius="lg" alignItems="center" justifyContent="center"
 													position="relative"
-													bg={isRunning ? 'rgba(52, 211, 153, 0.06)' : 'rgba(255, 255, 255, 0.04)'}
+													bg={isRunning ? 'rgba(52, 211, 153, 0.06)' : isLoading ? 'rgba(251, 191, 36, 0.06)' : 'rgba(255, 255, 255, 0.04)'}
 													borderWidth="1px"
-													borderColor={isRunning ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.06)'}
+													borderColor={isRunning ? 'rgba(52, 211, 153, 0.15)' : isLoading ? 'rgba(251, 191, 36, 0.15)' : 'rgba(255, 255, 255, 0.06)'}
 												>
-													<Server size={18} color={isRunning ? '#34d399' : 'rgba(255, 255, 255, 0.3)'} />
+													<Server size={18} color={isRunning ? '#34d399' : isLoading ? '#fbbf24' : 'rgba(255, 255, 255, 0.3)'} />
 													{/* {isRunning && <Box position="absolute" top="-1px" right="-1px" w="8px" h="8px" borderRadius="full" bg="#34d399" shadow="0 0 8px #34d399" />} */}
 												</Flex>
 												<Box>
