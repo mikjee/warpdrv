@@ -1,8 +1,8 @@
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Box, Text, HStack, Flex, Button } from '@chakra-ui/react';
 import { X, Terminal, Trash2, Download, ArrowDown } from 'lucide-react';
-import { useListQuery } from '../../hooks/useQuery';
-import { fetchServerLogs, clearServerLogs as clearLogsApi } from '../../api/services';
+import { useStore } from '../../store';
+import { clearServerLogs as clearLogsApi } from '../../api/services';
 
 interface IServerLogsProps {
 	serverId: string;
@@ -14,8 +14,8 @@ export function ServerLogs({ serverId, serverName, onClose }: IServerLogsProps) 
 	const logsEndRef = useRef<HTMLDivElement>(null);
 	const [autoScroll, setAutoScroll] = useState(true);
 
-	const fetcher = useCallback(() => fetchServerLogs(serverId), [serverId]);
-	const { data: logs, refetch } = useListQuery<string>(fetcher, { pollInterval: 1500 });
+	const serverLogs = useStore((s) => s.serverLogs);
+	const logs = serverLogs[serverId] || [];
 
 	useEffect(() => {
 		if (autoScroll && logsEndRef.current) {
@@ -25,7 +25,6 @@ export function ServerLogs({ serverId, serverName, onClose }: IServerLogsProps) 
 
 	const handleClear = async () => {
 		await clearLogsApi(serverId);
-		await refetch();
 	};
 
 	const handleDownload = () => {

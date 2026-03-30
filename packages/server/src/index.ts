@@ -57,8 +57,9 @@ async function main() {
 	app.use('/api/summary', summaryRouter);
 
 	// SSE endpoint
-	app.get('/api/events', (req, res) => {
-		sseManager.handleConnection(req, res, () => {
+	app.get('/api/events', async (req, res) => {
+		console.log('[SSE] New client');
+		await sseManager.handleConnection(req, res, () => {
 			console.log('[SSE] Client disconnected');
 		});
 	});
@@ -92,11 +93,7 @@ async function main() {
 
 	// Register SSE channels
 	function registerSSEChannels(): void {
-		// Phase 0.5 test - emit every second
-		sseManager.onInterval('test', () => ({
-			timestamp: Date.now(),
-			count: Date.now() % 1000,
-		}), 1000);
+		console.log('[SSE] Start channels..');
 
 		// Phase 1: Servers
 		const SERVERS_PREFIX = 'servers:';
@@ -153,8 +150,9 @@ async function main() {
 		sseManager.onInterval('devices:vram', async () => {
 			const backends = await store.list<IBackend>(BACKENDS_PREFIX);
 			const devices = backends.flatMap(b => b.detectedDevices ?? []);
-			return devices.length > 0 ? devices : null;
+			return devices.length > 0 ? devices : [];
 		}, 5000);
+
 	}
 
 	registerSSEChannels();

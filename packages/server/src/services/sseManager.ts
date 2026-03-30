@@ -1,29 +1,25 @@
 import type { Request, Response } from 'express';
+import { createSession } from 'better-sse';
 
 export class SSEManager {
-	private connections: Response[];
+	private sessions: Array<{ session: any; req: Request; res: Response }> = [];
 	private intervals: Record<string, { callback: () => unknown | null; intervalMs: number; timer: NodeJS.Timeout }>;
 	private connectHandlers: Record<string, Array<() => Promise<unknown>>>;
 	private disconnectHandlers: Record<string, Array<() => Promise<unknown>>>;
 
 	constructor() {
-		this.connections = [];
 		this.intervals = {};
 		this.connectHandlers = {};
 		this.disconnectHandlers = {};
 	}
 
-	onInterval(channel: string, callback: () => unknown | null, intervalMs: number): void {
-		if (this.intervals[channel]) {
-			console.warn(`[SSE] Channel '${channel}' already registered. Possible duplicate registration.`);
-			return;
-		}
+	onInterval(channel: string, callback: () => (Promise<unknown | null> | unknown | null), intervalMs: number): void {
+		if (this.intervals[channel]) throw (`[SSE] Channel '${channel}' already registered. Possible duplicate registration.`);
 
-		const timer = setInterval(() => {
-			const data = callback();
-			if (data !== null) {
-				this.emit(channel, data);
-			}
+		const timer = setInterval(async () => {
+			const data = await callback();
+			if (data !== null) this.emit(channel, data);
+			
 		}, intervalMs);
 
 		this.intervals[channel] = { callback, intervalMs, timer };
@@ -44,48 +40,52 @@ export class SSEManager {
 	}
 
 	emit(channel: string, data: unknown): void {
-		const message = JSON.stringify({ channel, data });
-		const event = `event: ${channel}\ndata: ${message}\n\n`;
+		if (this.sessions.length === 0) return;
+		const payload = { channel, data };
 
-		for (let i = this.connections.length - 1; i >= 0; i--) {
-			const conn = this.connections[i];
-			if (!conn) continue;
+		for (let i = this.sessions.length - 1; i >= 0; i--) {
+			const session = this.sessions[i];
+			if (!session) continue;
 			try {
-				conn.write(event);
-			} catch {
-				this.connections.splice(i, 1);
+				session.session.push(payload);
+			} catch (err) {
+				console.error(`[SSE] Failed to push to connection:`, err);
+				this.sessions.splice(i, 1);
 			}
 		}
 	}
 
-	handleConnection(req: Request, res: Response, onDisconnect: () => void): void {
-		res.setHeader('Content-Type', 'text/event-stream');
-		res.setHeader('Cache-Control', 'no-cache');
-		res.setHeader('Connection', 'keep-alive');
-		res.setHeader('Access-Control-Allow-Origin', '*');
+	async handleConnection(req: Request, res: Response, onDisconnect: () => void): Promise<void> {
+		console.log('[SSE] New connection established');
 
-		this.connections.push(res);
+		try {
+			const session = await createSession(req, res);
+			const sessionInfo = { session, req, res };
+			this.sessions.push(sessionInfo);
+			console.log(`[SSE] Total connections: ${this.sessions.length}`);
 
-		(async () => {
 			for (const channel of Object.keys(this.connectHandlers)) {
 				const handlers = this.connectHandlers[channel];
 				if (!handlers) continue;
 				for (const handler of handlers) {
 					try {
 						const data = await handler();
-						if (data !== undefined) {
-							this.emit(channel, data);
-						}
+						if (data !== undefined) this.emit(channel, data);
 					} catch (err) {
 						console.error(`[SSE] Connect handler error for ${channel}:`, err);
 					}
 				}
 			}
-		})();
 
-		const cleanup = () => {
-			const idx = this.connections.indexOf(res);
-			if (idx > -1) this.connections.splice(idx, 1);
+			await new Promise<void>((resolve, reject) => {
+				req.on('close', () => resolve());
+				req.on('error', () => resolve());
+			});
+		} catch (err) {
+			console.error('[SSE] Failed to create session:', err);
+		} finally {
+			const idx = this.sessions.findIndex(s => s.req === req);
+			if (idx > -1) this.sessions.splice(idx, 1);
 			onDisconnect();
 			(async () => {
 				for (const channel of Object.keys(this.disconnectHandlers)) {
@@ -96,9 +96,6 @@ export class SSEManager {
 					}
 				}
 			})();
-		};
-
-		req.on('close', cleanup);
-		req.on('error', cleanup);
+		}
 	}
 }

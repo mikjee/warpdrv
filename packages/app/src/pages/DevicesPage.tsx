@@ -1,10 +1,11 @@
 import { Box, SimpleGrid, Text, HStack, VStack, Flex, Badge, Spinner } from '@chakra-ui/react';
 import { Cpu, MonitorSpeaker, RefreshCw } from 'lucide-react';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
 import { VramBar } from '../components/VramBar';
 import { useListQuery } from '../hooks/useQuery';
+import { useStore } from '../store';
 import { fetchBackends } from '../api/services';
 import type { IBackend, IDevice } from '@warpcore/shared';
 import { EDeviceBackendType } from '@warpcore/shared';
@@ -16,12 +17,21 @@ const BACKEND_COLORS: Record<string, string> = {
 };
 
 export function DevicesPage() {
-	const fetcher = useCallback(() => fetchBackends(), []);
-	const { data: backends, loading, refetch } = useListQuery<IBackend>(fetcher, { pollInterval: 10000 });
+	// Fetch backends once (for backend names)
+	const { data: backends, loading } = useListQuery<IBackend>(useCallback(() => fetchBackends(), []), { pollInterval: 0 });
 
-	const devices: (IDevice & { backendName: string })[] = backends.flatMap(b =>
-		b.detectedDevices.map((d: IDevice) => ({ ...d, backendName: b.name }))
-	);
+	// Use devices from SSE (for VRAM updates)
+	const devices = useStore((s: any) => s.devices);
+
+	// Merge backend names with device data
+	const devicesWithBackend: (IDevice & { backendName: string })[] = useMemo(() => {
+		if (!Array.isArray(devices)) return [];
+		const backendMap = new Map(backends?.map(b => [b.id, b.name]));
+		return devices.map((d: IDevice) => ({
+			...d,
+			backendName: backendMap.get(d.backendId) || 'Unknown',
+		}));
+	}, [devices, backends]);
 
 	return (
 		<Box>
@@ -29,11 +39,6 @@ export function DevicesPage() {
 				title="Devices"
 				subtitle="Detected GPUs across all registered backends"
 				icon={<Cpu size={20} />}
-				actions={
-					<Box as="button" onClick={() => refetch()} color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#e4e4e7' }} cursor="pointer" p="1">
-						<RefreshCw size={16} />
-					</Box>
-				}
 			/>
 			<Box p="4">
 				{loading && devices.length === 0 ? (
@@ -50,7 +55,7 @@ export function DevicesPage() {
 					</Flex>
 				) : (
 					<SimpleGrid columns={{ base: 1, lg: 2 }} gap="4">
-						{devices.map((device, idx) => {
+						{devicesWithBackend.map((device, idx: number) => {
 							const color = BACKEND_COLORS[device.backendType] ?? '#3381ff';
 							return (
 								<Card key={`${device.backendId}-${idx}`} variant="accent" accentColor={color}>

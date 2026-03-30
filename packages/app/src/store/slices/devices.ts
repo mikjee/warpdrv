@@ -1,11 +1,10 @@
-import type { StateCreator } from 'zustand';
 import type { IDevice } from '@warpcore/shared';
-import type { AppState } from '../types';
+import type { AppState, ImmerSet, ImmerGet } from '../types';
 
 interface DevicesSlice {
 	devices: IDevice[];
 }
 
-export const devicesSlice: StateCreator<AppState, [], [], DevicesSlice> = (_set, _get, _initialState) => ({
+export const devicesSlice = (_setState: ImmerSet<AppState>, _getState: ImmerGet<AppState>): Partial<AppState> => ({
 	devices: [],
 });

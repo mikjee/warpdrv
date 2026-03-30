@@ -1,5 +1,9 @@
 import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice } from '@warpcore/shared';
 import type { IProxyStatus, IStickyRouteInfo } from '@/api/services';
+import type { WritableDraft } from 'immer';
+
+export type ImmerSet<T> = (fn: (state: WritableDraft<T>) => void) => void;
+export type ImmerGet<T> = () => T;
 
 export interface AppState {
 	// SSE Connection

@@ -1,5 +1,4 @@
-import type { StateCreator } from 'zustand';
-import type { AppState } from '../types';
+import type { AppState, ImmerSet, ImmerGet } from '../types';
 import type { IProxyStatus, IStickyRouteInfo } from '@/api/services';
 
 interface ProxySlice {
@@ -7,7 +6,7 @@ interface ProxySlice {
 	proxyRoutes: IStickyRouteInfo[];
 }
 
-export const proxySlice: StateCreator<AppState, [], [], ProxySlice> = (_set, _get, _initialState) => ({
+export const proxySlice = (_setState: ImmerSet<AppState>, _getState: ImmerGet<AppState>): Partial<AppState> => ({
 	proxyStatus: null,
 	proxyRoutes: [],
 });

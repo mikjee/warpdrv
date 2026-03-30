@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import {
 	Box, Text, HStack, VStack, Flex, Button, Badge, Spinner,
 } from '@chakra-ui/react';
@@ -7,9 +7,9 @@ import {
 	XCircle, Clock,
 } from 'lucide-react';
 import { EDownloadStatus, type IDownload } from '@warpcore/shared';
-import { useListQuery } from '../../hooks/useQuery';
+import { useStore } from '../../store';
 import {
-	fetchDownloads, pauseHubDownload, resumeHubDownload,
+	pauseHubDownload, resumeHubDownload,
 	cancelHubDownload, clearDownloadHistory,
 } from '../../api/services';
 import { useToast } from '../ToastProvider';
@@ -51,8 +51,7 @@ export function DownloadManager({ onClose }: IDownloadManagerProps) {
 	const { toast } = useToast();
 	const [incompleteOnly, setIncompleteOnly] = useState(false);
 
-	const fetcher = useCallback(() => fetchDownloads(), []);
-	const { data: downloads, refetch } = useListQuery<IDownload>(fetcher, { pollInterval: 1500 });
+	const downloads = Object.values(useStore((s) => s.downloads));
 
 	const filtered = incompleteOnly
 		? downloads.filter((d: IDownload) => d.status === EDownloadStatus.DOWNLOADING || d.status === EDownloadStatus.PAUSED)
@@ -62,22 +61,18 @@ export function DownloadManager({ onClose }: IDownloadManagerProps) {
 
 	const handlePause = async (id: string) => {
 		await pauseHubDownload(id);
-		await refetch();
 	};
 
 	const handleResume = async (id: string) => {
 		await resumeHubDownload(id);
-		await refetch();
 	};
 
 	const handleCancel = async (id: string) => {
 		await cancelHubDownload(id);
-		await refetch();
 	};
 
 	const handleClearHistory = async () => {
 		await clearDownloadHistory();
-		await refetch();
 		toast('info', 'Download history cleared');
 	};
 

@@ -1,34 +1,40 @@
 import { useEffect } from 'react';
 import { useStore } from '@/store';
+import { EventSource } from 'eventsource';
 
 export function useEventSource() {
 	useEffect(() => {
-		const eventSource = new EventSource('/api/events');
+		console.log('[SSE] Creating EventSource connection to /api/events');
+		const port = (import.meta as any).env.DEV
+			// @ts-ignore
+			? __CONTROL_API_PORT__
+			: window.location.port || '4400';
+		const eventSource = new EventSource(`http://localhost:${port}/api/events`);
 
 		eventSource.onopen = () => {
 			useStore.getState().setSseConnected(true);
-			console.log('[SSE] Connected');
+			console.log('[SSE] ✅ Connection opened successfully');
 		};
 
 		eventSource.onmessage = (event) => {
-			const { channel, data } = JSON.parse(event.data);
-			console.log(`[${channel}]`, data);
-
-			const handler = useStore.getState().SSEHandlers[channel];
-			if (handler) handler(data);
+			try {
+				const { channel, data } = JSON.parse(event.data);
+				const handlers = useStore.getState().SSEHandlers;
+				const handler = handlers[channel];
+				if (handler) handler(data);
+				else console.error(`[SSE] ❌ No handler registered for channel '${channel}'`);
+			} catch (err) {
+				console.error('[SSE] Failed to parse event:', err, 'Raw data:', event.data);
+			}
 		};
 
 		eventSource.onerror = (error) => {
-			console.error('[SSE] Error:', error);
+			console.error('[SSE] ❌ Connection error:', error);
 			useStore.getState().setSseConnected(false);
-			eventSource.close();
-			// Auto-reconnect after 5 seconds
-			setTimeout(() => {
-				window.location.reload();
-			}, 5000);
 		};
 
 		return () => {
+			console.log('[SSE] Cleaning up EventSource connection');
 			eventSource.close();
 		};
 	}, []);

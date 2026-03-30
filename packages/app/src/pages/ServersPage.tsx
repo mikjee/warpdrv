@@ -13,8 +13,9 @@ import { LaunchServerDialog } from '../components/dialogs/LaunchServerDialog';
 import { ServerLogs } from '../components/dialogs/ServerLogs';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
 import { useListQuery, useMutation } from '../hooks/useQuery';
-import { fetchServers, fetchBackends, fetchModels, stopServer, restartServer, removeServer, updateServer, fetchSettings, updateSettings, clearStickyRoute } from '../api/services';
-import type { IServer, IBackend, IModel, TSortField, TSortOrder } from '@warpcore/shared';
+import { useStore } from '../store';
+import { fetchBackends, fetchModels, stopServer, restartServer, removeServer, updateServer, fetchSettings, updateSettings, clearStickyRoute } from '../api/services';
+import type { IServer, IServerStats, IBackend, IModel, TSortField, TSortOrder } from '@warpcore/shared';
 import { EServerStatus } from '@warpcore/shared';
 
 function formatUptime(startedAt: number | null): string {
@@ -53,8 +54,9 @@ function toggleSortOrder(order: TSortOrder): TSortOrder {
 }
 
 export function ServersPage() {
-	const fetcher = useCallback(() => fetchServers(), []);
-	const { data: servers, loading, refetch } = useListQuery<IServer>(fetcher, { pollInterval: 3000 });
+	const serversRecord = useStore((s) => s.servers);
+	const serverStats = useStore((s) => s.serverStats);
+	const servers = useMemo(() => Object.values(serversRecord), [serversRecord]);
 
 	const { data: backends } = useListQuery<IBackend>(useCallback(() => fetchBackends(), []), { pollInterval: 0 });
 	const { data: models } = useListQuery<IModel>(useCallback(() => fetchModels(), []), { pollInterval: 0 });
@@ -90,6 +92,11 @@ export function ServersPage() {
 		if (m.primaryFile) {
 			modelByPath.set(m.primaryFile.filePath, m);
 		}
+		m.files.forEach(f => {
+			if (!m.primaryFile || f.filePath !== m.primaryFile.filePath) {
+				modelByPath.set(f.filePath, m);
+			}
+		});
 	});
 
 	// Fuzzy search matching against multiple fields
@@ -199,9 +206,9 @@ export function ServersPage() {
 		useCallback(([id, data]) => updateServer(id, data, false), [])
 	);
 
-	const handleStop = async (id: string) => { await stopMut.mutate(id); await refetch(); };
-	const handleRestart = async (id: string) => { await restartMut.mutate(id); await refetch(); };
-	const handleRemove = async (id: string) => { await removeMut.mutate(id); await refetch(); setDeletingServerId(null); };
+	const handleStop = async (id: string) => { await stopMut.mutate(id); };
+	const handleRestart = async (id: string) => { await restartMut.mutate(id); };
+	const handleRemove = async (id: string) => { await removeMut.mutate(id); setDeletingServerId(null); };
 	const confirmDelete = (id: string) => { setDeletingServerId(id); };
 
 	// Handle removing an alias from a server
@@ -217,7 +224,6 @@ export function ServersPage() {
 		// Remove the alias from the server without relaunching
 		const newAliases = (server.serverAlias ?? []).filter(a => a !== alias);
 		await updateServerMut.mutate([serverId, { serverAlias: newAliases }]);
-		await refetch();
 		setRemovingAlias(null);
 	};
 
@@ -246,7 +252,6 @@ export function ServersPage() {
 		if (newAliasesToAdd.length > 0) {
 			const updatedAliases = [...existingAliases, ...newAliasesToAdd];
 			await updateServerMut.mutate([serverId, { serverAlias: updatedAliases }]);
-			await refetch();
 		}
 
 		setAddingAlias(null);
@@ -423,11 +428,7 @@ export function ServersPage() {
 			</Box>
 
 			<Box p="4">
-				{loading && filteredServers.length === 0 ? (
-					<Flex h="200px" alignItems="center" justifyContent="center">
-						<Spinner size="lg" color="rgba(255, 255, 255, 0.2)" />
-					</Flex>
-				) : filteredServers.length === 0 ? (
+				{filteredServers.length === 0 ? (
 					<Flex
 						h="300px" alignItems="center" justifyContent="center"
 						borderWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" borderRadius="xl" borderStyle="dashed"
@@ -620,27 +621,31 @@ export function ServersPage() {
 										</HStack>
 
 										{/* Stats */}
-										{server.stats && (server.stats.slots ?? []).length > 0 && (
-											<HStack gap="2" flexWrap="wrap">
-												<StatPill icon={<Activity size={12} />} label="Slots" value={`${server.stats.slotsProcessing}/${server.stats.slotsProcessing + server.stats.slotsIdle}`} />
-												{(server.stats.slots ?? []).map(slot => {
-													const isPrompt = slot.state === 'processing' && slot.tokensGenerated === 0;
-													const isGen = slot.state === 'processing' && slot.tokensGenerated > 0;
-													const color = isPrompt ? '#fbbf24' : isGen ? '#3381ff' : 'rgba(255, 255, 255, 0.25)';
-													const label = isPrompt ? 'prompt' : isGen ? `gen ${slot.tokensGenerated}` : 'idle';
-													return (
-														<Badge key={slot.id} px="2" py="0.5" borderRadius="md" fontSize="10px" fontFamily='"Geist Mono", monospace'
-															bg={`color-mix(in srgb, ${color} 10%, transparent)`}
-															color={color}
-															borderWidth="1px"
-															borderColor={`color-mix(in srgb, ${color} 20%, transparent)`}
-														>
-															S{slot.id}: {label}
-														</Badge>
-													);
-												})}
-											</HStack>
-										)}
+										{(() => {
+											const stats = serverStats[server.id] || null;
+											if (!stats || (stats.slots ?? []).length === 0) return null;
+											return (
+												<HStack gap="2" flexWrap="wrap">
+													<StatPill icon={<Activity size={12} />} label="Slots" value={`${stats.slotsProcessing}/${stats.slotsProcessing + stats.slotsIdle}`} />
+													{(stats.slots ?? []).map(slot => {
+														const isPrompt = slot.state === 'processing' && slot.tokensGenerated === 0;
+														const isGen = slot.state === 'processing' && slot.tokensGenerated > 0;
+														const color = isPrompt ? '#fbbf24' : isGen ? '#3381ff' : 'rgba(255, 255, 255, 0.25)';
+														const label = isPrompt ? 'prompt' : isGen ? `gen ${slot.tokensGenerated}` : 'idle';
+														return (
+															<Badge key={slot.id} px="2" py="0.5" borderRadius="md" fontSize="10px" fontFamily='"Geist Mono", monospace'
+																bg={`color-mix(in srgb, ${color} 10%, transparent)`}
+																color={color}
+																borderWidth="1px"
+																borderColor={`color-mix(in srgb, ${color} 20%, transparent)`}
+															>
+																S{slot.id}: {label}
+															</Badge>
+														);
+													})}
+												</HStack>
+											);
+										})()}
 									</VStack>
 								</Card>
 							);
@@ -650,7 +655,7 @@ export function ServersPage() {
 			</Box>
 
 			{showLaunch && (
-				<LaunchServerDialog onClose={() => { setShowLaunch(false); refetch(); }} />
+				<LaunchServerDialog onClose={() => setShowLaunch(false)} />
 			)}
 
 			{logsServer && (
@@ -659,7 +664,7 @@ export function ServersPage() {
 
 			{editingServer && (
 				<LaunchServerDialog
-					onClose={() => { setEditingServerId(null); refetch(); }}
+					onClose={() => setEditingServerId(null)}
 					editMode={{
 						serverId: editingServer.id,
 						backendId: editingServer.backendId,

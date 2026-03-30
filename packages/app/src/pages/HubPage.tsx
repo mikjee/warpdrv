@@ -8,14 +8,14 @@ import {
 	ArrowUpDown, Download, ArrowUpAZ, ArrowDownAZ,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import type { ISettings, IHubModel } from '@warpcore/shared';
+import type { ISettings, IHubModel, IDownload } from '@warpcore/shared';
 import { PageHeader } from '../components/PageHeader';
 import { HubModelCard } from '../components/hub/HubModelCard';
 import { HubModelDetail } from '../components/hub/HubModelDetail';
 import { DownloadManager } from '../components/hub/DownloadManager';
-import { useQuery, useListQuery } from '../hooks/useQuery';
-import { fetchSettings, fetchDownloads, searchHub } from '../api/services';
-import type { IDownload } from '@warpcore/shared';
+import { useQuery } from '../hooks/useQuery';
+import { useStore } from '../store';
+import { fetchSettings, searchHub } from '../api/services';
 import { EDownloadStatus } from '@warpcore/shared';
 import { useToast } from '../components/ToastProvider';
 
@@ -47,10 +47,9 @@ export function HubPage() {
 	const settingsFetcher = useCallback(() => fetchSettings(), []);
 	const { data: settings, loading: settingsLoading } = useQuery<ISettings>(settingsFetcher);
 
-	// Poll downloads for badge count
-	const dlFetcher = useCallback(() => fetchDownloads(), []);
-	const { data: allDownloads } = useListQuery<IDownload>(dlFetcher, { pollInterval: 3000 });
-	const activeDownloadCount = allDownloads.filter((d: IDownload) =>
+	// Use downloads from SSE
+	const downloads = Object.values(useStore((s: any) => s.downloads)) as IDownload[];
+	const activeDownloadCount = downloads.filter((d: IDownload) =>
 		d.status === EDownloadStatus.DOWNLOADING || d.status === EDownloadStatus.PAUSED
 	).length;
 

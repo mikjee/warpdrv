@@ -4,8 +4,9 @@ import { useState, useCallback } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
-import { useQuery, useListQuery, useMutation } from '../hooks/useQuery';
-import { fetchProxyStatus, fetchStickyRoutes, clearStickyRoute, clearAllStickyRoutes, startProxy, stopProxy } from '../api/services';
+import { useMutation } from '../hooks/useQuery';
+import { useStore } from '../store';
+import { clearStickyRoute, clearAllStickyRoutes, startProxy, stopProxy } from '../api/services';
 import type { IProxyStatus, IStickyRouteInfo } from '../api/services';
 import { useToast } from '../components/ToastProvider';
 import { BsRouter } from 'react-icons/bs';
@@ -78,12 +79,8 @@ function ProxyStatusBadge({ status }: { status: IProxyStatus }) {
 }
 
 export function ProxyPage() {
-	const { toast } = useToast();
-	const fetcher = useCallback(() => fetchProxyStatus(), []);
-	const { data: status, loading, refetch } = useQuery<IProxyStatus>(fetcher, { pollInterval: 3000 });
-
-	const routesFetcher = useCallback(() => fetchStickyRoutes(), []);
-	const { data: routes, refetch: refetchRoutes } = useListQuery<IStickyRouteInfo>(routesFetcher, { pollInterval: 3000 });
+	const proxyStatus = useStore((s) => s.proxyStatus);
+	const proxyRoutes = useStore((s) => s.proxyRoutes);
 
 	const [clearingAll, setClearingAll] = useState(false);
 	const clearAllMut = useMutation<void, null>(useCallback(() => clearAllStickyRoutes(), []));
@@ -93,23 +90,19 @@ export function ProxyPage() {
 
 	const handleClearAll = async () => {
 		await clearAllMut.mutate();
-		refetchRoutes();
 		setClearingAll(false);
 	};
 
 	const handleClearOne = async (alias: string) => {
 		await clearOneMut.mutate(alias);
-		refetchRoutes();
 	};
 
 	const handleStart = async () => {
 		await startMut.mutate(undefined);
-		await refetch(); // let polling pick up the actual status
 	};
 
 	const handleStop = async () => {
 		await stopMut.mutate(undefined);
-		await refetch();
 	};
 
 	const getStatusSubtitle = (status: IProxyStatus, routeCount: number): string => {
@@ -140,10 +133,10 @@ export function ProxyPage() {
 		<Box>
 			<PageHeader
 				title="Router"
-				subtitle={status ? getStatusSubtitle(status, routes?.length ?? 0) : '-'}
+				subtitle={proxyStatus ? getStatusSubtitle(proxyStatus, proxyRoutes.length) : '-'}
 				icon={<BsRouter size={20} />}
 				actions={
-					status?.enabled && routes?.length > 0 ? (
+					proxyStatus?.enabled && proxyRoutes.length > 0 ? (
 						<Button
 							size="sm"
 							variant="ghost"
@@ -170,22 +163,22 @@ export function ProxyPage() {
 									<Flex
 										w="10" h="10" borderRadius="lg" alignItems="center" justifyContent="center"
 										position="relative"
-										bg={status ? getIconBg(status) : 'rgba(255, 255, 255, 0.04)'}
+										bg={proxyStatus ? getIconBg(proxyStatus) : 'rgba(255, 255, 255, 0.04)'}
 										borderWidth="1px"
-										borderColor={status ? getIconBorder(status) : 'rgba(255, 255, 255, 0.06)'}
+										borderColor={proxyStatus ? getIconBorder(proxyStatus) : 'rgba(255, 255, 255, 0.06)'}
 									>
-										<BsRouter size={18} color={status ? getIconColor(status) : 'rgba(255, 255, 255, 0.3)'} />
-										{!status?.error && status?.running && status?.healthy && <Box position="absolute" top="-1px" right="-1px" w="8px" h="8px" borderRadius="full" bg="#34d399" shadow="0 0 8px #34d399" />}
+										<BsRouter size={18} color={proxyStatus ? getIconColor(proxyStatus) : 'rgba(255, 255, 255, 0.3)'} />
+										{!proxyStatus?.error && proxyStatus?.running && proxyStatus?.healthy && <Box position="absolute" top="-1px" right="-1px" w="8px" h="8px" borderRadius="full" bg="#34d399" shadow="0 0 8px #34d399" />}
 									</Flex>
 									<Box>
 										<Text fontSize="15px" fontWeight="600" color="#e4e4e7">Server Alias</Text>
 										<HStack gap="3" mt="0.5">
-											<ProxyStatusBadge status={status ?? { enabled: false, port: 0, running: false, healthy: false, error: null }} />
+											<ProxyStatusBadge status={proxyStatus ?? { enabled: false, port: 0, running: false, healthy: false, error: null }} />
 										</HStack>
 									</Box>
 								</HStack>
 
-								{!status?.running ? (
+								{!proxyStatus?.running ? (
 									<Button
 										size="sm"
 										bg="rgba(51, 129, 255, 0.12)"
@@ -222,8 +215,8 @@ export function ProxyPage() {
 
 							{/* Details row - simplified from server cards */}
 							<HStack gap="2" flexWrap="wrap">
-								<StatPill icon={<Server size={12} />} label="Port" value={`${status?.port ?? '-'}`} />
-								<StatPill icon={<Globe size={12} />} label="Routes" value={`${routes?.length ?? 0}`} />
+								<StatPill icon={<Server size={12} />} label="Port" value={`${proxyStatus?.port ?? '-'}`} />
+								<StatPill icon={<Globe size={12} />} label="Routes" value={`${proxyRoutes.length}`} />
 							</HStack>
 						</VStack>
 					</Card>
@@ -235,7 +228,7 @@ export function ProxyPage() {
 								Sticky Routes
 									</Text>
 
-									{!routes || routes.length === 0 ? (
+									{!proxyRoutes || proxyRoutes.length === 0 ? (
 										<Flex
 											h="120px" alignItems="center" justifyContent="center"
 											borderWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" borderRadius="xl" borderStyle="dashed"
@@ -247,7 +240,7 @@ export function ProxyPage() {
 										</Flex>
 									) : (
 										<VStack align="stretch" gap="2">
-											{routes.map(route => (
+											{proxyRoutes.map((route: IStickyRouteInfo) => (
 												<Flex key={route.alias} justify="space-between" align="center" p="3" borderRadius="lg" bg="rgba(255, 255, 255, 0.02)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.04)">
 													<HStack gap="3">
 														<Badge px="2" py="0.5" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="rgba(51, 129, 255, 0.1)" color="#3381ff" borderWidth="1px" borderColor="rgba(51, 129, 255, 0.2)">

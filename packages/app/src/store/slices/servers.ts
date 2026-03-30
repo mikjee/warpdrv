@@ -1,6 +1,5 @@
-import type { StateCreator } from 'zustand';
 import type { TServerId, IServer, IServerStats } from '@warpcore/shared';
-import type { AppState } from '../types';
+import type { AppState, ImmerSet, ImmerGet } from '../types';
 
 interface ServersSlice {
 	servers: Record<TServerId, IServer>;
@@ -8,7 +7,7 @@ interface ServersSlice {
 	serverLogs: Record<TServerId, string[]>;
 }
 
-export const serversSlice: StateCreator<AppState, [], [], ServersSlice> = (_set, _get, _initialState) => ({
+export const serversSlice = (_setState: ImmerSet<AppState>, _getState: ImmerGet<AppState>): Partial<AppState> => ({
 	servers: {},
 	serverStats: {},
 	serverLogs: {},

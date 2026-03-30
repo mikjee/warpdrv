@@ -19,9 +19,8 @@ import { Thread } from '@/components/assistant-ui/thread';
 import { ThreadList } from '@/components/assistant-ui/thread-list';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { PageHeader } from '../components/PageHeader';
-import { useListQuery } from '../hooks/useQuery';
+import { useStore } from '../store';
 import {
-	fetchServers,
 	fetchThreads,
 	createThread,
 	fetchThread,
@@ -574,12 +573,11 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 });
 
 export function ChatPage() {
-	const fetcher = useCallback(() => fetchServers(), []);
-	const { data: servers } = useListQuery<IServer>(fetcher, { pollInterval: 5000, deepCompare: true });
+	const servers = Object.values(useStore((s) => s.servers));
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 
-	const selected = servers.find((s) => s.id === selectedId);
-	const runningServers = servers.filter((s) => s.status === EServerStatus.RUNNING);
+	const selected = servers.find((s: IServer) => s.id === selectedId);
+	const runningServers = servers.filter((s: IServer) => s.status === EServerStatus.RUNNING);
 
 	if (!selectedId && runningServers.length > 0 && runningServers[0]) {
 		setSelectedId(runningServers[0].id);

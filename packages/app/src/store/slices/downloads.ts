@@ -1,11 +1,10 @@
-import type { StateCreator } from 'zustand';
 import type { TDownloadId, IDownload } from '@warpcore/shared';
-import type { AppState } from '../types';
+import type { AppState, ImmerSet, ImmerGet } from '../types';
 
 interface DownloadsSlice {
 	downloads: Record<TDownloadId, IDownload>;
 }
 
-export const downloadsSlice: StateCreator<AppState, [], [], DownloadsSlice> = (_set, _get, _initialState) => ({
+export const downloadsSlice = (_setState: ImmerSet<AppState>, _getState: ImmerGet<AppState>): Partial<AppState> => ({
 	downloads: {},
 });

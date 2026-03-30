@@ -1,5 +1,4 @@
-import type { StateCreator } from 'zustand';
-import type { AppState } from '../types';
+import type { AppState, ImmerSet, ImmerGet } from '../types';
 
 interface SSEConnectionSlice {
 	sseConnected: boolean;
@@ -7,8 +6,8 @@ interface SSEConnectionSlice {
 	setSseConnected: (connected: boolean) => void;
 }
 
-export const sseConnectionSlice: StateCreator<AppState, [], [], SSEConnectionSlice> = (set, _get, _initialState) => ({
+export const sseConnectionSlice = (setState: ImmerSet<AppState>, _getState: ImmerGet<AppState>): Partial<AppState> => ({
 	sseConnected: false,
 	testData: null,
-	setSseConnected: (connected) => set({ sseConnected: connected }),
+	setSseConnected: (connected) => setState((state) => { state.sseConnected = connected; }),
 });
