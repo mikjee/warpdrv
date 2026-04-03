@@ -79,6 +79,7 @@ export function BackendDialog({ onClose, editData }: IBackendDialogProps) {
 			// Add missing parts
 			const next = [...defaultArgs];
 			for (const part of parts) if (!next.includes(part)) next.push(part);
+			setDefaultArgs(next);
 		}
 	};
 

@@ -58,8 +58,8 @@ export function ServersPage() {
 	const serverStats = useStore((s) => s.serverStats);
 	const servers = useMemo(() => Object.values(serversRecord), [serversRecord]);
 
-	const { data: backends } = useListQuery<IBackend>(useCallback(() => fetchBackends(), []), { pollInterval: 0 });
-	const { data: models } = useListQuery<IModel>(useCallback(() => fetchModels(), []), { pollInterval: 0 });
+	const { data: backends, refetch: refetchBackends } = useListQuery<IBackend>(useCallback(() => fetchBackends(), []), { pollInterval: 0 });
+	const { data: models, refetch: refetchModels } = useListQuery<IModel>(useCallback(() => fetchModels(), []), { pollInterval: 0 });
 
 	// Filter and sort state
 	const [searchQuery, setSearchQuery] = useState('');
@@ -79,25 +79,37 @@ export function ServersPage() {
 		});
 	}, []);
 
+	// Ensure backends/models are loaded when servers arrive via SSE (fixes "not found" errors)
+	useEffect(() => {
+		const serverIds = Object.keys(serversRecord);
+		if (serverIds.length > 0 && (backends.length === 0 || models.length === 0)) {
+			if (backends.length === 0) refetchBackends();
+			if (models.length === 0) refetchModels();
+		}
+	}, [serversRecord, backends.length, models.length]);
+
 	// Save sort settings when they change (only after initial load)
 	useEffect(() => {
 		if (!settingsLoaded) return;
 		updateSettings({ serversSortField: sortField, serversSortOrder: sortOrder });
 	}, [settingsLoaded, sortField, sortOrder]);
 
-	// Build lookup maps
-	const backendMap = new Map(backends.map(b => [b.id, b]));
-	const modelByPath = new Map<string, IModel>();
-	models.forEach(m => {
-		if (m.primaryFile) {
-			modelByPath.set(m.primaryFile.filePath, m);
-		}
-		m.files.forEach(f => {
-			if (!m.primaryFile || f.filePath !== m.primaryFile.filePath) {
-				modelByPath.set(f.filePath, m);
+	// Build lookup maps (memoized to ensure re-renders when data changes)
+	const backendMap = useMemo(() => new Map(backends.map(b => [b.id, b])), [backends]);
+	const modelByPath = useMemo(() => {
+		const map = new Map<string, IModel>();
+		models.forEach(m => {
+			if (m.primaryFile) {
+				map.set(m.primaryFile.filePath, m);
 			}
+			m.files.forEach(f => {
+				if (!m.primaryFile || f.filePath !== m.primaryFile.filePath) {
+					map.set(f.filePath, m);
+				}
+			});
 		});
-	});
+		return map;
+	}, [models]);
 
 	// Fuzzy search matching against multiple fields
 	function matchesSearch(server: IServer, query: string): boolean {

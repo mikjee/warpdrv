@@ -541,17 +541,17 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 			<ConfigManager onConfigLoaded={handleConfigLoaded} />
 			<TooltipProvider>
 				<Flex flex="1" h="100%" overflow="hidden" className="dark">
-					<Box
-						w="260px"
-						minW="260px"
-						borderRightWidth="1px"
-						borderColor="rgba(255,255,255,0.06)"
-						// bg="rgba(0,0,0,0.15)"
-						overflow="auto"
-						p="3"
-					>
-						<ThreadList />
-					</Box>
+				<Box
+					w="260px"
+					minW="260px"
+					borderRightWidth="1px"
+					borderColor="rgba(255,255,255,0.06)"
+					// bg="rgba(0,0,0,0.15)"
+					overflow="auto"
+					p="3"
+				>
+					<ThreadList />
+				</Box>
 					<Box flex="1" overflow="hidden">
 						<Thread />
 					</Box>

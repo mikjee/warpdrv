@@ -311,7 +311,7 @@ function EnhancedThreadListItem({ thread, onRename, onStartDrag }: {
 			) : (
 				<ThreadListItemPrimitive.Trigger className="aui-thread-list-item-trigger flex min-w-0 flex-1 flex-col px-2.5 py-1.5 text-start">
 					<Text fontSize="12px" color="rgba(255,255,255,0.75)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" lineHeight="1.3">
-						<ThreadListItemPrimitive.Title fallback="New Chat" />
+						{thread.title ?? 'New Chat'}
 					</Text>
 					<HStack gap="2" mt="0.5">
 					  <Text fontSize="10px" color="rgba(255,255,255,0.25)" fontFamily="mono">

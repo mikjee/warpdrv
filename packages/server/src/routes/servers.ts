@@ -11,6 +11,7 @@ import {
 } from '../services/processManager';
 import { getServerStats } from '../services/statsPoller';
 import { clearStickyRoute, getStickyRoutesResolved } from '../services/modelProxy';
+import { sseManager } from '../services/sseManagerInstance';
 import type {
 	IServer,
 	IServerCreatePayload,
@@ -230,8 +231,8 @@ serversRouter.post('/:id/restart', async (req, res) => {
 		return;
 	}
 
-	// Kill existing
-	killServer(server.id, server.pid);
+	// Kill existing and wait for termination
+	await killServer(server.id, server.pid);
 
 	// Re-spawn
 	const args = buildArgs(
@@ -282,7 +283,7 @@ serversRouter.put('/:id', async (req, res) => {
 
 	// Kill existing if running and relaunching
 	if (server.pid && shouldRelaunch) {
-		killServer(server.id, server.pid);
+		await killServer(server.id, server.pid);
 		usedPorts.delete(server.port);
 	}
 
@@ -347,6 +348,9 @@ serversRouter.put('/:id', async (req, res) => {
 	}
 
 	await store.put(PREFIX + server.id, server);
+
+	// Emit SSE update so frontend receives the config change
+	sseManager.emit('servers:update', { [server.id]: server });
 
 	res.json({ ok: true, data: server, error: null });
 });

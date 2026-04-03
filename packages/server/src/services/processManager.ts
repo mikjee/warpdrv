@@ -196,24 +196,35 @@ export function spawnServer(
 		return null;
 	}
 }
-// Kill a running server process
-export function killServer(serverId: string, pid?: number): boolean {
+// Kill a running server process and wait for termination
+export async function killServer(serverId: string, pid?: number): Promise<boolean> {
 	const child = processes.get(serverId);
 	// Try to kill from in-memory process first, then fall back to PID
 	if (child?.pid) {
-		try {
-			stopStatsPolling(serverId);
-			process.kill(-child.pid, 'SIGTERM');
-			processes.delete(serverId);
-			return true;
-		} catch {
-			// Process may have already exited
-		}
+		stopStatsPolling(serverId);
+		return new Promise((resolve) => {
+			const timeout = setTimeout(() => {
+				processes.delete(serverId);
+				resolve(false);
+			}, 10000);
+			child.once('exit', () => {
+				clearTimeout(timeout);
+				processes.delete(serverId);
+				resolve(true);
+			});
+				try {
+					if (child.pid) process.kill(-child.pid, 'SIGTERM');
+				} catch {
+				clearTimeout(timeout);
+				processes.delete(serverId);
+				resolve(false);
+			}
+		});
 	}
 	// If not in map, try to kill using PID from storage (orphan process)
 	if (pid) {
+		stopStatsPolling(serverId);
 		try {
-			stopStatsPolling(serverId);
 			process.kill(-pid, 'SIGTERM');
 			return true;
 		} catch {
