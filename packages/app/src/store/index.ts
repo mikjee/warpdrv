@@ -8,6 +8,7 @@ import { serversSlice } from './slices/servers';
 import { downloadsSlice } from './slices/downloads';
 import { devicesSlice } from './slices/devices';
 import { proxySlice } from './slices/proxy';
+import { createMcpSlice } from '@/store/slices/mcpSlice';
 
 export const useStore = create<AppState>()(
 	subscribeWithSelector(
@@ -18,6 +19,7 @@ export const useStore = create<AppState>()(
 			const devices = devicesSlice(set, get);
 			const proxy = proxySlice(set, get);
 			const sseHandlers = sseHandlersSlice(set, get);
+			const mcp = createMcpSlice(set, get);
 
 			return {
 				sseConnected: sseConnection.sseConnected!,
@@ -31,6 +33,11 @@ export const useStore = create<AppState>()(
 				proxyStatus: proxy.proxyStatus!,
 				proxyRoutes: proxy.proxyRoutes!,
 				SSEHandlers: sseHandlers.SSEHandlers!,
+				mcpServers: mcp.mcpServers!,
+				mcpServerPermissions: mcp.mcpServerPermissions!,
+				mcpToolPermissions: mcp.mcpToolPermissions!,
+				setMcpServers: mcp.setMcpServers!,
+				setMcpPermissions: mcp.setMcpPermissions!,
 			};
 		}),
 	),

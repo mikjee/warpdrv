@@ -60,3 +60,34 @@ export enum EReasoningEffort {
 	MEDIUM = 'medium',
 	HIGH = 'high',
 }
+
+// MCP server transport type
+export enum EMcpTransportType {
+	STDIO = 'STDIO',
+	HTTP = 'HTTP',
+}
+
+// MCP server connection status
+export enum EMcpServerStatus {
+	DISCONNECTED = 'DISCONNECTED',
+	CONNECTING = 'CONNECTING',
+	CONNECTED = 'CONNECTED',
+	ERROR = 'ERROR',
+}
+
+// Tool approval mode
+export enum EToolApprovalMode {
+	ASK = 'ASK',
+	ALLOWED = 'ALLOWED',
+	DENIED = 'DENIED',
+}
+
+// Tool call execution status
+export enum EToolCallStatus {
+	PENDING = 'PENDING',
+	APPROVED = 'APPROVED',
+	DENIED = 'DENIED',
+	EXECUTING = 'EXECUTING',
+	COMPLETED = 'COMPLETED',
+	ERROR = 'ERROR',
+}

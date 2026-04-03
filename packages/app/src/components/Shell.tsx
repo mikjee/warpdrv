@@ -20,6 +20,7 @@ import { useSummary } from '../hooks/useSummary';
 import { fetchSettings, updateSettings } from '../api/services';
 import type { ReactNode, ComponentType } from 'react';
 import type { ISummaryData } from '../api/summary-services';
+import { Plug } from 'lucide-react';
 
 // Page imports for registry
 import { AboutPage } from '../pages/AboutPage';
@@ -31,6 +32,7 @@ import { HubPage } from '../pages/HubPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { ProxyPage } from '../pages/ProxyPage';
 import { ChatPage } from '../pages/ChatPage';
+import { McpPage } from '../pages/McpPage';
 
 // Page lifecycle config: closeOnSwitch=false means page persists (hidden but not unmounted)
 type TPageConfig = {
@@ -48,6 +50,7 @@ const PAGE_REGISTRY: Record<string, TPageConfig> = {
 	'/devices': { component: DevicesPage, closeOnSwitch: false },
 	'/settings': { component: SettingsPage, closeOnSwitch: true },
 	'/about': { component: AboutPage, closeOnSwitch: true },
+	'/mcp': { component: McpPage, closeOnSwitch: true },
 };
 
 interface INavItem {
@@ -164,6 +167,7 @@ const NAV_ITEMS: INavItem[] = [
 			return null;
 		},
 	},
+	{ path: '/mcp', label: 'MCP', icon: <Plug size={18} /> }
 ];
 
 const NAV_ITEMS_BOTTOM: INavItem[] = [

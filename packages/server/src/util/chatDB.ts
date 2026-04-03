@@ -3,6 +3,9 @@ import path from 'path';
 import os from 'os';
 import fs from 'fs';
 
+import type { IToolPermission, IMcpServerPermission, IToolCall } from '@warpcore/shared';
+import { EToolApprovalMode, EToolCallStatus } from '@warpcore/shared';
+
 // Resolve data dir (same logic as store.ts)
 function getDataDir(): string {
 	const platform = os.platform();
@@ -109,6 +112,47 @@ const SCHEMA = `
 	);
 `;
 
+const MCP_SCHEMA = `
+	CREATE TABLE IF NOT EXISTS mcp_server_permissions (
+		serverName TEXT PRIMARY KEY,
+		enabled INTEGER NOT NULL DEFAULT 1
+	);
+
+	CREATE TABLE IF NOT EXISTS mcp_tool_permissions (
+		serverName TEXT NOT NULL,
+		toolName TEXT NOT NULL,
+		enabled INTEGER NOT NULL DEFAULT 1,
+		approvalMode TEXT NOT NULL DEFAULT 'ASK',
+		PRIMARY KEY (serverName, toolName)
+	);
+
+	CREATE TABLE IF NOT EXISTS tool_calls (
+		id TEXT PRIMARY KEY,
+		messageId TEXT NOT NULL,
+		threadId TEXT NOT NULL,
+		serverName TEXT NOT NULL,
+		toolName TEXT NOT NULL,
+		arguments TEXT NOT NULL DEFAULT '{}',
+		result TEXT,
+		status TEXT NOT NULL DEFAULT 'PENDING',
+		error TEXT,
+		createdAt INTEGER NOT NULL,
+		resolvedAt INTEGER,
+		FOREIGN KEY (threadId) REFERENCES threads(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_tool_calls_message ON tool_calls(messageId);
+	CREATE INDEX IF NOT EXISTS idx_tool_calls_thread ON tool_calls(threadId);
+	CREATE INDEX IF NOT EXISTS idx_tool_calls_status ON tool_calls(status);
+`;
+
+async function runMcpMigrations(): Promise<void> {
+	// Create MCP tables if they don't exist
+	db!.exec(MCP_SCHEMA);
+
+	// Future migrations go here
+}
+
 export async function initChatDb(): Promise<void> {
 	const isPkg = (process as any).pkg !== undefined;
 	let SQL;
@@ -164,6 +208,119 @@ export async function initChatDb(): Promise<void> {
 	process.on('exit', saveNow);
 	process.on('SIGINT', () => { saveNow(); process.exit(); });
 	process.on('SIGTERM', () => { saveNow(); process.exit(); });
+
+	await runMcpMigrations();
 }
+
+export const mcpDb = {
+	// --- Server permissions ---
+	async getServerPermission(serverName: string): Promise<IMcpServerPermission | null> {
+		return get<IMcpServerPermission>(
+			'SELECT serverName, enabled FROM mcp_server_permissions WHERE serverName = ?',
+			[serverName]
+		);
+	},
+
+	async setServerPermission(serverName: string, enabled: boolean): Promise<void> {
+		const exists = await get('SELECT 1 FROM mcp_server_permissions WHERE serverName = ?', [serverName]);
+		if (exists) {
+			await run('UPDATE mcp_server_permissions SET enabled = ? WHERE serverName = ?', [enabled ? 1 : 0, serverName]);
+		} else {
+			await run('INSERT INTO mcp_server_permissions (serverName, enabled) VALUES (?, ?)', [serverName, enabled ? 1 : 0]);
+		}
+	},
+
+	async getAllServerPermissions(): Promise<IMcpServerPermission[]> {
+		const rows = await all<{ serverName: string; enabled: number }>('SELECT * FROM mcp_server_permissions');
+		return rows.map(r => ({ serverName: r.serverName, enabled: r.enabled === 1 }));
+	},
+
+	// --- Tool permissions ---
+	async getToolPermission(serverName: string, toolName: string): Promise<IToolPermission | null> {
+		const row = await get<{ serverName: string; toolName: string; enabled: number; approvalMode: string }>(
+			'SELECT * FROM mcp_tool_permissions WHERE serverName = ? AND toolName = ?',
+			[serverName, toolName]
+		);
+		if (!row) return null;
+		return {
+			serverName: row.serverName,
+			toolName: row.toolName,
+			enabled: row.enabled === 1,
+			approvalMode: row.approvalMode as EToolApprovalMode,
+		};
+	},
+
+	async setToolPermission(serverName: string, toolName: string, enabled: boolean, approvalMode: EToolApprovalMode): Promise<void> {
+		const exists = await get('SELECT 1 FROM mcp_tool_permissions WHERE serverName = ? AND toolName = ?', [serverName, toolName]);
+		if (exists) {
+			await run(
+				'UPDATE mcp_tool_permissions SET enabled = ?, approvalMode = ? WHERE serverName = ? AND toolName = ?',
+				[enabled ? 1 : 0, approvalMode, serverName, toolName]
+			);
+		} else {
+			await run(
+				'INSERT INTO mcp_tool_permissions (serverName, toolName, enabled, approvalMode) VALUES (?, ?, ?, ?)',
+				[serverName, toolName, enabled ? 1 : 0, approvalMode]
+			);
+		}
+	},
+
+	async getAllToolPermissions(): Promise<IToolPermission[]> {
+		const rows = await all<{ serverName: string; toolName: string; enabled: number; approvalMode: string }>(
+			'SELECT * FROM mcp_tool_permissions'
+		);
+		return rows.map(r => ({
+			serverName: r.serverName,
+			toolName: r.toolName,
+			enabled: r.enabled === 1,
+			approvalMode: r.approvalMode as EToolApprovalMode,
+		}));
+	},
+
+	async getToolPermissionsForServer(serverName: string): Promise<IToolPermission[]> {
+		const rows = await all<{ serverName: string; toolName: string; enabled: number; approvalMode: string }>(
+			'SELECT * FROM mcp_tool_permissions WHERE serverName = ?',
+			[serverName]
+		);
+		return rows.map(r => ({
+			serverName: r.serverName,
+			toolName: r.toolName,
+			enabled: r.enabled === 1,
+			approvalMode: r.approvalMode as EToolApprovalMode,
+		}));
+	},
+
+	// --- Tool call records ---
+	async createToolCall(tc: IToolCall): Promise<void> {
+		await run(
+			`INSERT INTO tool_calls (id, messageId, threadId, serverName, toolName, arguments, result, status, error, createdAt, resolvedAt)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			[tc.id, tc.messageId, tc.threadId, tc.serverName, tc.toolName, tc.arguments, tc.result, tc.status, tc.error, tc.createdAt, tc.resolvedAt]
+		);
+	},
+
+	async updateToolCallStatus(id: string, status: EToolCallStatus, result?: string | null, error?: string | null): Promise<void> {
+		await run(
+			'UPDATE tool_calls SET status = ?, result = ?, error = ?, resolvedAt = ? WHERE id = ?',
+			[status, result ?? null, error ?? null, Date.now(), id]
+		);
+	},
+
+	async getToolCall(id: string): Promise<IToolCall | null> {
+		return get<IToolCall>('SELECT * FROM tool_calls WHERE id = ?', [id]);
+	},
+
+	async getToolCallsForMessage(messageId: string): Promise<IToolCall[]> {
+		return all<IToolCall>('SELECT * FROM tool_calls WHERE messageId = ? ORDER BY createdAt ASC', [messageId]);
+	},
+
+	async getToolCallsForThread(threadId: string): Promise<IToolCall[]> {
+		return all<IToolCall>('SELECT * FROM tool_calls WHERE threadId = ? ORDER BY createdAt ASC', [threadId]);
+	},
+
+	async getPendingToolCalls(): Promise<IToolCall[]> {
+		return all<IToolCall>('SELECT * FROM tool_calls WHERE status = ? ORDER BY createdAt ASC', [EToolCallStatus.PENDING]);
+	},
+};
 
 export const chatDb = { run, get, all };

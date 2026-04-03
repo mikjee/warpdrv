@@ -13,8 +13,6 @@ import {
 	type ThreadHistoryAdapter,
 } from '@assistant-ui/react';
 import { createAssistantStream } from 'assistant-stream';
-import { createOpenAI } from '@ai-sdk/openai';
-import { streamText } from 'ai';
 import { Thread } from '@/components/assistant-ui/thread';
 import { ThreadList } from '@/components/assistant-ui/thread-list';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -35,6 +33,7 @@ import { EServerStatus, EChatRole, EResponseFormat, EReasoningFormat, EReasoning
 import { ChatConfigSidebar, DEFAULT_INFERENCE_PARAMS } from '../components/ChatConfigSidebar';
 import '../styles/assistant-ui.css';
 import { createContext, useContext } from 'react';
+import { ChatToolsSidebar } from '../components/ChatToolsSidebar';
 
 interface IChatConfig {
 	reasoningEffort: EReasoningEffort;
@@ -52,25 +51,28 @@ export const ChatConfigContext = createContext<IChatConfig>({
 // Model adapter — direct to llama-server, no proxy
 // ============================================================
 
-let currentPort: number | null = null;
-
-export function setActivePort(port: number | null) {
-	currentPort = port;
+let currentServerId: string | null = null;
+export function setActiveServerId(id: string | null) {
+	currentServerId = id;
 }
 
 let activeInferenceParams: IChatInferenceParams = { ...DEFAULT_INFERENCE_PARAMS };
 let activeSystemPrompt: string = '';
+let activeThreadId: string | null = null;
+
+export function setActiveThreadId(id: string | null) {
+	activeThreadId = id;
+}
+
+const CONTROL_API_PORT = (import.meta as any).env.VITE_CONTROL_API_PORT || '4400';
+const API_BASE = `http://localhost:${CONTROL_API_PORT}`;
 
 const modelAdapter: ChatModelAdapter = {
 	async *run({ messages, abortSignal }) {
-		if (!currentPort) {
+		if (!currentServerId) {
 			yield { content: [{ type: 'text' as const, text: 'No server selected. Pick a running server from the dropdown above.' }] };
 			return;
 		}
-		const provider = createOpenAI({
-			baseURL: `http://localhost:${currentPort}/v1`,
-			apiKey: 'warpcore',
-		});
 
 		const convertedMessages = messages.map((m) => {
 			const textParts = m.content.filter((p: any) => p.type === 'text');
@@ -78,114 +80,132 @@ const modelAdapter: ChatModelAdapter = {
 			return { role: m.role as 'system' | 'user' | 'assistant', content: text };
 		});
 
-		const p = activeInferenceParams;
-		const allMessages = activeSystemPrompt
-			? [{ role: 'system' as const, content: activeSystemPrompt }, ...convertedMessages]
-			: convertedMessages;
-		const result = streamText({
-			model: provider.chat('model'),
-			messages: allMessages,
-			abortSignal,
-			includeRawChunks: true,
-			temperature: p.temperature,
-			topP: p.topP,
-			topK: p.topK,
-			maxOutputTokens: p.maxTokens > 0 ? p.maxTokens : undefined,
-			frequencyPenalty: p.frequencyPenalty,
-			presencePenalty: p.presencePenalty,
-			seed: p.seed >= 0 ? p.seed : undefined,
-			providerOptions: {
-				openai: {
-					...(p.repeatPenalty !== 1.0 ? { repeat_penalty: p.repeatPenalty } : {}),
-					...(p.minP > 0 ? { min_p: p.minP } : {}),
-					...(p.mirostatMode > 0 ? { mirostat: p.mirostatMode, mirostat_tau: p.mirostatTau, mirostat_eta: p.mirostatEta } : {}),
-					...(p.cachePrompt ? { cache_prompt: true } : {}),
-					...(p.responseFormat !== EResponseFormat.TEXT ? { response_format: { type: p.responseFormat } } : {}),
-					...(p.reasoningFormat !== EReasoningFormat.NONE ? { reasoning_format: p.reasoningFormat } : {}),
-					...(p.enableThinking || p.reasoningEffort !== EReasoningEffort.NONE
-						? { chat_template_kwargs: {
-							...(p.enableThinking ? { enable_thinking: true } : {}),
-							...(p.reasoningEffort !== EReasoningEffort.NONE ? { reasoning_effort: p.reasoningEffort } : {}),
-						} }
-						: {}),
-				},
-			},
+		const body = {
+			threadId: activeThreadId ?? '',
+			serverId: currentServerId,
+			messages: convertedMessages,
+			systemPrompt: activeSystemPrompt || undefined,
+			inferenceParams: activeInferenceParams,
+		};
+
+		const response = await fetch(`${API_BASE}/api/chat/completions`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(body),
+			signal: abortSignal,
 		});
 
+		if (!response.ok || !response.body) {
+			yield { content: [{ type: 'text' as const, text: `Error: ${response.status} ${response.statusText}` }] };
+			return;
+		}
+
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder();
 		let fullText = '';
 		let reasoningText = '';
-		let timings: any = null;
-		for await (const part of (await result).fullStream) {
+		let buffer = '';
+		let metadata: any = null;
+		// Track tool calls for display
+		let toolCallBlocks: Array<{ type: 'tool-call'; toolCall: any }> = [];
 
-			// console.log('[PART]', part);
-			if (part.type === 'reasoning-start' || part.type === 'reasoning-end') {
-				// no-op, just markers
-			} else if (part.type === 'reasoning-delta') {
-				reasoningText += part.text;
-				const content: any[] = [];
-				if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
-				if (fullText) content.push({ type: 'text' as const, text: fullText });
-				if (content.length > 0) yield { content };
-			} else if (part.type === 'text-delta') {
-				fullText += part.text;
-				const content: any[] = [];
-				if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
-				content.push({ type: 'text' as const, text: fullText });
-				yield { content };
-			} else if (part.type === 'raw') {
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
+
+			buffer += decoder.decode(value, { stream: true });
+			const lines = buffer.split('\n');
+			buffer = lines.pop() ?? '';
+
+			for (const line of lines) {
+				if (!line.startsWith('data: ')) continue;
+				const data = line.slice(6).trim();
+				if (!data) continue;
+
 				try {
-					const raw = part.rawValue as any;
-					if (raw?.timings) timings = raw.timings;
-					const delta = raw?.choices?.[0]?.delta;
-					if (delta?.reasoning_content) {
-						reasoningText += delta.reasoning_content;
+					const event = JSON.parse(data);
+
+					if (event.type === 'text-delta') {
+						fullText = event.text;
+						const content: any[] = [];
+						if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
+						content.push({ type: 'text' as const, text: fullText });
+						yield { content };
+
+					} else if (event.type === 'reasoning-delta') {
+						reasoningText = event.text;
 						const content: any[] = [];
 						if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
 						if (fullText) content.push({ type: 'text' as const, text: fullText });
 						if (content.length > 0) yield { content };
+
+					} else if (event.type === 'tool-call') {
+						// Tool call received — show in chat as a special content block
+						toolCallBlocks.push(event);
+						const content: any[] = [];
+						if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
+						if (fullText) content.push({ type: 'text' as const, text: fullText });
+						// Append tool call info to text for now
+						// (proper UI component will replace this)
+						const tcInfo = `\n\n---\n**Tool Call:** ${event.toolCall.toolName} (${event.toolCall.serverName})\n**Status:** ${event.toolCall.status}\n**Arguments:**\n\`\`\`json\n${event.toolCall.arguments}\n\`\`\`\n`;
+						content.push({ type: 'text' as const, text: (fullText || '') + tcInfo });
+						yield { content };
+
+					} else if (event.type === 'tool-result') {
+						// Tool result received — update display
+						const trInfo = `\n**Result:** (${event.toolResult.status})\n\`\`\`json\n${event.toolResult.result}\n\`\`\`\n---\n`;
+						const content: any[] = [];
+						if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
+						content.push({ type: 'text' as const, text: (fullText || '') + trInfo });
+						yield { content };
+						// Reset fullText to not carry tool display into final text
+						// The actual model continuation will overwrite this
+
+					} else if (event.type === 'done') {
+						fullText = event.text ?? fullText;
+						metadata = event.metadata;
+
+					} else if (event.type === 'error') {
+						yield { content: [{ type: 'text' as const, text: `Error: ${event.error}` }] };
+						return;
 					}
-				} catch { /* ignore */ }
+				} catch { /* skip malformed */ }
 			}
 		}
 
-		const usage = await (await result).usage;
-		const reasoningTokens = (usage as any)?.outputTokenDetails?.reasoningTokens ?? 0;
-
-		const ppSpeed = timings?.prompt_per_second ?? 0;
-		const tgSpeed = timings?.predicted_per_second ?? 0;
-		const promptTokens = timings?.prompt_n ?? usage?.inputTokens ?? 0;
-		const completionTokens = timings?.predicted_n ?? usage?.outputTokens ?? 0;
-		const ppMs = timings?.prompt_ms ?? 0;
-		const tgMs = timings?.predicted_ms ?? 0;
-
+		// Final yield with metadata
 		const finalContent: any[] = [];
 		if (reasoningText) finalContent.push({ type: 'reasoning' as const, reasoning: reasoningText });
 		finalContent.push({ type: 'text' as const, text: fullText });
 
-		yield {
-			content: finalContent,
-			metadata: {
-				unstable_state: {},
-				custom: {
-					promptTokens,
-					completionTokens,
-					reasoningTokens,
-					ppSpeed: Math.round(ppSpeed * 100) / 100,
-					tgSpeed: Math.round(tgSpeed * 100) / 100,
-					ttftMs: Math.round(ppMs),
-					totalMs: Math.round(ppMs + tgMs),
+		if (metadata) {
+			yield {
+				content: finalContent,
+				metadata: {
+					unstable_state: {},
+					custom: {
+						promptTokens: metadata.promptTokens,
+						completionTokens: metadata.completionTokens,
+						reasoningTokens: metadata.reasoningTokens,
+						ppSpeed: metadata.ppSpeed,
+						tgSpeed: metadata.tgSpeed,
+						ttftMs: metadata.ttftMs,
+						totalMs: metadata.totalMs,
+					},
+					timing: {
+						streamStartTime: 0,
+						firstTokenTime: undefined,
+						totalStreamTime: metadata.totalMs,
+						tokenCount: metadata.completionTokens,
+						tokensPerSecond: metadata.tgSpeed,
+						totalChunks: 0,
+						toolCallCount: toolCallBlocks.length,
+					},
 				},
-				timing: {
-					streamStartTime: 0,
-					firstTokenTime: undefined,
-					totalStreamTime: ppMs + tgMs,
-					tokenCount: completionTokens,
-					tokensPerSecond: Math.round(tgSpeed * 100) / 100,
-					totalChunks: 0,
-					toolCallCount: 0,
-				},
-			},
-		};
+			};
+		} else {
+			yield { content: finalContent };
+		}
 	},
 };
 
@@ -425,6 +445,7 @@ function ConfigManager({
 		if (!threadId) return;
 		if (threadId === lastLoadedRef.current) return;
 		lastLoadedRef.current = threadId;
+		setActiveThreadId(threadId);
 
 		fetchThreadConfig(threadId).then((res) => {
 			if (res.ok && res.data) {
@@ -461,6 +482,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	const [inferenceParams, setInferenceParams] = useState<IChatInferenceParams>({ ...DEFAULT_INFERENCE_PARAMS });
 	const [systemPrompt, setSystemPrompt] = useState('');
 	const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+	const [toolsOpen, setToolsOpen] = useState(false);
 
 	// Refs for debounced save — avoids stale closures
 	const currentThreadIdRef = useRef<string | null>(null);
@@ -565,6 +587,10 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 						onSystemPromptChange={handleSystemPromptChange}
 						onPresetSelect={handlePresetSelect}
 					/>
+					<ChatToolsSidebar 
+						open={toolsOpen} 
+						onToggle={() => setToolsOpen(!toolsOpen)} 
+					/>
 				</Flex>
 			</TooltipProvider>
 		</AssistantRuntimeProvider>
@@ -583,8 +609,8 @@ export function ChatPage() {
 		setSelectedId(runningServers[0].id);
 	}
 
-	const activePort = (selected && selected.status === EServerStatus.RUNNING) ? selected.port : null;
-	setActivePort(activePort);
+	const activeServerId = (selected && selected.status === EServerStatus.RUNNING) ? selected.id : null;
+	setActiveServerId(activeServerId);
 
 	return (
 		<Flex direction="column" h="100%" overflow="hidden">

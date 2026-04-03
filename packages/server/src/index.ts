@@ -12,6 +12,8 @@ import { DEFAULT_SETTINGS, EServerStatus, EDownloadStatus } from '@warpcore/shar
 import { runMigrations } from './services/migrationRunner';
 import { updateRouter } from './routes/update';
 import { chatRouter } from './routes/chat';
+import { mcpRouter } from './routes/mcp';
+import { initMcpClients, shutdownMcpClients, getAllMcpServerStates } from './services/mcpClientManager';
 import { initChatDb } from './util/chatDB';
 import { proxyRouter } from './routes/proxy';
 import { startModelProxy, getProxyStatus } from './services/modelProxy';
@@ -19,6 +21,7 @@ import { summaryRouter } from './routes/summary';
 import { sseManager } from './services/sseManagerInstance';
 import { getAllServerStats, getServerStats } from './services/statsPoller';
 import { getAllDownloads, getAllDownloadsRecord } from './services/downloadManager';
+import { restorePendingApprovals } from './services/chatCompletionService';
 
 const SETTINGS_KEY = 'settings:general';
 
@@ -54,6 +57,7 @@ async function main() {
 	app.use('/api/update', updateRouter);
 	app.use('/api/proxy', proxyRouter);
 	app.use('/api/chat', chatRouter);
+	app.use('/api/mcp', mcpRouter);
 	app.use('/api/summary', summaryRouter);
 
 	// SSE endpoint
@@ -153,9 +157,16 @@ async function main() {
 			return devices.length > 0 ? devices : [];
 		}, 5000);
 
+		// Phase 2: MCP
+		sseManager.onConnect('mcp:init', async () => {
+			return getAllMcpServerStates();
+		});
+
 	}
 
 	registerSSEChannels();
+	await initMcpClients();
+	await restorePendingApprovals();
 
 	app.listen(port, host, () => {
 		console.log(`[WarpCore] API server listening on ${host}:${port}`);
@@ -163,6 +174,8 @@ async function main() {
 			console.log(`[WarpCore] Port set via CONTROL_API_PORT environment variable`);
 		}
 	});
+
+	process.on('exit', () => { shutdownMcpClients(); });
 
 	// Start model proxy if enabled in settings
 	if (currentSettings.proxyEnabled) {

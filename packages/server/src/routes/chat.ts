@@ -9,6 +9,9 @@ import type {
 	IChatMessageCreatePayload,
 } from '@warpcore/shared';
 
+import { handleChatCompletion } from '../services/chatCompletionService';
+import type { IChatCompletionRequest } from '@warpcore/shared';
+
 export const chatRouter = Router();
 
 // ============================================================
@@ -399,4 +402,31 @@ chatRouter.put('/threads/:id/config', async (req, res) => {
 	} catch (err) {
 		res.status(500).json({ ok: false, data: null, error: String(err) });
 	}
+});
+
+// POST /api/chat/completions — SSE streaming chat completion
+// The frontend sends messages here instead of directly to llama-server.
+// This endpoint handles the tool-call loop, approval flow, and persistence.
+chatRouter.post('/completions', async (req, res) => {
+	const body = req.body as IChatCompletionRequest;
+
+	if (!body.serverId) {
+		res.status(400).json({ ok: false, data: null, error: 'Missing serverId' });
+		return;
+	}
+	if (!body.threadId) {
+		res.status(400).json({ ok: false, data: null, error: 'Missing threadId' });
+		return;
+	}
+	if (!body.messages || body.messages.length === 0) {
+		res.status(400).json({ ok: false, data: null, error: 'Missing messages' });
+		return;
+	}
+
+	// Create abort controller for client disconnect
+	const abortController = new AbortController();
+	req.on('close', () => abortController.abort());
+	req.on('error', () => abortController.abort());
+
+	await handleChatCompletion(body, res, abortController.signal);
 });

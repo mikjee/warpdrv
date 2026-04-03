@@ -58,5 +58,9 @@ export const sseHandlersSlice = (
 		// Phase 1: Devices
 		'devices:init': (data) => setState((state) => { state.devices = data; }),
 		'devices:vram': (data) => setState((state) => { state.devices = data; }),
+
+		// MCP
+		'mcp:init': (data) => setState((state) => { state.mcpServers = data; }),
+		'mcp:servers': (data) => setState((state) => { state.mcpServers = data; }),
 	},
 });
