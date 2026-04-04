@@ -5,9 +5,6 @@ import { store } from '../util/store';
 import type { IServer, ISettings } from '@warpcore/shared';
 import { EServerStatus, DEFAULT_SETTINGS } from '@warpcore/shared';
 import { sseManager } from './sseManagerInstance';
-import { handleProxyChatCompletion } from './chatCompletionService';
-import { getEnabledTools, toolsToOpenAIFormat } from './mcpClientManager';
-import { mcpDb } from '../util/chatDB';
 
 const SERVERS_PREFIX = 'servers:';
 const SETTINGS_KEY = 'settings:general';
@@ -198,14 +195,13 @@ function createProxyApp(): express.Express {
 
 	// Catch-all for /v1/* — route by model alias
 	// Express 5 router uses different syntax - use a middleware approach
-	// Catch-all for /v1/* — route by model alias, with MCP tool support
 	app.use('/v1/', async (req, res, next) => {
 		// Skip the /models endpoint which is handled separately
 		if (req.path === '/models' || req.path.startsWith('/models')) {
 			return next();
 		}
-
 		const model = extractModelFromBody(req);
+
 		if (!model) {
 			res.status(400).json({
 				error: {
@@ -218,9 +214,11 @@ function createProxyApp(): express.Express {
 		}
 
 		const server = await resolveServer(model);
+
 		if (!server) {
 			const allAliases = await getAllAliases();
 			const aliasExists = allAliases.includes(model);
+
 			res.status(aliasExists ? 503 : 404).json({
 				error: {
 					message: aliasExists
@@ -233,41 +231,10 @@ function createProxyApp(): express.Express {
 			return;
 		}
 
-		// Check if this is a chat completion request that could use tools
-		const isChatCompletion = req.path === '/chat/completions' || req.path === 'chat/completions';
-		const requestBody = req.body ?? {};
-		const isStreaming = requestBody.stream === true;
-
-		// Check if there are any enabled MCP tools
-		const serverPerms = await mcpDb.getAllServerPermissions();
-		const toolPerms = await mcpDb.getAllToolPermissions();
-		const enabledTools = getEnabledTools(serverPerms, toolPerms);
-		const hasTools = enabledTools.length > 0;
-
-		// If it's a chat completion AND we have tools AND the request
-		// doesn't already include tools, route through our completion service
-		if (isChatCompletion && hasTools && !requestBody.tools) {
-			const abortController = new AbortController();
-			req.on('close', () => abortController.abort());
-			req.on('error', () => abortController.abort());
-
-			const messages = requestBody.messages ?? [];
-			// Strip the model field and tools, pass everything else as inference params
-			const { model: _m, messages: _msgs, stream: _s, tools: _t, ...inferenceParams } = requestBody;
-
-			await handleProxyChatCompletion(
-				server.port,
-				messages,
-				inferenceParams,
-				res,
-				abortController.signal,
-			);
-			return;
-		}
-
-		// If the request already has tools defined, or no MCP tools available,
-		// or it's not a chat completion — pass through as before
+		// Re-create the request with raw body for piping
+		// Since we consumed the body for parsing, we need to create a new request
 		const rawBody = (req as any)._rawBody as string | undefined;
+
 		const options: http.RequestOptions = {
 			hostname: '127.0.0.1',
 			port: server.port,
@@ -280,12 +247,15 @@ function createProxyApp(): express.Express {
 		};
 
 		const proxyReq = http.request(options, (proxyRes) => {
+			// Copy all response headers
 			const headers = { ...proxyRes.headers };
 			res.writeHead(proxyRes.statusCode ?? 200, headers);
+			// Stream response directly — no buffering
 			proxyRes.pipe(res, { end: true });
 		});
 
 		proxyReq.on('error', (err) => {
+			// Server might have died — clear sticky route
 			stickyRoutes.delete(model);
 			if (!res.headersSent) {
 				res.status(502).json({
@@ -298,6 +268,7 @@ function createProxyApp(): express.Express {
 			}
 		});
 
+		// Write the raw body and end
 		if (rawBody) {
 			proxyReq.write(rawBody);
 		}

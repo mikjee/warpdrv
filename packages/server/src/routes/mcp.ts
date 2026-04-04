@@ -21,7 +21,6 @@ import {
 	refreshMcpServerTools,
 } from '../services/mcpClientManager';
 import { mcpDb } from '../util/chatDB';
-import { resolveToolCallApproval } from '../services/chatCompletionService';
 import type { IMcpServerEntry, IToolPermission } from '@warpcore/shared';
 import { EToolApprovalMode } from '@warpcore/shared';
 
@@ -203,26 +202,6 @@ mcpRouter.put('/permissions/tool', async (req, res) => {
 // ============================================================
 // Tool call approvals
 // ============================================================
-
-// POST /api/mcp/tool-calls/:id/decide — approve or deny a pending tool call
-mcpRouter.post('/tool-calls/:id/decide', async (req, res) => {
-	try {
-		const { decision } = req.body as { decision: 'approve' | 'deny' };
-		if (decision !== 'approve' && decision !== 'deny') {
-			res.status(400).json({ ok: false, data: null, error: 'Invalid decision. Must be "approve" or "deny".' });
-			return;
-		}
-
-		const resolved = resolveToolCallApproval(req.params.id, decision);
-		if (!resolved) {
-			res.status(404).json({ ok: false, data: null, error: 'No pending approval found for this tool call' });
-			return;
-		}
-		res.json({ ok: true, data: null, error: null });
-	} catch (err) {
-		res.status(500).json({ ok: false, data: null, error: String(err) });
-	}
-});
 
 // GET /api/mcp/tool-calls/pending — get all pending tool calls
 mcpRouter.get('/tool-calls/pending', async (_req, res) => {

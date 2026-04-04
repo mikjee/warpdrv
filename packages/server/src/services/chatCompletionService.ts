@@ -1,15 +1,15 @@
 // ============================================================
 // FILE: packages/server/src/services/chatCompletionService.ts
-// Backend chat completion with MCP tool-call orchestration.
-// Uses Vercel AI SDK streamText, loops on tool calls,
-// handles approval flow, persists everything.
+// Full drop-in replacement.
+// Transport: raw res.write (OpenAI-compatible SSE)
+// Format: data: {...}\n\n chunks
+// Flow: single pass, auto-continue for ALLOWED, break for ASK
 // ============================================================
 
 import crypto from 'crypto';
 import { createOpenAI } from '@ai-sdk/openai';
-import { streamText, tool } from 'ai';
-import { z } from 'zod';
-import type { Response } from 'express';
+import { streamText, tool, jsonSchema } from 'ai';
+import type { Request, Response } from 'express';
 import type {
 	IChatCompletionRequest,
 	IChatStreamEvent,
@@ -18,50 +18,74 @@ import type {
 } from '@warpcore/shared';
 import { EToolApprovalMode, EToolCallStatus } from '@warpcore/shared';
 import { store } from '../util/store';
-import { chatDb, mcpDb } from '../util/chatDB';
+import { mcpDb } from '../util/chatDB';
 import {
 	getEnabledTools,
 	getToolApprovalMode,
 	executeToolCall,
 	findToolServer,
-	toolsToOpenAIFormat,
 } from './mcpClientManager';
 import { sseManager } from './sseManagerInstance';
 import type { IServer } from '@warpcore/shared';
 import { EServerStatus } from '@warpcore/shared';
 
 const SERVERS_PREFIX = 'servers:';
-const MAX_TOOL_ITERATIONS = 10;
+const MAX_AUTO_CONTINUES = 10;
 
-// Pending approval resolvers — keyed by tool call ID
-// When a tool call needs approval, we store a promise resolver here.
-// The approval endpoint resolves it.
-const pendingApprovals = new Map<string, {
-	resolve: (decision: 'approve' | 'deny') => void;
-	threadId: string;
-}>();
-
-// Resolve a pending approval from the API endpoint
-export function resolveToolCallApproval(toolCallId: string, decision: 'approve' | 'deny'): boolean {
-	const pending = pendingApprovals.get(toolCallId);
-	if (!pending) return false;
-	pending.resolve(decision);
-	pendingApprovals.delete(toolCallId);
-	return true;
+// ============================================================
+// Helpers
+// ============================================================
+function write(res: Response, data: Record<string, unknown>): void {
+	res.write(`data: ${JSON.stringify(data)}\n\n`);
 }
 
-// Get pending approvals for a thread
-export function getPendingApprovalsForThread(threadId: string): string[] {
-	const ids: string[] = [];
-	for (const [id, entry] of pendingApprovals.entries()) {
-		if (entry.threadId === threadId) ids.push(id);
-	}
-	return ids;
+function writeDone(res: Response): void {
+	res.write('data: [DONE]\n\n');
 }
 
-// SSE write helper — writes a chat stream event to the response
-function writeSSE(res: Response, event: IChatStreamEvent): void {
-	res.write(`data: ${JSON.stringify(event)}\n\n`);
+function chunkDelta(delta: Record<string, unknown>, extra?: Record<string, unknown>): Record<string, unknown> {
+	return {
+		choices: [{ index: 0, delta }],
+		...(extra ?? {}),
+	};
+}
+
+function chunkFinish(reason: string, timings?: any, usage?: any): Record<string, unknown> {
+	return {
+		choices: [{ index: 0, delta: {}, finish_reason: reason }],
+		...(timings ? { timings } : {}),
+		...(usage ? { usage } : {}),
+	};
+}
+
+function chunkToolCall(index: number, id: string, name: string, args: string): Record<string, unknown> {
+	return {
+		choices: [{
+			index: 0,
+			delta: {
+				tool_calls: [{
+					index,
+					id,
+					type: 'function',
+					function: { name, arguments: args },
+				}],
+			},
+		}],
+	};
+}
+
+function chunkWarpcore(event: string, data: Record<string, unknown>): Record<string, unknown> {
+	return { warpcore_event: event, ...data };
+}
+
+function startSSE(res: Response): void {
+	res.writeHead(200, {
+		'Content-Type': 'text/event-stream',
+		'Cache-Control': 'no-cache',
+		'Connection': 'keep-alive',
+		'X-Accel-Buffering': 'no',
+	});
+	res.flushHeaders();
 }
 
 // ============================================================
@@ -72,60 +96,40 @@ export async function handleChatCompletion(
 	res: Response,
 	abortSignal: AbortSignal,
 ): Promise<void> {
-	// Set up SSE response
-	res.writeHead(200, {
-		'Content-Type': 'text/event-stream',
-		'Cache-Control': 'no-cache',
-		'Connection': 'keep-alive',
-		'X-Accel-Buffering': 'no',
-	});
+	const server = await store.get<IServer>(`${SERVERS_PREFIX}${req.serverId}`);
+	if (!server || server.status !== EServerStatus.RUNNING) {
+		res.status(400).json({ ok: false, data: null, error: 'Server not running. Select a running server.' });
+		return;
+	}
+
+	startSSE(res);
 
 	try {
-		// Resolve server port
-		const server = await store.get<IServer>(`${SERVERS_PREFIX}${req.serverId}`);
-		if (!server || server.status !== EServerStatus.RUNNING) {
-			writeSSE(res, { type: 'error', error: 'Server not running. Select a running server.' });
-			res.end();
-			return;
-		}
-
 		const port = server.port;
-
-		// Build message history
 		const messages = req.systemPrompt
 			? [{ role: 'system' as const, content: req.systemPrompt }, ...req.messages]
 			: [...req.messages];
 
-		// Get enabled tools
 		const serverPerms = await mcpDb.getAllServerPermissions();
 		const toolPerms = await mcpDb.getAllToolPermissions();
 		const enabledTools = getEnabledTools(serverPerms, toolPerms);
 
-		// Run the completion loop
-		await completionLoop(
-			port,
-			messages,
-			enabledTools,
-			toolPerms,
-			req,
-			res,
-			abortSignal,
-		);
-
+		await singlePass(port, messages, enabledTools, toolPerms, req, res, abortSignal);
 	} catch (err) {
 		const errorMsg = err instanceof Error ? err.message : String(err);
 		if (!abortSignal.aborted) {
-			writeSSE(res, { type: 'error', error: errorMsg });
+			write(res, chunkWarpcore('error', { error: errorMsg }));
 		}
 	} finally {
-		if (!res.writableEnded) res.end();
+		writeDone(res);
+		res.end();
 	}
 }
 
 // ============================================================
-// Completion loop — calls llama-server, handles tool calls
+// Single pass
 // ============================================================
-async function completionLoop(
+async function singlePass(
 	port: number,
 	messages: Array<{ role: string; content: string }>,
 	enabledTools: IMcpToolDefinition[],
@@ -134,35 +138,51 @@ async function completionLoop(
 	res: Response,
 	abortSignal: AbortSignal,
 ): Promise<void> {
+	const openAiTools = enabledTools.map(t => ({
+		type: 'function' as const,
+		function: {
+			name: t.name,
+			description: t.description,
+			parameters: {
+				...t.inputSchema,
+				$schema: undefined,
+			},
+		},
+	}));
+	const hasTools = openAiTools.length > 0;
+
 	const provider = createOpenAI({
 		baseURL: `http://localhost:${port}/v1`,
 		apiKey: 'warpcore',
+		fetch: async (url, init) => {
+			if (init?.body && typeof init.body === 'string') {
+				const body = JSON.parse(init.body);
+				if (hasTools) body.tools = openAiTools;
+				body.messages = conversationMessages;
+				init = { ...init, body: JSON.stringify(body) };
+			}
+			return fetch(url, init);
+		},
 	});
 
 	const p = req.inferenceParams as Record<string, any>;
-	let iteration = 0;
 	let conversationMessages = [...messages];
+	let autoContinues = 0;
 
-	while (iteration < MAX_TOOL_ITERATIONS) {
+	while (autoContinues < MAX_AUTO_CONTINUES) {
 		if (abortSignal.aborted) return;
-		iteration++;
 
-		// Build AI SDK tools from MCP tool definitions
 		const aiTools: Record<string, any> = {};
 		for (const t of enabledTools) {
-			// We define tools without execute — we handle execution ourselves
-			// so we can do approval flow
 			aiTools[t.name] = tool({
 				description: t.description,
-				parameters: jsonSchemaToZod(t.inputSchema),
+				parameters: mcpSchemaToAISchema(t.inputSchema),
 			});
 		}
 
-		const hasTools = Object.keys(aiTools).length > 0;
-
 		const result = streamText({
 			model: provider.chat('model'),
-			messages: conversationMessages as any,
+			messages: [conversationMessages[0]] as any,
 			abortSignal,
 			...(hasTools ? { tools: aiTools } : {}),
 			includeRawChunks: true,
@@ -202,15 +222,15 @@ async function completionLoop(
 
 			if (part.type === 'reasoning-delta') {
 				reasoningText += part.text;
-				writeSSE(res, { type: 'reasoning-delta', text: reasoningText });
+				write(res, chunkDelta({ reasoning_content: part.text }));
 			} else if (part.type === 'text-delta') {
 				fullText += part.text;
-				writeSSE(res, { type: 'text-delta', text: fullText });
+				write(res, chunkDelta({ content: part.text }));
 			} else if (part.type === 'tool-call') {
 				toolCalls.push({
 					id: part.toolCallId,
 					name: part.toolName,
-					args: part.args as Record<string, unknown>,
+					args: (part as any).input ?? (part as any).args ?? {},
 				});
 			} else if (part.type === 'finish') {
 				finishReason = part.finishReason ?? '';
@@ -218,41 +238,34 @@ async function completionLoop(
 				try {
 					const raw = part.rawValue as any;
 					if (raw?.timings) timings = raw.timings;
+					const delta = raw?.choices?.[0]?.delta;
+					if (delta?.reasoning_content) {
+						reasoningText += delta.reasoning_content;
+						write(res, chunkDelta({ reasoning_content: delta.reasoning_content }));
+					}
 				} catch { /* ignore */ }
 			}
 		}
 
-		// No tool calls — we're done, emit final event
+		// Text response — done
 		if (toolCalls.length === 0 || finishReason !== 'tool-calls') {
 			const usage = await (await result).usage;
 			const reasoningTokens = (usage as any)?.outputTokenDetails?.reasoningTokens ?? 0;
-			const ppSpeed = timings?.prompt_per_second ?? 0;
-			const tgSpeed = timings?.predicted_per_second ?? 0;
-			const promptTokens = timings?.prompt_n ?? usage?.inputTokens ?? 0;
-			const completionTokens = timings?.predicted_n ?? usage?.outputTokens ?? 0;
-			const ppMs = timings?.prompt_ms ?? 0;
-			const tgMs = timings?.predicted_ms ?? 0;
 
-			writeSSE(res, {
-				type: 'done',
-				text: fullText,
-				metadata: {
-					promptTokens,
-					completionTokens,
-					reasoningTokens,
-					ppSpeed: Math.round(ppSpeed * 100) / 100,
-					tgSpeed: Math.round(tgSpeed * 100) / 100,
-					ttftMs: Math.round(ppMs),
-					totalMs: Math.round(ppMs + tgMs),
-				},
-			});
+			write(res, chunkFinish('stop', timings, {
+				prompt_tokens: timings?.prompt_n ?? usage?.inputTokens ?? 0,
+				completion_tokens: timings?.predicted_n ?? usage?.outputTokens ?? 0,
+				reasoning_tokens: reasoningTokens,
+			}));
 			return;
 		}
 
-		// Handle tool calls
+		// Tool calls
+		let needsAsk = false;
 		const toolResults: Array<{ callId: string; name: string; result: string }> = [];
 
-		for (const tc of toolCalls) {
+		for (let i = 0; i < toolCalls.length; i++) {
+			const tc = toolCalls[i]!;
 			if (abortSignal.aborted) return;
 
 			const serverName = findToolServer(tc.name);
@@ -262,15 +275,14 @@ async function completionLoop(
 				continue;
 			}
 
-			// Create tool call record
 			const toolCallId = crypto.randomUUID();
 			const toolCallRecord: IToolCall = {
 				id: toolCallId,
-				messageId: '', // will be linked when message is saved
+				messageId: '',
 				threadId: req.threadId,
 				serverName,
 				toolName: tc.name,
-				arguments: JSON.stringify(tc.args),
+				arguments: JSON.stringify(tc.args ?? {}),
 				result: null,
 				status: EToolCallStatus.PENDING,
 				error: null,
@@ -279,142 +291,148 @@ async function completionLoop(
 			};
 			await mcpDb.createToolCall(toolCallRecord);
 
-			// Check approval mode
 			const approvalMode = getToolApprovalMode(serverName, tc.name, toolPerms);
 
-			// Notify frontend about the tool call
-			writeSSE(res, {
-				type: 'tool-call',
-				toolCall: {
-					id: toolCallId,
-					serverName,
-					toolName: tc.name,
-					arguments: JSON.stringify(tc.args),
-					status: EToolCallStatus.PENDING,
-				},
-			});
+			write(res, chunkToolCall(i, tc.id, tc.name, JSON.stringify(tc.args)));
 
-			let decision: 'approve' | 'deny' = 'approve';
-
-			if (approvalMode === EToolApprovalMode.DENIED) {
-				decision = 'deny';
-			} else if (approvalMode === EToolApprovalMode.ASK) {
-				// Wait for user approval
-				decision = await waitForApproval(toolCallId, req.threadId, abortSignal);
-			}
-			// ALLOWED falls through with decision = 'approve'
-
-			if (decision === 'deny' || abortSignal.aborted) {
-				await mcpDb.updateToolCallStatus(toolCallId, EToolCallStatus.DENIED);
-				const deniedResult = JSON.stringify({ error: 'Tool call was denied by user' });
-				toolResults.push({ callId: tc.id, name: tc.name, result: deniedResult });
-
-				writeSSE(res, {
-					type: 'tool-result',
-					toolResult: {
-						id: toolCallId,
-						result: deniedResult,
-						status: EToolCallStatus.DENIED,
-					},
-				});
+			// ASK
+			if (approvalMode === EToolApprovalMode.ASK) {
+				write(res, chunkWarpcore('tool_call_pending', {
+					tool_call_id: toolCallId,
+					server_name: serverName,
+					tool_name: tc.name,
+					arguments: JSON.stringify(tc.args ?? {}),
+				}));
+				needsAsk = true;
 				continue;
 			}
 
-			// Execute the tool
+			// DENIED
+			if (approvalMode === EToolApprovalMode.DENIED) {
+				await mcpDb.updateToolCallStatus(toolCallId, EToolCallStatus.DENIED);
+				const deniedResult = JSON.stringify({ error: 'Tool call denied by policy' });
+				toolResults.push({ callId: tc.id, name: tc.name, result: deniedResult });
+				write(res, chunkWarpcore('tool_call_result', {
+					tool_call_id: toolCallId,
+					status: EToolCallStatus.DENIED,
+					result: deniedResult,
+				}));
+				continue;
+			}
+
+			// ALLOWED
 			await mcpDb.updateToolCallStatus(toolCallId, EToolCallStatus.EXECUTING);
+			write(res, chunkWarpcore('tool_call_executing', { tool_call_id: toolCallId }));
 
 			try {
 				const mcpResult = await executeToolCall(serverName, tc.name, tc.args);
 				const resultStr = JSON.stringify(mcpResult.content);
+				const finalStatus = mcpResult.isError ? EToolCallStatus.ERROR : EToolCallStatus.COMPLETED;
 
-				await mcpDb.updateToolCallStatus(
-					toolCallId,
-					mcpResult.isError ? EToolCallStatus.ERROR : EToolCallStatus.COMPLETED,
-					resultStr,
-					mcpResult.isError ? resultStr : null,
-				);
-
+				await mcpDb.updateToolCallStatus(toolCallId, finalStatus, resultStr, mcpResult.isError ? resultStr : null);
 				toolResults.push({ callId: tc.id, name: tc.name, result: resultStr });
 
-				writeSSE(res, {
-					type: 'tool-result',
-					toolResult: {
-						id: toolCallId,
-						result: resultStr,
-						status: mcpResult.isError ? EToolCallStatus.ERROR : EToolCallStatus.COMPLETED,
-					},
-				});
+				write(res, chunkWarpcore('tool_call_result', {
+					tool_call_id: toolCallId,
+					status: finalStatus,
+					result: resultStr,
+				}));
 			} catch (err) {
 				const errorMsg = err instanceof Error ? err.message : String(err);
 				const errorResult = JSON.stringify({ error: errorMsg });
 
 				await mcpDb.updateToolCallStatus(toolCallId, EToolCallStatus.ERROR, null, errorMsg);
-
 				toolResults.push({ callId: tc.id, name: tc.name, result: errorResult });
 
-				writeSSE(res, {
-					type: 'tool-result',
-					toolResult: {
-						id: toolCallId,
-						result: errorResult,
-						status: EToolCallStatus.ERROR,
-					},
-				});
+				write(res, chunkWarpcore('tool_call_result', {
+					tool_call_id: toolCallId,
+					status: EToolCallStatus.ERROR,
+					result: errorResult,
+				}));
 			}
 		}
 
-		// Append tool calls and results to conversation for next iteration
-		// Add the assistant message with tool calls
+		// ASK — stop, frontend will resume
+		if (needsAsk) {
+			write(res, chunkFinish('tool_calls'));
+			return;
+		}
+
+		// Append tool results and continue
 		conversationMessages.push({
 			role: 'assistant',
-			content: fullText || '',
-			// The AI SDK handles tool_calls in the message format internally
-			// but we need to manually construct the follow-up for the loop
+			content: fullText || null,
+			tool_calls: toolCalls.map((tc, i) => ({
+				id: tc.id,
+				type: 'function',
+				function: { name: tc.name, arguments: JSON.stringify(tc.args ?? {}) },
+			})),
 		} as any);
 
-		// Add tool results as tool messages
 		for (const tr of toolResults) {
 			conversationMessages.push({
-				role: 'tool' as any,
+				role: 'tool',
 				content: tr.result,
 				tool_call_id: tr.callId,
 			} as any);
 		}
 
-		// Continue the loop — llama-server gets called again with the tool results
+		autoContinues++;
 	}
 
-	// Hit max iterations
-	writeSSE(res, {
-		type: 'error',
-		error: `Tool call loop exceeded maximum of ${MAX_TOOL_ITERATIONS} iterations`,
-	});
-}
-
-// Wait for user approval via the pending approvals map
-function waitForApproval(
-	toolCallId: string,
-	threadId: string,
-	abortSignal: AbortSignal,
-): Promise<'approve' | 'deny'> {
-	return new Promise<'approve' | 'deny'>((resolve) => {
-		pendingApprovals.set(toolCallId, { resolve, threadId });
-
-		// If aborted, auto-deny
-		const onAbort = () => {
-			if (pendingApprovals.has(toolCallId)) {
-				pendingApprovals.delete(toolCallId);
-				resolve('deny');
-			}
-		};
-		abortSignal.addEventListener('abort', onAbort, { once: true });
-	});
+	write(res, chunkWarpcore('error', {
+		error: `Tool auto-execution exceeded maximum of ${MAX_AUTO_CONTINUES} continues`,
+	}));
 }
 
 // ============================================================
-// Handle chat completion for proxy clients (auto-execute all)
-// This is a simpler path — no approval flow, all enabled tools
-// are auto-executed.
+// Resume after approval
+// ============================================================
+export async function resumeAfterApproval(
+	toolCallId: string,
+	decision: 'approve' | 'deny',
+	res: Response,
+): Promise<void> {
+	const tc = await mcpDb.getToolCall(toolCallId);
+	if (!tc) {
+		res.status(404).json({ ok: false, data: null, error: 'Tool call not found' });
+		return;
+	}
+	if (tc.status !== EToolCallStatus.PENDING) {
+		res.status(400).json({ ok: false, data: null, error: `Tool call is ${tc.status}, not PENDING` });
+		return;
+	}
+
+	if (decision === 'deny') {
+		await mcpDb.updateToolCallStatus(toolCallId, EToolCallStatus.DENIED);
+		res.json({ ok: true, data: { status: EToolCallStatus.DENIED }, error: null });
+		return;
+	}
+
+	await mcpDb.updateToolCallStatus(toolCallId, EToolCallStatus.EXECUTING);
+
+	try {
+		const args = JSON.parse(tc.arguments);
+		const mcpResult = await executeToolCall(tc.serverName, tc.toolName, args);
+		const resultStr = JSON.stringify(mcpResult.content);
+		const finalStatus = mcpResult.isError ? EToolCallStatus.ERROR : EToolCallStatus.COMPLETED;
+
+		await mcpDb.updateToolCallStatus(toolCallId, finalStatus, resultStr, mcpResult.isError ? resultStr : null);
+
+		res.json({
+			ok: true,
+			data: { status: finalStatus, result: resultStr, threadId: tc.threadId },
+			error: null,
+		});
+	} catch (err) {
+		const errorMsg = err instanceof Error ? err.message : String(err);
+		await mcpDb.updateToolCallStatus(toolCallId, EToolCallStatus.ERROR, null, errorMsg);
+		res.status(500).json({ ok: false, data: null, error: errorMsg });
+	}
+}
+
+// ============================================================
+// Proxy handler
 // ============================================================
 export async function handleProxyChatCompletion(
 	port: number,
@@ -423,52 +441,40 @@ export async function handleProxyChatCompletion(
 	res: Response,
 	abortSignal: AbortSignal,
 ): Promise<void> {
-	// For proxy, get all enabled tools and auto-execute
 	const serverPerms = await mcpDb.getAllServerPermissions();
 	const toolPerms = await mcpDb.getAllToolPermissions();
 	const enabledTools = getEnabledTools(serverPerms, toolPerms);
 
-	// Set all tools to ALLOWED for proxy context
 	const proxyToolPerms = toolPerms.map(p => ({
 		...p,
 		approvalMode: p.approvalMode === EToolApprovalMode.DENIED
-			? EToolApprovalMode.DENIED // respect disabled
-			: EToolApprovalMode.ALLOWED, // auto-approve everything else
+			? EToolApprovalMode.DENIED
+			: EToolApprovalMode.ALLOWED,
 	}));
+
+	startSSE(res);
 
 	const req: IChatCompletionRequest = {
 		threadId: `proxy-${crypto.randomUUID()}`,
 		messages: messages as any,
-		serverId: '', // not used in proxy path
+		serverId: '',
 		inferenceParams,
 	};
 
-	await completionLoop(
-		port,
-		messages,
-		enabledTools,
-		proxyToolPerms,
-		req,
-		res,
-		abortSignal,
-	);
+	try {
+		await singlePass(port, messages, enabledTools, proxyToolPerms, req, res, abortSignal);
+	} catch (err) {
+		const errorMsg = err instanceof Error ? err.message : String(err);
+		write(res, chunkWarpcore('error', { error: errorMsg }));
+	} finally {
+		writeDone(res);
+		res.end();
+	}
 }
 
 // ============================================================
-// JSON Schema to Zod converter (basic)
-// Converts MCP tool input schemas to Zod for the AI SDK
+// Restore pending approvals on startup
 // ============================================================
-function jsonSchemaToZod(schema: Record<string, unknown>): z.ZodType {
-	// The AI SDK accepts JSON Schema directly via jsonSchema()
-	// but tool() expects Zod. For compatibility, we use z.object
-	// with a passthrough for unknown properties.
-	// This is a pragmatic approach — the actual validation happens
-	// on the MCP server side.
-	return z.record(z.unknown()).describe(
-		(schema.description as string) ?? ''
-	);
-}
-
 export async function restorePendingApprovals(): Promise<void> {
 	const pending = await mcpDb.getPendingToolCalls();
 	if (pending.length === 0) return;
@@ -476,8 +482,6 @@ export async function restorePendingApprovals(): Promise<void> {
 	console.log(`[MCP] Restoring ${pending.length} pending tool call approval(s)`);
 
 	for (const tc of pending) {
-		// Re-emit the pending tool call over SSE so the frontend
-		// can show the approval dialog again
 		sseManager.emit('mcp:pending-approval', {
 			id: tc.id,
 			threadId: tc.threadId,
@@ -487,4 +491,10 @@ export async function restorePendingApprovals(): Promise<void> {
 			status: tc.status,
 		});
 	}
+}
+
+function mcpSchemaToAISchema(schema: Record<string, unknown>): any {
+	const clean = { ...schema };
+	delete clean['$schema'];
+	return clean;
 }

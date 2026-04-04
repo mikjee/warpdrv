@@ -8,14 +8,18 @@
 		"start": "tsx src/index.ts"
 	},
 	"dependencies": {
+		"@ai-sdk/openai": "^3.0.50",
 		"@huggingface/gguf": "^0.4.1",
 		"@huggingface/hub": "^2.11.0",
+		"@modelcontextprotocol/sdk": "^1.29.0",
 		"@warpcore/shared": "*",
+		"ai": "^6.0.141",
 		"better-sse": "^0.16.1",
 		"cors": "^2.8.5",
 		"express": "^5.1.0",
 		"node-downloader-helper": "^2.1.11",
-		"sql.js": "^1.14.1"
+		"sql.js": "^1.14.1",
+		"zod": "^4.3.6"
 	},
 	"devDependencies": {
 		"@types/cors": "^2.8.18",

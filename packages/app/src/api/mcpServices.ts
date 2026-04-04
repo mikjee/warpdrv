@@ -14,7 +14,7 @@ import type {
 } from '@warpcore/shared';
 import type { EToolApprovalMode } from '@warpcore/shared';
 
-const API_BASE = `http://localhost:${import.meta.env.VITE_CONTROL_API_PORT || '4400'}`;
+const API_BASE = '';
 
 async function json<T>(url: string, opts?: RequestInit): Promise<{ ok: boolean; data: T; error: string | null }> {
 	const res = await fetch(`${API_BASE}${url}`, {

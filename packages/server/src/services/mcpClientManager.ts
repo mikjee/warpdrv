@@ -213,12 +213,16 @@ async function connectServer(name: string, entry: IMcpServerEntry): Promise<void
 
 		// Fetch tools
 		const toolsResult = await client.listTools();
-		const tools: IMcpToolDefinition[] = (toolsResult.tools ?? []).map(t => ({
-			name: t.name,
-			description: t.description ?? '',
-			inputSchema: (t.inputSchema ?? {}) as Record<string, unknown>,
-			serverName: name,
-		}));
+		const tools: IMcpToolDefinition[] = (toolsResult.tools ?? []).map(t => {
+			const schema = { ...(t.inputSchema ?? {}) } as Record<string, unknown>;
+			delete schema['$schema'];
+			return {
+				name: t.name,
+				description: t.description ?? '',
+				inputSchema: schema,
+				serverName: name,
+			};
+		});
 
 		// Update state
 		state.status = EMcpServerStatus.CONNECTED;

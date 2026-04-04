@@ -9,9 +9,9 @@ import type {
 	IChatMessageCreatePayload,
 } from '@warpcore/shared';
 
-import { handleChatCompletion } from '../services/chatCompletionService';
+import { handleChatCompletion, resumeAfterApproval } from '../services/chatCompletionService';
 import type { IChatCompletionRequest } from '@warpcore/shared';
-
+ 
 export const chatRouter = Router();
 
 // ============================================================
@@ -409,7 +409,7 @@ chatRouter.put('/threads/:id/config', async (req, res) => {
 // This endpoint handles the tool-call loop, approval flow, and persistence.
 chatRouter.post('/completions', async (req, res) => {
 	const body = req.body as IChatCompletionRequest;
-
+ 
 	if (!body.serverId) {
 		res.status(400).json({ ok: false, data: null, error: 'Missing serverId' });
 		return;
@@ -422,11 +422,19 @@ chatRouter.post('/completions', async (req, res) => {
 		res.status(400).json({ ok: false, data: null, error: 'Missing messages' });
 		return;
 	}
-
-	// Create abort controller for client disconnect
+ 
 	const abortController = new AbortController();
-	req.on('close', () => abortController.abort());
 	req.on('error', () => abortController.abort());
-
+ 
 	await handleChatCompletion(body, res, abortController.signal);
+});
+ 
+chatRouter.post('/tool-calls/:id/resume', async (req, res) => {
+	const { decision } = req.body as { decision: 'approve' | 'deny' };
+	if (decision !== 'approve' && decision !== 'deny') {
+		res.status(400).json({ ok: false, data: null, error: 'Invalid decision' });
+		return;
+	}
+ 
+	await resumeAfterApproval(req.params.id, decision, res);
 });
