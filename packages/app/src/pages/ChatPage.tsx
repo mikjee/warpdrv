@@ -29,7 +29,8 @@ import {
 	updateThreadConfig,
 } from '../api/services';
 import type { IServer, IChatPreset, IChatInferenceParams, IThreadConfig } from '@warpcore/shared';
-import { EServerStatus, EChatRole, EResponseFormat, EReasoningFormat, EReasoningEffort } from '@warpcore/shared';
+import { EServerStatus, EResponseFormat, EReasoningFormat, EReasoningEffort } from '@warpcore/shared';
+import { EChatRole } from '@warpcore/bridge';
 import { ChatConfigSidebar, DEFAULT_INFERENCE_PARAMS } from '../components/ChatConfigSidebar';
 import '../styles/assistant-ui.css';
 import { createContext, useContext } from 'react';
@@ -44,6 +45,7 @@ export const ChatConfigContext = createContext<IChatConfig>({
 	onReasoningEffortChange: () => {},
 	contextSize: 0,
 });
+import { fetchThreadToolCalls } from '../api/mcpServices';
 // ============================================================
 // Model adapter — routes through backend /api/chat/completions
 // ============================================================
@@ -101,6 +103,8 @@ const modelAdapter: ChatModelAdapter = {
 		let timings: any = null;
 		let usage: any = null;
 
+		const pendingToolCalls: Record<string, { toolName: string; args: any; result?: string; status: string }> = {};
+
 		while (true) {
 			const { done, value } = await reader.read();
 			if (done) break;
@@ -121,19 +125,60 @@ const modelAdapter: ChatModelAdapter = {
 					// WarpCore extension events
 					if (parsed.warpcore_event) {
 						if (parsed.warpcore_event === 'tool_call_pending') {
-							const tcInfo = `\n\n> **Tool call pending approval:** ${parsed.tool_name} (${parsed.server_name})\n`;
-							fullText += tcInfo;
+							const tcId = parsed.tool_call_id;
+							const tcName = parsed.tool_name;
+							const tcArgs = JSON.parse(parsed.arguments || '{}');
+							pendingToolCalls[tcId] = { toolName: tcName, args: tcArgs, status: 'requires-action' };
 							const content: any[] = [];
 							if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
-							content.push({ type: 'text' as const, text: fullText });
+							if (fullText) content.push({ type: 'text' as const, text: fullText });
+							for (const [id, tc] of Object.entries(pendingToolCalls)) {
+								content.push({
+									type: 'tool-call' as const,
+									toolCallId: id,
+									toolName: (tc as any).toolName,
+									args: (tc as any).args,
+									result: (tc as any).result,
+									status: { type: (tc as any).status },
+								});
+							}
+							yield { content };
+						} else if (parsed.warpcore_event === 'tool_call_executing') {
+							const tcId = parsed.tool_call_id;
+							if (pendingToolCalls[tcId]) (pendingToolCalls[tcId] as any).status = 'running';
+							const content: any[] = [];
+							if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
+							if (fullText) content.push({ type: 'text' as const, text: fullText });
+							for (const [id, tc] of Object.entries(pendingToolCalls)) {
+								content.push({
+									type: 'tool-call' as const,
+									toolCallId: id,
+									toolName: (tc as any).toolName,
+									args: (tc as any).args,
+									result: (tc as any).result,
+									status: { type: (tc as any).status },
+								});
+							}
 							yield { content };
 						} else if (parsed.warpcore_event === 'tool_call_result') {
-							const statusLabel = parsed.status === 'COMPLETED' ? 'completed' : parsed.status === 'DENIED' ? 'denied' : 'error';
-							const trInfo = `\n> **Tool result** (${statusLabel}): ${parsed.result}\n`;
-							fullText += trInfo;
+							const tcId = parsed.tool_call_id;
+							if (pendingToolCalls[tcId]) {
+								(pendingToolCalls[tcId] as any).status = parsed.status === 'COMPLETED' ? 'complete' : 'error';
+								(pendingToolCalls[tcId] as any).result = parsed.result;
+							}
 							const content: any[] = [];
 							if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
-							content.push({ type: 'text' as const, text: fullText });
+							if (fullText) content.push({ type: 'text' as const, text: fullText });
+							for (const [id, tc] of Object.entries(pendingToolCalls)) {
+								content.push({
+									type: 'tool-call' as const,
+									toolCallId: id,
+									toolName: (tc as any).toolName,
+									args: (tc as any).args,
+									result: (tc as any).result,
+									status: { type: (tc as any).status },
+								});
+							}
 							yield { content };
 						} else if (parsed.warpcore_event === 'error') {
 							yield { content: [{ type: 'text' as const, text: `Error: ${parsed.error}` }] };
@@ -163,13 +208,25 @@ const modelAdapter: ChatModelAdapter = {
 
 					if (delta?.tool_calls) {
 						for (const tc of delta.tool_calls) {
-							const tcInfo = `\n\n> **Tool call:** ${tc.function?.name ?? 'unknown'}\n\`\`\`json\n${tc.function?.arguments ?? '{}'}\n\`\`\`\n`;
-							fullText += tcInfo;
-							const content: any[] = [];
-							if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
-							content.push({ type: 'text' as const, text: fullText });
-							yield { content };
+							const tcId = tc.id ?? `tc-${Object.keys(pendingToolCalls).length}`;
+							let args = {};
+							try { args = JSON.parse(tc.function?.arguments ?? '{}'); } catch {}
+							pendingToolCalls[tcId] = { toolName: tc.function?.name ?? 'unknown', args, status: 'running' };
 						}
+						const content: any[] = [];
+						if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
+						if (fullText) content.push({ type: 'text' as const, text: fullText });
+						for (const [id, tc] of Object.entries(pendingToolCalls)) {
+							content.push({
+								type: 'tool-call' as const,
+								toolCallId: id,
+								toolName: tc.toolName,
+								args: tc.args,
+								result: tc.result,
+								status: { type: tc.status },
+							});
+						}
+						yield { content };
 					}
 
 					if (parsed.timings) timings = parsed.timings;

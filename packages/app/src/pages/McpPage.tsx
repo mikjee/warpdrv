@@ -44,8 +44,9 @@ import {
 	setMcpServerPermission,
 	setMcpToolPermission,
 } from '../api/mcpServices';
-import type { IMcpConfigFile, IMcpServerEntry, IMcpServerState, IToolPermission, IMcpServerPermission } from '@warpcore/shared';
-import { EMcpServerStatus, EMcpTransportType, EToolApprovalMode } from '@warpcore/shared';
+import type { IMcpConfigFile, IMcpServerEntry } from '@warpcore/shared';
+import type { IMcpServerState, IToolPermission, IServerPermission as IMcpServerPermission } from '@warpcore/bridge';
+import { EMcpServerStatus, EMcpTransportType, EToolApprovalMode } from '@warpcore/bridge';
 
 // ============================================================
 // Status indicator

@@ -13,17 +13,23 @@ import { runMigrations } from './services/migrationRunner';
 import { updateRouter } from './routes/update';
 import { chatRouter } from './routes/chat';
 import { mcpRouter } from './routes/mcp';
-import { initMcpClients, shutdownMcpClients, getAllMcpServerStates } from './services/mcpClientManager';
-import { initChatDb } from './util/chatDB';
 import { proxyRouter } from './routes/proxy';
 import { startModelProxy, getProxyStatus } from './services/modelProxy';
 import { summaryRouter } from './routes/summary';
 import { sseManager } from './services/sseManagerInstance';
 import { getAllServerStats, getServerStats } from './services/statsPoller';
 import { getAllDownloads, getAllDownloadsRecord } from './services/downloadManager';
-import { restorePendingApprovals } from './services/chatCompletionService';
+import { SqlitePersistence, McpClientManager, McpConfig, PermissionManager, Orchestrator } from '@warpcore/bridge/server';
+import path from 'path';
+import os from 'os';
 
 const SETTINGS_KEY = 'settings:general';
+
+// Bridge components - exported for routes to use
+export let persistence: SqlitePersistence;
+export let mcpClient: McpClientManager;
+export let orchestrator: Orchestrator;
+export let mcpConfig: McpConfig;
 
 async function main() {
 	await runMigrations();
@@ -34,7 +40,25 @@ async function main() {
 
 	// Reconcile any servers that were running before restart
 	await reconcileServers();
-	await initChatDb();
+
+	// Initialize bridge persistence
+	const dataDir = path.join(os.homedir(), '.config', 'warpcore');
+	persistence = new SqlitePersistence(path.join(dataDir, 'chat.db'));
+	await persistence.init();
+
+	// Initialize MCP
+	mcpConfig = new McpConfig(path.join(dataDir, 'mcp.json'));
+	mcpClient = new McpClientManager();
+	const permissions = new PermissionManager(persistence);
+	orchestrator = new Orchestrator({ mcpClient, permissions, persistence });
+
+	// Connect MCP servers from config
+	const mcpCfg = mcpConfig.read();
+	for (const [name, entry] of Object.entries(mcpCfg.mcpServers)) {
+		await mcpClient.connect(name, entry);
+	}
+
+	// Pending approvals will be handled by the orchestrator on next completion
 
 	// Load cached model scan results
 	await loadCachedModels();
@@ -159,14 +183,17 @@ async function main() {
 
 		// Phase 2: MCP
 		sseManager.onConnect('mcp:init', async () => {
-			return getAllMcpServerStates();
+			return mcpClient.getAllServerStates();
 		});
+
+		sseManager.onInterval('mcp:servers', () => {
+			const states = mcpClient.getAllServerStates();
+			return Object.keys(states).length > 0 ? states : null;
+		}, 1000);
 
 	}
 
 	registerSSEChannels();
-	await initMcpClients();
-	await restorePendingApprovals();
 
 	app.listen(port, host, () => {
 		console.log(`[WarpCore] API server listening on ${host}:${port}`);
@@ -175,7 +202,7 @@ async function main() {
 		}
 	});
 
-	process.on('exit', () => { shutdownMcpClients(); });
+	process.on('exit', () => { mcpClient.disconnectAll(); });
 
 	// Start model proxy if enabled in settings
 	if (currentSettings.proxyEnabled) {

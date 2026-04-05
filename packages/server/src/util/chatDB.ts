@@ -3,8 +3,8 @@ import path from 'path';
 import os from 'os';
 import fs from 'fs';
 
-import type { IToolPermission, IMcpServerPermission, IToolCall } from '@warpcore/shared';
-import { EToolApprovalMode, EToolCallStatus } from '@warpcore/shared';
+import type { IToolPermission, IServerPermission as IMcpServerPermission, IToolCall } from '@warpcore/bridge';
+import { EToolApprovalMode, EToolCallStatus } from '@warpcore/bridge';
 
 // Resolve data dir (same logic as store.ts)
 function getDataDir(): string {

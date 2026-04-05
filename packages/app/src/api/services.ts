@@ -13,15 +13,17 @@ import type {
 	IHubModelDetail,
 	IDownload,
 	IDownloadRequestPayload,
-	IChatThread,
-	IChatThreadCreatePayload,
-	IChatMessage,
-	IChatMessageCreatePayload,
-	IThreadConfig,
 	IChatPreset,
 	IChatPresetCreatePayload,
-	IChatFolder,
+	IThreadConfig,
+	IChatThreadCreatePayload,
+	IChatMessageCreatePayload,
 } from '@warpcore/shared';
+import type {
+	IChatThread,
+	IChatMessage,
+	IFolder as IChatFolder,
+} from '@warpcore/bridge';
 
 // ============================================================
 // Settings

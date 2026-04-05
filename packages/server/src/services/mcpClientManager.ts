@@ -14,11 +14,11 @@ import { sseManager } from './sseManagerInstance';
 import type {
 	IMcpServerEntry,
 	IMcpServerState,
-	IMcpToolDefinition,
+	IToolDefinition as IMcpToolDefinition,
 	IToolPermission,
-	IMcpServerPermission,
-} from '@warpcore/shared';
-import { EMcpTransportType, EMcpServerStatus, EToolApprovalMode } from '@warpcore/shared';
+	IServerPermission as IMcpServerPermission,
+} from '@warpcore/bridge';
+import { EMcpTransportType, EMcpServerStatus, EToolApprovalMode } from '@warpcore/bridge';
 
 // In-memory state for connected MCP servers
 interface IMcpClientEntry {
@@ -127,7 +127,7 @@ export async function executeToolCall(
 		clearTimeout(timer);
 		return {
 			content: result.content,
-			isError: result.isError ?? false,
+			isError: Boolean(result.isError),
 		};
 	} catch (err) {
 		clearTimeout(timer);
@@ -139,7 +139,7 @@ export async function executeToolCall(
 export function findToolServer(toolName: string): string | null {
 	for (const [name, entry] of Object.entries(clients)) {
 		if (entry.state.status !== EMcpServerStatus.CONNECTED) continue;
-		if (entry.state.tools.some(t => t.name === toolName)) return name;
+		if (entry.state.tools.some((t: IMcpToolDefinition) => t.name === toolName)) return name;
 	}
 	return null;
 }

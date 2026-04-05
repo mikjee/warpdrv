@@ -20,8 +20,8 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store';
 import { fetchMcpPermissions } from '../api/mcpServices';
-import type { IToolPermission, IMcpServerPermission, IMcpServerState } from '@warpcore/shared';
-import { EMcpServerStatus, EToolApprovalMode } from '@warpcore/shared';
+import type { IToolPermission, IServerPermission as IMcpServerPermission, IMcpServerState } from '@warpcore/bridge';
+import { EMcpServerStatus, EToolApprovalMode } from '@warpcore/bridge';
 
 function StatusDot({ status }: { status: EMcpServerStatus }) {
 	const colors: Record<EMcpServerStatus, string> = {

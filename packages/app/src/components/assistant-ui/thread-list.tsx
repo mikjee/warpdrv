@@ -15,7 +15,14 @@ import {
 	FilterIcon, ChevronRightIcon, ChevronDownIcon, XIcon,
 	FolderOpenIcon, MessageSquareIcon,
 } from 'lucide-react';
-import type { IChatThread, IChatFolder } from '@warpcore/shared';
+import type { IChatThread as IBridgeChatThread, IFolder as IChatFolder } from '@warpcore/bridge';
+
+// Extend bridge thread type with computed fields from API
+interface IChatThread extends IBridgeChatThread {
+	messageCount?: number;
+	totalTokens?: number;
+}
+
 import {
 	fetchThreads, fetchFolders, updateThread,
 	createFolder, updateFolder, deleteFolder, deleteThread,
@@ -315,7 +322,7 @@ function EnhancedThreadListItem({ thread, onRename, onStartDrag }: {
 					</Text>
 					<HStack gap="2" mt="0.5">
 					  <Text fontSize="10px" color="rgba(255,255,255,0.25)" fontFamily="mono">
-							{thread.totalTokens > 0 ? `${(thread.totalTokens / 1000).toFixed(1)}k tok` : thread.messageCount > 0 ? `${thread.messageCount} msg` : 'empty'}
+                            {(thread.totalTokens ?? 0) > 0 ? `${((thread.totalTokens ?? 0) / 1000).toFixed(1)}k tok` : (thread.messageCount ?? 0) > 0 ? `${thread.messageCount ?? 0} msg` : 'empty'}
 						</Text>
 						<Text fontSize="10px" color="rgba(255,255,255,0.2)">
 							{timeAgo(thread.updatedAt)}
@@ -379,7 +386,7 @@ export const ThreadList: FC = () => {
 		if (sortField === 'updatedAt') cmp = a.updatedAt - b.updatedAt;
 		else if (sortField === 'createdAt') cmp = a.createdAt - b.createdAt;
 		else if (sortField === 'title') cmp = a.title.localeCompare(b.title);
-		else if (sortField === 'messageCount') cmp = a.totalTokens - b.totalTokens;
+		else if (sortField === 'messageCount') cmp = (a.totalTokens ?? 0) - (b.totalTokens ?? 0);
 		return sortDir === 'desc' ? -cmp : cmp;
 	});
 

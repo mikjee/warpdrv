@@ -10,13 +10,13 @@ import crypto from 'crypto';
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, tool, jsonSchema } from 'ai';
 import type { Request, Response } from 'express';
+import type { IServer } from '@warpcore/shared';
 import type {
-	IChatCompletionRequest,
-	IChatStreamEvent,
+	ICompletionRequest as IChatCompletionRequest,
 	IToolCall,
-	IMcpToolDefinition,
-} from '@warpcore/shared';
-import { EToolApprovalMode, EToolCallStatus } from '@warpcore/shared';
+	IToolDefinition as IMcpToolDefinition,
+} from '@warpcore/bridge';
+import { EToolApprovalMode, EToolCallStatus } from '@warpcore/bridge';
 import { store } from '../util/store';
 import { mcpDb } from '../util/chatDB';
 import {
@@ -26,7 +26,6 @@ import {
 	findToolServer,
 } from './mcpClientManager';
 import { sseManager } from './sseManagerInstance';
-import type { IServer } from '@warpcore/shared';
 import { EServerStatus } from '@warpcore/shared';
 
 const SERVERS_PREFIX = 'servers:';

@@ -35,13 +35,9 @@ export enum EDeviceBackendType {
 // Re-export from hub-types
 export { EDownloadStatus } from './hub-types';
 
-// Chat message roles
-export enum EChatRole {
-	SYSTEM = 'system',
-	USER = 'user',
-	ASSISTANT = 'assistant',
-}
-
+// Chat inference enums (kept in shared - not chat-specific)
+// Note: EChatRole, EMcpTransportType, EMcpServerStatus, EToolApprovalMode,
+// and EToolCallStatus have been moved to @warpcore/bridge
 export enum EResponseFormat {
 	TEXT = 'text',
 	JSON_OBJECT = 'json_object',
@@ -59,35 +55,4 @@ export enum EReasoningEffort {
 	LOW = 'low',
 	MEDIUM = 'medium',
 	HIGH = 'high',
-}
-
-// MCP server transport type
-export enum EMcpTransportType {
-	STDIO = 'STDIO',
-	HTTP = 'HTTP',
-}
-
-// MCP server connection status
-export enum EMcpServerStatus {
-	DISCONNECTED = 'DISCONNECTED',
-	CONNECTING = 'CONNECTING',
-	CONNECTED = 'CONNECTED',
-	ERROR = 'ERROR',
-}
-
-// Tool approval mode
-export enum EToolApprovalMode {
-	ASK = 'ASK',
-	ALLOWED = 'ALLOWED',
-	DENIED = 'DENIED',
-}
-
-// Tool call execution status
-export enum EToolCallStatus {
-	PENDING = 'PENDING',
-	APPROVED = 'APPROVED',
-	DENIED = 'DENIED',
-	EXECUTING = 'EXECUTING',
-	COMPLETED = 'COMPLETED',
-	ERROR = 'ERROR',
 }

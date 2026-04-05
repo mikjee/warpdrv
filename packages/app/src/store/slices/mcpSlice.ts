@@ -1,5 +1,5 @@
 import type { AppState, ImmerSet, ImmerGet } from '../types';
-import type { IMcpServerState, IToolPermission, IMcpServerPermission } from '@warpcore/shared';
+import type { IMcpServerState, IToolPermission, IServerPermission as IMcpServerPermission } from '@warpcore/bridge';
 
 export function createMcpSlice(set: ImmerSet<AppState>, _get: ImmerGet<AppState>) {
 	return {

@@ -1,7 +1,7 @@
 import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice } from '@warpcore/shared';
 import type { IProxyStatus, IStickyRouteInfo } from '@/api/services';
 import type { WritableDraft } from 'immer';
-import type { IMcpServerState, IToolPermission, IMcpServerPermission } from '@warpcore/shared';
+import type { IMcpServerState, IToolPermission, IServerPermission as IMcpServerPermission } from '@warpcore/bridge';
 
 export type ImmerSet<T> = (fn: (state: WritableDraft<T>) => void) => void;
 export type ImmerGet<T> = () => T;

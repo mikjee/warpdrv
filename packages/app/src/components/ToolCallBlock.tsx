@@ -17,7 +17,7 @@ import {
 	AlertCircle,
 } from 'lucide-react';
 import { decideMcpToolCall } from '../api/mcpServices';
-import { EToolCallStatus } from '@warpcore/shared';
+import { EToolCallStatus } from '@warpcore/bridge';
 
 interface IToolCallBlockProps {
 	id: string;
@@ -31,7 +31,6 @@ interface IToolCallBlockProps {
 
 const statusColors: Record<EToolCallStatus, string> = {
 	[EToolCallStatus.PENDING]: '#f59e0b',
-	[EToolCallStatus.APPROVED]: '#22c55e',
 	[EToolCallStatus.DENIED]: '#ef4444',
 	[EToolCallStatus.EXECUTING]: '#3b82f6',
 	[EToolCallStatus.COMPLETED]: '#22c55e',
@@ -40,7 +39,6 @@ const statusColors: Record<EToolCallStatus, string> = {
 
 const statusLabels: Record<EToolCallStatus, string> = {
 	[EToolCallStatus.PENDING]: 'Awaiting approval',
-	[EToolCallStatus.APPROVED]: 'Approved',
 	[EToolCallStatus.DENIED]: 'Denied',
 	[EToolCallStatus.EXECUTING]: 'Executing...',
 	[EToolCallStatus.COMPLETED]: 'Completed',

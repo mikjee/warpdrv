@@ -39,6 +39,7 @@ export async function parseGgufMetadata(filePath: string): Promise<IGgufMetadata
 			feedForwardDim,
 			contextLength,
 			fileSize: fileStat.size,
+			vocabSize: Number(meta['tokenizer.vocab_size'] ?? 0),
 		};
 	} catch (error) {
 		console.error(`Failed to parse GGUF metadata for ${filePath}:`, error);

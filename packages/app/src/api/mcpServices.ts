@@ -4,15 +4,14 @@
 // Import and use alongside your existing services.ts
 // ============================================================
 
+import type { IMcpConfigFile, IMcpServerEntry } from '@warpcore/shared';
 import type {
-	IMcpConfigFile,
-	IMcpServerEntry,
 	IMcpServerState,
 	IToolPermission,
-	IMcpServerPermission,
+	IServerPermission as IMcpServerPermission,
 	IToolCall,
-} from '@warpcore/shared';
-import type { EToolApprovalMode } from '@warpcore/shared';
+	EToolApprovalMode,
+} from '@warpcore/bridge';
 
 const API_BASE = '';
 

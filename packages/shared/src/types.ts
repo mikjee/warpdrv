@@ -3,7 +3,6 @@ import {
 	EKvQuantType,
 	EValidationStatus,
 	EDeviceBackendType,
-	EChatRole,
 	EResponseFormat,
 	EReasoningFormat,
 	EReasoningEffort,
@@ -296,42 +295,11 @@ export interface IApiListResponse<T> {
 }
 
 // ============================================================
-// Chat
+// Chat Types Not in Bridge (by design)
+// Bridge owns core chat types. These are WarpCore-specific extensions.
 // ============================================================
-export type TChatThreadId = string;
-export type TChatMessageId = string;
-export type TChatFolderId = string;
 
-export interface IChatThread {
-	id: TChatThreadId;
-	title: string;
-	folderId: TChatFolderId | null;
-	serverId: string | null;
-	systemPrompt: string;
-	tags: string[];
-	messageCount: number;
-	totalTokens: number;
-	createdAt: number;
-	updatedAt: number;
-}
-
-export interface IChatMessage {
-	id: TChatMessageId;
-	threadId: TChatThreadId;
-	role: EChatRole;
-	content: string;
-	stats: string | null;
-	createdAt: number;
-}
-
-export interface IChatFolder {
-	id: TChatFolderId;
-	name: string;
-	parentId: TChatFolderId | null;
-	sortOrder: number;
-	createdAt: number;
-}
-
+// Create payloads - WarpCore API format
 export interface IChatThreadCreatePayload {
 	id?: string;
 	title?: string;
@@ -342,9 +310,17 @@ export interface IChatThreadCreatePayload {
 }
 
 export interface IChatMessageCreatePayload {
-	role: EChatRole;
+	role: string; // Use EChatRole from bridge
 	content: string;
 	stats?: string;
+}
+
+// Thread config with typed params - WarpCore format
+export interface IThreadConfig {
+	threadId: string;
+	presetId: string | null;
+	systemPrompt: string;
+	params: IChatInferenceParams;
 }
 
 // ============================================================
@@ -384,18 +360,4 @@ export interface IChatPresetCreatePayload {
 	name: string;
 	systemPrompt: string;
 	params: IChatInferenceParams;
-}
-
-export interface IThreadConfig {
-	threadId: string;
-	presetId: string | null;
-	systemPrompt: string;
-	params: IChatInferenceParams;
-}
-
-export interface IChatMessageStats {
-	promptTokens: number;
-	completionTokens: number;
-	promptPerSecond: number;
-	predictedPerSecond: number;
 }
