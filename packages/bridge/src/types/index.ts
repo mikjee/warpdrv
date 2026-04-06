@@ -266,7 +266,8 @@ export interface ICompletionUserMessage {
 
 export interface ICompletionRequest {
 	threadId: TThreadId;
-	userMessage?: ICompletionUserMessage; // absent = regen
+	userMessage?: ICompletionUserMessage;
+	parentMessageId?: TMessageId | null;
 	serverId?: string;
 	messages: Array<{ role: string; content: string }>;
 	systemPrompt?: string;

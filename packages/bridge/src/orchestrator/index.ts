@@ -326,11 +326,13 @@ export class Orchestrator {
 					}
 				}
 
-				// Persist tool call AND its message_part linkage
+				// Persist tool call, append reference part to assistant message,
+				// and create a child tool message (role TOOL) for the execution/result
 				const toolCallId = crypto.randomUUID();
+				const toolMessageId = crypto.randomUUID();
 				const toolCallRecord: IToolCall = {
 					id: toolCallId,
-					messageId: turn.assistantMessageId,
+					messageId: toolMessageId,
 					threadId: request.threadId,
 					serverName,
 					toolName: tc.name,
@@ -347,6 +349,20 @@ export class Orchestrator {
 					type: EMessagePartType.TOOL_CALL,
 					orderIndex: turn.partOrderCounter++,
 					toolCallId,
+				});
+				await this.persistence.createMessage({
+					id: toolMessageId,
+					parentId: turn.assistantMessageId,
+					threadId: request.threadId,
+					role: EChatRole.TOOL,
+					content: [{
+						id: crypto.randomUUID(),
+						type: EMessagePartType.TOOL_CALL,
+						orderIndex: 0,
+						toolCallId,
+					}],
+					stats: null,
+					createdAt: Date.now(),
 				});
 
 				const approvalMode = await this.permissions.getToolApprovalMode(serverName, tc.name);
