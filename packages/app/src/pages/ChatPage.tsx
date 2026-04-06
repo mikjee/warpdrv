@@ -30,8 +30,9 @@ import {
 import { api } from '../api/client';
 import type { IServer, IChatPreset, IChatInferenceParams, IThreadConfig } from '@warpcore/shared';
 import { EServerStatus, EResponseFormat, EReasoningFormat, EReasoningEffort } from '@warpcore/shared';
-import { EChatRole, EMessagePartType } from '@warpcore/bridge';
+import { EChatRole, EMessagePartType, EToolCallStatus } from '@warpcore/bridge';
 import { ChatConfigSidebar, DEFAULT_INFERENCE_PARAMS } from '../components/ChatConfigSidebar';
+import { ToolCallBlock } from '../components/ToolCallBlock';
 import '../styles/assistant-ui.css';
 import { createContext, useContext } from 'react';
 import { ChatToolsSidebar } from '../components/ChatToolsSidebar';
@@ -60,6 +61,17 @@ let activeThreadId: string | null = null;
 
 export function setActiveThreadId(id: string | null) {
 	activeThreadId = id;
+}
+
+function buildToolCallPart(id: string, tc: { serverName: string; toolName: string; args: any; result?: string; status: EToolCallStatus }) {
+	return {
+		type: 'tool-call' as const,
+		toolCallId: id,
+		toolName: tc.toolName,
+		args: tc.args,
+		result: tc.result,
+		status: { type: tc.status === EToolCallStatus.COMPLETED ? 'complete' : tc.status === EToolCallStatus.ERROR ? 'error' : tc.status === EToolCallStatus.PENDING ? 'requires-action' : 'running' },
+	};
 }
 
 const modelAdapter: ChatModelAdapter = {
@@ -120,7 +132,7 @@ const modelAdapter: ChatModelAdapter = {
 		let timings: any = null;
 		let usage: any = null;
 
-		const pendingToolCalls: Record<string, { toolName: string; args: any; result?: string; status: string }> = {};
+		const pendingToolCalls: Record<string, { serverName: string; toolName: string; args: any; result?: string; status: EToolCallStatus }> = {};
 
 		while (true) {
 			const { done, value } = await reader.read();
@@ -138,6 +150,7 @@ const modelAdapter: ChatModelAdapter = {
 
 				try {
 					const parsed = JSON.parse(data);
+					console.log("[PARSE]", parsed);
 
 					// WarpCore extension events
 					if (parsed.warpcore_event) {
@@ -145,58 +158,37 @@ const modelAdapter: ChatModelAdapter = {
 					const tcId = parsed.tool_call_id;
 					const tcName = parsed.tool_name;
 					const tcArgs = JSON.parse(parsed.arguments || '{}');
-					pendingToolCalls[tcId] = { toolName: tcName, args: tcArgs, status: 'requires-action' };
+					pendingToolCalls[tcId] = { serverName: parsed.server_name, toolName: tcName, args: tcArgs, status: EToolCallStatus.PENDING };
 					const content: any[] = [];
 					if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
 					if (fullText) content.push({ type: 'text' as const, text: fullText });
 							for (const [id, tc] of Object.entries(pendingToolCalls)) {
-								content.push({
-									type: 'tool-call' as const,
-									toolCallId: id,
-									toolName: (tc as any).toolName,
-									args: (tc as any).args,
-									result: (tc as any).result,
-									status: { type: (tc as any).status },
-								});
-							}
-							yield { content };
+								content.push(buildToolCallPart(id, tc));
+						}
+						yield { content };
 				} else if (parsed.warpcore_event === 'tool_call_executing') {
 					const tcId = parsed.tool_call_id;
-					if (pendingToolCalls[tcId]) (pendingToolCalls[tcId] as any).status = 'running';
+					if (pendingToolCalls[tcId]) pendingToolCalls[tcId].status = EToolCallStatus.EXECUTING;
 					const content: any[] = [];
 					if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
 					if (fullText) content.push({ type: 'text' as const, text: fullText });
 							for (const [id, tc] of Object.entries(pendingToolCalls)) {
-								content.push({
-									type: 'tool-call' as const,
-									toolCallId: id,
-									toolName: (tc as any).toolName,
-									args: (tc as any).args,
-									result: (tc as any).result,
-									status: { type: (tc as any).status },
-								});
-							}
-							yield { content };
+								content.push(buildToolCallPart(id, tc));
+						}
+						yield { content };
 				} else if (parsed.warpcore_event === 'tool_call_result') {
 					const tcId = parsed.tool_call_id;
 					if (pendingToolCalls[tcId]) {
-						(pendingToolCalls[tcId] as any).status = parsed.status === 'COMPLETED' ? 'complete' : 'error';
-						(pendingToolCalls[tcId] as any).result = parsed.result;
+						pendingToolCalls[tcId].status = parsed.status === 'COMPLETED' ? EToolCallStatus.COMPLETED : EToolCallStatus.ERROR;
+						pendingToolCalls[tcId].result = parsed.result;
 					}
 					const content: any[] = [];
 					if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
 					if (fullText) content.push({ type: 'text' as const, text: fullText });
 							for (const [id, tc] of Object.entries(pendingToolCalls)) {
-								content.push({
-									type: 'tool-call' as const,
-									toolCallId: id,
-									toolName: (tc as any).toolName,
-									args: (tc as any).args,
-									result: (tc as any).result,
-									status: { type: (tc as any).status },
-								});
-							}
-							yield { content };
+								content.push(buildToolCallPart(id, tc));
+						}
+						yield { content };
 						} else if (parsed.warpcore_event === 'error') {
 							yield { content: [{ type: 'text' as const, text: `Error: ${parsed.error}` }] };
 							return;
@@ -228,20 +220,13 @@ const modelAdapter: ChatModelAdapter = {
 							const tcId = tc.id ?? `tc-${Object.keys(pendingToolCalls).length}`;
 							let args = {};
 							try { args = JSON.parse(tc.function?.arguments ?? '{}'); } catch {}
-							pendingToolCalls[tcId] = { toolName: tc.function?.name ?? 'unknown', args, status: 'running' };
+							pendingToolCalls[tcId] = { serverName: '', toolName: tc.function?.name ?? 'unknown', args, status: EToolCallStatus.EXECUTING };
 						}
 						const content: any[] = [];
 						if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
 						if (fullText) content.push({ type: 'text' as const, text: fullText });
 						for (const [id, tc] of Object.entries(pendingToolCalls)) {
-							content.push({
-								type: 'tool-call' as const,
-								toolCallId: id,
-								toolName: tc.toolName,
-								args: tc.args,
-								result: tc.result,
-								status: { type: tc.status },
-							});
+							content.push(buildToolCallPart(id, tc));
 						}
 						yield { content };
 					}
@@ -359,12 +344,14 @@ function HistoryProvider({ children }: { children: ReactNode }) {
 			if (!remoteId) return { messages: [] };
 			const res = await fetchThread(remoteId);
 			if (!res.ok || !res.data) return { messages: [] };
-			const msgs = (res.data as any).messages ?? [];
+		const allMsgs = (res.data as any).messages ?? [];
+		// Filter out tool role messages — their content is shown via assistant message's tool_call parts
+		const msgs = allMsgs.filter((m: any) => m.role !== EChatRole.TOOL);
 			
-			// Fetch tool calls to enrich tool_call parts
-			const toolCallsRes = await fetchThreadToolCalls(remoteId);
-			const toolCalls = (toolCallsRes?.data ?? []) as any[];
-			const tcMap = new Map(toolCalls.map((tc: any) => [tc.id, tc]));
+		// Fetch tool calls to enrich tool_call parts
+		const toolCallsRes = await fetchThreadToolCalls(remoteId);
+		const toolCalls = (toolCallsRes?.data ?? []) as any[];
+		const tcMap = new Map(toolCalls.map((tc: any) => [tc.id, tc]));
 			
 					const items = msgs.map((m: any, idx: number) => {
 					// Map ALL parts - DO NOT filter
