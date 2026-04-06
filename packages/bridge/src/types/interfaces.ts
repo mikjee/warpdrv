@@ -3,7 +3,6 @@
 // Contracts for replaceable components.
 // Universal — no Node or browser dependencies.
 // ============================================================
-
 import type {
 	TThreadId,
 	TMessageId,
@@ -11,7 +10,9 @@ import type {
 	TToolCallId,
 	TFolderId,
 	IFolder,
+	IReorderFolderEntry,
 	IChatThread,
+	IListThreadsOptions,
 	IThreadConfig,
 	IChatMessage,
 	IMessagePart,
@@ -41,23 +42,27 @@ export interface IPersistence {
 	listFolders(): Promise<IFolder[]>;
 	updateFolder(id: TFolderId, updates: Partial<IFolder>): Promise<void>;
 	deleteFolder(id: TFolderId): Promise<void>;
+	reorderFolders(entries: IReorderFolderEntry[]): Promise<void>;
 
 	// Threads
 	createThread(thread: IChatThread): Promise<void>;
 	getThread(id: TThreadId): Promise<IChatThread | null>;
-	listThreads(): Promise<IChatThread[]>;
+	listThreads(options?: IListThreadsOptions): Promise<IChatThread[]>;
 	updateThread(id: TThreadId, updates: Partial<IChatThread>): Promise<void>;
 	deleteThread(id: TThreadId): Promise<void>;
+	incrementThreadTokens(id: TThreadId, promptDelta: number, completionDelta: number): Promise<void>;
 
 	// Thread Configs
 	getThreadConfig(threadId: TThreadId): Promise<IThreadConfig | null>;
 	setThreadConfig(config: IThreadConfig): Promise<void>;
 	deleteThreadConfig(threadId: TThreadId): Promise<void>;
 
-	// Messages (content is persisted as ordered parts)
+	// Messages (content persisted as ordered parts)
 	createMessage(message: IChatMessage): Promise<void>;
 	getMessages(threadId: TThreadId): Promise<IChatMessage[]>;
 	getMessage(id: TMessageId): Promise<IChatMessage | null>;
+	updateMessage(id: TMessageId, updates: Partial<Pick<IChatMessage, 'stats'>>): Promise<void>;
+	replaceMessageParts(messageId: TMessageId, parts: IMessagePart[]): Promise<void>;
 	appendMessagePart(messageId: TMessageId, part: IMessagePart): Promise<void>;
 	deleteMessage(id: TMessageId): Promise<void>;
 

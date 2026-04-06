@@ -182,8 +182,12 @@ export async function stopProxy() {
 export * from './hub-services';
 
 // Chat
-export async function fetchThreads() {
-	return api.getList<IChatThread>('/chat/threads');
+export async function fetchThreads(options?: { query?: string; folderId?: string | null }) {
+	const queryString = new URLSearchParams({
+		...(options?.query ? { query: options.query } : {}),
+		...(options?.folderId !== undefined ? { folderId: String(options.folderId) } : {}),
+	}).toString();
+	return api.getList<IChatThread>(`/chat/threads?${queryString}`);
 }
 export async function createThread(data?: IChatThreadCreatePayload) {
 	return api.post<IChatThread>('/chat/threads', data ?? {});
@@ -235,4 +239,14 @@ export async function updateFolder(id: string, data: Partial<{ name: string; par
 }
 export async function deleteFolder(id: string) {
 	return api.del<null>(`/chat/folders/${id}`);
+}
+
+// Message editing
+export async function replaceMessageParts(messageId: string, parts: any[]) {
+	return api.put<null>(`/chat/messages/${messageId}`, { parts });
+}
+
+// Folder reordering
+export async function reorderFolders(updates: Array<{ id: string; sortOrder: number }>) {
+	return api.put<null>('/chat/folders/reorder', { updates });
 }

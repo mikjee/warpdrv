@@ -11,34 +11,41 @@ export const chatRouter = Router();
 // ============================================================
 
 // GET /api/chat/threads
-chatRouter.get('/threads', async (_req, res) => {
+chatRouter.get('/threads', async (req, res) => {
 	try {
-		const threads = await persistence.listThreads();
+		const query = req.query.query as string | undefined;
+		const folderId = req.query.folderId as string | undefined;
+		const options: Record<string, unknown> = {};
+		if (query) options.query = query;
+		if (folderId !== undefined) options.folderId = folderId === 'null' ? null : folderId;
+		const threads = await persistence.listThreads(options);
 		res.json({ ok: true, data: threads, total: threads.length, error: null });
 	} catch (err) {
 		res.status(500).json({ ok: false, data: [], total: 0, error: String(err) });
 	}
 });
 
-// POST /api/chat/threads
-chatRouter.post('/threads', async (req, res) => {
-	try {
-		const body = req.body as IChatThreadCreatePayload;
-		const now = Date.now();
-		const thread = await persistence.createThread({
-			id: body.id ?? crypto.randomUUID(),
-			title: body.title ?? 'New Chat',
-			folderId: body.folderId ?? null,
-			systemPrompt: body.systemPrompt ?? '',
-			meta: JSON.stringify({ serverId: body.serverId ?? null, tags: body.tags ?? [] }),
-			createdAt: now,
-			updatedAt: now,
-		});
-		res.json({ ok: true, data: null, error: null });
-	} catch (err) {
-		res.status(500).json({ ok: false, data: null, error: String(err) });
-	}
-});
+	// POST /api/chat/threads
+	chatRouter.post('/threads', async (req, res) => {
+		try {
+			const body = req.body as IChatThreadCreatePayload;
+			const now = Date.now();
+			const thread = await persistence.createThread({
+				id: body.id ?? crypto.randomUUID(),
+				title: body.title ?? 'New Chat',
+				folderId: body.folderId ?? null,
+				systemPrompt: body.systemPrompt ?? '',
+				meta: JSON.stringify({ serverId: body.serverId ?? null, tags: body.tags ?? [] }),
+				totalPromptTokens: body.totalPromptTokens ?? 0,
+				totalCompletionTokens: body.totalCompletionTokens ?? 0,
+				createdAt: now,
+				updatedAt: now,
+			});
+			res.json({ ok: true, data: null, error: null });
+		} catch (err) {
+			res.status(500).json({ ok: false, data: null, error: String(err) });
+		}
+	});
 
 // GET /api/chat/threads/:id
 chatRouter.get('/threads/:id', async (req, res) => {
@@ -105,16 +112,22 @@ chatRouter.post('/threads/:id/messages', async (req, res) => {
 		}
 		const payloads: IChatMessageCreatePayload[] = Array.isArray(req.body) ? req.body : [req.body];
 		const now = Date.now();
-		const messages = payloads.map((p, i) => ({
-			id: crypto.randomUUID(),
-			threadId,
-			role: p.role as EChatRole,
-			content: [{ id: crypto.randomUUID(), type: EMessagePartType.TEXT, orderIndex: 0, text: p.content }],
-			stats: p.stats ? JSON.parse(p.stats) : null,
-			createdAt: now + i,
-		}));
+	const messages = payloads.map((p, i) => ({
+		id: p.id ?? crypto.randomUUID(),
+		parentId: p.parentId ?? null,
+		threadId,
+		role: p.role as EChatRole,
+		content: p.content,
+		stats: p.stats ? JSON.parse(p.stats) : null,
+		createdAt: now + i,
+	}));
 		for (const msg of messages) {
-			await persistence.createMessage(msg);
+			try {
+				await persistence.createMessage(msg);
+			} catch (err) {
+				// Likely PRIMARY KEY conflict — message already saved. Ignore.
+				if (!String(err).includes('UNIQUE') && !String(err).includes('PRIMARY')) throw err;
+			}
 		}
 		res.json({ ok: true, data: messages, error: null });
 	} catch (err) {
@@ -265,6 +278,7 @@ chatRouter.post('/completions', async (req, res) => {
 		res.status(400).json({ ok: false, data: null, error: 'Missing required fields' });
 		return;
 	}
+	// userMessage is optional — absent means regen
 	
 	const abortController = new AbortController();
 	req.on('error', () => abortController.abort());
@@ -274,6 +288,42 @@ chatRouter.post('/completions', async (req, res) => {
 	const inferenceUrl = `http://127.0.0.1:${serverPort}`;
 	
 	await orchestrator.handleCompletion(inferenceUrl, body, res, abortController.signal);
+});
+
+// PUT /api/chat/messages/:id — edit message parts, no inference
+chatRouter.put('/messages/:id', async (req, res) => {
+	try {
+		const messageId = req.params.id;
+		const msg = await persistence.getMessage(messageId);
+		if (!msg) {
+			res.status(404).json({ ok: false, data: null, error: 'Message not found' });
+			return;
+		}
+		const { parts } = req.body as { parts: any[] };
+		if (!parts || !Array.isArray(parts)) {
+			res.status(400).json({ ok: false, data: null, error: 'Missing parts array' });
+			return;
+		}
+		await persistence.replaceMessageParts(messageId, parts);
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+// PUT /api/chat/folders/reorder — batch update folder sort orders
+chatRouter.put('/folders/reorder', async (req, res) => {
+	try {
+		const { updates } = req.body as { updates: Array<{ id: string; sortOrder: number }> };
+		if (!updates || !Array.isArray(updates)) {
+			res.status(400).json({ ok: false, data: null, error: 'Missing updates array' });
+			return;
+		}
+		await persistence.reorderFolders(updates);
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
 });
 
 chatRouter.post('/tool-calls/:id/resume', async (req, res) => {

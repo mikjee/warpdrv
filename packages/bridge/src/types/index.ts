@@ -80,6 +80,11 @@ export interface IFolderCreatePayload {
 	sortOrder?: number;
 }
 
+export interface IReorderFolderEntry {
+	id: TFolderId;
+	sortOrder: number;
+}
+
 // ============================================================
 // Threads
 // Column names mirror WarpCore's `threads` table.
@@ -91,6 +96,8 @@ export interface IChatThread {
 	folderId: TFolderId | null;
 	systemPrompt: string;
 	meta: string; // JSON blob — opaque to bridge
+	totalPromptTokens: number;
+	totalCompletionTokens: number;
 	createdAt: number;
 	updatedAt: number;
 }
@@ -103,13 +110,9 @@ export interface IChatThreadCreatePayload {
 	meta?: string;
 }
 
-// ============================================================
-// Messages
-// ============================================================
-export interface IChatMessageCreatePayload {
-	role: EChatRole;
-	content: IMessagePart[];
-	stats?: IChatMessageStats;
+export interface IListThreadsOptions {
+	query?: string;
+	folderId?: TFolderId | null;
 }
 
 // ============================================================
@@ -126,16 +129,25 @@ export interface IThreadConfig {
 }
 
 // ============================================================
-// Messages (continued)
-// Content is now an ordered array of typed parts, stored in message_parts.
+// Messages
+// Content is an ordered array of typed parts, stored in message_parts.
 // ============================================================
 export interface IChatMessage {
 	id: TMessageId;
+	parentId: TMessageId | null; // Parent message for branching (regen, edits)
 	threadId: TThreadId;
 	role: EChatRole;
 	content: IMessagePart[];
 	stats: IChatMessageStats | null;
 	createdAt: number;
+}
+
+export interface IChatMessageCreatePayload {
+	id?: TMessageId;
+	parentId?: TMessageId | null;
+	role: EChatRole;
+	content: IMessagePart[];
+	stats?: string; // JSON string of IChatMessageStats
 }
 
 export type IMessagePart =
@@ -244,10 +256,18 @@ export interface IMcpServerState {
 }
 
 // ============================================================
-// Inference — opaque to bridge, passed through to inference server
+// Inference — completion request sent to orchestrator
 // ============================================================
+export interface ICompletionUserMessage {
+	id: TMessageId;
+	parentId: TMessageId | null;
+	content: string;
+}
+
 export interface ICompletionRequest {
 	threadId: TThreadId;
+	userMessage?: ICompletionUserMessage; // absent = regen
+	serverId?: string;
 	messages: Array<{ role: string; content: string }>;
 	systemPrompt?: string;
 	inferenceParams: Record<string, unknown>;

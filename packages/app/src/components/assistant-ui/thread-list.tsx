@@ -12,8 +12,8 @@ import {
 import {
 	PlusIcon, MoreHorizontalIcon, TrashIcon, PencilIcon,
 	FolderIcon, FolderPlusIcon, SearchIcon, SortAscIcon, SortDescIcon,
-	FilterIcon, ChevronRightIcon, ChevronDownIcon, XIcon,
-	FolderOpenIcon, MessageSquareIcon,
+	ChevronRightIcon, ChevronDownIcon, XIcon,
+	FolderOpenIcon,
 } from 'lucide-react';
 import type { IChatThread as IBridgeChatThread, IFolder as IChatFolder } from '@warpcore/bridge';
 
@@ -26,6 +26,7 @@ interface IChatThread extends IBridgeChatThread {
 import {
 	fetchThreads, fetchFolders, updateThread,
 	createFolder, updateFolder, deleteFolder, deleteThread,
+	reorderFolders,
 } from '../../api/services';
 
 // ============================================================
@@ -82,7 +83,12 @@ function useThreadsAndFolders() {
 		setThreads(prev => prev.map(t => t.folderId === id ? { ...t, folderId: null } : t));
 	}
 
-	return { threads, folders, patchThread, removeThread, removeAllThreads, addFolder, patchFolder, removeFolder };
+	async function refreshFolders() {
+		const fRes = await fetchFolders();
+		if (fRes.ok) setFolders(fRes.data);
+	}
+
+	return { threads, folders, patchThread, removeThread, removeAllThreads, addFolder, patchFolder, removeFolder, refreshFolders };
 }
 
 // ============================================================
@@ -177,6 +183,7 @@ function FolderSection({
 	onRename,
 	onDelete,
 	onDropThread,
+	onReorderFolder,
 	children,
 }: {
 	folder: IChatFolder;
@@ -184,6 +191,7 @@ function FolderSection({
 	onRename: (id: string, name: string) => void;
 	onDelete: (id: string) => void;
 	onDropThread: (threadId: string, folderId: string | null) => void;
+	onReorderFolder: (fromFolderId: string, toFolderId: string) => void;
 	children: ReactNode;
 }) {
 	const [open, setOpen] = useState(true);
@@ -203,23 +211,45 @@ function FolderSection({
 		if (threadId) onDropThread(threadId, folder.id);
 	}
 
-	return (
-		<Box
-			mb="1"
-			onDragOver={handleDragOver}
-			onDragLeave={handleDragLeave}
-			onDrop={handleDrop}
-			bg={dragOver ? 'rgba(100,150,255,0.08)' : 'transparent'}
-			borderRadius="md"
-			transition="background 0.15s"
-		>
-			<HStack
-				gap="1" px="2" py="1.5" cursor="pointer"
+	// Folder reordering via drag-and-drop on folder header
+	function handleFolderDragStart(e: DragEvent, folderId: string) {
+		e.dataTransfer.setData('folderId', folderId);
+		e.dataTransfer.effectAllowed = 'move';
+	}
+	function handleFolderDragOver(e: DragEvent) {
+		e.preventDefault();
+		e.dataTransfer.dropEffect = 'move';
+	}
+	function handleFolderDrop(e: DragEvent) {
+		e.preventDefault();
+		const fromFolderId = e.dataTransfer.getData('folderId');
+		if (fromFolderId && fromFolderId !== folder.id) {
+			onReorderFolder(fromFolderId, folder.id);
+		}
+	}
+
+		return (
+			<Box
+				mb="1"
+				onDragOver={handleDragOver}
+				onDragLeave={handleDragLeave}
+				onDrop={handleDrop}
+				bg={dragOver ? 'rgba(100,150,255,0.08)' : 'transparent'}
 				borderRadius="md"
-				_hover={{ bg: 'rgba(255,255,255,0.04)' }}
-				onClick={() => setOpen(!open)}
-				position="relative"
+				transition="background 0.15s"
 			>
+				<HStack
+					gap="1" px="2" py="1.5" cursor="grab"
+					borderRadius="md"
+					_hover={{ bg: 'rgba(255,255,255,0.04)' }}
+					onClick={() => setOpen(!open)}
+					position="relative"
+					draggable
+					onDragStart={(e) => handleFolderDragStart(e, folder.id)}
+					onDragOver={handleFolderDragOver}
+					onDrop={handleFolderDrop}
+					data-foldertype="folder"
+				>
 				{open
 					? <ChevronDownIcon size={12} style={{ opacity: 0.4, flexShrink: 0 }} />
 					: <ChevronRightIcon size={12} style={{ opacity: 0.4, flexShrink: 0 }} />
@@ -321,8 +351,13 @@ function EnhancedThreadListItem({ thread, onRename, onStartDrag }: {
 						{thread.title ?? 'New Chat'}
 					</Text>
 					<HStack gap="2" mt="0.5">
-					  <Text fontSize="10px" color="rgba(255,255,255,0.25)" fontFamily="mono">
-                            {(thread.totalTokens ?? 0) > 0 ? `${((thread.totalTokens ?? 0) / 1000).toFixed(1)}k tok` : (thread.messageCount ?? 0) > 0 ? `${thread.messageCount ?? 0} msg` : 'empty'}
+					  <Text 
+							fontSize="10px" 
+							color="rgba(255,255,255,0.25)" 
+							fontFamily="mono"
+							title={(thread.totalPromptTokens ?? 0) + (thread.totalCompletionTokens ?? 0) > 0 ? `Prompt: ${(thread.totalPromptTokens ?? 0).toLocaleString()}, Completion: ${(thread.totalCompletionTokens ?? 0).toLocaleString()}` : undefined}
+						>
+							{(thread.totalTokens ?? 0) > 0 ? `${((thread.totalTokens ?? 0) / 1000).toFixed(1)}k tok` : (thread.messageCount ?? 0) > 0 ? `${thread.messageCount ?? 0} msg` : 'empty'}
 						</Text>
 						<Text fontSize="10px" color="rgba(255,255,255,0.2)">
 							{timeAgo(thread.updatedAt)}
@@ -419,6 +454,37 @@ export const ThreadList: FC = () => {
 
 	async function handleDeleteAllChats() {
 		setConfirmDelete({ type: 'allChats' });
+	}
+
+	// Folder reordering via drag-and-drop
+	async function handleReorderFolders(fromFolderId: string, toFolderId: string) {
+		if (fromFolderId === toFolderId) return;
+		const folders = threadsAPI.folders;
+		const fromIdx = folders.findIndex(f => f.id === fromFolderId);
+		const toIdx = folders.findIndex(f => f.id === toFolderId);
+		if (fromIdx === -1 || toIdx === -1) return;
+		// Calculate new sort orders: shift folders between from and to
+		const updates: Array<{ id: string; sortOrder: number }> = [];
+		if (fromIdx < toIdx) {
+			// Moving down: shift folders from fromIdx+1 to toIdx up by 1
+			for (let i = fromIdx + 1; i <= toIdx; i++) {
+				const f = folders[i];
+				if (f) updates.push({ id: f.id, sortOrder: f.sortOrder - 1 });
+			}
+			const toFolder = folders[toIdx];
+			if (toFolder) updates.push({ id: fromFolderId, sortOrder: toFolder.sortOrder });
+		} else {
+			// Moving up: shift folders from toIdx to fromIdx-1 down by 1
+			for (let i = toIdx; i < fromIdx; i++) {
+				const f = folders[i];
+				if (f) updates.push({ id: f.id, sortOrder: f.sortOrder + 1 });
+			}
+			const toFolder = folders[toIdx];
+			if (toFolder) updates.push({ id: fromFolderId, sortOrder: toFolder.sortOrder });
+		}
+		await reorderFolders(updates);
+		// Refresh folders from server
+		await threadsAPI.refreshFolders();
 	}
 
 	async function handleConfirmDeleteAllChats() {
@@ -519,15 +585,16 @@ export const ThreadList: FC = () => {
 				</HStack>
 			</HStack>
 
-			{threadsAPI.folders.map((f) => (
-				<FolderSection
-					key={f.id}
-					folder={f}
-					threads={threadsByFolder(f.id)}
-					onRename={handleRenameFolder}
-					onDelete={handleDeleteFolder}
-					onDropThread={handleDropThread}
-				>
+		{threadsAPI.folders.map((f) => (
+			<FolderSection
+				key={f.id}
+				folder={f}
+				threads={threadsByFolder(f.id)}
+				onRename={handleRenameFolder}
+				onDelete={handleDeleteFolder}
+				onDropThread={handleDropThread}
+				onReorderFolder={handleReorderFolders}
+			>
 					<ThreadListPrimitive.Items>
 						{() => {
 							const fThreads = threadsByFolder(f.id);

@@ -24,13 +24,13 @@ import {
 	fetchThread,
 	updateThread,
 	deleteThread,
-	appendMessages,
 	fetchThreadConfig,
 	updateThreadConfig,
 } from '../api/services';
+import { api } from '../api/client';
 import type { IServer, IChatPreset, IChatInferenceParams, IThreadConfig } from '@warpcore/shared';
 import { EServerStatus, EResponseFormat, EReasoningFormat, EReasoningEffort } from '@warpcore/shared';
-import { EChatRole } from '@warpcore/bridge';
+import { EChatRole, EMessagePartType } from '@warpcore/bridge';
 import { ChatConfigSidebar, DEFAULT_INFERENCE_PARAMS } from '../components/ChatConfigSidebar';
 import '../styles/assistant-ui.css';
 import { createContext, useContext } from 'react';
@@ -69,14 +69,31 @@ const modelAdapter: ChatModelAdapter = {
 			return;
 		}
 
-		const convertedMessages = messages.map((m) => {
-			const textParts = m.content.filter((p: any) => p.type === 'text');
-			const text = textParts.map((p: any) => (p as any).text).join('');
-			return { role: m.role as 'system' | 'user' | 'assistant', content: text };
-		});
+	const convertedMessages = messages.map((m) => {
+		const textParts = (m.content ?? []).filter((p: any) => p.type === EMessagePartType.TEXT);
+		const text = textParts.map((p: any) => (p as any).text).join('');
+		return { role: m.role as 'system' | 'user' | 'assistant', content: text };
+	});
 
+		// Build userMessage for orchestrator to save atomically
+		const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+		let userMessage: { id: string; parentId: string | null; content: string } | undefined;
+		if (lastUserMsg) {
+			const userMsgIndex = messages.findIndex(m => m.id === lastUserMsg.id);
+			const prevMsg = userMsgIndex > 0 ? messages[userMsgIndex - 1] : null;
+			const userTextParts = (lastUserMsg.content ?? []).filter((p: any) => p.type === 'text');
+			const userText = userTextParts.map((p: any) => (p as any).text).join('');
+			userMessage = {
+				id: lastUserMsg.id,
+				parentId: prevMsg?.id ?? null,
+				content: userText,
+			};
+		}
+
+		// userMessage absent = regen
 		const body = {
 			threadId: activeThreadId ?? '',
+			userMessage,
 			serverId: currentServerId,
 			messages: convertedMessages,
 			systemPrompt: activeSystemPrompt || undefined,
@@ -124,14 +141,14 @@ const modelAdapter: ChatModelAdapter = {
 
 					// WarpCore extension events
 					if (parsed.warpcore_event) {
-						if (parsed.warpcore_event === 'tool_call_pending') {
-							const tcId = parsed.tool_call_id;
-							const tcName = parsed.tool_name;
-							const tcArgs = JSON.parse(parsed.arguments || '{}');
-							pendingToolCalls[tcId] = { toolName: tcName, args: tcArgs, status: 'requires-action' };
-							const content: any[] = [];
-							if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
-							if (fullText) content.push({ type: 'text' as const, text: fullText });
+				if (parsed.warpcore_event === 'tool_call_pending') {
+					const tcId = parsed.tool_call_id;
+					const tcName = parsed.tool_name;
+					const tcArgs = JSON.parse(parsed.arguments || '{}');
+					pendingToolCalls[tcId] = { toolName: tcName, args: tcArgs, status: 'requires-action' };
+					const content: any[] = [];
+					if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
+					if (fullText) content.push({ type: 'text' as const, text: fullText });
 							for (const [id, tc] of Object.entries(pendingToolCalls)) {
 								content.push({
 									type: 'tool-call' as const,
@@ -143,12 +160,12 @@ const modelAdapter: ChatModelAdapter = {
 								});
 							}
 							yield { content };
-						} else if (parsed.warpcore_event === 'tool_call_executing') {
-							const tcId = parsed.tool_call_id;
-							if (pendingToolCalls[tcId]) (pendingToolCalls[tcId] as any).status = 'running';
-							const content: any[] = [];
-							if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
-							if (fullText) content.push({ type: 'text' as const, text: fullText });
+				} else if (parsed.warpcore_event === 'tool_call_executing') {
+					const tcId = parsed.tool_call_id;
+					if (pendingToolCalls[tcId]) (pendingToolCalls[tcId] as any).status = 'running';
+					const content: any[] = [];
+					if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
+					if (fullText) content.push({ type: 'text' as const, text: fullText });
 							for (const [id, tc] of Object.entries(pendingToolCalls)) {
 								content.push({
 									type: 'tool-call' as const,
@@ -160,15 +177,15 @@ const modelAdapter: ChatModelAdapter = {
 								});
 							}
 							yield { content };
-						} else if (parsed.warpcore_event === 'tool_call_result') {
-							const tcId = parsed.tool_call_id;
-							if (pendingToolCalls[tcId]) {
-								(pendingToolCalls[tcId] as any).status = parsed.status === 'COMPLETED' ? 'complete' : 'error';
-								(pendingToolCalls[tcId] as any).result = parsed.result;
-							}
-							const content: any[] = [];
-							if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
-							if (fullText) content.push({ type: 'text' as const, text: fullText });
+				} else if (parsed.warpcore_event === 'tool_call_result') {
+					const tcId = parsed.tool_call_id;
+					if (pendingToolCalls[tcId]) {
+						(pendingToolCalls[tcId] as any).status = parsed.status === 'COMPLETED' ? 'complete' : 'error';
+						(pendingToolCalls[tcId] as any).result = parsed.result;
+					}
+					const content: any[] = [];
+					if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
+					if (fullText) content.push({ type: 'text' as const, text: fullText });
 							for (const [id, tc] of Object.entries(pendingToolCalls)) {
 								content.push({
 									type: 'tool-call' as const,
@@ -190,20 +207,20 @@ const modelAdapter: ChatModelAdapter = {
 					const delta = parsed.choices?.[0]?.delta;
 					const finishReason = parsed.choices?.[0]?.finish_reason;
 
-					if (delta?.reasoning_content) {
-						reasoningText += delta.reasoning_content;
-						const content: any[] = [];
-						if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
-						if (fullText) content.push({ type: 'text' as const, text: fullText });
-						if (content.length > 0) yield { content };
+				if (delta?.reasoning_content) {
+					reasoningText += delta.reasoning_content;
+					const content: any[] = [];
+					if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
+					if (fullText) content.push({ type: 'text' as const, text: fullText });
+					if (content.length > 0) yield { content };
 					}
 
-					if (delta?.content) {
-						fullText += delta.content;
-						const content: any[] = [];
-						if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
-						content.push({ type: 'text' as const, text: fullText });
-						yield { content };
+			if (delta?.content) {
+				fullText += delta.content;
+				const content: any[] = [];
+				if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
+				content.push({ type: 'text' as const, text: fullText });
+				yield { content };
 					}
 
 					if (delta?.tool_calls) {
@@ -236,9 +253,9 @@ const modelAdapter: ChatModelAdapter = {
 			}
 		}
 
-		const finalContent: any[] = [];
-		if (reasoningText) finalContent.push({ type: 'reasoning' as const, reasoning: reasoningText });
-		finalContent.push({ type: 'text' as const, text: fullText });
+	const finalContent: any[] = [];
+	if (reasoningText) finalContent.push({ type: 'reasoning' as const, reasoning: reasoningText });
+	finalContent.push({ type: 'text' as const, text: fullText });
 
 		const ppSpeed = timings?.prompt_per_second ?? 0;
 		const tgSpeed = timings?.predicted_per_second ?? 0;
@@ -343,38 +360,83 @@ function HistoryProvider({ children }: { children: ReactNode }) {
 			const res = await fetchThread(remoteId);
 			if (!res.ok || !res.data) return { messages: [] };
 			const msgs = (res.data as any).messages ?? [];
-			return {
-				messages: msgs.map((m: any, idx: number) => ({
-					parentId: idx === 0 ? null : msgs[idx - 1].id,
-					message: {
-						id: m.id,
-						role: m.role as 'user' | 'assistant' | 'system',
-						content: [{ type: 'text' as const, text: m.content }],
-						createdAt: new Date(m.createdAt),
-						status: { type: 'complete' as const },
-						metadata: { unstable_state: {}, custom: m.stats ? JSON.parse(m.stats) : {} },
-						attachments: [],
-					},
-				})),
-			};
+			
+			// Fetch tool calls to enrich tool_call parts
+			const toolCallsRes = await fetchThreadToolCalls(remoteId);
+			const toolCalls = (toolCallsRes?.data ?? []) as any[];
+			const tcMap = new Map(toolCalls.map((tc: any) => [tc.id, tc]));
+			
+					const items = msgs.map((m: any, idx: number) => {
+					// Map ALL parts - DO NOT filter
+					const content = (m.content ?? []).map((part: any) => {
+						if (part.type === EMessagePartType.TEXT) {
+							return { type: 'text' as const, text: part.text ?? '' };
+						}
+						if (part.type === EMessagePartType.REASONING) {
+							return { type: 'reasoning' as const, reasoning: part.text ?? '' };
+						}
+						if (part.type === EMessagePartType.TOOL_CALL) {
+								const tc = tcMap.get(part.toolCallId);
+								if (!tc) return { type: 'text' as const, text: `[tool call ${part.toolCallId}]` };
+								return {
+									type: 'tool-call' as const,
+									toolCallId: tc.id,
+									toolName: tc.toolName,
+									args: JSON.parse(tc.arguments),
+									result: tc.result ?? null,
+								};
+							}
+							return { type: 'text' as const, text: '' };
+						});
+						
+					return {
+						parentId: m.parentId ?? null,
+						message: {
+							id: m.id,
+							role: m.role as 'user' | 'assistant' | 'system',
+								content,
+								createdAt: new Date(m.createdAt),
+								status: { type: 'complete' as const },
+								metadata: { unstable_state: {}, custom: m.stats || {} },
+								attachments: [],
+							},
+					};
+				});
+					
+				const result = {
+					headId: items.length > 0 ? items[items.length - 1].message.id : null,
+					messages: items,
+				};
+				return result;
 		},
 		async append(item) {
+			// No-op — orchestrator saves both user and assistant messages atomically
+			// via POST /api/chat/completions. Thread creation handled by threadListAdapter.initialize().
 			const { remoteId } = await aui.threadListItem().initialize();
 			if (!remoteId) return;
+			// Ensure thread exists in DB on first message
 			const existing = await fetchThread(remoteId);
 			if (!existing.ok || !existing.data) {
 				await createThread({ id: remoteId, title: 'New Chat' });
 			}
+		},
+		async update(item: { message: any }) {
 			const msg = item.message;
-			const textParts = msg.content.filter((p: any) => p.type === 'text');
-			const content = textParts.map((p: any) => (p as any).text).join('');
-			if (!content) return;
-			const stats = (msg.metadata as any)?.custom ?? null;
-			await appendMessages(remoteId, [{
-				role: msg.role as EChatRole,
-				content,
-				stats: stats ? JSON.stringify(stats) : undefined,
-			}]);
+			if (msg.role !== 'user') return;
+			// Map assistant-ui parts to bridge format
+			const parts: any[] = msg.content.map((p: any, i: number) => {
+				if (p.type === 'text') {
+					return { id: crypto.randomUUID(), type: EMessagePartType.TEXT, orderIndex: i, text: p.text };
+				}
+				if (p.type === 'reasoning') {
+					return { id: crypto.randomUUID(), type: EMessagePartType.REASONING, orderIndex: i, text: p.reasoning };
+				}
+				return null;
+			}).filter(Boolean);
+			if (!parts.length) return;
+			// Call backend to replace parts
+			const res = await api.put<null>(`/chat/messages/${msg.id}`, { parts });
+			if (!res.ok) console.error('Failed to update message:', msg.id, res.error);
 		},
 	}), [aui]);
 	return (

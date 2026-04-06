@@ -24,7 +24,7 @@ export { McpConfig } from './mcp/config';
 export { Orchestrator, type IOrchestratorConfig } from './orchestrator';
 
 // Persistence (Node only)
-export { SqlitePersistence } from './persistence/sqlite';
+export { SqlitePersistence } from './persistence/betterSqlite';
 
 // Transport (universal)
 export { FetchTransport, type IFetchTransportConfig } from './transport/fetch';

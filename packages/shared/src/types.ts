@@ -307,11 +307,17 @@ export interface IChatThreadCreatePayload {
 	serverId?: string | null;
 	systemPrompt?: string;
 	tags?: string[];
+	totalPromptTokens?: number;
+	totalCompletionTokens?: number;
 }
 
+import type { IMessagePart, TMessageId } from '@warpcore/bridge';
+
 export interface IChatMessageCreatePayload {
-	role: string; // Use EChatRole from bridge
-	content: string;
+	id?: TMessageId,
+	role: string;
+	parentId?: string | null;
+	content: IMessagePart[];
 	stats?: string;
 }
 

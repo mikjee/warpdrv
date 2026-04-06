@@ -82,11 +82,13 @@ function buildSchema(t: ReturnType<typeof buildTableNames>): string {
 
 		CREATE TABLE IF NOT EXISTS ${t.messages} (
 			id TEXT PRIMARY KEY,
+			parentId TEXT,
 			threadId TEXT NOT NULL,
 			role TEXT NOT NULL,
 			stats TEXT,
 			createdAt INTEGER NOT NULL,
-			FOREIGN KEY (threadId) REFERENCES ${t.threads}(id) ON DELETE CASCADE
+			FOREIGN KEY (threadId) REFERENCES ${t.threads}(id) ON DELETE CASCADE,
+			FOREIGN KEY (parentId) REFERENCES ${t.messages}(id) ON DELETE SET NULL
 		);
 
 		CREATE TABLE IF NOT EXISTS ${t.messageParts} (
@@ -131,6 +133,7 @@ function buildSchema(t: ReturnType<typeof buildTableNames>): string {
 		CREATE INDEX IF NOT EXISTS idx_${t.threads}_folder ON ${t.threads}(folderId);
 		CREATE INDEX IF NOT EXISTS idx_${t.threads}_updated ON ${t.threads}(updatedAt);
 		CREATE INDEX IF NOT EXISTS idx_${t.messages}_thread ON ${t.messages}(threadId, createdAt);
+		CREATE INDEX IF NOT EXISTS idx_${t.messages}_parent ON ${t.messages}(parentId);
 		CREATE INDEX IF NOT EXISTS idx_${t.messageParts}_message ON ${t.messageParts}(messageId, orderIndex);
 		CREATE INDEX IF NOT EXISTS idx_${t.toolCalls}_message ON ${t.toolCalls}(messageId);
 		CREATE INDEX IF NOT EXISTS idx_${t.toolCalls}_thread ON ${t.toolCalls}(threadId);
@@ -315,8 +318,8 @@ export class SqlitePersistence implements IPersistence {
 		const stats = message.stats ? JSON.stringify(message.stats) : null;
 		this.transaction(() => {
 			this.runNoSave(
-				`INSERT INTO ${this.t.messages} (id, threadId, role, stats, createdAt) VALUES (?, ?, ?, ?, ?)`,
-				[message.id, message.threadId, message.role, stats, message.createdAt],
+				`INSERT INTO ${this.t.messages} (id, parentId, threadId, role, stats, createdAt) VALUES (?, ?, ?, ?, ?, ?)`,
+				[message.id, message.parentId ?? null, message.threadId, message.role, stats, message.createdAt],
 			);
 			for (const part of message.content) {
 				this.insertPartNoSave(message.id, part);
@@ -347,6 +350,18 @@ export class SqlitePersistence implements IPersistence {
 		return this.hydrateMessage(row);
 	}
 
+	async updateMessage(id: TMessageId, updates: Partial<Pick<IChatMessage, 'stats'>>): Promise<void> {
+		const sets: string[] = [];
+		const vals: unknown[] = [];
+		if (updates.stats !== undefined) {
+			sets.push('stats = ?');
+			vals.push(updates.stats ? JSON.stringify(updates.stats) : null);
+		}
+		if (sets.length === 0) return;
+		vals.push(id);
+		this.run(`UPDATE ${this.t.messages} SET ${sets.join(', ')} WHERE id = ?`, vals);
+	}
+
 	private insertPartNoSave(messageId: TMessageId, part: IMessagePart): void {
 		const text = part.type === EMessagePartType.TEXT || part.type === EMessagePartType.REASONING
 			? part.text
@@ -374,6 +389,7 @@ export class SqlitePersistence implements IPersistence {
 		});
 		return {
 			id: row.id,
+			parentId: row.parentId ?? null,
 			threadId: row.threadId,
 			role: row.role as EChatRole,
 			content,
