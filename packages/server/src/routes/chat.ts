@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import { persistence, orchestrator, broadcaster } from '../index';
+import { store } from '../util/store';
 import type { IChatThreadCreatePayload, IChatMessageCreatePayload } from '@warpcore/shared';
 import { EChatRole, EMessagePartType, ICompletionRequest } from '@warpcore/bridge';
+import type { IServer } from '@warpcore/shared';
 
 export const chatRouter = Router();
 const activeAborts = new Map<string, AbortController>();
@@ -286,8 +288,12 @@ chatRouter.post('/completions', async (req, res) => {
 	if (previous) previous.abort();
 	activeAborts.set(body.threadId, abortController);
 
-	const serverPort = 8085;
-	const inferenceUrl = `http://127.0.0.1:${serverPort}`;
+	const server = await store.get<IServer>('servers:' + body.serverId);
+	if (!server) {
+		res.status(404).json({ ok: false, data: null, error: 'Server not found' });
+		return;
+	}
+	const inferenceUrl = `http://127.0.0.1:${server.port}`;
 
 	// Fire and forget — return immediately, all updates flow via broadcaster
 	res.json({ ok: true, data: null, error: null });
@@ -379,7 +385,7 @@ chatRouter.post('/tool-calls/:id/resume', async (req, res) => {
 	}
 
 	// Look up inference URL from server
-	const server = serverManager.getServer(serverId);
+	const server = await store.get<IServer>('servers:' + serverId);
 	if (!server) {
 		res.status(404).json({ ok: false, data: null, error: 'Server not found' });
 		return;
