@@ -305,8 +305,11 @@ export type IBridgeEvent =
 	| { type: 'message.created'; message: IChatMessage }
 	| { type: 'message.patched'; messageId: TMessageId; threadId: TThreadId; updates: IMessagePatch }
 	| { type: 'message.deleted'; messageId: TMessageId; threadId: TThreadId }
+	| { type: 'message.chunk'; messageId: TMessageId; threadId: TThreadId; partId: TMessagePartId; partType: EMessagePartType.TEXT | EMessagePartType.REASONING; deltaText: string }
 	| { type: 'tool_call.created'; toolCall: IToolCall }
-	| { type: 'tool_call.updated'; toolCall: IToolCall };
+	| { type: 'tool_call.updated'; toolCall: IToolCall }
+	| { type: 'inference.started'; threadId: TThreadId; messageId: TMessageId }
+	| { type: 'inference.ended'; threadId: TThreadId; messageId: TMessageId };
 
 export interface IMessagePatch {
 	stats?: IChatMessageStats;

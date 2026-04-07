@@ -2,7 +2,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import { persistence, orchestrator, broadcaster } from '../index';
 import type { IChatThreadCreatePayload, IChatMessageCreatePayload } from '@warpcore/shared';
-import { EChatRole, EMessagePartType } from '@warpcore/bridge';
+import { EChatRole, EMessagePartType, ICompletionRequest } from '@warpcore/bridge';
 
 export const chatRouter = Router();
 const activeAborts = new Map<string, AbortController>();
@@ -360,16 +360,56 @@ chatRouter.put('/folders/reorder', async (req, res) => {
 });
 
 chatRouter.post('/tool-calls/:id/resume', async (req, res) => {
-	const { decision } = req.body as { decision: 'approve' | 'deny' };
+	const { decision, threadId, serverId, messages, systemPrompt, inferenceParams } = req.body as {
+		decision: 'approve' | 'deny';
+		threadId: string;
+		serverId: string;
+		messages: Array<{ role: string; content: string }>;
+		systemPrompt?: string;
+		inferenceParams: Record<string, unknown>;
+	};
+
 	if (decision !== 'approve' && decision !== 'deny') {
 		res.status(400).json({ ok: false, data: null, error: 'Invalid decision' });
 		return;
 	}
-	
-	try {
-		const result = await orchestrator.resumeToolCall(req.params.id, decision);
-		res.json({ ok: true, data: result, error: null });
-	} catch (err) {
-		res.status(500).json({ ok: false, data: null, error: String(err) });
+	if (!threadId || !serverId) {
+		res.status(400).json({ ok: false, data: null, error: 'Missing threadId or serverId' });
+		return;
 	}
+
+	// Look up inference URL from server
+	const server = serverManager.getServer(serverId);
+	if (!server) {
+		res.status(404).json({ ok: false, data: null, error: 'Server not found' });
+		return;
+	}
+	const inferenceUrl = `http://127.0.0.1:${server.port}`;
+
+	const completionRequest: ICompletionRequest = {
+		threadId,
+		serverId,
+		messages,
+		systemPrompt,
+		inferenceParams: inferenceParams as any,
+	};
+
+	// Track abort for this resume — same pattern as completions route
+	const abortController = new AbortController();
+	const previous = activeAborts.get(threadId);
+	if (previous) previous.abort();
+	activeAborts.set(threadId, abortController);
+
+	// Fire-and-forget — return immediately, all updates flow via broadcaster
+	res.json({ ok: true, data: null, error: null });
+
+	orchestrator.resumeToolCall(req.params.id, decision, inferenceUrl, completionRequest, abortController.signal)
+		.catch(err => {
+			console.error('[Resume] orchestrator error:', err);
+		})
+		.finally(() => {
+			if (activeAborts.get(threadId) === abortController) {
+				activeAborts.delete(threadId);
+			}
+		});
 });
