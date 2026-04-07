@@ -68,6 +68,25 @@ export class Orchestrator {
 			const allTools = this.mcpClient.getAllTools();
 			const enabledTools = await this.permissions.getEnabledTools(allTools);
 
+			// Auto-create thread if it doesn't exist
+			let thread = await this.persistence.getThread(request.threadId);
+			if (!thread) {
+				const now = Date.now();
+				thread = {
+					id: request.threadId,
+					title: 'New Chat',
+					folderId: null,
+					systemPrompt: '',
+					meta: '{}',
+					totalPromptTokens: 0,
+					totalCompletionTokens: 0,
+					createdAt: now,
+					updatedAt: now,
+				};
+				await this.persistence.createThread(thread);
+				this.broadcaster.emit({ type: 'thread.created', thread });
+			}
+
 			// Determine parent of new assistant message
 			let parentForAssistant: string | null = request.parentId ?? null;
 
