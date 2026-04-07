@@ -19,7 +19,7 @@ import { summaryRouter } from './routes/summary';
 import { sseManager } from './services/sseManagerInstance';
 import { getAllServerStats, getServerStats } from './services/statsPoller';
 import { getAllDownloads, getAllDownloadsRecord } from './services/downloadManager';
-import { SqlitePersistence, McpClientManager, McpConfig, PermissionManager, Orchestrator } from '@warpcore/bridge/server';
+import { SqlitePersistence, McpClientManager, McpConfig, PermissionManager, Orchestrator, SseBroadcaster } from '@warpcore/bridge/server';
 import path from 'path';
 import os from 'os';
 
@@ -30,6 +30,7 @@ export let persistence: SqlitePersistence;
 export let mcpClient: McpClientManager;
 export let orchestrator: Orchestrator;
 export let mcpConfig: McpConfig;
+export let broadcaster: SseBroadcaster;
 
 async function main() {
 	await runMigrations();
@@ -50,7 +51,8 @@ async function main() {
 	mcpConfig = new McpConfig(path.join(dataDir, 'mcp.json'));
 	mcpClient = new McpClientManager();
 	const permissions = new PermissionManager(persistence);
-	orchestrator = new Orchestrator({ mcpClient, permissions, persistence });
+	broadcaster = new SseBroadcaster();
+	orchestrator = new Orchestrator({ mcpClient, permissions, persistence, broadcaster });
 
 	// Connect MCP servers from config
 	const mcpCfg = mcpConfig.read();

@@ -259,7 +259,6 @@ export interface IMcpServerState {
 // Inference — completion request sent to orchestrator
 // ============================================================
 export interface ICompletionUserMessage {
-	id: TMessageId;
 	parentId: TMessageId | null;
 	content: string;
 }
@@ -294,6 +293,25 @@ export interface IOpenAIToolCall {
 		name: string;
 		arguments: string;
 	};
+}
+
+// ============================================================
+// Broadcast events — emitted by bridge for any state change
+// ============================================================
+export type IBridgeEvent =
+	| { type: 'thread.created'; thread: IChatThread }
+	| { type: 'thread.updated'; thread: IChatThread }
+	| { type: 'thread.deleted'; threadId: TThreadId }
+	| { type: 'message.created'; message: IChatMessage }
+	| { type: 'message.patched'; messageId: TMessageId; threadId: TThreadId; updates: IMessagePatch }
+	| { type: 'message.deleted'; messageId: TMessageId; threadId: TThreadId }
+	| { type: 'tool_call.created'; toolCall: IToolCall }
+	| { type: 'tool_call.updated'; toolCall: IToolCall };
+
+export interface IMessagePatch {
+	stats?: IChatMessageStats;
+	addParts?: IMessagePart[];
+	replaceParts?: IMessagePart[];
 }
 
 export interface ISSEChunk {

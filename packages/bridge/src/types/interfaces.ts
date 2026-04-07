@@ -27,6 +27,7 @@ import type {
 	ISSEChunk,
 	EToolApprovalMode,
 	EToolCallStatus,
+	IBridgeEvent,
 } from './index';
 
 // ============================================================
@@ -141,4 +142,16 @@ export interface IBridgeEvents {
 	onMcpServersChanged(callback: (servers: Record<string, IMcpServerState>) => void): () => void;
 	onToolCallUpdated(callback: (toolCall: IToolCall) => void): () => void;
 	onPendingApproval(callback: (toolCall: IToolCall) => void): () => void;
+}
+
+// ============================================================
+// Bridge Broadcaster — fan out state changes to subscribers
+// ============================================================
+export interface IBridgeBroadcaster {
+	emit(event: IBridgeEvent): void;
+	subscribe(handler: (event: IBridgeEvent) => void): () => void;
+	// Optional native handle for transport-specific implementations
+	// (e.g. better-sse Channel) — consumers can use this to register
+	// HTTP sessions directly without going through subscribe.
+	getNative?(): unknown;
 }

@@ -14,14 +14,15 @@
 // - Tool messages become {role: 'tool', tool_call_id, content} entries
 // ============================================================
 import crypto from 'crypto';
-import type { Response } from 'express';
-import type { IMcpClient, IPermissions, IPersistence } from '../types/interfaces';
+import type { IMcpClient, IPermissions, IPersistence, IBridgeBroadcaster } from '../types/interfaces';
 import type {
 	ICompletionRequest,
 	IToolDefinition,
 	IToolCall,
 	IOpenAITool,
 	IChatMessageStats,
+	IMessagePart,
+	IChatMessage,
 	TMessageId,
 } from '../types';
 import { EChatRole, EMessagePartType, EToolCallStatus, EToolApprovalMode } from '../types';
@@ -34,6 +35,7 @@ export interface IOrchestratorConfig {
 	mcpClient: IMcpClient;
 	permissions: IPermissions;
 	persistence: IPersistence;
+	broadcaster: IBridgeBroadcaster;
 	onMcpServersChanged?: (servers: Record<string, unknown>) => void;
 }
 
@@ -48,63 +50,53 @@ export class Orchestrator {
 	private mcpClient: IMcpClient;
 	private permissions: IPermissions;
 	private persistence: IPersistence;
+	private broadcaster: IBridgeBroadcaster;
 
 	constructor(config: IOrchestratorConfig) {
 		this.mcpClient = config.mcpClient;
 		this.permissions = config.permissions;
 		this.persistence = config.persistence;
+		this.broadcaster = config.broadcaster;
 	}
 
 	async handleCompletion(
 		inferenceUrl: string,
 		request: ICompletionRequest,
-		res: Response,
 		abortSignal: AbortSignal,
 	): Promise<void> {
-		res.writeHead(200, {
-			'Content-Type': 'text/event-stream',
-			'Cache-Control': 'no-cache',
-			'Connection': 'keep-alive',
-			'X-Accel-Buffering': 'no',
-		});
-		res.flushHeaders();
-
 		try {
 			const allTools = this.mcpClient.getAllTools();
 			const enabledTools = await this.permissions.getEnabledTools(allTools);
 
 			// Determine parent of new assistant message
-			let parentForAssistant: string | null = null;
+			let parentForAssistant: string | null = request.parentId ?? null;
 
+			// If userMessage content provided, bridge generates ID and saves
 			if (request.userMessage) {
-				// New turn — save user message, assistant becomes its child
-				const existing = await this.persistence.getMessage(request.userMessage.id);
-				if (!existing) {
-					await this.persistence.createMessage({
-						id: request.userMessage.id,
-						parentId: request.userMessage.parentId ?? null,
-						threadId: request.threadId,
-						role: EChatRole.USER,
-						content: [{
-							id: crypto.randomUUID(),
-							type: EMessagePartType.TEXT,
-							orderIndex: 0,
-							text: request.userMessage.content,
-						}],
-						stats: null,
-						createdAt: Date.now(),
-					});
-				}
-				parentForAssistant = request.userMessage.id;
-			} else {
-				// No userMessage — explicit parentId from request (regen, continue, post-tool)
-				parentForAssistant = request.parentId ?? null;
+				const userMessageId = crypto.randomUUID();
+				const userMsg: IChatMessage = {
+					id: userMessageId,
+					parentId: request.parentId ?? null,
+					threadId: request.threadId,
+					role: EChatRole.USER,
+					content: [{
+						id: crypto.randomUUID(),
+						type: EMessagePartType.TEXT,
+						orderIndex: 0,
+						text: request.userMessage.content,
+					}],
+					stats: null,
+					createdAt: Date.now(),
+				};
+				await this.persistence.createMessage(userMsg);
+				this.broadcaster.emit({ type: 'message.created', message: userMsg });
+				parentForAssistant = userMessageId;
 			}
 
 			// Create the assistant message row
 			const assistantMessageId = crypto.randomUUID();
 			const assistantCreatedAt = Date.now();
-			await this.persistence.createMessage({
+			const assistantMsg: IChatMessage = {
 				id: assistantMessageId,
 				parentId: parentForAssistant,
 				threadId: request.threadId,
@@ -112,14 +104,9 @@ export class Orchestrator {
 				content: [],
 				stats: null,
 				createdAt: assistantCreatedAt,
-			});
-
-			this.write(res, {
-				warpcore_event: 'assistant_message_created',
-				message_id: assistantMessageId,
-				parent_id: parentForAssistant,
-				created_at: assistantCreatedAt,
-			});
+			};
+			await this.persistence.createMessage(assistantMsg);
+			this.broadcaster.emit({ type: 'message.created', message: assistantMsg });
 
 			const messages = request.systemPrompt
 				? [{ role: 'system' as const, content: request.systemPrompt }, ...request.messages]
@@ -132,15 +119,12 @@ export class Orchestrator {
 				currentReasoningPart: null,
 			};
 
-			await this.runPass(inferenceUrl, messages, enabledTools, request, res, abortSignal, turn);
+			await this.runPass(inferenceUrl, messages, enabledTools, request, abortSignal, turn);
 		} catch (err) {
 			const errorMsg = err instanceof Error ? err.message : String(err);
 			if (!abortSignal.aborted) {
-				this.write(res, { warpcore_event: 'error', error: errorMsg });
+				console.error('[Orchestrator] handleCompletion error:', errorMsg);
 			}
-		} finally {
-			res.write('data: [DONE]\n\n');
-			res.end();
 		}
 	}
 
@@ -149,7 +133,6 @@ export class Orchestrator {
 		messages: Array<{ role: string; content: string; tool_calls?: unknown[]; tool_call_id?: string }>,
 		enabledTools: IToolDefinition[],
 		request: ICompletionRequest,
-		res: Response,
 		abortSignal: AbortSignal,
 		turn: ITurnState,
 	): Promise<void> {
@@ -186,7 +169,7 @@ export class Orchestrator {
 
 			if (!response.ok || !response.body) {
 				const errBody = await response.text().catch(() => '');
-				this.write(res, { warpcore_event: 'error', error: `Inference error ${response.status}: ${errBody}` });
+				console.error(`[Orchestrator] Inference error ${response.status}: ${errBody}`);
 				return;
 			}
 
@@ -220,7 +203,20 @@ export class Orchestrator {
 							turn.currentTextPart = { id: crypto.randomUUID(), text: '' };
 						}
 						turn.currentTextPart.text += delta.content;
-						this.write(res, { choices: [{ index: 0, delta: { content: delta.content } }] });
+						// Broadcast incremental text update
+						this.broadcaster.emit({
+							type: 'message.patched',
+							messageId: turn.assistantMessageId,
+							threadId: request.threadId,
+							updates: {
+								addParts: [{
+									id: turn.currentTextPart.id,
+									type: EMessagePartType.TEXT,
+									orderIndex: turn.partOrderCounter,
+									text: turn.currentTextPart.text,
+								}],
+							},
+						});
 					}
 
 					if (delta?.reasoning_content) {
@@ -232,7 +228,19 @@ export class Orchestrator {
 							turn.currentReasoningPart = { id: crypto.randomUUID(), text: '' };
 						}
 						turn.currentReasoningPart.text += delta.reasoning_content;
-						this.write(res, { choices: [{ index: 0, delta: { reasoning_content: delta.reasoning_content } }] });
+						this.broadcaster.emit({
+							type: 'message.patched',
+							messageId: turn.assistantMessageId,
+							threadId: request.threadId,
+							updates: {
+								addParts: [{
+									id: turn.currentReasoningPart.id,
+									type: EMessagePartType.REASONING,
+									orderIndex: turn.partOrderCounter,
+									text: turn.currentReasoningPart.text,
+								}],
+							},
+						});
 					}
 
 					if (delta?.tool_calls) {
@@ -254,7 +262,7 @@ export class Orchestrator {
 
 			const finalToolCalls = finalizeToolCalls(toolCallAccumulators);
 
-			// Terminal — text response done, no tool calls
+			// Terminal — text response done
 			if (finalToolCalls.length === 0 || finishReason !== 'tool_calls') {
 				if (timings || usage) {
 					const stats: IChatMessageStats = {
@@ -272,47 +280,29 @@ export class Orchestrator {
 						stats.promptTokens,
 						stats.completionTokens,
 					);
+					this.broadcaster.emit({
+						type: 'message.patched',
+						messageId: turn.assistantMessageId,
+						threadId: request.threadId,
+						updates: { stats },
+					});
 				}
-				this.write(res, {
-					choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
-					...(timings ? { timings } : {}),
-					...(usage ? { usage } : {}),
-				});
 				return;
-			}
-
-			// Tool calls — emit each in OpenAI format to client
-			for (let i = 0; i < finalToolCalls.length; i++) {
-				const tc = finalToolCalls[i]!;
-				this.write(res, {
-					choices: [{
-						index: 0,
-						delta: {
-							tool_calls: [{
-								index: i, id: tc.id, type: 'function',
-								function: { name: tc.name, arguments: tc.arguments },
-							}],
-						},
-					}],
-				});
 			}
 
 			// Process each tool call: persist, create child tool message, execute or wait
 			let needsAsk = false;
-			const completedToolMessages: Array<{ toolMessageId: string; callId: string; result: string }> = [];
-
+			const toolResults: Array<{ callId: string; name: string; result: string }> = [];
 			for (const tc of finalToolCalls) {
 				if (abortSignal.aborted) return;
-
 				const serverName = this.mcpClient.findToolServer(tc.name);
-				const toolCallId = crypto.randomUUID();
-
 				let args: Record<string, unknown> = {};
 				try { args = JSON.parse(tc.arguments || '{}'); } catch { /* empty */ }
 
-				// Validate args if we have a tool def
 				let validationError: string | null = null;
-				if (serverName) {
+				if (!serverName) {
+					validationError = `No MCP server for tool '${tc.name}'`;
+				} else {
 					const toolDef = enabledTools.find(t => t.name === tc.name);
 					if (toolDef) {
 						const validation = validateToolArgs(toolDef.inputSchema, args);
@@ -320,39 +310,12 @@ export class Orchestrator {
 							validationError = `Invalid arguments: ${validation.errors.join(', ')}`;
 						}
 					}
-				} else {
-					validationError = `No MCP server for tool '${tc.name}'`;
 				}
 
-				// Add a tool_call part to the assistant message (the request side)
-				await this.persistence.appendMessagePart(turn.assistantMessageId, {
-					id: crypto.randomUUID(),
-					type: EMessagePartType.TOOL_CALL,
-					orderIndex: turn.partOrderCounter++,
-					toolCallId,
-				});
-
-				// Create the child tool message — this represents the execution/result
-				const toolMessageId = crypto.randomUUID();
-				await this.persistence.createMessage({
-					id: toolMessageId,
-					parentId: turn.assistantMessageId,
-					threadId: request.threadId,
-					role: EChatRole.TOOL,
-					content: [{
-						id: crypto.randomUUID(),
-						type: EMessagePartType.TOOL_CALL,
-						orderIndex: 0,
-						toolCallId,
-					}],
-					stats: null,
-					createdAt: Date.now(),
-				});
-
-				// Persist the tool call row, pointing at the tool message
+				const toolCallId = crypto.randomUUID();
 				const toolCallRecord: IToolCall = {
 					id: toolCallId,
-					messageId: toolMessageId,
+					messageId: turn.assistantMessageId,
 					threadId: request.threadId,
 					serverName: serverName ?? '',
 					toolName: tc.name,
@@ -364,69 +327,91 @@ export class Orchestrator {
 					resolvedAt: validationError ? Date.now() : null,
 				};
 				await this.persistence.createToolCall(toolCallRecord);
+				this.broadcaster.emit({ type: 'tool_call.created', toolCall: toolCallRecord });
+
+				const toolPart: IMessagePart = {
+					id: crypto.randomUUID(),
+					type: EMessagePartType.TOOL_CALL,
+					orderIndex: turn.partOrderCounter++,
+					toolCallId,
+				};
+				await this.persistence.appendMessagePart(turn.assistantMessageId, toolPart);
+				this.broadcaster.emit({
+					type: 'message.patched',
+					messageId: turn.assistantMessageId,
+					threadId: request.threadId,
+					updates: { addParts: [toolPart] },
+				});
 
 				if (validationError) {
-					completedToolMessages.push({ toolMessageId, callId: tc.id, result: toolCallRecord.result! });
-					this.write(res, { warpcore_event: 'tool_call_result', tool_call_id: toolCallId, status: EToolCallStatus.ERROR, result: toolCallRecord.result });
+					toolResults.push({ callId: tc.id, name: tc.name, result: toolCallRecord.result! });
 					continue;
 				}
 
 				const approvalMode = await this.permissions.getToolApprovalMode(serverName!, tc.name);
 
 				if (approvalMode === EToolApprovalMode.ASK) {
-					this.write(res, {
-						warpcore_event: 'tool_call_pending',
-						tool_call_id: toolCallId,
-						server_name: serverName,
-						tool_name: tc.name,
-						arguments: JSON.stringify(args),
-					});
 					needsAsk = true;
 					continue;
 				}
 
 				if (approvalMode === EToolApprovalMode.DENIED) {
-					await this.persistence.updateToolCall(toolCallId, { status: EToolCallStatus.DENIED, resolvedAt: Date.now() });
-					const deniedResult = JSON.stringify({ error: 'Tool call denied by policy' });
-					completedToolMessages.push({ toolMessageId, callId: tc.id, result: deniedResult });
-					this.write(res, { warpcore_event: 'tool_call_result', tool_call_id: toolCallId, status: EToolCallStatus.DENIED, result: deniedResult });
+					const updatedTc: IToolCall = {
+						...toolCallRecord,
+						status: EToolCallStatus.DENIED,
+						result: JSON.stringify({ error: 'Tool call denied by policy' }),
+						resolvedAt: Date.now(),
+					};
+					await this.persistence.updateToolCall(toolCallId, { status: updatedTc.status, result: updatedTc.result, resolvedAt: updatedTc.resolvedAt });
+					this.broadcaster.emit({ type: 'tool_call.updated', toolCall: updatedTc });
+					toolResults.push({ callId: tc.id, name: tc.name, result: updatedTc.result! });
 					continue;
 				}
 
-				// ALLOWED — execute now
+				// ALLOWED — execute
+				const executingTc: IToolCall = { ...toolCallRecord, status: EToolCallStatus.EXECUTING };
 				await this.persistence.updateToolCall(toolCallId, { status: EToolCallStatus.EXECUTING });
-				this.write(res, { warpcore_event: 'tool_call_executing', tool_call_id: toolCallId });
+				this.broadcaster.emit({ type: 'tool_call.updated', toolCall: executingTc });
 
 				try {
 					const mcpResult = await this.mcpClient.executeToolCall(serverName!, tc.name, args);
 					const resultStr = JSON.stringify(mcpResult.content);
 					const finalStatus = mcpResult.isError ? EToolCallStatus.ERROR : EToolCallStatus.COMPLETED;
-					await this.persistence.updateToolCall(toolCallId, {
+					const completedTc: IToolCall = {
+						...toolCallRecord,
 						status: finalStatus,
 						result: resultStr,
 						error: mcpResult.isError ? resultStr : null,
 						resolvedAt: Date.now(),
+					};
+					await this.persistence.updateToolCall(toolCallId, {
+						status: finalStatus,
+						result: resultStr,
+						error: mcpResult.isError ? resultStr : null,
+						resolvedAt: completedTc.resolvedAt,
 					});
-					completedToolMessages.push({ toolMessageId, callId: tc.id, result: resultStr });
-					this.write(res, { warpcore_event: 'tool_call_result', tool_call_id: toolCallId, status: finalStatus, result: resultStr });
+					this.broadcaster.emit({ type: 'tool_call.updated', toolCall: completedTc });
+					toolResults.push({ callId: tc.id, name: tc.name, result: resultStr });
 				} catch (err) {
 					const errorMsg = err instanceof Error ? err.message : String(err);
 					const errorResult = JSON.stringify({ error: errorMsg });
-					await this.persistence.updateToolCall(toolCallId, {
+					const erroredTc: IToolCall = {
+						...toolCallRecord,
 						status: EToolCallStatus.ERROR,
 						error: errorMsg,
 						resolvedAt: Date.now(),
+					};
+					await this.persistence.updateToolCall(toolCallId, {
+						status: EToolCallStatus.ERROR,
+						error: errorMsg,
+						resolvedAt: erroredTc.resolvedAt,
 					});
-					completedToolMessages.push({ toolMessageId, callId: tc.id, result: errorResult });
-					this.write(res, { warpcore_event: 'tool_call_result', tool_call_id: toolCallId, status: EToolCallStatus.ERROR, result: errorResult });
+					this.broadcaster.emit({ type: 'tool_call.updated', toolCall: erroredTc });
+					toolResults.push({ callId: tc.id, name: tc.name, result: errorResult });
 				}
 			}
 
-			if (needsAsk) {
-				// Stop here — frontend will resume after approvals via a separate completions request
-				this.write(res, { choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] });
-				return;
-			}
+			if (needsAsk) return;
 
 			// Build wire-format context for next inference pass
 			conversationMessages.push({
@@ -439,18 +424,16 @@ export class Orchestrator {
 				})),
 			} as any);
 
-			for (const ctm of completedToolMessages) {
+			for (const tr of toolResults) {
 				conversationMessages.push({
 					role: 'tool',
-					content: ctm.result,
-					tool_call_id: ctm.callId,
+					content: tr.result,
+					tool_call_id: tr.callId,
 				} as any);
 			}
-
 			autoContinues++;
 		}
-
-		this.write(res, { warpcore_event: 'error', error: `Tool auto-execution exceeded ${MAX_AUTO_CONTINUES} iterations` });
+		console.error(`[Orchestrator] Tool auto-execution exceeded ${MAX_AUTO_CONTINUES} iterations`);
 	}
 
 	private async flushTextPart(turn: ITurnState): Promise<void> {
@@ -478,46 +461,49 @@ export class Orchestrator {
 	async resumeToolCall(
 		toolCallId: string,
 		decision: 'approve' | 'deny',
-	): Promise<{ status: EToolCallStatus; result?: string; threadId?: string; toolMessageId?: string }> {
+	): Promise<{ status: EToolCallStatus; result?: string; threadId?: string }> {
 		const tc = await this.persistence.getToolCall(toolCallId);
 		if (!tc) throw new Error('Tool call not found');
 		if (tc.status !== EToolCallStatus.PENDING) throw new Error(`Tool call is ${tc.status}, not PENDING`);
 
 		if (decision === 'deny') {
-			await this.persistence.updateToolCall(toolCallId, {
-				status: EToolCallStatus.DENIED,
-				resolvedAt: Date.now(),
-			});
-			return { status: EToolCallStatus.DENIED, threadId: tc.threadId, toolMessageId: tc.messageId };
+			const deniedTc: IToolCall = { ...tc, status: EToolCallStatus.DENIED, resolvedAt: Date.now() };
+			await this.persistence.updateToolCall(toolCallId, { status: EToolCallStatus.DENIED, resolvedAt: deniedTc.resolvedAt });
+			this.broadcaster.emit({ type: 'tool_call.updated', toolCall: deniedTc });
+			return { status: EToolCallStatus.DENIED };
 		}
 
+		const executingTc: IToolCall = { ...tc, status: EToolCallStatus.EXECUTING };
 		await this.persistence.updateToolCall(toolCallId, { status: EToolCallStatus.EXECUTING });
+		this.broadcaster.emit({ type: 'tool_call.updated', toolCall: executingTc });
 
 		try {
 			const args = JSON.parse(tc.arguments);
 			const mcpResult = await this.mcpClient.executeToolCall(tc.serverName, tc.toolName, args);
 			const resultStr = JSON.stringify(mcpResult.content);
 			const finalStatus = mcpResult.isError ? EToolCallStatus.ERROR : EToolCallStatus.COMPLETED;
-			await this.persistence.updateToolCall(toolCallId, {
+			const completedTc: IToolCall = {
+				...tc,
 				status: finalStatus,
 				result: resultStr,
 				error: mcpResult.isError ? resultStr : null,
 				resolvedAt: Date.now(),
+			};
+			await this.persistence.updateToolCall(toolCallId, {
+				status: finalStatus,
+				result: resultStr,
+				error: mcpResult.isError ? resultStr : null,
+				resolvedAt: completedTc.resolvedAt,
 			});
-			return { status: finalStatus, result: resultStr, threadId: tc.threadId, toolMessageId: tc.messageId };
+			this.broadcaster.emit({ type: 'tool_call.updated', toolCall: completedTc });
+			return { status: finalStatus, result: resultStr, threadId: tc.threadId };
 		} catch (err) {
 			const errorMsg = err instanceof Error ? err.message : String(err);
-			await this.persistence.updateToolCall(toolCallId, {
-				status: EToolCallStatus.ERROR,
-				error: errorMsg,
-				resolvedAt: Date.now(),
-			});
+			const erroredTc: IToolCall = { ...tc, status: EToolCallStatus.ERROR, error: errorMsg, resolvedAt: Date.now() };
+			await this.persistence.updateToolCall(toolCallId, { status: EToolCallStatus.ERROR, error: errorMsg, resolvedAt: erroredTc.resolvedAt });
+			this.broadcaster.emit({ type: 'tool_call.updated', toolCall: erroredTc });
 			throw err;
 		}
-	}
-
-	private write(res: Response, data: Record<string, unknown>): void {
-		res.write(`data: ${JSON.stringify(data)}\n\n`);
 	}
 
 	private buildInferenceParams(params: Record<string, unknown>): Record<string, unknown> {

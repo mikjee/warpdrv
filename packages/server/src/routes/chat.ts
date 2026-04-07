@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import crypto from 'crypto';
-import { persistence, orchestrator } from '../index';
+import { persistence, orchestrator, broadcaster } from '../index';
 import type { IChatThreadCreatePayload, IChatMessageCreatePayload } from '@warpcore/shared';
 import { EChatRole, EMessagePartType } from '@warpcore/bridge';
 
 export const chatRouter = Router();
+const activeAborts = new Map<string, AbortController>();
 
 // ============================================================
 // Threads
@@ -278,16 +279,48 @@ chatRouter.post('/completions', async (req, res) => {
 		res.status(400).json({ ok: false, data: null, error: 'Missing required fields' });
 		return;
 	}
-	// userMessage is optional — absent means regen
-	
+
 	const abortController = new AbortController();
-	req.on('error', () => abortController.abort());
-	
-	// Get server port from somewhere — for now use default
-	const serverPort = 8085; // TODO: lookup by thread meta
+	// Cancel any previous in-flight completion for this thread
+	const previous = activeAborts.get(body.threadId);
+	if (previous) previous.abort();
+	activeAborts.set(body.threadId, abortController);
+
+	const serverPort = 8085;
 	const inferenceUrl = `http://127.0.0.1:${serverPort}`;
-	
-	await orchestrator.handleCompletion(inferenceUrl, body, res, abortController.signal);
+
+	// Fire and forget — return immediately, all updates flow via broadcaster
+	res.json({ ok: true, data: null, error: null });
+
+	orchestrator.handleCompletion(inferenceUrl, body, abortController.signal)
+		.catch(err => {
+			console.error('[Completions] orchestrator error:', err);
+		})
+		.finally(() => {
+			if (activeAborts.get(body.threadId) === abortController) {
+				activeAborts.delete(body.threadId);
+			}
+		});
+});
+
+// POST /api/chat/cancel/:threadId — cancel in-flight completion
+chatRouter.post('/cancel/:threadId', (req, res) => {
+	const ac = activeAborts.get(req.params.threadId);
+	if (ac) {
+		ac.abort();
+		activeAborts.delete(req.params.threadId);
+		res.json({ ok: true, data: null, error: null });
+	} else {
+		res.json({ ok: true, data: null, error: 'No active completion' });
+	}
+});
+
+// GET /api/chat/events — global SSE channel for all bridge events
+chatRouter.get('/events', async (req, res) => {
+	const { createSession } = await import('better-sse');
+	const session = await createSession(req, res);
+	const channel = (broadcaster as any).getChannel();
+	channel.register(session);
 });
 
 // PUT /api/chat/messages/:id — edit message parts, no inference

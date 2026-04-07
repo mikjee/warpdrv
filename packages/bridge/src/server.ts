@@ -31,3 +31,7 @@ export { FetchTransport, type IFetchTransportConfig } from './transport/fetch';
 
 // Store (universal)
 export { createChatStoreSlice, type IChatStoreState } from './store';
+
+// sse broadcaster
+export { SseBroadcaster } from './broadcaster/sseBroadcaster';
+export type { IBridgeBroadcaster } from './types/interfaces';

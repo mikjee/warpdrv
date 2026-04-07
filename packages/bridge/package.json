@@ -18,7 +18,8 @@
 		"./persistence": "./src/persistence/betterSqlite.ts",
 		"./permissions": "./src/permissions/index.ts",
 		"./validation": "./src/validation/index.ts",
-		"./transport": "./src/transport/fetch.ts"
+		"./transport": "./src/transport/fetch.ts",
+		"./broadcaster" : "./src/broadcaster/sseBroadcaster.ts"
 	},
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.29.0",
@@ -26,7 +27,8 @@
 	},
 	"peerDependencies": {
 		"zustand": ">=4.0.0",
-		"better-sqlite3": "^12.8.0"
+		"better-sqlite3": "^12.8.0",
+		"better-sse": "^0.16.0"
 	},
 	"peerDependenciesMeta": {
 		"zustand": {
