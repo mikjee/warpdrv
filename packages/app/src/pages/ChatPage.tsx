@@ -150,7 +150,6 @@ const modelAdapter: ChatModelAdapter = {
 
 				try {
 					const parsed = JSON.parse(data);
-					console.log("[PARSE]", parsed);
 
 					// WarpCore extension events
 					if (parsed.warpcore_event) {

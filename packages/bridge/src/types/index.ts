@@ -267,7 +267,7 @@ export interface ICompletionUserMessage {
 export interface ICompletionRequest {
 	threadId: TThreadId;
 	userMessage?: ICompletionUserMessage;
-	parentMessageId?: TMessageId | null;
+	parentId?: TMessageId | null;
 	serverId?: string;
 	messages: Array<{ role: string; content: string }>;
 	systemPrompt?: string;
