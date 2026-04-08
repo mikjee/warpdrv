@@ -1,8 +1,7 @@
 // ============================================================
 // warpbridge/src/store/index.ts
-// Optional Zustand store for frontend state management.
+// Zustand store for frontend state management.
 // Universal — browser + Node (Zustand works in both).
-// Consumers can skip this entirely and manage state themselves.
 // Uses Immer pattern for mutable-like state updates.
 // ============================================================
 
@@ -10,13 +9,17 @@ import type {
 	IChatThread,
 	IChatMessage,
 	IToolCall,
-	IMcpServerState,
-	IToolPermission,
-	IServerPermission,
+	IMessagePatch,
 	TThreadId,
+	TMessageId,
+	TMessagePartId,
 	TToolCallId,
-	EStreamStatus,
+	IMcpServerState,
+	IServerPermission,
+	IToolPermission,
+	IThreadPatch,
 } from '../types';
+import { EMessagePartType } from '../types';
 import type { WritableDraft } from 'immer';
 
 // ============================================================
@@ -29,93 +32,288 @@ export type ImmerGet<T> = () => T;
 // Store state shape
 // ============================================================
 export interface IChatStoreState {
-	// Threads
-	threads: IChatThread[];
+	// Threads - flat map keyed by thread ID
+	threads: Record<TThreadId, IChatThread>;
 	activeThreadId: TThreadId | null;
 
-	// Messages for active thread
-	messages: IChatMessage[];
+	// Messages - nested map: threadId -> messageId -> IChatMessage
+	messagesByThread: Record<TThreadId, Record<TMessageId, IChatMessage>>;
 
-	// Streaming
-	streamStatus: EStreamStatus;
-	streamingText: string;
-	streamingReasoning: string;
+	// In-memory head tracking (NOT persisted to DB)
+	// Updated automatically on message.created
+	headMessageIdByThread: Record<TThreadId, TMessageId>;
 
-	// Tool calls for active thread
-	toolCalls: IToolCall[];
+	// Tool calls - global flat map (these are the records from conversations)
+	toolCallsById: Record<TToolCallId, IToolCall>;
 
-	// MCP
+	// Inference state per thread
+	isRunningByThread: Record<TThreadId, boolean>;
+
+	// MCP State
 	mcpServers: Record<string, IMcpServerState>;
 	serverPermissions: IServerPermission[];
 	toolPermissions: IToolPermission[];
 
+	// Current chat state (for active thread context)
+	currentThreadId: TThreadId | null;
+	currentServerId: string | null;
+	currentSystemPrompt: string;
+	currentInferenceParams: Record<string, unknown>;
+
 	// Actions
-	setThreads: (threads: IChatThread[]) => void;
+	applyThreadCreated: (thread: IChatThread) => void;
+	applyThreadUpdated: (threadId: TThreadId, updates: IThreadPatch) => void;
+	applyThreadDeleted: (threadId: TThreadId) => void;
+	applyMessageCreated: (message: IChatMessage) => void;
+	applyMessagePatched: (messageId: TMessageId, threadId: TThreadId, updates: IMessagePatch) => void;
+	applyMessageDeleted: (messageId: TMessageId, threadId: TThreadId) => void;
+	applyMessageChunk: (messageId: TMessageId, threadId: TThreadId, partId: TMessagePartId, deltaText: string) => void;
+	applyToolCallCreated: (toolCall: IToolCall) => void;
+	applyToolCallUpdated: (toolCall: IToolCall) => void;
+	applyInferenceStarted: (threadId: TThreadId, messageId: TMessageId) => void;
+	applyInferenceEnded: (threadId: TThreadId, messageId: TMessageId) => void;
+	seedThreadMessages: (threadId: TThreadId, messages: IChatMessage[]) => void;
+	setThreads: (threads: Record<TThreadId, IChatThread>) => void;
 	setActiveThread: (id: TThreadId | null) => void;
-	setMessages: (messages: IChatMessage[]) => void;
-	appendMessage: (message: IChatMessage) => void;
-	setStreamStatus: (status: EStreamStatus) => void;
-	setStreamingText: (text: string) => void;
-	setStreamingReasoning: (text: string) => void;
-	setToolCalls: (toolCalls: IToolCall[]) => void;
-	updateToolCall: (id: TToolCallId, updates: Partial<IToolCall>) => void;
+
+	// Current chat state actions
+	setCurrentThreadId: (id: TThreadId | null) => void;
+	setCurrentServerId: (id: string | null) => void;
+	setCurrentSystemPrompt: (prompt: string) => void;
+	setCurrentInferenceParams: (params: Record<string, unknown>) => void;
+
+	// MCP Actions
 	setMcpServers: (servers: Record<string, IMcpServerState>) => void;
 	setPermissions: (serverPerms: IServerPermission[], toolPerms: IToolPermission[]) => void;
+
 	reset: () => void;
 }
 
 // ============================================================
 // Slice creator — for use with Zustand's slice pattern.
 // Uses Immer for mutable-like updates. Compatible with WarpCore's store.
+// Generic over state type to allow integration with superset types (e.g. AppState)
 // ============================================================
-export function createChatStoreSlice(
-	set: ImmerSet<IChatStoreState>,
-	_get: ImmerGet<IChatStoreState>,
+export function createChatStoreSlice<TState extends IChatStoreState>(
+	set: ImmerSet<TState>,
+	_get: ImmerGet<TState>,
 ): IChatStoreState {
 	const initialState = {
-		threads: [] as IChatThread[],
+		threads: {} as Record<TThreadId, IChatThread>,
 		activeThreadId: null as TThreadId | null,
-		messages: [] as IChatMessage[],
-		streamStatus: 'IDLE' as EStreamStatus,
-		streamingText: '',
-		streamingReasoning: '',
-		toolCalls: [] as IToolCall[],
+		messagesByThread: {} as Record<TThreadId, Record<TMessageId, IChatMessage>>,
+		headMessageIdByThread: {} as Record<TThreadId, TMessageId>,
+		toolCallsById: {} as Record<TToolCallId, IToolCall>,
+		isRunningByThread: {} as Record<TThreadId, boolean>,
 		mcpServers: {} as Record<string, IMcpServerState>,
 		serverPermissions: [] as IServerPermission[],
 		toolPermissions: [] as IToolPermission[],
+		currentThreadId: null as TThreadId | null,
+		currentServerId: null as string | null,
+		currentSystemPrompt: '',
+		currentInferenceParams: {} as Record<string, unknown>,
 	};
 
 	return {
 		...initialState,
 
-		setThreads: (threads: IChatThread[]) =>
-			set((draft) => { draft.threads = threads; }),
-		setActiveThread: (id: TThreadId | null) =>
-			set((draft) => { draft.activeThreadId = id; }),
-		setMessages: (messages: IChatMessage[]) =>
-			set((draft) => { draft.messages = messages; }),
-		appendMessage: (message: IChatMessage) =>
-			set((draft) => { draft.messages.push(message); }),
-		setStreamStatus: (status: EStreamStatus) =>
-			set((draft) => { draft.streamStatus = status; }),
-		setStreamingText: (text: string) =>
-			set((draft) => { draft.streamingText = text; }),
-		setStreamingReasoning: (text: string) =>
-			set((draft) => { draft.streamingReasoning = text; }),
-		setToolCalls: (toolCalls: IToolCall[]) =>
-			set((draft) => { draft.toolCalls = toolCalls; }),
-		updateToolCall: (id: TToolCallId, updates: Partial<IToolCall>) =>
+		// Thread actions
+		applyThreadCreated: (thread: IChatThread) =>
 			set((draft) => {
-				const idx = draft.toolCalls.findIndex((tc) => tc.id === id);
-				if (idx >= 0) Object.assign(draft.toolCalls[idx]!, updates);
+				draft.threads[thread.id] = thread;
 			}),
+
+		applyThreadUpdated: (threadId: TThreadId, updates: IThreadPatch) =>
+			set((draft) => {
+				const thread = draft.threads[threadId];
+				if (thread) {
+					if (updates.title !== undefined) draft.threads[threadId]!.title = updates.title;
+					if (updates.folderId !== undefined) draft.threads[threadId]!.folderId = updates.folderId;
+					if (updates.systemPrompt !== undefined) draft.threads[threadId]!.systemPrompt = updates.systemPrompt;
+					if (updates.meta !== undefined) draft.threads[threadId]!.meta = updates.meta;
+					if (updates.totalPromptTokens !== undefined) draft.threads[threadId]!.totalPromptTokens = updates.totalPromptTokens;
+					if (updates.totalCompletionTokens !== undefined) draft.threads[threadId]!.totalCompletionTokens = updates.totalCompletionTokens;
+				}
+			}),
+
+		applyThreadDeleted: (threadId: TThreadId) =>
+			set((draft) => {
+				delete draft.threads[threadId];
+				delete draft.messagesByThread[threadId];
+				delete draft.headMessageIdByThread[threadId];
+				delete draft.isRunningByThread[threadId];
+			}),
+
+		// Message actions
+		applyMessageCreated: (message: IChatMessage) =>
+			set((draft) => {
+				// Ensure thread exists in messagesByThread
+				if (!draft.messagesByThread[message.threadId]) {
+					draft.messagesByThread[message.threadId] = {};
+				}
+				const threadMessages = draft.messagesByThread[message.threadId]!;
+				// Insert message
+				threadMessages[message.id] = message;
+				// Update head — new message is always the new head
+				draft.headMessageIdByThread[message.threadId] = message.id;
+			}),
+
+		applyMessagePatched: (messageId: TMessageId, threadId: TThreadId, updates: IMessagePatch) =>
+			set((draft) => {
+				const msg = draft.messagesByThread[threadId]?.[messageId];
+				if (!msg) return;
+
+				// Update stats if provided
+				if (updates.stats !== undefined) {
+					msg.stats = updates.stats;
+				}
+
+				// Handle replaceParts — full replacement
+				if (updates.replaceParts !== undefined) {
+					msg.content = [...updates.replaceParts];
+					return;
+				}
+
+				// Handle addParts — upsert by part id
+				if (updates.addParts !== undefined) {
+					for (const part of updates.addParts) {
+						const existingIndex = msg.content.findIndex(p => p.id === part.id);
+						if (existingIndex >= 0) {
+							// Replace existing part
+							draft.messagesByThread[threadId]![messageId]!.content[existingIndex]! = part;
+						} else {
+							// Add new part
+							msg.content.push(part);
+						}
+					}
+				}
+			}),
+
+		applyMessageDeleted: (messageId: TMessageId, threadId: TThreadId) =>
+			set((draft) => {
+				delete draft.messagesByThread[threadId]?.[messageId];
+			}),
+
+		applyMessageChunk: (messageId: TMessageId, threadId: TThreadId, partId: TMessagePartId, deltaText: string) =>
+			set((draft) => {
+				const msg = draft.messagesByThread[threadId]?.[messageId];
+				if (!msg) return;
+
+				// Find the part by partId
+				const part = msg.content.find(p => p.id === partId);
+				if (part) {
+					// Append delta to existing text
+					if (part.type === EMessagePartType.TEXT || part.type === EMessagePartType.REASONING) {
+						part.text += deltaText;
+					}
+				} else {
+					// Defensive: create part if it doesn't exist (shouldn't happen in normal flow)
+					const newPart = {
+						id: partId,
+						type: EMessagePartType.TEXT,
+						orderIndex: msg.content.length,
+						text: deltaText,
+					} as any;
+					msg.content.push(newPart);
+				}
+			}),
+
+		// Tool call actions
+		applyToolCallCreated: (toolCall: IToolCall) =>
+			set((draft) => {
+				draft.toolCallsById[toolCall.id] = toolCall;
+			}),
+
+		applyToolCallUpdated: (toolCall: IToolCall) =>
+			set((draft) => {
+				if (draft.toolCallsById[toolCall.id]) {
+					Object.assign(draft.toolCallsById[toolCall.id]!, toolCall);
+				}
+			}),
+
+		// Inference state actions
+		applyInferenceStarted: (threadId: TThreadId, _messageId: TMessageId) =>
+			set((draft) => {
+				draft.isRunningByThread[threadId] = true;
+			}),
+
+		applyInferenceEnded: (threadId: TThreadId, _messageId: TMessageId) =>
+			set((draft) => {
+				draft.isRunningByThread[threadId] = false;
+			}),
+
+		// Initial seeding from API fetch
+		seedThreadMessages: (threadId: TThreadId, messages: IChatMessage[]) =>
+			set((draft) => {
+				// Ensure thread map exists
+				if (!draft.messagesByThread[threadId]) {
+					draft.messagesByThread[threadId] = {};
+				}
+
+				// Bulk insert all messages
+				for (const msg of messages) {
+					draft.messagesByThread[threadId]![msg.id] = msg;
+				}
+
+				// Calculate initial head: newest by createdAt, tie-break by id
+				if (messages.length > 0) {
+					let headMsg = messages[0]!;
+					for (let i = 1; i < messages.length; i++) {
+						const candidate = messages[i]!;
+						if (candidate.createdAt > headMsg.createdAt ||
+							(candidate.createdAt === headMsg.createdAt && candidate.id > headMsg.id)) {
+							headMsg = candidate;
+						}
+					}
+					draft.headMessageIdByThread[threadId] = headMsg.id;
+				}
+			}),
+
+		// Thread selection
+		setThreads: (threads: Record<TThreadId, IChatThread>) =>
+			set((draft) => {
+				draft.threads = threads;
+			}),
+
+		setActiveThread: (id: TThreadId | null) =>
+			set((draft) => {
+				draft.activeThreadId = id;
+			}),
+
+		// Current chat state actions
+		setCurrentThreadId: (id: TThreadId | null) =>
+			set((draft) => {
+				draft.currentThreadId = id;
+			}),
+
+		setCurrentServerId: (id: string | null) =>
+			set((draft) => {
+				draft.currentServerId = id;
+			}),
+
+		setCurrentSystemPrompt: (prompt: string) =>
+			set((draft) => {
+				draft.currentSystemPrompt = prompt;
+			}),
+
+		setCurrentInferenceParams: (params: Record<string, unknown>) =>
+			set((draft) => {
+				draft.currentInferenceParams = params;
+			}),
+
+		// MCP Actions
 		setMcpServers: (servers: Record<string, IMcpServerState>) =>
-			set((draft) => { draft.mcpServers = servers; }),
+			set((draft) => {
+				draft.mcpServers = servers;
+			}),
+
 		setPermissions: (serverPerms: IServerPermission[], toolPerms: IToolPermission[]) =>
 			set((draft) => {
 				draft.serverPermissions = serverPerms;
 				draft.toolPermissions = toolPerms;
 			}),
+
+		// Reset
 		reset: () =>
 			set(() => ({ ...initialState })),
 	};

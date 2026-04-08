@@ -1,10 +1,20 @@
 import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice } from '@warpcore/shared';
 import type { IProxyStatus, IStickyRouteInfo } from '@/api/services';
-import type { WritableDraft } from 'immer';
-import type { IMcpServerState, IToolPermission, IServerPermission as IMcpServerPermission } from '@warpcore/bridge';
-
-export type ImmerSet<T> = (fn: (state: WritableDraft<T>) => void) => void;
-export type ImmerGet<T> = () => T;
+export { type ImmerSet, type ImmerGet } from '@warpcore/bridge';
+import type {
+	IMcpServerState,
+	IToolPermission,
+	IServerPermission as IMcpServerPermission,
+	IChatThread,
+	IChatMessage,
+	IToolCall,
+	IThreadPatch,
+	IMessagePatch,
+	TThreadId,
+	TMessageId,
+	TMessagePartId,
+	TToolCallId,
+} from '@warpcore/bridge';
 
 export interface AppState {
 	// SSE Connection
@@ -32,10 +42,46 @@ export interface AppState {
 	// SSE Event Handlers (centralized)
 	SSEHandlers: Record<string, (data: any) => void>;
 
-	// MCP (Phase 2)
+	// MCP (Bridge canonical names)
 	mcpServers: Record<string, IMcpServerState>;
-	mcpServerPermissions: IMcpServerPermission[];
-	mcpToolPermissions: IToolPermission[];
+	serverPermissions: IMcpServerPermission[];
+	toolPermissions: IToolPermission[];
 	setMcpServers: (servers: Record<string, IMcpServerState>) => void;
-	setMcpPermissions: (serverPerms: IMcpServerPermission[], toolPerms: IToolPermission[]) => void;
+	setPermissions: (serverPerms: IMcpServerPermission[], toolPerms: IToolPermission[]) => void;
+
+	reset: () => void;
+
+	// Bridge Chat State
+	threads: Record<TThreadId, IChatThread>;
+	messagesByThread: Record<TThreadId, Record<TMessageId, IChatMessage>>;
+	headMessageIdByThread: Record<TThreadId, TMessageId>;
+	toolCallsById: Record<TToolCallId, IToolCall>;
+	isRunningByThread: Record<TThreadId, boolean>;
+	activeThreadId: TThreadId | null;
+
+	// Bridge Actions
+	applyThreadCreated: (thread: IChatThread) => void;
+	applyThreadUpdated: (threadId: TThreadId, updates: IThreadPatch) => void;
+	applyThreadDeleted: (threadId: TThreadId) => void;
+	applyMessageCreated: (message: IChatMessage) => void;
+	applyMessagePatched: (messageId: TMessageId, threadId: TThreadId, updates: IMessagePatch) => void;
+	applyMessageDeleted: (messageId: TMessageId, threadId: TThreadId) => void;
+	applyMessageChunk: (messageId: TMessageId, threadId: TThreadId, partId: TMessagePartId, deltaText: string) => void;
+	applyToolCallCreated: (toolCall: IToolCall) => void;
+	applyToolCallUpdated: (toolCall: IToolCall) => void;
+	applyInferenceStarted: (threadId: TThreadId, messageId: TMessageId) => void;
+	applyInferenceEnded: (threadId: TThreadId, messageId: TMessageId) => void;
+	seedThreadMessages: (threadId: TThreadId, messages: IChatMessage[]) => void;
+	setThreads: (threads: Record<TThreadId, IChatThread>) => void;
+	setActiveThread: (id: TThreadId | null) => void;
+
+	// Current chat state
+	currentThreadId: TThreadId | null;
+	currentServerId: string | null;
+	currentSystemPrompt: string;
+	currentInferenceParams: Record<string, unknown>;
+	setCurrentThreadId: (id: TThreadId | null) => void;
+	setCurrentServerId: (id: string | null) => void;
+	setCurrentSystemPrompt: (prompt: string) => void;
+	setCurrentInferenceParams: (params: Record<string, unknown>) => void;
 }

@@ -30,7 +30,7 @@ export { SqlitePersistence } from './persistence/betterSqlite';
 export { FetchTransport, type IFetchTransportConfig } from './transport/fetch';
 
 // Store (universal)
-export { createChatStoreSlice, type IChatStoreState } from './store';
+export { createChatStoreSlice, type IChatStoreState, type ImmerSet, type ImmerGet } from './store';
 
 // sse broadcaster
 export { SseBroadcaster } from './broadcaster/sseBroadcaster';

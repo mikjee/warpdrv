@@ -3,6 +3,9 @@
 // Core types. Universal — no Node or browser dependencies.
 // ============================================================
 
+// Re-export Immer types from store (needed for slice integration)
+export type { ImmerSet, ImmerGet } from '../store';
+
 // ============================================================
 // Identifiers
 // ============================================================
@@ -113,6 +116,18 @@ export interface IChatThreadCreatePayload {
 export interface IListThreadsOptions {
 	query?: string;
 	folderId?: TFolderId | null;
+}
+
+// ============================================================
+// Thread Patch — for patch-based updates to threads
+// ============================================================
+export interface IThreadPatch {
+	title?: string;
+	folderId?: TFolderId | null;
+	systemPrompt?: string;
+	meta?: string; // JSON blob replacement
+	totalPromptTokens?: number;
+	totalCompletionTokens?: number;
 }
 
 // ============================================================
@@ -300,7 +315,7 @@ export interface IOpenAIToolCall {
 // ============================================================
 export type IBridgeEvent =
 	| { type: 'thread.created'; thread: IChatThread }
-	| { type: 'thread.updated'; thread: IChatThread }
+	| { type: 'thread.updated'; threadId: TThreadId; updates: IThreadPatch }
 	| { type: 'thread.deleted'; threadId: TThreadId }
 	| { type: 'message.created'; message: IChatMessage }
 	| { type: 'message.patched'; messageId: TMessageId; threadId: TThreadId; updates: IMessagePatch }

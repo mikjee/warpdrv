@@ -3,39 +3,27 @@ import { Box, Flex, Text, HStack } from '@chakra-ui/react';
 import { MessageSquare, ChevronDown } from 'lucide-react';
 import {
 	AssistantRuntimeProvider,
-	useLocalRuntime,
-	useRemoteThreadListRuntime,
-	useAui,
+	useExternalStoreRuntime,
 	useAuiState,
-	RuntimeAdapterProvider,
-	type ChatModelAdapter,
-	type RemoteThreadListAdapter,
-	type ThreadHistoryAdapter,
+	type ThreadMessage,
 } from '@assistant-ui/react';
-import { createAssistantStream } from 'assistant-stream';
 import { Thread } from '@/components/assistant-ui/thread';
 import { ThreadList } from '@/components/assistant-ui/thread-list';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { PageHeader } from '../components/PageHeader';
 import { useStore } from '../store';
-import {
-	fetchThreads,
-	createThread,
-	fetchThread,
-	updateThread,
-	deleteThread,
-	fetchThreadConfig,
-	updateThreadConfig,
-} from '../api/services';
-import { api } from '../api/client';
+import { updateThreadConfig } from '../api/services';
 import type { IServer, IChatPreset, IChatInferenceParams, IThreadConfig } from '@warpcore/shared';
-import { EServerStatus, EResponseFormat, EReasoningFormat, EReasoningEffort } from '@warpcore/shared';
+import { EServerStatus, EReasoningEffort } from '@warpcore/shared';
 import { EChatRole, EMessagePartType, EToolCallStatus } from '@warpcore/bridge';
 import { ChatConfigSidebar, DEFAULT_INFERENCE_PARAMS } from '../components/ChatConfigSidebar';
-import { ToolCallBlock } from '../components/ToolCallBlock';
 import '../styles/assistant-ui.css';
-import { createContext, useContext } from 'react';
+import { createContext } from 'react';
 import { ChatToolsSidebar } from '../components/ChatToolsSidebar';
+import { selectActiveMessages, selectToolCallsForThread } from '@/hooks/useChatSelectors';
+import { useThreadConfig } from '@/hooks/useThreadConfig';
+import { ToolCallBlockWrapper } from '@/components/assistant-ui/ToolCallBlockWrapper';
+
 interface IChatConfig {
 	reasoningEffort: EReasoningEffort;
 	onReasoningEffortChange: (v: EReasoningEffort) => void;
@@ -46,390 +34,10 @@ export const ChatConfigContext = createContext<IChatConfig>({
 	onReasoningEffortChange: () => {},
 	contextSize: 0,
 });
-import { fetchThreadToolCalls } from '../api/mcpServices';
-// ============================================================
-// Model adapter — routes through backend /api/chat/completions
-// ============================================================
+// Server ID state for completions
 let currentServerId: string | null = null;
 export function setActiveServerId(id: string | null) {
 	currentServerId = id;
-}
-
-let activeInferenceParams: IChatInferenceParams = { ...DEFAULT_INFERENCE_PARAMS };
-let activeSystemPrompt: string = '';
-let activeThreadId: string | null = null;
-
-export function setActiveThreadId(id: string | null) {
-	activeThreadId = id;
-}
-
-function buildToolCallPart(id: string, tc: { serverName: string; toolName: string; args: any; result?: string; status: EToolCallStatus }) {
-	return {
-		type: 'tool-call' as const,
-		toolCallId: id,
-		toolName: tc.toolName,
-		args: tc.args,
-		result: tc.result,
-		status: { type: tc.status === EToolCallStatus.COMPLETED ? 'complete' : tc.status === EToolCallStatus.ERROR ? 'error' : tc.status === EToolCallStatus.PENDING ? 'requires-action' : 'running' },
-	};
-}
-
-const modelAdapter: ChatModelAdapter = {
-	async *run({ messages, abortSignal }) {
-		if (!currentServerId) {
-			yield { content: [{ type: 'text' as const, text: 'No server selected. Pick a running server from the dropdown above.' }] };
-			return;
-		}
-
-	const convertedMessages = messages.map((m) => {
-		const textParts = (m.content ?? []).filter((p: any) => p.type === EMessagePartType.TEXT);
-		const text = textParts.map((p: any) => (p as any).text).join('');
-		return { role: m.role as 'system' | 'user' | 'assistant', content: text };
-	});
-
-		// Build userMessage for orchestrator to save atomically
-		const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
-		let userMessage: { id: string; parentId: string | null; content: string } | undefined;
-		if (lastUserMsg) {
-			const userMsgIndex = messages.findIndex(m => m.id === lastUserMsg.id);
-			const prevMsg = userMsgIndex > 0 ? messages[userMsgIndex - 1] : null;
-			const userTextParts = (lastUserMsg.content ?? []).filter((p: any) => p.type === 'text');
-			const userText = userTextParts.map((p: any) => (p as any).text).join('');
-			userMessage = {
-				id: lastUserMsg.id,
-				parentId: prevMsg?.id ?? null,
-				content: userText,
-			};
-		}
-
-		// userMessage absent = regen
-		const body = {
-			threadId: activeThreadId ?? '',
-			userMessage,
-			serverId: currentServerId,
-			messages: convertedMessages,
-			systemPrompt: activeSystemPrompt || undefined,
-			inferenceParams: activeInferenceParams,
-		};
-
-		const response = await fetch('/api/chat/completions', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(body),
-			signal: abortSignal,
-		});
-
-		if (!response.ok || !response.body) {
-			yield { content: [{ type: 'text' as const, text: `Error: ${response.status} ${response.statusText}` }] };
-			return;
-		}
-
-		const reader = response.body.getReader();
-		const decoder = new TextDecoder();
-		let fullText = '';
-		let reasoningText = '';
-		let buffer = '';
-		let timings: any = null;
-		let usage: any = null;
-
-		const pendingToolCalls: Record<string, { serverName: string; toolName: string; args: any; result?: string; status: EToolCallStatus }> = {};
-
-		while (true) {
-			const { done, value } = await reader.read();
-			if (done) break;
-
-			buffer += decoder.decode(value, { stream: true });
-			const lines = buffer.split('\n');
-			buffer = lines.pop() ?? '';
-
-			for (const line of lines) {
-				if (!line.startsWith('data: ')) continue;
-				const data = line.slice(6).trim();
-				if (data === '[DONE]') continue;
-				if (!data) continue;
-
-				try {
-					const parsed = JSON.parse(data);
-
-					// WarpCore extension events
-					if (parsed.warpcore_event) {
-				if (parsed.warpcore_event === 'tool_call_pending') {
-					const tcId = parsed.tool_call_id;
-					const tcName = parsed.tool_name;
-					const tcArgs = JSON.parse(parsed.arguments || '{}');
-					pendingToolCalls[tcId] = { serverName: parsed.server_name, toolName: tcName, args: tcArgs, status: EToolCallStatus.PENDING };
-					const content: any[] = [];
-					if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
-					if (fullText) content.push({ type: 'text' as const, text: fullText });
-							for (const [id, tc] of Object.entries(pendingToolCalls)) {
-								content.push(buildToolCallPart(id, tc));
-						}
-						yield { content };
-				} else if (parsed.warpcore_event === 'tool_call_executing') {
-					const tcId = parsed.tool_call_id;
-					if (pendingToolCalls[tcId]) pendingToolCalls[tcId].status = EToolCallStatus.EXECUTING;
-					const content: any[] = [];
-					if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
-					if (fullText) content.push({ type: 'text' as const, text: fullText });
-							for (const [id, tc] of Object.entries(pendingToolCalls)) {
-								content.push(buildToolCallPart(id, tc));
-						}
-						yield { content };
-				} else if (parsed.warpcore_event === 'tool_call_result') {
-					const tcId = parsed.tool_call_id;
-					if (pendingToolCalls[tcId]) {
-						pendingToolCalls[tcId].status = parsed.status === 'COMPLETED' ? EToolCallStatus.COMPLETED : EToolCallStatus.ERROR;
-						pendingToolCalls[tcId].result = parsed.result;
-					}
-					const content: any[] = [];
-					if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
-					if (fullText) content.push({ type: 'text' as const, text: fullText });
-							for (const [id, tc] of Object.entries(pendingToolCalls)) {
-								content.push(buildToolCallPart(id, tc));
-						}
-						yield { content };
-						} else if (parsed.warpcore_event === 'error') {
-							yield { content: [{ type: 'text' as const, text: `Error: ${parsed.error}` }] };
-							return;
-						}
-						continue;
-					}
-
-					const delta = parsed.choices?.[0]?.delta;
-					const finishReason = parsed.choices?.[0]?.finish_reason;
-
-				if (delta?.reasoning_content) {
-					reasoningText += delta.reasoning_content;
-					const content: any[] = [];
-					if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
-					if (fullText) content.push({ type: 'text' as const, text: fullText });
-					if (content.length > 0) yield { content };
-					}
-
-			if (delta?.content) {
-				fullText += delta.content;
-				const content: any[] = [];
-				if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
-				content.push({ type: 'text' as const, text: fullText });
-				yield { content };
-					}
-
-					if (delta?.tool_calls) {
-						for (const tc of delta.tool_calls) {
-							const tcId = tc.id ?? `tc-${Object.keys(pendingToolCalls).length}`;
-							let args = {};
-							try { args = JSON.parse(tc.function?.arguments ?? '{}'); } catch {}
-							pendingToolCalls[tcId] = { serverName: '', toolName: tc.function?.name ?? 'unknown', args, status: EToolCallStatus.EXECUTING };
-						}
-						const content: any[] = [];
-						if (reasoningText) content.push({ type: 'reasoning' as const, reasoning: reasoningText });
-						if (fullText) content.push({ type: 'text' as const, text: fullText });
-						for (const [id, tc] of Object.entries(pendingToolCalls)) {
-							content.push(buildToolCallPart(id, tc));
-						}
-						yield { content };
-					}
-
-					if (parsed.timings) timings = parsed.timings;
-					if (parsed.usage) usage = parsed.usage;
-
-				} catch { /* skip malformed */ }
-			}
-		}
-
-	const finalContent: any[] = [];
-	if (reasoningText) finalContent.push({ type: 'reasoning' as const, reasoning: reasoningText });
-	finalContent.push({ type: 'text' as const, text: fullText });
-
-		const ppSpeed = timings?.prompt_per_second ?? 0;
-		const tgSpeed = timings?.predicted_per_second ?? 0;
-		const promptTokens = usage?.prompt_tokens ?? timings?.prompt_n ?? 0;
-		const completionTokens = usage?.completion_tokens ?? timings?.predicted_n ?? 0;
-		const reasoningTokens = usage?.reasoning_tokens ?? 0;
-		const ppMs = timings?.prompt_ms ?? 0;
-		const tgMs = timings?.predicted_ms ?? 0;
-
-		yield {
-			content: finalContent,
-			metadata: {
-				unstable_state: {},
-				custom: {
-					promptTokens,
-					completionTokens,
-					reasoningTokens,
-					ppSpeed: Math.round(ppSpeed * 100) / 100,
-					tgSpeed: Math.round(tgSpeed * 100) / 100,
-					ttftMs: Math.round(ppMs),
-					totalMs: Math.round(ppMs + tgMs),
-				},
-				timing: {
-					streamStartTime: 0,
-					firstTokenTime: undefined,
-					totalStreamTime: ppMs + tgMs,
-					tokenCount: completionTokens,
-					tokensPerSecond: Math.round(tgSpeed * 100) / 100,
-					totalChunks: 0,
-					toolCallCount: 0,
-				},
-			},
-		};
-	},
-};
-// ============================================================
-// Thread list adapter — talks to our SQLite backend
-// ============================================================
-const threadListAdapter: RemoteThreadListAdapter = {
-	async list() {
-		const res = await fetchThreads();
-		if (!res.ok) return { threads: [] };
-		return {
-			threads: res.data.map((t) => ({
-				remoteId: t.id,
-				externalId: undefined,
-				status: 'regular' as const,
-				title: t.title,
-			})),
-		};
-	},
-	async initialize(threadId) {
-		return { remoteId: threadId, externalId: undefined };
-	},
-	async rename(remoteId, newTitle) {
-		await updateThread(remoteId, { title: newTitle });
-	},
-	async archive(remoteId) {
-		await deleteThread(remoteId);
-	},
-	async unarchive(_remoteId) {
-		// not implemented
-	},
-	async delete(remoteId) {
-		await deleteThread(remoteId);
-	},
-	async fetch(remoteId) {
-		const res = await fetchThread(remoteId);
-		if (!res.ok) return { remoteId, status: 'regular' as const, title: undefined };
-		return {
-			remoteId: res.data.id,
-			status: 'regular' as const,
-			title: res.data.title,
-		};
-	},
-	async generateTitle(_remoteId, unstable_messages) {
-		const firstUserMsg = unstable_messages.find((m) => m.role === 'user');
-		let title = 'New Chat';
-		if (firstUserMsg) {
-			const textPart = firstUserMsg.content.find((p: any) => p.type === 'text');
-			if (textPart && 'text' in textPart) {
-				title = (textPart as any).text.slice(0, 50);
-				if ((textPart as any).text.length > 50) title += '...';
-			}
-		}
-		await updateThread(_remoteId, { title });
-		return createAssistantStream((controller) => {
-			controller.appendText(title);
-			controller.close();
-		});
-	},
-};
-// ============================================================
-// History provider — injects per-thread history adapter
-// ============================================================
-function HistoryProvider({ children }: { children: ReactNode }) {
-	const aui = useAui();
-	const history = useMemo<ThreadHistoryAdapter>(() => ({
-		async load() {
-			const { remoteId } = await aui.threadListItem().initialize();
-			if (!remoteId) return { messages: [] };
-			const res = await fetchThread(remoteId);
-			if (!res.ok || !res.data) return { messages: [] };
-		const allMsgs = (res.data as any).messages ?? [];
-		// Filter out tool role messages — their content is shown via assistant message's tool_call parts
-		const msgs = allMsgs.filter((m: any) => m.role !== EChatRole.TOOL);
-			
-		// Fetch tool calls to enrich tool_call parts
-		const toolCallsRes = await fetchThreadToolCalls(remoteId);
-		const toolCalls = (toolCallsRes?.data ?? []) as any[];
-		const tcMap = new Map(toolCalls.map((tc: any) => [tc.id, tc]));
-			
-					const items = msgs.map((m: any, idx: number) => {
-					// Map ALL parts - DO NOT filter
-					const content = (m.content ?? []).map((part: any) => {
-						if (part.type === EMessagePartType.TEXT) {
-							return { type: 'text' as const, text: part.text ?? '' };
-						}
-						if (part.type === EMessagePartType.REASONING) {
-							return { type: 'reasoning' as const, reasoning: part.text ?? '' };
-						}
-						if (part.type === EMessagePartType.TOOL_CALL) {
-								const tc = tcMap.get(part.toolCallId);
-								if (!tc) return { type: 'text' as const, text: `[tool call ${part.toolCallId}]` };
-								return {
-									type: 'tool-call' as const,
-									toolCallId: tc.id,
-									toolName: tc.toolName,
-									args: JSON.parse(tc.arguments),
-									result: tc.result ?? null,
-								};
-							}
-							return { type: 'text' as const, text: '' };
-						});
-						
-					return {
-						parentId: m.parentId ?? null,
-						message: {
-							id: m.id,
-							role: m.role as 'user' | 'assistant' | 'system',
-								content,
-								createdAt: new Date(m.createdAt),
-								status: { type: 'complete' as const },
-								metadata: { unstable_state: {}, custom: m.stats || {} },
-								attachments: [],
-							},
-					};
-				});
-					
-				const result = {
-					headId: items.length > 0 ? items[items.length - 1].message.id : null,
-					messages: items,
-				};
-				return result;
-		},
-		async append(item) {
-			// No-op — orchestrator saves both user and assistant messages atomically
-			// via POST /api/chat/completions. Thread creation handled by threadListAdapter.initialize().
-			const { remoteId } = await aui.threadListItem().initialize();
-			if (!remoteId) return;
-			// Ensure thread exists in DB on first message
-			const existing = await fetchThread(remoteId);
-			if (!existing.ok || !existing.data) {
-				await createThread({ id: remoteId, title: 'New Chat' });
-			}
-		},
-		async update(item: { message: any }) {
-			const msg = item.message;
-			if (msg.role !== 'user') return;
-			// Map assistant-ui parts to bridge format
-			const parts: any[] = msg.content.map((p: any, i: number) => {
-				if (p.type === 'text') {
-					return { id: crypto.randomUUID(), type: EMessagePartType.TEXT, orderIndex: i, text: p.text };
-				}
-				if (p.type === 'reasoning') {
-					return { id: crypto.randomUUID(), type: EMessagePartType.REASONING, orderIndex: i, text: p.reasoning };
-				}
-				return null;
-			}).filter(Boolean);
-			if (!parts.length) return;
-			// Call backend to replace parts
-			const res = await api.put<null>(`/chat/messages/${msg.id}`, { parts });
-			if (!res.ok) console.error('Failed to update message:', msg.id, res.error);
-		},
-	}), [aui]);
-	return (
-		<RuntimeAdapterProvider adapters={{ history }}>
-			{children}
-		</RuntimeAdapterProvider>
-	);
 }
 // ============================================================
 // UI Components
@@ -525,121 +133,242 @@ function ServerSelector({
 	);
 }
 // ============================================================
-// ConfigManager — lives inside AssistantRuntimeProvider
-// Uses useAuiState to reactively detect thread switches
+// Helper: Map bridge tool call status to assistant-ui status
 // ============================================================
-function ConfigManager({
-	onConfigLoaded,
-}: {
-	onConfigLoaded: (threadId: string, config: { presetId: string | null; systemPrompt: string; params: IChatInferenceParams }) => void;
-}) {
-	const threadId = useAuiState((s) => s.threadListItem?.remoteId);
-	const lastLoadedRef = useRef<string | null>(null);
-	useEffect(() => {
-		if (!threadId) return;
-		if (threadId === lastLoadedRef.current) return;
-		lastLoadedRef.current = threadId;
-		setActiveThreadId(threadId);
-		fetchThreadConfig(threadId).then((res) => {
-			if (res.ok && res.data) {
-				const config = res.data as IThreadConfig;
-				let params = DEFAULT_INFERENCE_PARAMS;
-				try {
-					const parsed = typeof config.params === 'string' ? JSON.parse(config.params) : config.params;
-					params = { ...DEFAULT_INFERENCE_PARAMS, ...parsed };
-				} catch { /* use defaults */ }
-				onConfigLoaded(threadId, {
-					presetId: config.presetId,
-					systemPrompt: config.systemPrompt,
-					params,
-				});
-			} else {
-				onConfigLoaded(threadId, {
-					presetId: null,
-					systemPrompt: '',
-					params: { ...DEFAULT_INFERENCE_PARAMS },
-				});
-			}
-		});
-	}, [threadId, onConfigLoaded]);
-	return null;
+function mapBridgeStatusToAuiStatus(status: EToolCallStatus): 'complete' | 'running' | 'requires-action' | 'error' {
+	switch (status) {
+		case EToolCallStatus.COMPLETED: return 'complete';
+		case EToolCallStatus.EXECUTING: return 'running';
+		case EToolCallStatus.PENDING: return 'requires-action';
+		case EToolCallStatus.ERROR: return 'error';
+		case EToolCallStatus.DENIED: return 'error';
+		default: return 'complete';
+	}
 }
+
 // ============================================================
-// ChatInner — main chat layout
+// ChatInner — main chat layout using bridge store
 // ============================================================
 const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	const [configOpen, setConfigOpen] = useState(false);
 	const [toolsOpen, setToolsOpen] = useState(false);
-	const [inferenceParams, setInferenceParams] = useState<IChatInferenceParams>({ ...DEFAULT_INFERENCE_PARAMS });
-	const [systemPrompt, setSystemPrompt] = useState('');
 	const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
-	// Refs for debounced save — avoids stale closures
-	const currentThreadIdRef = useRef<string | null>(null);
+
+	// Get current thread state from store
+	const currentThreadId = useStore(s => s.currentThreadId);
+	const currentSystemPrompt = useStore(s => s.currentSystemPrompt);
+	const currentInferenceParams = useStore(s => s.currentInferenceParams as unknown as IChatInferenceParams);
+	const currentServerId = useStore(s => s.currentServerId);
+
+	// Actions
+	const setCurrentSystemPrompt = useStore(s => s.setCurrentSystemPrompt);
+	const setCurrentInferenceParams = useStore(s => s.setCurrentInferenceParams);
+
+	// Load config when thread changes
+	useThreadConfig(currentThreadId);
+
+	// Debounced save
 	const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const isLoadingRef = useRef(false);
-	// Sync module-level vars so the model adapter can read them
-	useEffect(() => { activeInferenceParams = inferenceParams; }, [inferenceParams]);
-	useEffect(() => { activeSystemPrompt = systemPrompt; }, [systemPrompt]);
-	// Called by ConfigManager when active thread changes
-	const handleConfigLoaded = useCallback((threadId: string, config: { presetId: string | null; systemPrompt: string; params: IChatInferenceParams }) => {
-		// Cancel any pending save for the previous thread
-		if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-		isLoadingRef.current = true;
-		currentThreadIdRef.current = threadId;
-		setSelectedPresetId(config.presetId);
-		setSystemPrompt(config.systemPrompt);
-		setInferenceParams(config.params);
-		// Re-enable saves after React finishes this batch of state updates
-		requestAnimationFrame(() => { isLoadingRef.current = false; });
-	}, []);
-	// Save to backend — all values passed as args, nothing from closures
-	function doSave(tid: string, params: IChatInferenceParams, prompt: string, presetId: string | null) {
-		updateThreadConfig(tid, {
-			presetId: presetId,
-			systemPrompt: prompt,
-			params: JSON.stringify(params),
-		});
-	}
-	function scheduleSave(newParams: IChatInferenceParams, newPrompt: string, newPresetId: string | null) {
-		if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-		const tid = currentThreadIdRef.current;
-		if (!tid || isLoadingRef.current) return;
-		saveTimerRef.current = setTimeout(() => doSave(tid, newParams, newPrompt, newPresetId), 400);
-	}
+
 	function handleParamsChange(newParams: IChatInferenceParams) {
-		setInferenceParams(newParams);
-		scheduleSave(newParams, systemPrompt, selectedPresetId);
+		setCurrentInferenceParams(newParams as unknown as Record<string, unknown>);
+		if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+		if (currentThreadId) {
+			saveTimerRef.current = setTimeout(() => {
+				updateThreadConfig(currentThreadId, {
+					presetId: selectedPresetId,
+					systemPrompt: currentSystemPrompt,
+					params: JSON.stringify(newParams),
+				});
+			}, 400);
+		}
 	}
+
 	function handleSystemPromptChange(newPrompt: string) {
-		setSystemPrompt(newPrompt);
-		scheduleSave(inferenceParams, newPrompt, selectedPresetId);
+		setCurrentSystemPrompt(newPrompt);
+		if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+		if (currentThreadId) {
+			saveTimerRef.current = setTimeout(() => {
+				updateThreadConfig(currentThreadId, {
+					presetId: selectedPresetId,
+					systemPrompt: newPrompt,
+					params: JSON.stringify(currentInferenceParams as unknown as Record<string, unknown>),
+				});
+			}, 400);
+		}
 	}
+
 	function handlePresetSelect(presetId: string | null, preset: IChatPreset | null) {
 		setSelectedPresetId(presetId);
 		if (preset) {
-			setInferenceParams(preset.params);
-			setSystemPrompt(preset.systemPrompt);
-			scheduleSave(preset.params, preset.systemPrompt, presetId);
+			setCurrentInferenceParams(preset.params as unknown as Record<string, unknown>);
+			setCurrentSystemPrompt(preset.systemPrompt);
 		} else {
-			scheduleSave(inferenceParams, systemPrompt, null);
+			setCurrentInferenceParams({ ...DEFAULT_INFERENCE_PARAMS } as unknown as Record<string, unknown>);
+			setCurrentSystemPrompt('');
 		}
 	}
-	const runtime = useRemoteThreadListRuntime({
-		runtimeHook: () => useLocalRuntime(modelAdapter),
-		adapter: {
-			...threadListAdapter,
-			unstable_Provider: HistoryProvider,
-		},
-	});
+
 	const chatConfigValue = useMemo(() => ({
-		reasoningEffort: inferenceParams.reasoningEffort,
-		onReasoningEffortChange: (v: EReasoningEffort) => handleParamsChange({ ...inferenceParams, reasoningEffort: v }),
+		reasoningEffort: currentInferenceParams.reasoningEffort,
+		onReasoningEffortChange: (v: EReasoningEffort) => handleParamsChange({ ...currentInferenceParams, reasoningEffort: v }),
 		contextSize,
-	}), [inferenceParams, contextSize]);
+	}), [currentInferenceParams, contextSize]);
+
+	// Get messages and tool calls for current thread
+	const messages = currentThreadId ? useStore(s => selectActiveMessages(s, currentThreadId)) : [];
+	const toolCalls = currentThreadId ? useStore(s => selectToolCallsForThread(s, currentThreadId)) : [];
+	const isRunning = currentThreadId ? useStore(s => s.isRunningByThread[currentThreadId] ?? false) : false;
+
+	// Initial thread load - seed messages and tool calls
+	const seedThreadMessages = useStore(s => s.seedThreadMessages);
+	const applyToolCallCreated = useStore(s => s.applyToolCallCreated);
+	useEffect(() => {
+		if (!currentThreadId) return;
+		
+		async function loadThread() {
+			// Fetch thread messages
+			const res = await fetch(`/api/chat/threads/${currentThreadId ?? ''}`);
+			if (res.ok) {
+				const data = await res.json();
+				seedThreadMessages(currentThreadId as string, data.messages ?? []);
+				
+				// Fetch tool calls
+				const tcRes = await fetch(`/api/chat/threads/${currentThreadId}/tool-calls`);
+				if (tcRes.ok) {
+					const tcs = await tcRes.json();
+					for (const tc of tcs) {
+						applyToolCallCreated(tc);
+					}
+				}
+			}
+		}
+		loadThread();
+	}, [currentThreadId, seedThreadMessages, applyToolCallCreated]);
+
+	// Convert bridge messages to assistant-ui format
+	const convertMessage = useCallback((msg: any, index: number) => {
+		const tcMap = new Map(toolCalls.map(tc => [tc.id, tc]));
+		
+		// Handle TOOL role - render as assistant with tool-call part containing ToolCallBlockWrapper
+		if (msg.role === EChatRole.TOOL) {
+			const toolCallId = (msg.content ?? []).find((p: any) => p.type === EMessagePartType.TOOL_CALL)?.toolCallId;
+			const tc = toolCallId ? tcMap.get(toolCallId) : undefined;
+			
+			if (!tc) {
+				// Fallback if tool call not found
+				return {
+					id: msg.id,
+					role: 'assistant' as const,
+					content: [{ type: 'text' as const, text: '[Tool call not found]' }],
+					createdAt: new Date(msg.createdAt),
+					status: { type: 'complete' as const, reason: 'stop' as const },
+					metadata: { unstable_state: {}, custom: msg.stats || {} },
+					attachments: [],
+				};
+			}
+			
+			const auiStatus = mapBridgeStatusToAuiStatus(tc.status);
+			
+			return {
+				id: msg.id,
+				role: 'assistant' as const, // Render as assistant bubble
+				content: [{
+					type: 'tool-call' as const,
+					toolCallId: tc.id,
+					toolName: tc.toolName,
+					toolArgs: tc.arguments,
+					toolResult: tc.result,
+					status: auiStatus,
+					toolUI: (
+						<ToolCallBlockWrapper 
+							toolCallId={tc.id}
+							toolName={tc.toolName}
+							serverName={tc.serverName}
+							args={JSON.parse(tc.arguments)}
+							result={tc.result ? JSON.parse(tc.result) : undefined}
+							status={auiStatus}
+						/>
+					),
+				}],
+				createdAt: new Date(msg.createdAt),
+				status: { type: 'complete' as const, reason: 'stop' as const },
+				metadata: { unstable_state: {}, custom: msg.stats || {} },
+				attachments: [],
+			};
+		}
+		
+		const content = (msg.content ?? []).map((part: any) => {
+			// Filter out TOOL_CALL parts from assistant messages - they are for API context only
+			if (part.type === EMessagePartType.TOOL_CALL) {
+				return null;
+			}
+			if (part.type === EMessagePartType.TEXT) {
+				return { type: 'text' as const, text: part.text ?? '' };
+			}
+			if (part.type === EMessagePartType.REASONING) {
+				return { type: 'reasoning' as const, reasoning: part.text ?? '' };
+			}
+			return { type: 'text' as const, text: '' };
+		}).filter(Boolean);
+
+		return {
+			id: msg.id,
+			role: msg.role as 'user' | 'assistant' | 'system',
+			content: content as any,
+			createdAt: new Date(msg.createdAt),
+			status: { type: 'complete' as const, reason: 'stop' as const },
+			metadata: { unstable_state: {}, custom: msg.stats || {} },
+			attachments: [],
+		};
+	}, [toolCalls]);
+
+	const convertedMessages = useMemo(() => {
+		return messages.map((msg, idx) => convertMessage(msg, idx));
+	}, [messages, convertMessage]);
+
+	// Runtime with external store
+	const runtime = useExternalStoreRuntime({
+		messages: convertedMessages,
+		isRunning,
+		onNew: async (message) => {
+			if (!currentThreadId || !currentServerId) return;
+			const text = (message.content as any[]).filter(p => p.type === 'text').map(p => p.text).join('');
+			const lastMsg = messages[messages.length - 1];
+			await fetch('/api/chat/completions', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					threadId: currentThreadId,
+					userMessage: { content: text },
+					parentId: lastMsg?.id ?? null,
+					serverId: currentServerId,
+					messages: [], // Will be built by backend from tree
+					systemPrompt: currentSystemPrompt,
+					inferenceParams: currentInferenceParams,
+				}),
+			});
+		},
+		onReload: async (parentId) => {
+			if (!currentThreadId || !currentServerId) return;
+			await fetch('/api/chat/completions', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					threadId: currentThreadId,
+					parentId,
+					serverId: currentServerId,
+					messages: [],
+					systemPrompt: currentSystemPrompt,
+					inferenceParams: currentInferenceParams,
+				}),
+			});
+		},
+		convertMessage,
+	});
+
 	return (
 		<ChatConfigContext.Provider value={chatConfigValue}>
-		<AssistantRuntimeProvider runtime={runtime}>
-			<ConfigManager onConfigLoaded={handleConfigLoaded} />
 			<TooltipProvider>
 				<Flex flex="1" h="100%" overflow="hidden" className="dark">
 				<Box
@@ -652,28 +381,30 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 				>
 					<ThreadList />
 				</Box>
-					<Box flex="1" overflow="hidden">
-						<Thread />
-					</Box>
-					<ChatConfigSidebar
-						open={configOpen}
-						onToggle={() => setConfigOpen(!configOpen)}
-						params={inferenceParams}
-						systemPrompt={systemPrompt}
-						selectedPresetId={selectedPresetId}
-						onParamsChange={handleParamsChange}
-						onSystemPromptChange={handleSystemPromptChange}
-						onPresetSelect={handlePresetSelect}
-					/>
-					<ChatToolsSidebar open={toolsOpen} onToggle={() => setToolsOpen(!toolsOpen)} />
-				</Flex>
-			</TooltipProvider>
-		</AssistantRuntimeProvider>
-		</ChatConfigContext.Provider>
+			<AssistantRuntimeProvider runtime={runtime}>
+				<Box flex="1" overflow="hidden">
+					<Thread />
+				</Box>
+			</AssistantRuntimeProvider>
+				<ChatConfigSidebar
+					open={configOpen}
+					onToggle={() => setConfigOpen(!configOpen)}
+					params={currentInferenceParams}
+					systemPrompt={currentSystemPrompt}
+					selectedPresetId={selectedPresetId}
+					onParamsChange={handleParamsChange}
+					onSystemPromptChange={handleSystemPromptChange}
+					onPresetSelect={handlePresetSelect}
+				/>
+				<ChatToolsSidebar open={toolsOpen} onToggle={() => setToolsOpen(!toolsOpen)} />
+			</Flex>
+		</TooltipProvider>
+	</ChatConfigContext.Provider>
 	);
 });
 export function ChatPage() {
 	const servers = Object.values(useStore((s) => s.servers));
+	const setCurrentServerId = useStore(s => s.setCurrentServerId);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const selected = servers.find((s: IServer) => s.id === selectedId);
 	const runningServers = servers.filter((s: IServer) => s.status === EServerStatus.RUNNING);
@@ -682,6 +413,9 @@ export function ChatPage() {
 	}
 	const activeServerId = (selected && selected.status === EServerStatus.RUNNING) ? selected.id : null;
 	setActiveServerId(activeServerId);
+	useEffect(() => {
+		setCurrentServerId(activeServerId);
+	}, [activeServerId, setCurrentServerId]);
 	return (
 		<Flex direction="column" h="100%" overflow="hidden">
 			<PageHeader

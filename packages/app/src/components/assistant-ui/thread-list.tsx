@@ -16,18 +16,16 @@ import {
 	FolderOpenIcon,
 } from 'lucide-react';
 import type { IChatThread as IBridgeChatThread, IFolder as IChatFolder } from '@warpcore/bridge';
+import { useStore } from '../../store';
+import {
+	fetchFolders, createFolder, updateFolder, deleteFolder, reorderFolders,
+} from '../../api/services';
 
 // Extend bridge thread type with computed fields from API
 interface IChatThread extends IBridgeChatThread {
 	messageCount?: number;
 	totalTokens?: number;
 }
-
-import {
-	fetchThreads, fetchFolders, updateThread,
-	createFolder, updateFolder, deleteFolder, deleteThread,
-	reorderFolders,
-} from '../../api/services';
 
 // ============================================================
 // Types
@@ -39,32 +37,49 @@ type TSortDir = 'asc' | 'desc';
 // Hooks
 // ============================================================
 function useThreadsAndFolders() {
-	const [threads, setThreads] = useState<IChatThread[]>([]);
+	const threads = useStore(s => Object.values(s.threads) as IChatThread[]);
+	const setCurrentThreadId = useStore(s => s.setCurrentThreadId);
+	const setThreads = useStore(s => s.setThreads);
 	const [folders, setFolders] = useState<IChatFolder[]>([]);
 
+	// Initial load
 	useEffect(() => {
-		Promise.all([fetchThreads(), fetchFolders()]).then(([tRes, fRes]) => {
-			if (tRes.ok) setThreads(tRes.data);
+		Promise.all([fetchFolders()]).then(([fRes]) => {
 			if (fRes.ok) setFolders(fRes.data);
 		});
 	}, []);
 
 	async function patchThread(id: string, patch: Partial<IChatThread>) {
-		const res = await updateThread(id, patch);
+		const res = await fetch(`/api/chat/threads/${id}`, {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(patch),
+		});
 		if (res.ok) {
-			setThreads(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t));
+			// Update store
+			const updated = await res.json();
+			// Convert array to Record for setThreads
+			const threadsRecord: Record<string, IChatThread> = {};
+			for (const t of threads) threadsRecord[t.id] = t;
+			setThreads({ ...threadsRecord, [id]: updated });
 		}
 		return res;
 	}
 
 	async function removeThread(id: string) {
-		await deleteThread(id);
-		setThreads(prev => prev.filter(t => t.id !== id));
+		await fetch(`/api/chat/threads/${id}`, { method: 'DELETE' });
+		const next: Record<string, IChatThread> = {};
+		for (const [k, v] of Object.entries(threads)) {
+			if (k !== id) next[k] = v;
+		}
+		setThreads(next);
 	}
 
 	async function removeAllThreads() {
-		for (const t of threads) await deleteThread(t.id);
-		setThreads([]);
+		for (const t of threads) {
+			await fetch(`/api/chat/threads/${t.id}`, { method: 'DELETE' });
+		}
+		setThreads({} as Record<string, IChatThread>);
 	}
 
 	async function addFolder(name: string) {
@@ -80,7 +95,16 @@ function useThreadsAndFolders() {
 	async function removeFolder(id: string) {
 		await deleteFolder(id);
 		setFolders(prev => prev.filter(f => f.id !== id));
-		setThreads(prev => prev.map(t => t.folderId === id ? { ...t, folderId: null } : t));
+		// Move threads from this folder to root
+		const threadsRecord: Record<string, IChatThread> = {};
+		for (const t of threads) {
+			if (t.folderId === id) {
+				threadsRecord[t.id] = { ...t, folderId: null };
+			} else {
+				threadsRecord[t.id] = t;
+			}
+		}
+		setThreads(threadsRecord);
 	}
 
 	async function refreshFolders() {
@@ -88,7 +112,7 @@ function useThreadsAndFolders() {
 		if (fRes.ok) setFolders(fRes.data);
 	}
 
-	return { threads, folders, patchThread, removeThread, removeAllThreads, addFolder, patchFolder, removeFolder, refreshFolders };
+	return { threads, folders, patchThread, removeThread, removeAllThreads, addFolder, patchFolder, removeFolder, refreshFolders, setCurrentThreadId };
 }
 
 // ============================================================
@@ -320,10 +344,11 @@ function FolderSection({
 // ============================================================
 // Enhanced Thread List Item (wraps assistant-ui primitives)
 // ============================================================
-function EnhancedThreadListItem({ thread, onRename, onStartDrag }: {
+function EnhancedThreadListItem({ thread, onRename, onStartDrag, onSelect }: {
 	thread: IChatThread;
 	onRename: (id: string, title: string) => void;
 	onStartDrag: (threadId: string) => void;
+	onSelect: (threadId: string) => void;
 }) {
 	const [renaming, setRenaming] = useState(false);
 
@@ -335,6 +360,7 @@ function EnhancedThreadListItem({ thread, onRename, onStartDrag }: {
 				e.dataTransfer.setData('threadId', thread.id);
 				onStartDrag(thread.id);
 			}}
+			onClick={() => onSelect(thread.id)}
 			style={{ minHeight: '40px', cursor: 'grab' }}
 		>
 			{renaming ? (
@@ -371,6 +397,7 @@ function EnhancedThreadListItem({ thread, onRename, onStartDrag }: {
 						cursor="pointer" p="1" mr="1" borderRadius="sm"
 						opacity={0} className="group-hover:!opacity-50 group-data-active:!opacity-50"
 						_hover={{ bg: 'rgba(255,255,255,0.06)' }}
+						onClick={(e) => e.stopPropagation()}
 					>
 						<MoreHorizontalIcon size={13} />
 					</Box>
@@ -382,12 +409,15 @@ function EnhancedThreadListItem({ thread, onRename, onStartDrag }: {
 					<ThreadListItemMorePrimitive.Item
 						className="aui-thread-list-item-more-item flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
 						onClick={() => setRenaming(true)}
+						onClickCapture={(e) => e.stopPropagation()}
 					>
 						<PencilIcon className="size-4" />
 						Rename
 					</ThreadListItemMorePrimitive.Item>
 					<ThreadListItemPrimitive.Delete asChild>
-						<ThreadListItemMorePrimitive.Item className="aui-thread-list-item-more-item flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-destructive text-sm outline-none hover:bg-destructive/10">
+						<ThreadListItemMorePrimitive.Item className="aui-thread-list-item-more-item flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-destructive text-sm outline-none hover:bg-destructive/10"
+							onClickCapture={(e) => e.stopPropagation()}
+						>
 							<TrashIcon className="size-4" />
 							Delete
 						</ThreadListItemMorePrimitive.Item>
@@ -511,6 +541,10 @@ export const ThreadList: FC = () => {
 		if (threadId) handleDropThread(threadId, null);
 	}
 
+	function handleSelectThread(threadId: string) {
+		threadsAPI.setCurrentThreadId(threadId);
+	}
+
 	function cycleSortField() {
 		const fields: TSortField[] = ['updatedAt', 'createdAt', 'title', 'messageCount'];
 		const idx = fields.indexOf(sortField);
@@ -598,7 +632,7 @@ export const ThreadList: FC = () => {
 					<ThreadListPrimitive.Items>
 						{() => {
 							const fThreads = threadsByFolder(f.id);
-							return <ThreadListFilteredItems threads={fThreads} onRename={handleRenameThread} onStartDrag={setDraggingThread} />;
+							return <ThreadListFilteredItems threads={fThreads} onRename={handleRenameThread} onStartDrag={setDraggingThread} onSelect={handleSelectThread} />;
 						}}
 					</ThreadListPrimitive.Items>
 				</FolderSection>
@@ -621,7 +655,7 @@ export const ThreadList: FC = () => {
 				</AuiIf>
 				<AuiIf condition={(s) => !s.threads.isLoading}>
 					<ThreadListPrimitive.Items>
-						{() => <ThreadListRootItem threads={rootThreads} onRename={handleRenameThread} onStartDrag={setDraggingThread} />}
+						{() => <ThreadListRootItem threads={rootThreads} onRename={handleRenameThread} onStartDrag={setDraggingThread} onSelect={handleSelectThread} />}
 					</ThreadListPrimitive.Items>
 				</AuiIf>
 			</Box>
@@ -670,25 +704,27 @@ export const ThreadList: FC = () => {
 // Helper: renders only items matching a thread filter
 // ThreadListPrimitive.Items renders ALL items — we filter visually
 // ============================================================
-function ThreadListRootItem({ threads, onRename, onStartDrag }: {
+function ThreadListRootItem({ threads, onRename, onStartDrag, onSelect }: {
 	threads: IChatThread[];
 	onRename: (id: string, title: string) => void;
 	onStartDrag: (threadId: string) => void;
+	onSelect: (threadId: string) => void;
 }) {
 	// Get current item's remoteId to check if it's a root thread
 	const remoteId = useAuiState((s) => s.threadListItem?.remoteId);
 	const thread = threads.find((t) => t.id === remoteId);
 	if (!thread) return null; // Not a root thread, hide it
-	return <EnhancedThreadListItem thread={thread} onRename={onRename} onStartDrag={onStartDrag} />;
+	return <EnhancedThreadListItem thread={thread} onRename={onRename} onStartDrag={onStartDrag} onSelect={onSelect} />;
 }
 
-function ThreadListFilteredItems({ threads, onRename, onStartDrag }: {
+function ThreadListFilteredItems({ threads, onRename, onStartDrag, onSelect }: {
 	threads: IChatThread[];
 	onRename: (id: string, title: string) => void;
 	onStartDrag: (threadId: string) => void;
+	onSelect: (threadId: string) => void;
 }) {
 	const remoteId = useAuiState((s) => s.threadListItem?.remoteId);
 	const thread = threads.find((t) => t.id === remoteId);
 	if (!thread) return null;
-	return <EnhancedThreadListItem thread={thread} onRename={onRename} onStartDrag={onStartDrag} />;
+	return <EnhancedThreadListItem thread={thread} onRename={onRename} onStartDrag={onStartDrag} onSelect={onSelect} />;
 }

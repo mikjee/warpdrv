@@ -20,4 +20,4 @@ export { PermissionManager } from './permissions';
 export { FetchTransport, type IFetchTransportConfig } from './transport/fetch';
 
 // Store (universal)
-export { createChatStoreSlice, type IChatStoreState } from './store';
+export { createChatStoreSlice, type IChatStoreState, type ImmerSet, type ImmerGet } from './store';

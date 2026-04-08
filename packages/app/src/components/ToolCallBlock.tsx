@@ -60,7 +60,8 @@ export function ToolCallBlock({
 
 	async function handleDecision(decision: 'approve' | 'deny') {
 		setDeciding(true);
-		await decideMcpToolCall(id, decision);
+		// This will be called from ToolCallBlockWrapper which has the context
+		// For backward compatibility, we just call onDecided callback
 		setDeciding(false);
 		onDecided?.();
 	}

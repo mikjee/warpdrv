@@ -4,13 +4,17 @@ import { Shell } from './components/Shell';
 import { fetchSettings, scanModels } from './api/services';
 import { useToast } from './components/ToastProvider';
 import { useEventSource } from './hooks/useEventSource';
+import { useChatEventsStream } from './hooks/useChatEventsStream';
 
 export function App() {
 	const { toast } = useToast();
 	const startupScanDone = useRef(false);
 
-	// Initialize SSE connection
+	// Initialize SSE connection for control plane
 	useEventSource();
+
+	// Initialize bridge SSE connection for chat events
+	useChatEventsStream();
 
 	// Run one model scan on app startup if model directories are configured
 	useEffect(() => {
