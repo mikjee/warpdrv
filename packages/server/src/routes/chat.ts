@@ -22,8 +22,10 @@ chatRouter.get('/threads', async (req, res) => {
 		if (query) options.query = query;
 		if (folderId !== undefined) options.folderId = folderId === 'null' ? null : folderId;
 		const threads = await persistence.listThreads(options);
+		console.log('[Server] GET /api/chat/threads - found', threads.length, 'threads:', threads.map(t => t.id));
 		res.json({ ok: true, data: threads, total: threads.length, error: null });
 	} catch (err) {
+		console.error('[Server] GET /api/chat/threads - error:', err);
 		res.status(500).json({ ok: false, data: [], total: 0, error: String(err) });
 	}
 });
@@ -277,7 +279,7 @@ chatRouter.put('/threads/:id/config', async (req, res) => {
 
 chatRouter.post('/completions', async (req, res) => {
 	const body = req.body as any;
-	if (!body.threadId || !body.messages || body.messages.length === 0) {
+	if (!body.threadId || !Array.isArray(body.messages)) {
 		res.status(400).json({ ok: false, data: null, error: 'Missing required fields' });
 		return;
 	}
@@ -323,10 +325,24 @@ chatRouter.post('/cancel/:threadId', (req, res) => {
 
 // GET /api/chat/events — global SSE channel for all bridge events
 chatRouter.get('/events', async (req, res) => {
+	console.log('[Chat SSE] New client connection');
 	const { createSession } = await import('better-sse');
 	const session = await createSession(req, res);
 	const channel = (broadcaster as any).getChannel();
 	channel.register(session);
+	console.log('[Chat SSE] Session registered to broadcaster channel');
+	
+	// Keep connection alive until client disconnects
+	await new Promise<void>((resolve) => {
+		req.on('close', () => {
+			console.log('[Chat SSE] Client disconnected');
+			resolve();
+		});
+		req.on('error', (err) => {
+			console.error('[Chat SSE] Connection error:', err);
+			resolve();
+		});
+	});
 });
 
 // PUT /api/chat/messages/:id — edit message parts, no inference

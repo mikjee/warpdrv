@@ -4,58 +4,66 @@ import { useStore } from '../store';
 import type { IBridgeEvent } from '@warpcore/bridge';
 
 export function useChatEventsStream() {
-	const apply = useStore(s => ({
-		applyThreadCreated: s.applyThreadCreated,
-		applyThreadUpdated: s.applyThreadUpdated,
-		applyThreadDeleted: s.applyThreadDeleted,
-		applyMessageCreated: s.applyMessageCreated,
-		applyMessagePatched: s.applyMessagePatched,
-		applyMessageDeleted: s.applyMessageDeleted,
-		applyMessageChunk: s.applyMessageChunk,
-		applyToolCallCreated: s.applyToolCallCreated,
-		applyToolCallUpdated: s.applyToolCallUpdated,
-		applyInferenceStarted: s.applyInferenceStarted,
-		applyInferenceEnded: s.applyInferenceEnded,
-	}));
+	const applyThreadCreated = useStore(s => s.applyThreadCreated);
+	const applyThreadUpdated = useStore(s => s.applyThreadUpdated);
+	const applyThreadDeleted = useStore(s => s.applyThreadDeleted);
+	const applyMessageCreated = useStore(s => s.applyMessageCreated);
+	const applyMessagePatched = useStore(s => s.applyMessagePatched);
+	const applyMessageDeleted = useStore(s => s.applyMessageDeleted);
+	const applyMessageChunk = useStore(s => s.applyMessageChunk);
+	const applyToolCallCreated = useStore(s => s.applyToolCallCreated);
+	const applyToolCallUpdated = useStore(s => s.applyToolCallUpdated);
+	const applyInferenceStarted = useStore(s => s.applyInferenceStarted);
+	const applyInferenceEnded = useStore(s => s.applyInferenceEnded);
 
 	useEffect(() => {
+		console.log('[Chat SSE] Creating EventSource connection to /api/chat/events');
 		const es = new EventSource('/api/chat/events');
+
+		es.onopen = () => {
+			console.log('[Chat SSE] ✅ Connection opened successfully');
+		};
 
 		const handleEvent = (e: MessageEvent) => {
 			const event = JSON.parse(e.data) as IBridgeEvent;
+			console.log('[Chat SSE Event] type:', event.type, 'full event:', JSON.stringify(event));
 			switch (event.type) {
 				case 'thread.created':
-					apply.applyThreadCreated(event.thread);
+					console.log('[Chat SSE] thread.created:', JSON.stringify(event.thread));
+					applyThreadCreated(event.thread);
 					break;
 			case 'thread.updated':
-				apply.applyThreadUpdated(event.threadId, event.updates);
+				applyThreadUpdated(event.threadId, event.updates);
 				break;
 			case 'thread.deleted':
-				apply.applyThreadDeleted(event.threadId);
+				applyThreadDeleted(event.threadId);
 				break;
 			case 'message.created':
-					apply.applyMessageCreated(event.message);
+					console.log('[Chat SSE] message.created:', JSON.stringify(event.message));
+					applyMessageCreated(event.message);
 					break;
 			case 'message.patched':
-				apply.applyMessagePatched(event.messageId, event.threadId, event.updates);
+				console.log('[Chat SSE] message.patched:', JSON.stringify(event.updates));
+				applyMessagePatched(event.messageId, event.threadId, event.updates);
 				break;
 			case 'message.deleted':
-				apply.applyMessageDeleted(event.messageId, event.threadId);
+				applyMessageDeleted(event.messageId, event.threadId);
 				break;
 			case 'message.chunk':
-					apply.applyMessageChunk(event.messageId, event.threadId, event.partId, event.deltaText);
-					break;
+				console.log('[Chat SSE] message.chunk:', JSON.stringify({ messageId: event.messageId, partId: event.partId, deltaText: event.deltaText }));
+				applyMessageChunk(event.messageId, event.threadId, event.partId, event.deltaText);
+				break;
 				case 'tool_call.created':
-					apply.applyToolCallCreated(event.toolCall);
+					applyToolCallCreated(event.toolCall);
 					break;
 				case 'tool_call.updated':
-					apply.applyToolCallUpdated(event.toolCall);
+					applyToolCallUpdated(event.toolCall);
 					break;
 				case 'inference.started':
-					apply.applyInferenceStarted(event.threadId, event.messageId);
+					applyInferenceStarted(event.threadId, event.messageId);
 					break;
 				case 'inference.ended':
-					apply.applyInferenceEnded(event.threadId, event.messageId);
+					applyInferenceEnded(event.threadId, event.messageId);
 					break;
 				default:
 					// Unknown event type, ignore
@@ -77,12 +85,24 @@ export function useChatEventsStream() {
 		es.addEventListener('inference.ended', handleEvent);
 
 		es.onerror = (err) => {
-			console.error('[ChatEventsStream] error', err);
-			// EventSource auto-reconnects by default
+			console.error('[Chat SSE] ❌ Connection error:', err);
 		};
 
 		return () => {
+			console.log('[Chat SSE] Cleaning up EventSource connection');
 			es.close();
 		};
-	}, [apply]);
+	}, [
+		applyThreadCreated,
+		applyThreadUpdated,
+		applyThreadDeleted,
+		applyMessageCreated,
+		applyMessagePatched,
+		applyMessageDeleted,
+		applyMessageChunk,
+		applyToolCallCreated,
+		applyToolCallUpdated,
+		applyInferenceStarted,
+		applyInferenceEnded,
+	]);
 }

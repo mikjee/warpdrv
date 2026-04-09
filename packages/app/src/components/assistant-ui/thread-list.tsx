@@ -1,4 +1,5 @@
-import { useState, useRef, useCallback, useEffect, type FC, type ReactNode, type DragEvent } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo, type FC, type ReactNode, type DragEvent } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import {
 	Box, Flex, Text, HStack, VStack, Input, Portal,
 } from '@chakra-ui/react';
@@ -18,7 +19,7 @@ import {
 import type { IChatThread as IBridgeChatThread, IFolder as IChatFolder } from '@warpcore/bridge';
 import { useStore } from '../../store';
 import {
-	fetchFolders, createFolder, updateFolder, deleteFolder, reorderFolders,
+	fetchFolders, fetchThreads, createFolder, updateFolder, deleteFolder, reorderFolders,
 } from '../../api/services';
 
 // Extend bridge thread type with computed fields from API
@@ -37,19 +38,34 @@ type TSortDir = 'asc' | 'desc';
 // Hooks
 // ============================================================
 function useThreadsAndFolders() {
-	const threads = useStore(s => Object.values(s.threads) as IChatThread[]);
+	// Custom comparator to only re-render when thread IDs actually change
+	const threads = useStore(useShallow(s => {
+		const threadsArray = Object.values(s.threads) as IChatThread[];
+		console.log('[ThreadList] useStore threads selector - found', threadsArray.length, 'threads:', threadsArray.map(t => t.id));
+		return threadsArray;
+	}));
 	const setCurrentThreadId = useStore(s => s.setCurrentThreadId);
 	const setThreads = useStore(s => s.setThreads);
 	const [folders, setFolders] = useState<IChatFolder[]>([]);
 
 	// Initial load
 	useEffect(() => {
-		Promise.all([fetchFolders()]).then(([fRes]) => {
+		console.log('[ThreadList] Initial load effect running');
+		Promise.all([fetchThreads(), fetchFolders()]).then(([tRes, fRes]) => {
+			console.log('[ThreadList] fetchThreads result:', tRes.ok ? 'ok' : 'failed', 'data:', tRes.data);
+			if (tRes.ok && tRes.data) {
+				const threadsRecord = tRes.data.reduce((acc, t) => {
+					(acc as any)[t.id] = t;
+					return acc;
+				}, {} as Record<string, IChatThread>);
+				console.log('[ThreadList] Calling setThreads with', Object.keys(threadsRecord).length, 'threads');
+				setThreads(threadsRecord);
+			}
 			if (fRes.ok) setFolders(fRes.data);
 		});
 	}, []);
 
-	async function patchThread(id: string, patch: Partial<IChatThread>) {
+	const patchThread = useCallback(async (id: string, patch: Partial<IChatThread>) => {
 		const res = await fetch(`/api/chat/threads/${id}`, {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
@@ -58,59 +74,71 @@ function useThreadsAndFolders() {
 		if (res.ok) {
 			// Update store
 			const updated = await res.json();
-			// Convert array to Record for setThreads
 			const threadsRecord: Record<string, IChatThread> = {};
 			for (const t of threads) threadsRecord[t.id] = t;
-			setThreads({ ...threadsRecord, [id]: updated });
+			// Only update if different to prevent unnecessary re-renders
+			if (threadsRecord[id]?.title !== updated.title || threadsRecord[id]?.folderId !== updated.folderId) {
+				setThreads({ ...threadsRecord, [id]: updated });
+			}
 		}
 		return res;
-	}
+	}, [threads]);
 
-	async function removeThread(id: string) {
+	const removeThread = useCallback(async (id: string) => {
 		await fetch(`/api/chat/threads/${id}`, { method: 'DELETE' });
 		const next: Record<string, IChatThread> = {};
+		let changed = false;
 		for (const [k, v] of Object.entries(threads)) {
-			if (k !== id) next[k] = v;
+			if (k !== id) {
+				next[k] = v;
+			} else {
+				changed = true;
+			}
 		}
-		setThreads(next);
-	}
+		// Only update if thread actually existed
+		if (changed) setThreads(next);
+	}, [threads]);
 
-	async function removeAllThreads() {
+	const removeAllThreads = useCallback(async () => {
+		if (threads.length === 0) return;
 		for (const t of threads) {
 			await fetch(`/api/chat/threads/${t.id}`, { method: 'DELETE' });
 		}
 		setThreads({} as Record<string, IChatThread>);
-	}
+	}, [threads]);
 
-	async function addFolder(name: string) {
+	const addFolder = useCallback(async (name: string) => {
 		const res = await createFolder(name);
 		if (res.ok) setFolders(prev => [...prev, res.data]);
-	}
+	}, []);
 
-	async function patchFolder(id: string, patch: Partial<IChatFolder>) {
+	const patchFolder = useCallback(async (id: string, patch: Partial<IChatFolder>) => {
 		await updateFolder(id, patch);
 		setFolders(prev => prev.map(f => f.id === id ? { ...f, ...patch } : f));
-	}
+	}, []);
 
-	async function removeFolder(id: string) {
+	const removeFolder = useCallback(async (id: string) => {
 		await deleteFolder(id);
 		setFolders(prev => prev.filter(f => f.id !== id));
 		// Move threads from this folder to root
 		const threadsRecord: Record<string, IChatThread> = {};
+		let changed = false;
 		for (const t of threads) {
 			if (t.folderId === id) {
 				threadsRecord[t.id] = { ...t, folderId: null };
+				changed = true;
 			} else {
 				threadsRecord[t.id] = t;
 			}
 		}
-		setThreads(threadsRecord);
-	}
+		// Only update if threads were actually moved
+		if (changed) setThreads(threadsRecord);
+	}, [threads]);
 
-	async function refreshFolders() {
+	const refreshFolders = useCallback(async () => {
 		const fRes = await fetchFolders();
 		if (fRes.ok) setFolders(fRes.data);
-	}
+	}, []);
 
 	return { threads, folders, patchThread, removeThread, removeAllThreads, addFolder, patchFolder, removeFolder, refreshFolders, setCurrentThreadId };
 }
@@ -441,53 +469,59 @@ export const ThreadList: FC = () => {
 	const [draggingThread, setDraggingThread] = useState<string | null>(null);
 	const [rootDragOver, setRootDragOver] = useState(false);
 
-	const filteredThreads = threadsAPI.threads.filter((t) => {
+	const filteredThreads = useMemo(() => threadsAPI.threads.filter((t) => {
 		if (!search) return true;
 		return t.title.toLowerCase().includes(search.toLowerCase());
-	});
+	}), [threadsAPI.threads, search]);
 
-	const sortedThreads = [...filteredThreads].sort((a, b) => {
+	const sortedThreads = useMemo(() => [...filteredThreads].sort((a, b) => {
 		let cmp = 0;
 		if (sortField === 'updatedAt') cmp = a.updatedAt - b.updatedAt;
 		else if (sortField === 'createdAt') cmp = a.createdAt - b.createdAt;
 		else if (sortField === 'title') cmp = a.title.localeCompare(b.title);
 		else if (sortField === 'messageCount') cmp = (a.totalTokens ?? 0) - (b.totalTokens ?? 0);
 		return sortDir === 'desc' ? -cmp : cmp;
-	});
+	}), [filteredThreads, sortField, sortDir]);
 
-	const rootThreads = sortedThreads.filter((t) => !t.folderId);
-	const threadsByFolder = (folderId: string) => sortedThreads.filter((t) => t.folderId === folderId);
+	const rootThreads = useMemo(() => sortedThreads.filter((t) => !t.folderId), [sortedThreads]);
+	const threadsByFolderMap = useMemo(() => {
+		const map: Record<string, IChatThread[]> = {};
+		for (const folder of threadsAPI.folders) {
+			map[folder.id] = sortedThreads.filter((t) => t.folderId === folder.id);
+		}
+		return map;
+	}, [sortedThreads, threadsAPI.folders]);
 
-	async function handleRenameThread(id: string, title: string) {
+	const handleRenameThread = useCallback(async (id: string, title: string) => {
 		const res = await threadsAPI.patchThread(id, { title });
 		if (!res?.ok) {
 			console.error('Failed to rename thread:', id);
 		}
-	}
+	}, [threadsAPI.patchThread]);
 
-	async function handleRenameFolder(id: string, name: string) {
+	const handleRenameFolder = useCallback(async (id: string, name: string) => {
 		await threadsAPI.patchFolder(id, { name });
-	}
+	}, [threadsAPI.patchFolder]);
 
-	async function handleCreateFolder() {
+	const handleCreateFolder = useCallback(async () => {
 		await threadsAPI.addFolder('New Folder');
-	}
+	}, [threadsAPI.addFolder]);
 
-	async function handleDeleteFolder(id: string) {
+	const handleDeleteFolder = useCallback(async (id: string) => {
 		setConfirmDelete({ type: 'folder', id });
-	}
+	}, []);
 
-	async function handleConfirmDeleteFolder(id: string) {
+	const handleConfirmDeleteFolder = useCallback(async (id: string) => {
 		await threadsAPI.removeFolder(id);
 		setConfirmDelete(null);
-	}
+	}, [threadsAPI.removeFolder]);
 
-	async function handleDeleteAllChats() {
+	const handleDeleteAllChats = useCallback(async () => {
 		setConfirmDelete({ type: 'allChats' });
-	}
+	}, []);
 
 	// Folder reordering via drag-and-drop
-	async function handleReorderFolders(fromFolderId: string, toFolderId: string) {
+	const handleReorderFolders = useCallback(async (fromFolderId: string, toFolderId: string) => {
 		if (fromFolderId === toFolderId) return;
 		const folders = threadsAPI.folders;
 		const fromIdx = folders.findIndex(f => f.id === fromFolderId);
@@ -515,48 +549,48 @@ export const ThreadList: FC = () => {
 		await reorderFolders(updates);
 		// Refresh folders from server
 		await threadsAPI.refreshFolders();
-	}
+	}, [threadsAPI.folders, threadsAPI.refreshFolders]);
 
-	async function handleConfirmDeleteAllChats() {
+	const handleConfirmDeleteAllChats = useCallback(async () => {
 		await threadsAPI.removeAllThreads();
 		setConfirmDelete(null);
-	}
+	}, [threadsAPI.removeAllThreads]);
 
-	async function handleDropThread(threadId: string, folderId: string | null) {
+	const handleDropThread = useCallback(async (threadId: string, folderId: string | null) => {
 		await threadsAPI.patchThread(threadId, { folderId });
 		setDraggingThread(null);
-	}
+	}, [threadsAPI.patchThread]);
 
-	function handleRootDragOver(e: DragEvent<HTMLDivElement>) {
+	const handleRootDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
 		e.preventDefault();
 		setRootDragOver(true);
-	}
+	}, []);
 
-	function handleRootDragLeave() { setRootDragOver(false); }
+	const handleRootDragLeave = useCallback(() => { setRootDragOver(false); }, []);
 
-	function handleRootDrop(e: DragEvent<HTMLDivElement>) {
+	const handleRootDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
 		e.preventDefault();
 		setRootDragOver(false);
 		const threadId = (e as any).dataTransfer.getData('threadId');
 		if (threadId) handleDropThread(threadId, null);
-	}
+	}, [handleDropThread]);
 
-	function handleSelectThread(threadId: string) {
+	const handleSelectThread = useCallback((threadId: string) => {
 		threadsAPI.setCurrentThreadId(threadId);
-	}
+	}, [threadsAPI.setCurrentThreadId]);
 
-	function cycleSortField() {
+	const cycleSortField = useCallback(() => {
 		const fields: TSortField[] = ['updatedAt', 'createdAt', 'title', 'messageCount'];
 		const idx = fields.indexOf(sortField);
 		setSortField(fields[(idx + 1) % fields.length]!);
-	}
+	}, [sortField]);
 
-	const sortLabels: Record<TSortField, string> = {
+	const sortLabels = useMemo(() => ({
 		updatedAt: 'Updated',
 		createdAt: 'Created',
 		title: 'Name',
 		messageCount: 'Tokens',
-	};
+	}), []);
 
 	return (
 		<ThreadListPrimitive.Root className="aui-root aui-thread-list-root flex flex-col gap-0">
@@ -623,17 +657,14 @@ export const ThreadList: FC = () => {
 			<FolderSection
 				key={f.id}
 				folder={f}
-				threads={threadsByFolder(f.id)}
+				threads={threadsByFolderMap[f.id] ?? []}
 				onRename={handleRenameFolder}
 				onDelete={handleDeleteFolder}
 				onDropThread={handleDropThread}
 				onReorderFolder={handleReorderFolders}
 			>
 					<ThreadListPrimitive.Items>
-						{() => {
-							const fThreads = threadsByFolder(f.id);
-							return <ThreadListFilteredItems threads={fThreads} onRename={handleRenameThread} onStartDrag={setDraggingThread} onSelect={handleSelectThread} />;
-						}}
+						{() => <ThreadListFilteredItems threads={threadsByFolderMap[f.id] ?? []} onRename={handleRenameThread} onStartDrag={setDraggingThread} onSelect={handleSelectThread} />}
 					</ThreadListPrimitive.Items>
 				</FolderSection>
 			))}

@@ -224,7 +224,9 @@ export class SqlitePersistence implements IPersistence {
 		}
 
 		const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-		return this.db!.prepare(`SELECT * FROM ${this.t.threads} ${where} ORDER BY updatedAt DESC`).all(...vals) as IChatThread[];
+		const threads = this.db!.prepare(`SELECT * FROM ${this.t.threads} ${where} ORDER BY updatedAt DESC`).all(...vals) as IChatThread[];
+		console.log('[Persistence] listThreads - found', threads.length, 'threads in DB:', threads.map(t => t.id));
+		return threads;
 	}
 
 	async updateThread(id: TThreadId, updates: Partial<IChatThread>): Promise<void> {

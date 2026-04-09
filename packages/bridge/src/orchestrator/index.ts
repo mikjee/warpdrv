@@ -72,6 +72,7 @@ export class Orchestrator {
 		try {
 			// Auto-create thread if needed
 			let thread = await this.persistence.getThread(request.threadId);
+			console.log('[Orchestrator] handleCompletion - threadId:', request.threadId, 'exists:', !!thread);
 			if (!thread) {
 				const now = Date.now();
 				thread = {
@@ -86,6 +87,7 @@ export class Orchestrator {
 					updatedAt: now,
 				};
 				await this.persistence.createThread(thread);
+				console.log('[Orchestrator] Created new thread:', thread.id);
 				this.broadcaster.emit({ type: 'thread.created', thread });
 			}
 
@@ -118,9 +120,22 @@ export class Orchestrator {
 			}
 
 			const enabledTools = await this.permissions.getEnabledTools(this.mcpClient.getAllTools());
-			const baseMessages = request.systemPrompt
-				? [{ role: 'system' as const, content: request.systemPrompt }, ...request.messages]
-				: [...request.messages];
+			
+			// Build base messages for LLM context
+			let baseMessages: Array<{ role: string; content: string }> = [];
+			
+			// Add system prompt if provided
+			if (request.systemPrompt) {
+				baseMessages.push({ role: 'system', content: request.systemPrompt });
+			}
+			
+			// Add conversation history
+			baseMessages.push(...request.messages);
+			
+			// Add the new user message if provided (critical for first message)
+			if (request.userMessage) {
+				baseMessages.push({ role: 'user', content: request.userMessage.content });
+			}
 
 			await this.executePass(
 				inferenceUrl,

@@ -23,17 +23,10 @@ function mapStatusBack(status: 'complete' | 'running' | 'requires-action' | 'err
 }
 
 export function ToolCallBlockWrapper({ toolCallId, toolName, serverName, args, result, status }: IToolCallBlockWrapperProps) {
-	const {
-		currentThreadId,
-		currentServerId,
-		currentSystemPrompt,
-		currentInferenceParams,
-	} = useStore(s => ({
-		currentThreadId: s.currentThreadId,
-		currentServerId: s.currentServerId,
-		currentSystemPrompt: s.currentSystemPrompt,
-		currentInferenceParams: s.currentInferenceParams,
-	}));
+	const currentThreadId = useStore(s => s.currentThreadId);
+	const currentServerId = useStore(s => s.currentServerId);
+	const currentSystemPrompt = useStore(s => s.currentSystemPrompt);
+	const currentInferenceParams = useStore(s => s.currentInferenceParams);
 
 	async function handleDecision(decision: 'approve' | 'deny') {
 		if (!currentThreadId || !currentServerId) return;

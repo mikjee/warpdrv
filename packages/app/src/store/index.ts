@@ -8,7 +8,7 @@ import { serversSlice } from './slices/servers';
 import { downloadsSlice } from './slices/downloads';
 import { devicesSlice } from './slices/devices';
 import { proxySlice } from './slices/proxy';
-import { createChatStoreSlice } from '@warpcore/bridge/server';
+import { createChatStoreSlice } from '@warpcore/bridge/client';
 
 export const useStore = create<AppState>()(
 	subscribeWithSelector(

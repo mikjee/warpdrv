@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Box, Flex, Text, HStack, VStack, Input, Textarea, IconButton } from '@chakra-ui/react';
 import { Settings, ChevronRight, ChevronLeft, Save, Trash2, Plus, RotateCcw } from 'lucide-react';
 import {
@@ -57,6 +57,15 @@ function ParamSlider({ label, value, min, max, step, onChange }: {
 	step: number;
 	onChange: (v: number) => void;
 }) {
+	const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+		const v = parseFloat(e.target.value);
+		if (!isNaN(v)) onChange(v);
+	}, [onChange]);
+
+	const handleSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+		onChange(parseFloat(e.target.value));
+	}, [onChange]);
+
 	return (
 		<Box>
 			<HStack justify="space-between" mb="1">
@@ -68,10 +77,7 @@ function ParamSlider({ label, value, min, max, step, onChange }: {
 					fontFamily="mono"
 					fontSize="12px"
 					value={value}
-					onChange={(e) => {
-						const v = parseFloat(e.target.value);
-						if (!isNaN(v)) onChange(v);
-					}}
+					onChange={handleInputChange}
 					bg="rgba(255,255,255,0.04)"
 					borderColor="rgba(255,255,255,0.08)"
 					color="rgba(255,255,255,0.8)"
@@ -85,7 +91,7 @@ function ParamSlider({ label, value, min, max, step, onChange }: {
 				max={max}
 				step={step}
 				value={value}
-				onChange={(e) => onChange(parseFloat(e.target.value))}
+				onChange={handleSliderChange}
 				style={{ width: '100%', accentColor: '#666' }}
 			/>
 		</Box>
@@ -101,12 +107,16 @@ function ParamSelect({ label, value, options, onChange }: {
 	options: { value: string; label: string }[];
 	onChange: (v: string) => void;
 }) {
+	const handleChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+		onChange(e.target.value);
+	}, [onChange]);
+
 	return (
 		<Box>
 			<Text fontSize="12px" color="rgba(255,255,255,0.5)" mb="1">{label}</Text>
 			<select
 				value={value}
-				onChange={(e) => onChange(e.target.value)}
+				onChange={handleChange}
 				style={{
 					width: '100%',
 					background: 'rgba(255,255,255,0.04)',
@@ -206,9 +216,9 @@ export function ChatConfigSidebar({
 
 	useEffect(() => { loadPresets(); }, [loadPresets]);
 
-	function updateParam<K extends keyof IChatInferenceParams>(key: K, value: IChatInferenceParams[K]) {
+	const updateParam = useCallback((key: keyof IChatInferenceParams, value: IChatInferenceParams[keyof IChatInferenceParams]) => {
 		onParamsChange({ ...params, [key]: value });
-	}
+	}, [params, onParamsChange]);
 
 	async function handleSavePreset() {
 		if (!savePresetName.trim()) return;
@@ -370,115 +380,115 @@ export function ChatConfigSidebar({
 					</VStack>
 				</Box>
 
-				{/* Generation */}
+{/* Generation */}
+		<Box>
+			<SectionHeader title="Generation" />
+			<VStack gap="2.5" align="stretch">
 				<Box>
-					<SectionHeader title="Generation" />
-					<VStack gap="2.5" align="stretch">
-						<Box>
-							<Text fontSize="12px" color="rgba(255,255,255,0.5)" mb="1">Max Tokens (-1 = unlimited)</Text>
-							<Input
-								size="xs"
-								fontFamily="mono"
-								fontSize="12px"
-								value={params.maxTokens}
-								onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) updateParam('maxTokens', v); }}
-								bg="rgba(255,255,255,0.04)"
-								borderColor="rgba(255,255,255,0.08)"
-								color="rgba(255,255,255,0.8)"
-								h="28px"
-							/>
-						</Box>
-						<Box>
-							<Text fontSize="12px" color="rgba(255,255,255,0.5)" mb="1">Seed (-1 = random)</Text>
-							<Input
-								size="xs"
-								fontFamily="mono"
-								fontSize="12px"
-								value={params.seed}
-								onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) updateParam('seed', v); }}
-								bg="rgba(255,255,255,0.04)"
-								borderColor="rgba(255,255,255,0.08)"
-								color="rgba(255,255,255,0.8)"
-								h="28px"
-							/>
-						</Box>
-						<ParamSelect
-							label="Response Format"
-							value={params.responseFormat}
-							options={[
-								{ value: EResponseFormat.TEXT, label: 'Text' },
-								{ value: EResponseFormat.JSON_OBJECT, label: 'JSON Object' },
-								{ value: EResponseFormat.JSON_SCHEMA, label: 'JSON Schema' },
-							]}
-							onChange={(v) => updateParam('responseFormat', v as EResponseFormat)}
-						/>
-					</VStack>
+					<Text fontSize="12px" color="rgba(255,255,255,0.5)" mb="1">Max Tokens (-1 = unlimited)</Text>
+					<Input
+						size="xs"
+						fontFamily="mono"
+						fontSize="12px"
+						value={params.maxTokens}
+						onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) updateParam('maxTokens', v); }}
+						bg="rgba(255,255,255,0.04)"
+						borderColor="rgba(255,255,255,0.08)"
+						color="rgba(255,255,255,0.8)"
+						h="28px"
+					/>
 				</Box>
-
-				{/* Thinking Models */}
 				<Box>
-					<SectionHeader title="Thinking Models" />
-					<VStack gap="2.5" align="stretch">
-						<ParamToggle label="Enable Thinking" value={params.enableThinking} onChange={(v) => updateParam('enableThinking', v)} />
-						<ParamSelect
-							label="Reasoning Effort"
-							value={params.reasoningEffort}
-							options={[
-								{ value: EReasoningEffort.NONE, label: 'None' },
-								{ value: EReasoningEffort.LOW, label: 'Low' },
-								{ value: EReasoningEffort.MEDIUM, label: 'Medium' },
-								{ value: EReasoningEffort.HIGH, label: 'High' },
-							]}
-							onChange={(v) => updateParam('reasoningEffort', v as EReasoningEffort)}
-						/>
-						<ParamSelect
-							label="Reasoning Format"
-							value={params.reasoningFormat}
-							options={[
-								{ value: EReasoningFormat.NONE, label: 'None' },
-								{ value: EReasoningFormat.PARSED, label: 'Parsed' },
-								{ value: EReasoningFormat.RAW, label: 'Raw' },
-							]}
-							onChange={(v) => updateParam('reasoningFormat', v as EReasoningFormat)}
-						/>
-					</VStack>
+					<Text fontSize="12px" color="rgba(255,255,255,0.5)" mb="1">Seed (-1 = random)</Text>
+					<Input
+						size="xs"
+						fontFamily="mono"
+						fontSize="12px"
+						value={params.seed}
+						onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) updateParam('seed', v); }}
+						bg="rgba(255,255,255,0.04)"
+						borderColor="rgba(255,255,255,0.08)"
+						color="rgba(255,255,255,0.8)"
+						h="28px"
+					/>
 				</Box>
+				<ParamSelect
+					label="Response Format"
+					value={params.responseFormat}
+					options={useMemo(() => [
+						{ value: EResponseFormat.TEXT, label: 'Text' },
+						{ value: EResponseFormat.JSON_OBJECT, label: 'JSON Object' },
+						{ value: EResponseFormat.JSON_SCHEMA, label: 'JSON Schema' },
+					], [])}
+					onChange={(v) => updateParam('responseFormat', v as EResponseFormat)}
+				/>
+			</VStack>
+		</Box>
 
-				{/* Advanced */}
-				<Box>
-					<SectionHeader title="Advanced" collapsed={!advancedOpen} onToggle={() => setAdvancedOpen(!advancedOpen)} />
-					{advancedOpen && (
-						<VStack gap="2.5" align="stretch">
-							<ParamSelect
-								label="Mirostat Mode"
-								value={String(params.mirostatMode)}
-								options={[
-									{ value: '0', label: 'Disabled' },
-									{ value: '1', label: 'Mirostat 1' },
-									{ value: '2', label: 'Mirostat 2' },
-								]}
-								onChange={(v) => updateParam('mirostatMode', parseInt(v))}
-							/>
-							{params.mirostatMode > 0 && (
-								<>
-									<ParamSlider label="Mirostat Tau" value={params.mirostatTau} min={0} max={10} step={0.1} onChange={(v) => updateParam('mirostatTau', v)} />
-									<ParamSlider label="Mirostat Eta" value={params.mirostatEta} min={0} max={1} step={0.01} onChange={(v) => updateParam('mirostatEta', v)} />
-								</>
-							)}
-							<ParamToggle label="Cache Prompt" value={params.cachePrompt} onChange={(v) => updateParam('cachePrompt', v)} />
-						</VStack>
+{/* Thinking Models */}
+		<Box>
+			<SectionHeader title="Thinking Models" />
+			<VStack gap="2.5" align="stretch">
+				<ParamToggle label="Enable Thinking" value={params.enableThinking} onChange={(v) => updateParam('enableThinking', v)} />
+				<ParamSelect
+					label="Reasoning Effort"
+					value={params.reasoningEffort}
+					options={useMemo(() => [
+						{ value: EReasoningEffort.NONE, label: 'None' },
+						{ value: EReasoningEffort.LOW, label: 'Low' },
+						{ value: EReasoningEffort.MEDIUM, label: 'Medium' },
+						{ value: EReasoningEffort.HIGH, label: 'High' },
+					], [])}
+					onChange={(v) => updateParam('reasoningEffort', v as EReasoningEffort)}
+				/>
+				<ParamSelect
+					label="Reasoning Format"
+					value={params.reasoningFormat}
+					options={useMemo(() => [
+						{ value: EReasoningFormat.NONE, label: 'None' },
+						{ value: EReasoningFormat.PARSED, label: 'Parsed' },
+						{ value: EReasoningFormat.RAW, label: 'Raw' },
+					], [])}
+					onChange={(v) => updateParam('reasoningFormat', v as EReasoningFormat)}
+				/>
+			</VStack>
+		</Box>
+
+{/* Advanced */}
+		<Box>
+			<SectionHeader title="Advanced" collapsed={!advancedOpen} onToggle={() => setAdvancedOpen(!advancedOpen)} />
+			{advancedOpen && (
+				<VStack gap="2.5" align="stretch">
+					<ParamSelect
+						label="Mirostat Mode"
+						value={String(params.mirostatMode)}
+						options={useMemo(() => [
+							{ value: '0', label: 'Disabled' },
+							{ value: '1', label: 'Mirostat 1' },
+							{ value: '2', label: 'Mirostat 2' },
+						], [])}
+						onChange={(v) => updateParam('mirostatMode', parseInt(v))}
+					/>
+					{params.mirostatMode > 0 && (
+						<>
+							<ParamSlider label="Mirostat Tau" value={params.mirostatTau} min={0} max={10} step={0.1} onChange={(v) => updateParam('mirostatTau', v)} />
+							<ParamSlider label="Mirostat Eta" value={params.mirostatEta} min={0} max={1} step={0.01} onChange={(v) => updateParam('mirostatEta', v)} />
+						</>
 					)}
-				</Box>
+					<ParamToggle label="Cache Prompt" value={params.cachePrompt} onChange={(v) => updateParam('cachePrompt', v)} />
+				</VStack>
+			)}
+		</Box>
 
-				{/* Reset to defaults */}
-				<HStack
-					gap="1.5" cursor="pointer" opacity={0.4} _hover={{ opacity: 0.7 }}
-					onClick={() => { onParamsChange({ ...DEFAULT_INFERENCE_PARAMS }); onSystemPromptChange(''); }}
-					pb="2"
-				>
-					<RotateCcw size={12} />
-					<Text fontSize="11px">Reset to defaults</Text>
-				</HStack>
+		{/* Reset to defaults */}
+		<HStack
+			gap="1.5" cursor="pointer" opacity={0.4} _hover={{ opacity: 0.7 }}
+			onClick={() => { onParamsChange({ ...DEFAULT_INFERENCE_PARAMS }); onSystemPromptChange(''); }}
+			pb="2"
+		>
+			<RotateCcw size={12} />
+			<Text fontSize="11px">Reset to defaults</Text>
+		</HStack>
 			</VStack>
 		</Box>
 	);

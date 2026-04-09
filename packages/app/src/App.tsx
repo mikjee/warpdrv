@@ -31,6 +31,8 @@ export function App() {
 		});
 	}, [toast]);
 
+	console.log("App rendering");
+
 	return (
 		<Routes>
 			<Route element={<Shell />}>

@@ -120,6 +120,7 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 		// Thread actions
 		applyThreadCreated: (thread: IChatThread) =>
 			set((draft) => {
+				console.log('[Store] applyThreadCreated - thread id:', thread.id, 'total threads now:', Object.keys({ ...draft.threads, [thread.id]: thread }).length);
 				draft.threads[thread.id] = thread;
 			}),
 
@@ -272,6 +273,7 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 		// Thread selection
 		setThreads: (threads: Record<TThreadId, IChatThread>) =>
 			set((draft) => {
+				console.log('[Store] setThreads - setting', Object.keys(threads).length, 'threads:', Object.keys(threads));
 				draft.threads = threads;
 			}),
 

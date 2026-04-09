@@ -12,10 +12,11 @@ import { ThreadList } from '@/components/assistant-ui/thread-list';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { PageHeader } from '../components/PageHeader';
 import { useStore } from '../store';
+import type { AppState } from '../store/types';
 import { updateThreadConfig } from '../api/services';
 import type { IServer, IChatPreset, IChatInferenceParams, IThreadConfig } from '@warpcore/shared';
 import { EServerStatus, EReasoningEffort } from '@warpcore/shared';
-import { EChatRole, EMessagePartType, EToolCallStatus } from '@warpcore/bridge';
+import { EChatRole, EMessagePartType, EToolCallStatus, type IChatMessage } from '@warpcore/bridge';
 import { ChatConfigSidebar, DEFAULT_INFERENCE_PARAMS } from '../components/ChatConfigSidebar';
 import '../styles/assistant-ui.css';
 import { createContext } from 'react';
@@ -23,6 +24,7 @@ import { ChatToolsSidebar } from '../components/ChatToolsSidebar';
 import { selectActiveMessages, selectToolCallsForThread } from '@/hooks/useChatSelectors';
 import { useThreadConfig } from '@/hooks/useThreadConfig';
 import { ToolCallBlockWrapper } from '@/components/assistant-ui/ToolCallBlockWrapper';
+import { useShallow } from 'zustand/shallow';
 
 interface IChatConfig {
 	reasoningEffort: EReasoningEffort;
@@ -34,11 +36,6 @@ export const ChatConfigContext = createContext<IChatConfig>({
 	onReasoningEffortChange: () => {},
 	contextSize: 0,
 });
-// Server ID state for completions
-let currentServerId: string | null = null;
-export function setActiveServerId(id: string | null) {
-	currentServerId = id;
-}
 // ============================================================
 // UI Components
 // ============================================================
@@ -150,6 +147,7 @@ function mapBridgeStatusToAuiStatus(status: EToolCallStatus): 'complete' | 'runn
 // ChatInner — main chat layout using bridge store
 // ============================================================
 const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
+	console.log('ChatInner rendering', { contextSize });
 	const [configOpen, setConfigOpen] = useState(false);
 	const [toolsOpen, setToolsOpen] = useState(false);
 	const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
@@ -161,6 +159,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	const currentServerId = useStore(s => s.currentServerId);
 
 	// Actions
+	const setCurrentThreadId = useStore(s => s.setCurrentThreadId);
 	const setCurrentSystemPrompt = useStore(s => s.setCurrentSystemPrompt);
 	const setCurrentInferenceParams = useStore(s => s.setCurrentInferenceParams);
 
@@ -209,21 +208,27 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 		}
 	}
 
-	const chatConfigValue = useMemo(() => ({
-		reasoningEffort: currentInferenceParams.reasoningEffort,
-		onReasoningEffortChange: (v: EReasoningEffort) => handleParamsChange({ ...currentInferenceParams, reasoningEffort: v }),
-		contextSize,
-	}), [currentInferenceParams, contextSize]);
+	const chatConfigValue = useMemo(() => {
+		return {
+			reasoningEffort: currentInferenceParams.reasoningEffort,
+			onReasoningEffortChange: (v: EReasoningEffort) => {
+				setCurrentInferenceParams({ ...currentInferenceParams, reasoningEffort: v });
+			},
+			contextSize,
+		};
+	}, [currentInferenceParams, contextSize, setCurrentInferenceParams]);
 
-	// Get messages and tool calls for current thread
-	const messages = currentThreadId ? useStore(s => selectActiveMessages(s, currentThreadId)) : [];
-	const toolCalls = currentThreadId ? useStore(s => selectToolCallsForThread(s, currentThreadId)) : [];
-	const isRunning = currentThreadId ? useStore(s => s.isRunningByThread[currentThreadId] ?? false) : false;
+// Get messages for current thread - use useShallow to prevent infinite loops
+	const messages = useStore(useShallow((s: AppState) => currentThreadId ? selectActiveMessages(s, currentThreadId) : []));
+	// Note: conditional selector is acceptable here - currentThreadId is a prop, not store state
+	// This doesn't create new objects/arrays, just reads a single value based on a prop
+	const isRunning = useStore(s => currentThreadId ? s.isRunningByThread[currentThreadId] ?? false : false);
 
 	// Initial thread load - seed messages and tool calls
 	const seedThreadMessages = useStore(s => s.seedThreadMessages);
 	const applyToolCallCreated = useStore(s => s.applyToolCallCreated);
 	useEffect(() => {
+		console.log('[ChatPage] loadThread effect running for threadId:', currentThreadId);
 		if (!currentThreadId) return;
 		
 		async function loadThread() {
@@ -244,11 +249,15 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 			}
 		}
 		loadThread();
-	}, [currentThreadId, seedThreadMessages, applyToolCallCreated]);
+	}, [currentThreadId]);
 
 	// Convert bridge messages to assistant-ui format
 	const convertMessage = useCallback((msg: any, index: number) => {
-		const tcMap = new Map(toolCalls.map(tc => [tc.id, tc]));
+		console.log('[ChatPage] convertMessage called for message id:', msg?.id, 'role:', msg?.role, 'content:', JSON.stringify(msg?.content));
+		// Read toolCallsById directly from store to avoid dependency on array reference
+		const { toolCallsById } = useStore.getState();
+		const threadToolCalls = Object.values(toolCallsById).filter((tc: any) => tc.threadId === currentThreadId);
+		const tcMap = new Map(threadToolCalls.map((tc: any) => [tc.id, tc]));
 		
 		// Handle TOOL role - render as assistant with tool-call part containing ToolCallBlockWrapper
 		if (msg.role === EChatRole.TOOL) {
@@ -304,118 +313,148 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 				return null;
 			}
 			if (part.type === EMessagePartType.TEXT) {
-				return { type: 'text' as const, text: part.text ?? '' };
+				return { type: 'text' as const, text: part.text || '' };
 			}
 			if (part.type === EMessagePartType.REASONING) {
-				return { type: 'reasoning' as const, reasoning: part.text ?? '' };
+				const reasoningText = part.text || '';
+				return { type: 'reasoning' as const, reasoning: reasoningText, text: reasoningText };
 			}
 			return { type: 'text' as const, text: '' };
 		}).filter(Boolean);
 
-		return {
+		const isAssistant = msg.role === EChatRole.ASSISTANT;
+		const result: any = {
 			id: msg.id,
 			role: msg.role as 'user' | 'assistant' | 'system',
 			content: content as any,
 			createdAt: new Date(msg.createdAt),
-			status: { type: 'complete' as const, reason: 'stop' as const },
 			metadata: { unstable_state: {}, custom: msg.stats || {} },
 			attachments: [],
 		};
-	}, [toolCalls]);
+
+		// Only add status for assistant messages
+		if (isAssistant) {
+			result.status = { type: 'complete' as const, reason: 'stop' as const };
+		}
+
+		return result;
+	}, [currentThreadId]);
 
 	const convertedMessages = useMemo(() => {
+		console.log('[ChatPage] useMemo convertedMessages running, messages length:', messages.length);
 		return messages.map((msg, idx) => convertMessage(msg, idx));
 	}, [messages, convertMessage]);
 
+	// Runtime callbacks
+	const onNew = useCallback(async (message: any) => {
+		if (!currentServerId) return;
+		const text = (message.content as any[]).filter(p => p.type === 'text').map(p => p.text).join('');
+		
+		// Generate new thread ID if none exists - orchestrator will auto-create the thread
+		const threadId = currentThreadId ?? globalThis.crypto.randomUUID();
+		if (!currentThreadId) {
+			setCurrentThreadId(threadId);
+		}
+		
+		const lastMsg = messages[messages.length - 1];
+		await fetch('/api/chat/completions', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				threadId,
+				userMessage: { content: text },
+				parentId: lastMsg?.id ?? null,
+				serverId: currentServerId,
+				messages: [],
+				systemPrompt: currentSystemPrompt,
+				inferenceParams: currentInferenceParams,
+			}),
+		});
+	}, [currentThreadId, currentServerId, messages, currentSystemPrompt, currentInferenceParams, setCurrentThreadId]);
+
+	const onReload = useCallback(async (parentId: string | null) => {
+		if (!currentThreadId || !currentServerId) return;
+		await fetch('/api/chat/completions', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				threadId: currentThreadId,
+				parentId,
+				serverId: currentServerId,
+				messages: [],
+				systemPrompt: currentSystemPrompt,
+				inferenceParams: currentInferenceParams,
+			}),
+		});
+	}, [currentThreadId, currentServerId, currentSystemPrompt, currentInferenceParams]);
+
 	// Runtime with external store
+	console.log('[ChatPage] Creating runtime with messages length:', convertedMessages.length);
+	console.log('[ChatPage] convertedMessages passed to assistant-ui:', JSON.stringify(convertedMessages));
 	const runtime = useExternalStoreRuntime({
 		messages: convertedMessages,
 		isRunning,
-		onNew: async (message) => {
-			if (!currentThreadId || !currentServerId) return;
-			const text = (message.content as any[]).filter(p => p.type === 'text').map(p => p.text).join('');
-			const lastMsg = messages[messages.length - 1];
-			await fetch('/api/chat/completions', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					threadId: currentThreadId,
-					userMessage: { content: text },
-					parentId: lastMsg?.id ?? null,
-					serverId: currentServerId,
-					messages: [], // Will be built by backend from tree
-					systemPrompt: currentSystemPrompt,
-					inferenceParams: currentInferenceParams,
-				}),
-			});
-		},
-		onReload: async (parentId) => {
-			if (!currentThreadId || !currentServerId) return;
-			await fetch('/api/chat/completions', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					threadId: currentThreadId,
-					parentId,
-					serverId: currentServerId,
-					messages: [],
-					systemPrompt: currentSystemPrompt,
-					inferenceParams: currentInferenceParams,
-				}),
-			});
-		},
+		onNew,
+		onReload,
 		convertMessage,
 	});
+	console.log('[ChatPage] Runtime created');
 
 	return (
 		<ChatConfigContext.Provider value={chatConfigValue}>
 			<TooltipProvider>
-				<Flex flex="1" h="100%" overflow="hidden" className="dark">
-				<Box
-					w="260px"
-					minW="260px"
-					borderRightWidth="1px"
-					borderColor="rgba(255,255,255,0.06)"
-					overflow="auto"
-					p="3"
-				>
-					<ThreadList />
-				</Box>
-			<AssistantRuntimeProvider runtime={runtime}>
-				<Box flex="1" overflow="hidden">
-					<Thread />
-				</Box>
-			</AssistantRuntimeProvider>
-				<ChatConfigSidebar
-					open={configOpen}
-					onToggle={() => setConfigOpen(!configOpen)}
-					params={currentInferenceParams}
-					systemPrompt={currentSystemPrompt}
-					selectedPresetId={selectedPresetId}
-					onParamsChange={handleParamsChange}
-					onSystemPromptChange={handleSystemPromptChange}
-					onPresetSelect={handlePresetSelect}
-				/>
-				<ChatToolsSidebar open={toolsOpen} onToggle={() => setToolsOpen(!toolsOpen)} />
-			</Flex>
-		</TooltipProvider>
-	</ChatConfigContext.Provider>
+				<AssistantRuntimeProvider runtime={runtime}>
+					<Flex flex="1" h="100%" overflow="hidden" className="dark">
+						<Box
+							w="260px"
+							minW="260px"
+							borderRightWidth="1px"
+							borderColor="rgba(255,255,255,0.06)"
+							overflow="auto"
+							p="3"
+						>
+							<ThreadList />
+						</Box>
+						<Box flex="1" overflow="hidden">
+							<Thread />
+						</Box>
+						<ChatConfigSidebar
+							open={configOpen}
+							onToggle={() => setConfigOpen(!configOpen)}
+							params={currentInferenceParams}
+							systemPrompt={currentSystemPrompt}
+							selectedPresetId={selectedPresetId}
+							onParamsChange={handleParamsChange}
+							onSystemPromptChange={handleSystemPromptChange}
+							onPresetSelect={handlePresetSelect}
+						/>
+						<ChatToolsSidebar open={toolsOpen} onToggle={() => setToolsOpen(!toolsOpen)} />
+					</Flex>
+				</AssistantRuntimeProvider>
+			</TooltipProvider>
+		</ChatConfigContext.Provider>
 	);
 });
 export function ChatPage() {
-	const servers = Object.values(useStore((s) => s.servers));
+	const serversMap = useStore(s => s.servers);
+	const serversArray = useMemo(() => Object.values(serversMap), [serversMap]);
+	const currentServerId = useStore(s => s.currentServerId);
 	const setCurrentServerId = useStore(s => s.setCurrentServerId);
-	const [selectedId, setSelectedId] = useState<string | null>(null);
-	const selected = servers.find((s: IServer) => s.id === selectedId);
-	const runningServers = servers.filter((s: IServer) => s.status === EServerStatus.RUNNING);
-	if (!selectedId && runningServers.length > 0 && runningServers[0]) {
-		setSelectedId(runningServers[0].id);
-	}
-	const activeServerId = (selected && selected.status === EServerStatus.RUNNING) ? selected.id : null;
-	setActiveServerId(activeServerId);
+	const selected = serversArray.find((s: IServer) => s.id === currentServerId);
+	
+	// Auto-select first running server if none selected
 	useEffect(() => {
-		setCurrentServerId(activeServerId);
-	}, [activeServerId, setCurrentServerId]);
+		if (!currentServerId) {
+			const runningServers = Object.values(serversMap).filter(s => s.status === EServerStatus.RUNNING);
+			if (runningServers.length > 0) {
+				const firstRunning = runningServers[0];
+				if (firstRunning) {
+					setCurrentServerId(firstRunning.id);
+				}
+			}
+		}
+	}, [serversMap, currentServerId, setCurrentServerId]);
+	
 	return (
 		<Flex direction="column" h="100%" overflow="hidden">
 			<PageHeader
@@ -423,7 +462,7 @@ export function ChatPage() {
 				subtitle="Talk to your models"
 				icon={<MessageSquare size={20} />}
 				actions={
-					<ServerSelector servers={servers} selectedId={selectedId} onSelect={setSelectedId} />
+					<ServerSelector servers={serversArray} selectedId={currentServerId} onSelect={setCurrentServerId} />
 				}
 			/>
 			<Flex flex="1" overflow="hidden">
