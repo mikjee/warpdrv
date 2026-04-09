@@ -26,7 +26,6 @@ export function useChatEventsStream() {
 
 		const handleEvent = (e: MessageEvent) => {
 			const event = JSON.parse(e.data) as IBridgeEvent;
-			console.log('[Chat SSE Event] type:', event.type, 'full event:', JSON.stringify(event));
 			switch (event.type) {
 				case 'thread.created':
 					console.log('[Chat SSE] thread.created:', JSON.stringify(event.thread));
@@ -50,7 +49,6 @@ export function useChatEventsStream() {
 				applyMessageDeleted(event.messageId, event.threadId);
 				break;
 			case 'message.chunk':
-				console.log('[Chat SSE] message.chunk:', JSON.stringify({ messageId: event.messageId, partId: event.partId, deltaText: event.deltaText }));
 				applyMessageChunk(event.messageId, event.threadId, event.partId, event.deltaText);
 				break;
 				case 'tool_call.created':

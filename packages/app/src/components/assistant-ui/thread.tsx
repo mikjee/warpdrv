@@ -43,7 +43,7 @@ import { encodingForModel } from 'js-tiktoken';
 
 const tokenEncoder = encodingForModel('gpt-4o');
 
-export const Thread: FC = () => {
+export const Thread: FC<{ isLoading?: boolean }> = ({ isLoading = false }) => {
   return (
     <ThreadPrimitive.Root
       className="aui-root aui-thread-root @container flex h-full flex-col"
@@ -57,20 +57,30 @@ export const Thread: FC = () => {
         turnAnchor="top"
         className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll scroll-smooth px-6 pt-4"
       >
-        <AuiIf condition={(s) => s.thread.isEmpty}>
-          <ThreadWelcome />
-        </AuiIf>
+        {isLoading ? (
+          <div className="flex h-full items-center justify-center">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-600 border-t-transparent" />
+          </div>
+        ) : (
+          <>
+            <AuiIf condition={(s) => s.thread.isEmpty}>
+              <ThreadWelcome />
+            </AuiIf>
 
-        <ThreadPrimitive.Messages>
-          {() => <ThreadMessage />}
-        </ThreadPrimitive.Messages>
+            <ThreadPrimitive.Messages>
+              {() => <ThreadMessage />}
+            </ThreadPrimitive.Messages>
+          </>
+        )}
 
-        <div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,#0e0e0e_35%,#0e0e0e_100%)]">
-          <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer w-full max-w-(--thread-max-width) flex flex-col gap-4 overflow-visible">
-            <ThreadScrollToBottom />
-            <Composer />
-          </ThreadPrimitive.ViewportFooter>
-        </div>
+        {!isLoading && (
+          <div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,#0e0e0e_35%,#0e0e0e_100%)]">
+            <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer w-full max-w-(--thread-max-width) flex flex-col gap-4 overflow-visible">
+              <ThreadScrollToBottom />
+              <Composer />
+            </ThreadPrimitive.ViewportFooter>
+          </div>
+        )}
       </ThreadPrimitive.Viewport>
     </ThreadPrimitive.Root>
   );

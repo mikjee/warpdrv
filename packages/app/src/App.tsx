@@ -5,6 +5,7 @@ import { fetchSettings, scanModels } from './api/services';
 import { useToast } from './components/ToastProvider';
 import { useEventSource } from './hooks/useEventSource';
 import { useChatEventsStream } from './hooks/useChatEventsStream';
+import { useStore } from './store';
 
 export function App() {
 	const { toast } = useToast();
@@ -15,6 +16,13 @@ export function App() {
 
 	// Initialize bridge SSE connection for chat events
 	useChatEventsStream();
+
+	// Expose store to window for debugging
+	useEffect(() => {
+		(window as any).useStore = useStore;
+		(window as any).getStoreState = () => useStore.getState();
+		console.log('[App] Store exposed to window.useStore and window.getStoreState()');
+	}, []);
 
 	// Run one model scan on app startup if model directories are configured
 	useEffect(() => {

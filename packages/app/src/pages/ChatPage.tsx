@@ -8,7 +8,7 @@ import {
 	type ThreadMessage,
 } from '@assistant-ui/react';
 import { Thread } from '@/components/assistant-ui/thread';
-import { ThreadList } from '@/components/assistant-ui/thread-list';
+import { ThreadList, useThreadsAndFolders } from '@/components/assistant-ui/thread-list';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { PageHeader } from '../components/PageHeader';
 import { useStore } from '../store';
@@ -147,7 +147,6 @@ function mapBridgeStatusToAuiStatus(status: EToolCallStatus): 'complete' | 'runn
 // ChatInner — main chat layout using bridge store
 // ============================================================
 const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
-	console.log('ChatInner rendering', { contextSize });
 	const [configOpen, setConfigOpen] = useState(false);
 	const [toolsOpen, setToolsOpen] = useState(false);
 	const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
@@ -165,6 +164,9 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 
 	// Load config when thread changes
 	useThreadConfig(currentThreadId);
+
+	// Get threads for adapter
+	const threadsAPI = useThreadsAndFolders();
 
 	// Debounced save
 	const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -222,21 +224,48 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	const messages = useStore(useShallow((s: AppState) => currentThreadId ? selectActiveMessages(s, currentThreadId) : []));
 	// Note: conditional selector is acceptable here - currentThreadId is a prop, not store state
 	// This doesn't create new objects/arrays, just reads a single value based on a prop
-	const isRunning = useStore(s => currentThreadId ? s.isRunningByThread[currentThreadId] ?? false : false);
+	const isRunning = useStore(s => s.currentThreadId ? s.isRunningByThread[s.currentThreadId] ?? false : false);
+
+useEffect(() => {
+	console.log('[ChatPage] isRunning changed:', isRunning);
+}, [isRunning]);
+
+	// Check if thread exists in store (distinguishes new vs existing thread)
+	const threadInStore = useStore(s => currentThreadId ? s.threads[currentThreadId] : undefined);
+
+	// Loading state for existing threads
+	const [isLoadingThread, setIsLoadingThread] = useState(false);
 
 	// Initial thread load - seed messages and tool calls
 	const seedThreadMessages = useStore(s => s.seedThreadMessages);
 	const applyToolCallCreated = useStore(s => s.applyToolCallCreated);
 	useEffect(() => {
 		console.log('[ChatPage] loadThread effect running for threadId:', currentThreadId);
-		if (!currentThreadId) return;
+		if (!currentThreadId) {
+			setIsLoadingThread(false);
+			return;
+		}
+		
+		// New thread (not in store) - don't fetch, don't show loading
+		if (!threadInStore) {
+			setIsLoadingThread(false);
+			return;
+		}
+		
+		// Existing thread - fetch and show loading
+		setIsLoadingThread(true);
 		
 		async function loadThread() {
 			// Fetch thread messages
+			console.log('[ChatPage] loadThread - fetching thread:', currentThreadId);
 			const res = await fetch(`/api/chat/threads/${currentThreadId ?? ''}`);
+			console.log('[ChatPage] loadThread - fetch response status:', res.status);
 			if (res.ok) {
-				const data = await res.json();
-				seedThreadMessages(currentThreadId as string, data.messages ?? []);
+				const response = await res.json();
+				const data = response.data;
+				console.log('[ChatPage] loadThread - received data:', { threadId: data?.id, messagesCount: data?.messages?.length });
+				console.log('[ChatPage] loadThread - messages:', data?.messages?.map((m: any) => ({ id: m.id, role: m.role, contentLength: m.content?.length })));
+				seedThreadMessages(currentThreadId as string, data?.messages ?? []);
 				
 				// Fetch tool calls
 				const tcRes = await fetch(`/api/chat/threads/${currentThreadId}/tool-calls`);
@@ -247,13 +276,14 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 					}
 				}
 			}
+			setIsLoadingThread(false);
 		}
 		loadThread();
-	}, [currentThreadId]);
+	}, [currentThreadId, threadInStore]);
 
 	// Convert bridge messages to assistant-ui format
 	const convertMessage = useCallback((msg: any, index: number) => {
-		console.log('[ChatPage] convertMessage called for message id:', msg?.id, 'role:', msg?.role, 'content:', JSON.stringify(msg?.content));
+		
 		// Read toolCallsById directly from store to avoid dependency on array reference
 		const { toolCallsById } = useStore.getState();
 		const threadToolCalls = Object.values(toolCallsById).filter((tc: any) => tc.threadId === currentThreadId);
@@ -341,7 +371,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	}, [currentThreadId]);
 
 	const convertedMessages = useMemo(() => {
-		console.log('[ChatPage] useMemo convertedMessages running, messages length:', messages.length);
+		
 		return messages.map((msg, idx) => convertMessage(msg, idx));
 	}, [messages, convertMessage]);
 
@@ -386,19 +416,35 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 				inferenceParams: currentInferenceParams,
 			}),
 		});
-	}, [currentThreadId, currentServerId, currentSystemPrompt, currentInferenceParams]);
+}, [currentThreadId, currentServerId, currentSystemPrompt, currentInferenceParams]);
 
-	// Runtime with external store
-	console.log('[ChatPage] Creating runtime with messages length:', convertedMessages.length);
-	console.log('[ChatPage] convertedMessages passed to assistant-ui:', JSON.stringify(convertedMessages));
+	const onCancel = useCallback(async () => {
+		if (currentThreadId) {
+			await fetch(`/api/chat/cancel/${currentThreadId}`, { method: 'POST' });
+		}
+	}, [currentThreadId]);
+
 	const runtime = useExternalStoreRuntime({
 		messages: convertedMessages,
 		isRunning,
 		onNew,
 		onReload,
+		onCancel,
 		convertMessage,
+		adapters: {
+			threadList: {
+				onSwitchToNewThread: async () => {
+					const newThreadId = globalThis.crypto.randomUUID();
+					setCurrentThreadId(newThreadId);
+				},
+				onSwitchToThread: async (threadId: string) => {
+					setCurrentThreadId(threadId);
+				},
+				threads: Object.values(threadsAPI.threads).map(t => ({ ...t, status: 'regular' as const })),
+				threadId: currentThreadId ?? undefined,
+			},
+		},
 	});
-	console.log('[ChatPage] Runtime created');
 
 	return (
 		<ChatConfigContext.Provider value={chatConfigValue}>
@@ -416,7 +462,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 							<ThreadList />
 						</Box>
 						<Box flex="1" overflow="hidden">
-							<Thread />
+							<Thread isLoading={isLoadingThread} />
 						</Box>
 						<ChatConfigSidebar
 							open={configOpen}

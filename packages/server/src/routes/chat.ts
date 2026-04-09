@@ -86,6 +86,17 @@ chatRouter.put('/threads/:id', async (req, res) => {
 				tags: body.tags ?? meta.tags,
 			}),
 		});
+
+		// Emit SSE event for all clients
+		broadcaster.emit({
+			type: 'thread.updated',
+			threadId: req.params.id,
+			updates: {
+				title: body.title ?? undefined,
+				folderId: body.folderId ?? undefined,
+			},
+		});
+
 		res.json({ ok: true, data: null, error: null });
 	} catch (err) {
 		res.status(500).json({ ok: false, data: null, error: String(err) });

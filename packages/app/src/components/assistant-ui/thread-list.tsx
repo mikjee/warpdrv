@@ -11,7 +11,7 @@ import {
 	useAuiState,
 } from '@assistant-ui/react';
 import {
-	PlusIcon, MoreHorizontalIcon, TrashIcon, PencilIcon,
+	PlusIcon, MoreHorizontalIcon, TrashIcon, PencilIcon, CheckIcon,
 	FolderIcon, FolderPlusIcon, SearchIcon, SortAscIcon, SortDescIcon,
 	ChevronRightIcon, ChevronDownIcon, XIcon,
 	FolderOpenIcon,
@@ -37,11 +37,10 @@ type TSortDir = 'asc' | 'desc';
 // ============================================================
 // Hooks
 // ============================================================
-function useThreadsAndFolders() {
+export function useThreadsAndFolders() {
 	// Custom comparator to only re-render when thread IDs actually change
 	const threads = useStore(useShallow(s => {
 		const threadsArray = Object.values(s.threads) as IChatThread[];
-		console.log('[ThreadList] useStore threads selector - found', threadsArray.length, 'threads:', threadsArray.map(t => t.id));
 		return threadsArray;
 	}));
 	const setCurrentThreadId = useStore(s => s.setCurrentThreadId);
@@ -71,18 +70,9 @@ function useThreadsAndFolders() {
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(patch),
 		});
-		if (res.ok) {
-			// Update store
-			const updated = await res.json();
-			const threadsRecord: Record<string, IChatThread> = {};
-			for (const t of threads) threadsRecord[t.id] = t;
-			// Only update if different to prevent unnecessary re-renders
-			if (threadsRecord[id]?.title !== updated.title || threadsRecord[id]?.folderId !== updated.folderId) {
-				setThreads({ ...threadsRecord, [id]: updated });
-			}
-		}
+		// SSE will update store via applyThreadUpdated
 		return res;
-	}, [threads]);
+	}, []);
 
 	const removeThread = useCallback(async (id: string) => {
 		await fetch(`/api/chat/threads/${id}`, { method: 'DELETE' });
@@ -166,7 +156,7 @@ function RenamePopover({ value, onSave, onCancel }: { value: string; onSave: (v:
 				px="2"
 			/>
 			<Box cursor="pointer" onClick={() => onSave(text)} opacity={0.5} _hover={{ opacity: 0.8 }} p="1">
-				<PencilIcon size={11} />
+				<CheckIcon size={11} />
 			</Box>
 			<Box cursor="pointer" onClick={onCancel} opacity={0.3} _hover={{ opacity: 0.6 }} p="1">
 				<XIcon size={11} />
@@ -224,6 +214,83 @@ function timeAgo(ts: number): string {
 	const days = Math.floor(hrs / 24);
 	if (days < 30) return `${days}d`;
 	return `${Math.floor(days / 30)}mo`;
+}
+
+// ============================================================
+// Manual Thread List Item - uses plain Chakra UI (no assistant-ui primitives)
+// ============================================================
+function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect }: {
+	thread: IChatThread;
+	onRename: (id: string, title: string) => void;
+	onStartDrag: (threadId: string) => void;
+	onSelect: (threadId: string) => void;
+}) {
+	const [renaming, setRenaming] = useState(false);
+
+	return (
+		<Box
+			w="100%"
+			className="group"
+			draggable
+			onDragStart={(e: any) => {
+				e.dataTransfer.setData('threadId', thread.id);
+				onStartDrag(thread.id);
+			}}
+			onClick={() => {
+				console.log('[ManualThreadListItem] Clicked thread:', thread.id, thread);
+				onSelect(thread.id);
+			}}
+			style={{ minHeight: '40px', cursor: 'grab' }}
+			display="flex"
+			alignItems="center"
+			gap="1"
+			borderRadius="lg"
+			px="2"
+			py="1.5"
+			_hover={{ bg: 'rgba(255,255,255,0.06)' }}
+		>
+			{renaming ? (
+				<Box flex="1" px="2" py="1">
+					<RenamePopover
+						value={thread.title}
+						onSave={(v) => { onRename(thread.id, v); setRenaming(false); }}
+						onCancel={() => setRenaming(false)}
+					/>
+				</Box>
+			) : (
+				<>
+					<Box flex="1" display="flex" flexDirection="column" overflow="hidden">
+						<Text fontSize="12px" color="rgba(255,255,255,0.75)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" lineHeight="1.3">
+							{thread.title ?? 'New Chat'}
+						</Text>
+						<HStack gap="2" mt="0.5">
+							<Text fontSize="10px" color="rgba(255,255,255,0.25)" fontFamily="mono">
+								{(thread.totalTokens ?? 0) > 0 ? `${((thread.totalTokens ?? 0) / 1000).toFixed(1)}k tok` : (thread.messageCount ?? 0) > 0 ? `${thread.messageCount ?? 0} msg` : 'empty'}
+							</Text>
+							<Text fontSize="10px" color="rgba(255,255,255,0.2)">
+								{timeAgo(thread.updatedAt)}
+							</Text>
+						</HStack>
+					</Box>
+					<Box
+						cursor="pointer"
+						p="1"
+						mr="1"
+						borderRadius="sm"
+						opacity={0}
+						className="group-hover:!opacity-50"
+						_hover={{ bg: 'rgba(255,255,255,0.06)' }}
+						onClick={(e) => {
+							e.stopPropagation();
+							setRenaming(true);
+						}}
+					>
+						<PencilIcon size={13} />
+					</Box>
+				</>
+			)}
+		</Box>
+	);
 }
 
 // ============================================================
@@ -576,7 +643,13 @@ export const ThreadList: FC = () => {
 	}, [handleDropThread]);
 
 	const handleSelectThread = useCallback((threadId: string) => {
+		console.log('[ThreadList] handleSelectThread called with:', threadId);
+		const storeState = useStore.getState();
+		console.log('[ThreadList] Threads in store:', Object.keys(storeState.threads).map(id => ({ id, title: storeState.threads[id]?.title })));
+		console.log('[ThreadList] Messages for thread:', threadId, '=>', Object.keys(storeState.messagesByThread[threadId] || {}));
+		console.log('[ThreadList] Head message ID:', storeState.headMessageIdByThread[threadId]);
 		threadsAPI.setCurrentThreadId(threadId);
+		console.log('[ThreadList] Current thread ID after selection:', storeState.currentThreadId);
 	}, [threadsAPI.setCurrentThreadId]);
 
 	const cycleSortField = useCallback(() => {
@@ -663,9 +736,17 @@ export const ThreadList: FC = () => {
 				onDropThread={handleDropThread}
 				onReorderFolder={handleReorderFolders}
 			>
-					<ThreadListPrimitive.Items>
-						{() => <ThreadListFilteredItems threads={threadsByFolderMap[f.id] ?? []} onRename={handleRenameThread} onStartDrag={setDraggingThread} onSelect={handleSelectThread} />}
-					</ThreadListPrimitive.Items>
+					<VStack gap="0" align="start">
+						{(threadsByFolderMap[f.id] ?? []).map(thread => (
+							<ManualThreadListItem 
+								key={thread.id}
+								thread={thread}
+								onRename={handleRenameThread}
+								onStartDrag={setDraggingThread}
+								onSelect={handleSelectThread}
+							/>
+						))}
+					</VStack>
 				</FolderSection>
 			))}
 
@@ -677,18 +758,17 @@ export const ThreadList: FC = () => {
 				borderRadius="md"
 				transition="background 0.15s"
 			>
-				<AuiIf condition={(s) => s.threads.isLoading}>
-					<VStack gap="1" p="1">
-						{[0, 1, 2].map((i) => (
-							<Box key={i} h="40px" bg="rgba(255,255,255,0.03)" borderRadius="md" w="100%" />
-						))}
-					</VStack>
-				</AuiIf>
-				<AuiIf condition={(s) => !s.threads.isLoading}>
-					<ThreadListPrimitive.Items>
-						{() => <ThreadListRootItem threads={rootThreads} onRename={handleRenameThread} onStartDrag={setDraggingThread} onSelect={handleSelectThread} />}
-					</ThreadListPrimitive.Items>
-				</AuiIf>
+				<VStack gap="0" align="start">
+					{rootThreads.map(thread => (
+						<ManualThreadListItem 
+							key={thread.id}
+							thread={thread}
+							onRename={handleRenameThread}
+							onStartDrag={setDraggingThread}
+							onSelect={handleSelectThread}
+						/>
+					))}
+				</VStack>
 			</Box>
 
 			<Box mt="2" pt="2" borderTopWidth="1px" borderColor="rgba(255,255,255,0.04)">
