@@ -11,17 +11,6 @@ interface IToolCallBlockWrapperProps {
 	status: 'complete' | 'running' | 'requires-action' | 'error';
 }
 
-// Map assistant-ui status back to EToolCallStatus
-function mapStatusBack(status: 'complete' | 'running' | 'requires-action' | 'error'): EToolCallStatus {
-	switch (status) {
-		case 'complete': return EToolCallStatus.COMPLETED;
-		case 'running': return EToolCallStatus.EXECUTING;
-		case 'requires-action': return EToolCallStatus.PENDING;
-		case 'error': return EToolCallStatus.ERROR;
-		default: return EToolCallStatus.COMPLETED;
-	}
-}
-
 export function ToolCallBlockWrapper({ toolCallId, toolName, serverName, args, result, status }: IToolCallBlockWrapperProps) {
 	const currentThreadId = useStore(s => s.currentThreadId);
 	const currentServerId = useStore(s => s.currentServerId);
@@ -43,6 +32,15 @@ export function ToolCallBlockWrapper({ toolCallId, toolName, serverName, args, r
 		);
 	}
 
+	// Map status for display
+	const displayStatus: EToolCallStatus = status === 'requires-action'
+		? EToolCallStatus.PENDING
+		: status === 'running'
+		? EToolCallStatus.EXECUTING
+		: status === 'error'
+		? EToolCallStatus.ERROR
+		: EToolCallStatus.COMPLETED;
+
 	return (
 		<ToolCallBlock
 			id={toolCallId}
@@ -50,8 +48,8 @@ export function ToolCallBlockWrapper({ toolCallId, toolName, serverName, args, r
 			toolName={toolName}
 			arguments={JSON.stringify(args)}
 			result={result ? JSON.stringify(result) : undefined}
-			status={mapStatusBack(status)}
-			onDecided={() => handleDecision('approve')}
+			status={displayStatus}
+			onDecided={handleDecision}
 		/>
 	);
 }

@@ -336,7 +336,7 @@ function mapStatusFromPart(status: any): 'complete' | 'running' | 'requires-acti
   if (status.type === 'complete') return 'complete';
   if (status.type === 'running') return 'running';
   if (status.type === 'requires-action') return 'requires-action';
-  if (status.type === 'error' || status.type === 'incomplete') return 'error';
+  if (status.type === 'incomplete') return 'error';
   return 'complete';
 }
 

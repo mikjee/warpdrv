@@ -26,7 +26,7 @@ interface IToolCallBlockProps {
 	arguments: string;
 	result?: string;
 	status: EToolCallStatus;
-	onDecided?: () => void;
+	onDecided?: (decision: 'approve' | 'deny') => Promise<void>;
 }
 
 const statusColors: Record<EToolCallStatus, string> = {
@@ -60,10 +60,11 @@ export function ToolCallBlock({
 
 	async function handleDecision(decision: 'approve' | 'deny') {
 		setDeciding(true);
-		// This will be called from ToolCallBlockWrapper which has the context
-		// For backward compatibility, we just call onDecided callback
-		setDeciding(false);
-		onDecided?.();
+		try {
+			await onDecided?.(decision);
+		} finally {
+			setDeciding(false);
+		}
 	}
 
 	// Format JSON for display

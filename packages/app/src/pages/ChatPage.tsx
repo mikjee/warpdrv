@@ -130,19 +130,7 @@ function ServerSelector({
 		</Box>
 	);
 }
-// ============================================================
-// Helper: Map bridge tool call status to assistant-ui status
-// ============================================================
-function mapBridgeStatusToAuiStatus(status: EToolCallStatus): 'complete' | 'running' | 'requires-action' | 'error' {
-	switch (status) {
-		case EToolCallStatus.COMPLETED: return 'complete';
-		case EToolCallStatus.EXECUTING: return 'running';
-		case EToolCallStatus.PENDING: return 'requires-action';
-		case EToolCallStatus.ERROR: return 'error';
-		case EToolCallStatus.DENIED: return 'error';
-		default: return 'complete';
-	}
-}
+
 
 // ============================================================
 // ChatInner — main chat layout using bridge store
@@ -289,7 +277,6 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 			if (part.type === EMessagePartType.TOOL_CALL) {
 				const tc = tcMap.get(part.toolCallId);
 				if (tc) {
-					const auiStatus = mapBridgeStatusToAuiStatus(tc.status);
 					return {
 						type: 'tool-call' as const,
 						toolCallId: tc.id,
@@ -298,7 +285,6 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 						argsText: tc.arguments,
 						result: tc.result ? JSON.parse(tc.result) : undefined,
 						serverName: tc.serverName,
-						status: auiStatus,
 					};
 				}
 				return null;
@@ -314,6 +300,14 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 		}).filter(Boolean);
 
 		const isAssistant = msg.role === EChatRole.ASSISTANT;
+
+		// Check if this assistant message has any pending tool calls
+		const hasPendingToolCalls = isAssistant && content.some(
+			(part: any) => part.type === 'tool-call' && 
+						   part.toolCallId && 
+						   tcMap.get(part.toolCallId)?.status === EToolCallStatus.PENDING
+		);
+
 		const result: any = {
 			id: msg.id,
 			role: msg.role as 'user' | 'assistant' | 'system' | 'tool',
@@ -323,13 +317,15 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 			attachments: [],
 		};
 
-		// Only add status for assistant messages
+		// Set message status based on whether there are pending tool calls
 		if (isAssistant) {
-			result.status = { type: 'complete' as const, reason: 'stop' as const };
+			result.status = hasPendingToolCalls 
+				? { type: 'requires-action' as const, reason: 'tool-calls' as const }
+				: { type: 'complete' as const, reason: 'stop' as const };
 		}
 
 		return result;
-	}, [currentThreadId, toolCallsById, mapBridgeStatusToAuiStatus]);
+	}, [currentThreadId, toolCallsById]);
 
 	const convertedMessages = useMemo(() => {
 		return messages.map((msg, idx) => convertMessage(msg, idx));
