@@ -21,7 +21,7 @@ import { ChatConfigSidebar, DEFAULT_INFERENCE_PARAMS } from '../components/ChatC
 import '../styles/assistant-ui.css';
 import { createContext } from 'react';
 import { ChatToolsSidebar } from '../components/ChatToolsSidebar';
-import { selectActiveMessages, selectToolCallsForThread } from '@/hooks/useChatSelectors';
+import { buildMessageChain, selectActiveMessages, selectToolCallsForThread } from '@/hooks/useChatSelectors';
 import { useThreadConfig } from '@/hooks/useThreadConfig';
 import { ToolCallBlockWrapper } from '@/components/assistant-ui/ToolCallBlockWrapper';
 import { useShallow } from 'zustand/shallow';
@@ -221,7 +221,11 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 		};
 	}, [currentInferenceParams, contextSize, setCurrentInferenceParams]);
 
-// Get messages for current thread - use useShallow to prevent infinite loops
+// Get head message ID for backend API calls
+	const headMessageId = useStore((s: AppState) => currentThreadId ? s.headMessageIdByThread[currentThreadId] : null);
+	const setHeadMessageId = useStore(s => s.setHeadMessageId);
+
+	// Get messages for current thread - use useShallow to prevent infinite loops
 	const messages = useStore(useShallow((s: AppState) => currentThreadId ? selectActiveMessages(s, currentThreadId) : []));
 	// Note: conditional selector is acceptable here - currentThreadId is a prop, not store state
 	// This doesn't create new objects/arrays, just reads a single value based on a prop
@@ -342,8 +346,13 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 			setCurrentThreadId(threadId);
 		}
 		
-		const lastMsg = messages[messages.length - 1];
-		const openAIMessages = convertMessagesToOpenAIFormat(messages, toolCallsById);
+		// Build messages from head for backend (includes TOOL messages)
+		const messagesForBackend = buildMessageChain(
+			useStore.getState(),
+			threadId,
+			{ includeToolMessages: true }
+		);
+		const openAIMessages = convertMessagesToOpenAIFormat(messagesForBackend, toolCallsById);
 		
 		await fetch('/api/chat/completions', {
 			method: 'POST',
@@ -351,18 +360,27 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 			body: JSON.stringify({
 				threadId,
 				userMessage: { content: text },
-				parentId: lastMsg?.id ?? null,
+				parentId: headMessageId,
 				serverId: currentServerId,
 				messages: openAIMessages,
 				systemPrompt: currentSystemPrompt,
 				inferenceParams: currentInferenceParams,
 			}),
 		});
-	}, [currentThreadId, currentServerId, messages, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, toolCallsById]);
+	}, [currentThreadId, currentServerId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, toolCallsById]);
 
 	const onReload = useCallback(async (parentId: string | null) => {
-		if (!currentThreadId || !currentServerId) return;
-		const openAIMessages = convertMessagesToOpenAIFormat(messages, toolCallsById);
+		if (!currentThreadId || !currentServerId || !parentId) return;
+		
+		// Build messages from the regen point (parentId), not from head
+		// Messages below parentId should not be included
+		const messagesFromParent = buildMessageChain(
+			useStore.getState(),
+			currentThreadId,
+			{ includeToolMessages: true, fromId: parentId }
+		);
+		
+		const openAIMessages = convertMessagesToOpenAIFormat(messagesFromParent, toolCallsById);
 		
 		await fetch('/api/chat/completions', {
 			method: 'POST',
@@ -376,7 +394,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 				inferenceParams: currentInferenceParams,
 			}),
 		});
-}, [currentThreadId, currentServerId, currentSystemPrompt, currentInferenceParams, messages, toolCallsById]);
+	}, [currentThreadId, currentServerId, currentSystemPrompt, currentInferenceParams, toolCallsById]);
 
 	const onCancel = useCallback(async () => {
 		if (currentThreadId) {
@@ -390,6 +408,16 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 		onNew,
 		onReload,
 		onCancel,
+		// Called by assistant-ui when messages update (including branch switches)
+		setMessages: (newMessages) => {
+			// Extract the last message ID from the new messages
+			const lastMessage = newMessages[newMessages.length - 1];
+			if (currentThreadId && lastMessage && !isRunning) {
+				// Map assistant-ui message ID back to our store's message ID
+				const ourMessageId = lastMessage.id;
+				setHeadMessageId(currentThreadId, ourMessageId);
+			}
+		},
 		adapters: {
 			threadList: {
 				onSwitchToNewThread: async () => {

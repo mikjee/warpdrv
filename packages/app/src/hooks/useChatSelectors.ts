@@ -1,5 +1,5 @@
 import type { AppState } from '../store/types';
-import type { TThreadId, IChatMessage, IToolCall } from '@warpcore/bridge';
+import type { TThreadId, TMessageId, IChatMessage, IToolCall } from '@warpcore/bridge';
 
 // Select active branch from head to root
 export function selectActiveMessages(state: AppState, threadId: TThreadId): IChatMessage[] {
@@ -22,6 +22,45 @@ export function selectActiveMessages(state: AppState, threadId: TThreadId): ICha
 	}
 
 	return chain.reverse(); // Root to head
+}
+
+// Build message chain from a starting point to root (for backend API calls)
+// Includes TOOL messages for proper conversation context
+export function buildMessageChain(
+	state: AppState,
+	threadId: TThreadId,
+	options: {
+		includeToolMessages?: boolean;
+		fromId?: TMessageId | null;
+	} = {},
+): IChatMessage[] {
+	const { includeToolMessages = true, fromId } = options;
+
+	// Use provided fromId or fall back to head
+	let currentId = fromId ?? state.headMessageIdByThread[threadId];
+	if (!currentId) return [];
+
+	const chain: IChatMessage[] = [];
+
+	// Walk up via parentId
+	while (currentId) {
+		const msg: IChatMessage | undefined = state.messagesByThread[threadId]?.[currentId];
+		if (!msg) break;
+
+		// Include or filter based on option
+		if (includeToolMessages || msg.role !== 'tool') {
+			chain.push(msg);
+		}
+
+		currentId = (msg.parentId as TMessageId) ?? null;
+	}
+
+	return chain.reverse(); // Root to leaf
+}
+
+// Select all messages for backend (includes TOOL messages, uses head)
+export function selectActiveMessagesForBackend(state: AppState, threadId: TThreadId): IChatMessage[] {
+	return buildMessageChain(state, threadId, { includeToolMessages: true });
 }
 
 // Select tool calls for a thread

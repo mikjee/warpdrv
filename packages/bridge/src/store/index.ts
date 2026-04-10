@@ -75,6 +75,7 @@ export interface IChatStoreState {
 	seedThreadMessages: (threadId: TThreadId, messages: IChatMessage[]) => void;
 	setThreads: (threads: Record<TThreadId, IChatThread>) => void;
 	setActiveThread: (id: TThreadId | null) => void;
+	setHeadMessageId: (threadId: TThreadId, messageId: TMessageId) => void;
 
 	// Current chat state actions
 	setCurrentThreadId: (id: TThreadId | null) => void;
@@ -275,9 +276,14 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 				draft.threads = threads;
 			}),
 
-		setActiveThread: (id: TThreadId | null) =>
+setActiveThread: (id: TThreadId | null) =>
+		set((draft) => {
+			draft.activeThreadId = id;
+		}),
+
+		setHeadMessageId: (threadId: TThreadId, messageId: TMessageId) =>
 			set((draft) => {
-				draft.activeThreadId = id;
+				draft.headMessageIdByThread[threadId] = messageId;
 			}),
 
 		// Current chat state actions

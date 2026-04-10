@@ -74,6 +74,7 @@ export interface AppState {
 	seedThreadMessages: (threadId: TThreadId, messages: IChatMessage[]) => void;
 	setThreads: (threads: Record<TThreadId, IChatThread>) => void;
 	setActiveThread: (id: TThreadId | null) => void;
+	setHeadMessageId: (threadId: TThreadId, messageId: TMessageId) => void;
 
 	// Current chat state
 	currentThreadId: TThreadId | null;
