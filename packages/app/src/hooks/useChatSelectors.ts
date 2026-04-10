@@ -1,5 +1,7 @@
 import type { AppState } from '../store/types';
 import type { TThreadId, TMessageId, IChatMessage, IToolCall } from '@warpcore/bridge';
+import { EChatRole } from '@warpcore/bridge';
+import { useMemo, useRef } from 'react';
 
 // Select active branch from head to root
 export function selectActiveMessages(state: AppState, threadId: TThreadId): IChatMessage[] {
@@ -22,6 +24,67 @@ export function selectActiveMessages(state: AppState, threadId: TThreadId): ICha
 	}
 
 	return chain.reverse(); // Root to head
+}
+
+// Returns active branch only (from root to headMessageId) for UI
+// Converts TOOL role to assistant with empty content for assistant-ui compatibility
+// Uses ref-based memoization to avoid re-creating message objects on every render
+export function useDerivedMsgsForUI(
+	msgs: Record<TMessageId, IChatMessage>,
+	headMessageId: TMessageId | null,
+): IChatMessage[] {
+	const derivedMsgsRef = useRef<Record<TMessageId, IChatMessage>>({});
+
+	// Build active branch chain from head to root
+	const activeBranch = useMemo(() => {
+		if (!headMessageId) return [];
+
+		const chain: TMessageId[] = [];
+		let currentId: string | null = headMessageId;
+
+		while (currentId) {
+			const msg = msgs[currentId] as IChatMessage;
+			if (!msg) break;
+			chain.push(currentId);
+			currentId = msg.parentId ?? null;
+		}
+
+		return chain.reverse();
+	}, [msgs, headMessageId]);
+
+	// Apply TOOL conversion with ref-based caching
+	useMemo(() => {
+		for (const msgId of activeBranch) {
+			const msg = msgs[msgId];
+			if (!msg) continue;
+
+			if (msg.role === EChatRole.TOOL) {
+				if (!derivedMsgsRef.current[msgId]) {
+					derivedMsgsRef.current[msgId] = {
+						...msg,
+						role: EChatRole.ASSISTANT as const,
+						content: [],
+					};
+				}
+			}
+			else if (derivedMsgsRef.current[msgId] !== msg) {
+				derivedMsgsRef.current[msgId] = msg;
+			}
+		}
+	}, [msgs, activeBranch]);
+
+	// Cleanup: remove cached messages no longer in active branch
+	useMemo(() => {
+		const activeIds = new Set(activeBranch);
+		for (const cachedId of Object.keys(derivedMsgsRef.current)) {
+			if (!activeIds.has(cachedId)) {
+				delete derivedMsgsRef.current[cachedId];
+			}
+		}
+	}, [activeBranch]);
+
+	// Return ordered array from root to head
+	return useMemo(() => activeBranch.map(msgId => derivedMsgsRef.current[msgId]!), [activeBranch, msgs]);
 }
 
 // Build message chain from a starting point to root (for backend API calls)

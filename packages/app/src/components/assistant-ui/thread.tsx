@@ -341,12 +341,17 @@ function mapStatusFromPart(status: any): 'complete' | 'running' | 'requires-acti
 }
 
 const AssistantMessage: FC = () => {
-  return (
-    <MessagePrimitive.Root
-      className="aui-assistant-message-root fade-in slide-in-from-bottom-1 relative mx-auto w-full  animate-in py-3 duration-150"
-      data-role="assistant"
-    >
-      <div className="aui-assistant-message-content wrap-break-word px-2 text-foreground leading-relaxed">
+	const parts = useAuiState((s) => s.message.content);
+
+	// Skip rendering empty assistant messages (converted TOOL messages)
+	if (parts.length === 0) return null;
+
+	return (
+		<MessagePrimitive.Root
+			className="aui-assistant-message-root fade-in slide-in-from-bottom-1 relative mx-auto w-full  animate-in py-3 duration-150"
+			data-role="assistant"
+		>
+			<div className="aui-assistant-message-content wrap-break-word px-2 text-foreground leading-relaxed">
         <MessagePrimitive.Parts
           components={{
             Text: () => <MarkdownText />,

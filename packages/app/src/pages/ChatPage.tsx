@@ -21,7 +21,7 @@ import { ChatConfigSidebar, DEFAULT_INFERENCE_PARAMS } from '../components/ChatC
 import '../styles/assistant-ui.css';
 import { createContext } from 'react';
 import { ChatToolsSidebar } from '../components/ChatToolsSidebar';
-import { buildMessageChain, selectActiveMessages, selectToolCallsForThread } from '@/hooks/useChatSelectors';
+import { buildMessageChain, selectToolCallsForThread, useDerivedMsgsForUI } from '@/hooks/useChatSelectors';
 import { useThreadConfig } from '@/hooks/useThreadConfig';
 import { ToolCallBlockWrapper } from '@/components/assistant-ui/ToolCallBlockWrapper';
 import { useShallow } from 'zustand/shallow';
@@ -147,6 +147,7 @@ function mapBridgeStatusToAuiStatus(status: EToolCallStatus): 'complete' | 'runn
 // ============================================================
 // ChatInner — main chat layout using bridge store
 // ============================================================
+const emptyMsgs = {};
 const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	const [configOpen, setConfigOpen] = useState(false);
 	const [toolsOpen, setToolsOpen] = useState(false);
@@ -222,13 +223,12 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	}, [currentInferenceParams, contextSize, setCurrentInferenceParams]);
 
 // Get head message ID for backend API calls
-	const headMessageId = useStore((s: AppState) => currentThreadId ? s.headMessageIdByThread[currentThreadId] : null);
+	const headMessageId = useStore((s: AppState) => s.currentThreadId ? s.headMessageIdByThread[s.currentThreadId]! : null);
 	const setHeadMessageId = useStore(s => s.setHeadMessageId);
 
-	// Get messages for current thread - use useShallow to prevent infinite loops
-	const messages = useStore(useShallow((s: AppState) => currentThreadId ? selectActiveMessages(s, currentThreadId) : []));
-	// Note: conditional selector is acceptable here - currentThreadId is a prop, not store state
-	// This doesn't create new objects/arrays, just reads a single value based on a prop
+	// Get messages for UI (active branch only, with TOOL messages converted)
+	const threadMessages = useStore(s => s.currentThreadId ? s.messagesByThread[s.currentThreadId] || emptyMsgs : emptyMsgs)!;
+	const messages = useDerivedMsgsForUI(threadMessages, headMessageId);
 	const isRunning = useStore(s => s.currentThreadId ? s.isRunningByThread[s.currentThreadId] ?? false : false);
 	const toolCallsById = useStore(s => s.toolCallsById);
 
