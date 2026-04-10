@@ -17,7 +17,6 @@ export class SseBroadcaster implements IBridgeBroadcaster {
 	}
 
 	emit(event: IBridgeEvent): void {
-		console.log('[Broadcaster] emit - event type:', event.type, event.type === 'thread.created' ? 'thread:' + (event as any).thread?.id : '');
 		// Broadcast to all connected SSE sessions
 		this.channel.broadcast(event, event.type);
 		// Also fan out to in-process subscribers

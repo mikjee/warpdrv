@@ -72,7 +72,6 @@ export class Orchestrator {
 		try {
 			// Auto-create thread if needed
 			let thread = await this.persistence.getThread(request.threadId);
-			console.log('[Orchestrator] handleCompletion - threadId:', request.threadId, 'exists:', !!thread);
 			if (!thread) {
 				const now = Date.now();
 				thread = {
@@ -87,7 +86,6 @@ export class Orchestrator {
 					updatedAt: now,
 				};
 				await this.persistence.createThread(thread);
-				console.log('[Orchestrator] Created new thread:', thread.id);
 				this.broadcaster.emit({ type: 'thread.created', thread });
 			}
 

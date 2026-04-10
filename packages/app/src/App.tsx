@@ -21,7 +21,6 @@ export function App() {
 	useEffect(() => {
 		(window as any).useStore = useStore;
 		(window as any).getStoreState = () => useStore.getState();
-		console.log('[App] Store exposed to window.useStore and window.getStoreState()');
 	}, []);
 
 	// Run one model scan on app startup if model directories are configured
@@ -38,8 +37,6 @@ export function App() {
 			}
 		});
 	}, [toast]);
-
-	console.log("App rendering");
 
 	return (
 		<Routes>

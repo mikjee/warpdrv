@@ -25,6 +25,7 @@ import { selectActiveMessages, selectToolCallsForThread } from '@/hooks/useChatS
 import { useThreadConfig } from '@/hooks/useThreadConfig';
 import { ToolCallBlockWrapper } from '@/components/assistant-ui/ToolCallBlockWrapper';
 import { useShallow } from 'zustand/shallow';
+import { convertMessagesToOpenAIFormat } from '@/utils/messageConverter';
 
 interface IChatConfig {
 	reasoningEffort: EReasoningEffort;
@@ -225,10 +226,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	// Note: conditional selector is acceptable here - currentThreadId is a prop, not store state
 	// This doesn't create new objects/arrays, just reads a single value based on a prop
 	const isRunning = useStore(s => s.currentThreadId ? s.isRunningByThread[s.currentThreadId] ?? false : false);
-
-useEffect(() => {
-	console.log('[ChatPage] isRunning changed:', isRunning);
-}, [isRunning]);
+	const toolCallsById = useStore(s => s.toolCallsById);
 
 	// Check if thread exists in store (distinguishes new vs existing thread)
 	const threadInStore = useStore(s => currentThreadId ? s.threads[currentThreadId] : undefined);
@@ -240,7 +238,6 @@ useEffect(() => {
 	const seedThreadMessages = useStore(s => s.seedThreadMessages);
 	const applyToolCallCreated = useStore(s => s.applyToolCallCreated);
 	useEffect(() => {
-		console.log('[ChatPage] loadThread effect running for threadId:', currentThreadId);
 		if (!currentThreadId) {
 			setIsLoadingThread(false);
 			return;
@@ -256,21 +253,16 @@ useEffect(() => {
 		setIsLoadingThread(true);
 		
 		async function loadThread() {
-			// Fetch thread messages
-			console.log('[ChatPage] loadThread - fetching thread:', currentThreadId);
 			const res = await fetch(`/api/chat/threads/${currentThreadId ?? ''}`);
-			console.log('[ChatPage] loadThread - fetch response status:', res.status);
 			if (res.ok) {
 				const response = await res.json();
 				const data = response.data;
-				console.log('[ChatPage] loadThread - received data:', { threadId: data?.id, messagesCount: data?.messages?.length });
-				console.log('[ChatPage] loadThread - messages:', data?.messages?.map((m: any) => ({ id: m.id, role: m.role, contentLength: m.content?.length })));
 				seedThreadMessages(currentThreadId as string, data?.messages ?? []);
 				
 				// Fetch tool calls
-				const tcRes = await fetch(`/api/chat/threads/${currentThreadId}/tool-calls`);
+				const tcRes = await fetch(`/api/mcp/tool-calls/thread/${currentThreadId}`);
 				if (tcRes.ok) {
-					const tcs = await tcRes.json();
+					const { data: tcs } = await tcRes.json();
 					for (const tc of tcs) {
 						applyToolCallCreated(tc);
 					}
@@ -284,62 +276,27 @@ useEffect(() => {
 	// Convert bridge messages to assistant-ui format
 	const convertMessage = useCallback((msg: any, index: number) => {
 		
-		// Read toolCallsById directly from store to avoid dependency on array reference
-		const { toolCallsById } = useStore.getState();
+		// Use toolCallsById from closure (already reactive via useStore)
 		const threadToolCalls = Object.values(toolCallsById).filter((tc: any) => tc.threadId === currentThreadId);
 		const tcMap = new Map(threadToolCalls.map((tc: any) => [tc.id, tc]));
 		
-		// Handle TOOL role - render as assistant with tool-call part containing ToolCallBlockWrapper
-		if (msg.role === EChatRole.TOOL) {
-			const toolCallId = (msg.content ?? []).find((p: any) => p.type === EMessagePartType.TOOL_CALL)?.toolCallId;
-			const tc = toolCallId ? tcMap.get(toolCallId) : undefined;
-			
-			if (!tc) {
-				// Fallback if tool call not found
-				return {
-					id: msg.id,
-					role: 'assistant' as const,
-					content: [{ type: 'text' as const, text: '[Tool call not found]' }],
-					createdAt: new Date(msg.createdAt),
-					status: { type: 'complete' as const, reason: 'stop' as const },
-					metadata: { unstable_state: {}, custom: msg.stats || {} },
-					attachments: [],
-				};
-			}
-			
-			const auiStatus = mapBridgeStatusToAuiStatus(tc.status);
-			
-			return {
-				id: msg.id,
-				role: 'assistant' as const, // Render as assistant bubble
-				content: [{
-					type: 'tool-call' as const,
-					toolCallId: tc.id,
-					toolName: tc.toolName,
-					toolArgs: tc.arguments,
-					toolResult: tc.result,
-					status: auiStatus,
-					toolUI: (
-						<ToolCallBlockWrapper 
-							toolCallId={tc.id}
-							toolName={tc.toolName}
-							serverName={tc.serverName}
-							args={JSON.parse(tc.arguments)}
-							result={tc.result ? JSON.parse(tc.result) : undefined}
-							status={auiStatus}
-						/>
-					),
-				}],
-				createdAt: new Date(msg.createdAt),
-				status: { type: 'complete' as const, reason: 'stop' as const },
-				metadata: { unstable_state: {}, custom: msg.stats || {} },
-				attachments: [],
-			};
-		}
-		
 		const content = (msg.content ?? []).map((part: any) => {
-			// Filter out TOOL_CALL parts from assistant messages - they are for API context only
+			// Convert TOOL_CALL parts to tool-call format
 			if (part.type === EMessagePartType.TOOL_CALL) {
+				const tc = tcMap.get(part.toolCallId);
+				if (tc) {
+					const auiStatus = mapBridgeStatusToAuiStatus(tc.status);
+					return {
+						type: 'tool-call' as const,
+						toolCallId: tc.id,
+						toolName: tc.toolName,
+						args: JSON.parse(tc.arguments),
+						argsText: tc.arguments,
+						result: tc.result ? JSON.parse(tc.result) : undefined,
+						serverName: tc.serverName,
+						status: auiStatus,
+					};
+				}
 				return null;
 			}
 			if (part.type === EMessagePartType.TEXT) {
@@ -355,7 +312,7 @@ useEffect(() => {
 		const isAssistant = msg.role === EChatRole.ASSISTANT;
 		const result: any = {
 			id: msg.id,
-			role: msg.role as 'user' | 'assistant' | 'system',
+			role: msg.role as 'user' | 'assistant' | 'system' | 'tool',
 			content: content as any,
 			createdAt: new Date(msg.createdAt),
 			metadata: { unstable_state: {}, custom: msg.stats || {} },
@@ -368,10 +325,9 @@ useEffect(() => {
 		}
 
 		return result;
-	}, [currentThreadId]);
+	}, [currentThreadId, toolCallsById, mapBridgeStatusToAuiStatus]);
 
 	const convertedMessages = useMemo(() => {
-		
 		return messages.map((msg, idx) => convertMessage(msg, idx));
 	}, [messages, convertMessage]);
 
@@ -387,6 +343,8 @@ useEffect(() => {
 		}
 		
 		const lastMsg = messages[messages.length - 1];
+		const openAIMessages = convertMessagesToOpenAIFormat(messages, toolCallsById);
+		
 		await fetch('/api/chat/completions', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -395,15 +353,17 @@ useEffect(() => {
 				userMessage: { content: text },
 				parentId: lastMsg?.id ?? null,
 				serverId: currentServerId,
-				messages: [],
+				messages: openAIMessages,
 				systemPrompt: currentSystemPrompt,
 				inferenceParams: currentInferenceParams,
 			}),
 		});
-	}, [currentThreadId, currentServerId, messages, currentSystemPrompt, currentInferenceParams, setCurrentThreadId]);
+	}, [currentThreadId, currentServerId, messages, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, toolCallsById]);
 
 	const onReload = useCallback(async (parentId: string | null) => {
 		if (!currentThreadId || !currentServerId) return;
+		const openAIMessages = convertMessagesToOpenAIFormat(messages, toolCallsById);
+		
 		await fetch('/api/chat/completions', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -411,12 +371,12 @@ useEffect(() => {
 				threadId: currentThreadId,
 				parentId,
 				serverId: currentServerId,
-				messages: [],
+				messages: openAIMessages,
 				systemPrompt: currentSystemPrompt,
 				inferenceParams: currentInferenceParams,
 			}),
 		});
-}, [currentThreadId, currentServerId, currentSystemPrompt, currentInferenceParams]);
+}, [currentThreadId, currentServerId, currentSystemPrompt, currentInferenceParams, messages, toolCallsById]);
 
 	const onCancel = useCallback(async () => {
 		if (currentThreadId) {
@@ -430,7 +390,6 @@ useEffect(() => {
 		onNew,
 		onReload,
 		onCancel,
-		convertMessage,
 		adapters: {
 			threadList: {
 				onSwitchToNewThread: async () => {

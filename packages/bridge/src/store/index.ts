@@ -120,7 +120,6 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 		// Thread actions
 		applyThreadCreated: (thread: IChatThread) =>
 			set((draft) => {
-				console.log('[Store] applyThreadCreated - thread id:', thread.id, 'total threads now:', Object.keys({ ...draft.threads, [thread.id]: thread }).length);
 				draft.threads[thread.id] = thread;
 			}),
 
@@ -148,7 +147,6 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 		// Message actions
 		applyMessageCreated: (message: IChatMessage) =>
 			set((draft) => {
-				console.log('[Store] applyMessageCreated - message id:', message.id, 'threadId:', message.threadId, 'role:', message.role);
 				// Ensure thread exists in messagesByThread
 				if (!draft.messagesByThread[message.threadId]) {
 					draft.messagesByThread[message.threadId] = {};
@@ -156,7 +154,6 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 				const threadMessages = draft.messagesByThread[message.threadId]!;
 				// Insert message
 				threadMessages[message.id] = message;
-				console.log('[Store] applyMessageCreated - stored message. Thread messages count:', Object.keys(threadMessages).length);
 				// Update head — new message is always the new head
 				draft.headMessageIdByThread[message.threadId] = message.id;
 			}),

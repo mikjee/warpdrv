@@ -22,7 +22,6 @@ chatRouter.get('/threads', async (req, res) => {
 		if (query) options.query = query;
 		if (folderId !== undefined) options.folderId = folderId === 'null' ? null : folderId;
 		const threads = await persistence.listThreads(options);
-		console.log('[Server] GET /api/chat/threads - found', threads.length, 'threads:', threads.map(t => t.id));
 		res.json({ ok: true, data: threads, total: threads.length, error: null });
 	} catch (err) {
 		console.error('[Server] GET /api/chat/threads - error:', err);

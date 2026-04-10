@@ -5,6 +5,7 @@ import {
 } from "@/components/assistant-ui/attachment";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
 import { ToolFallback } from "@/components/assistant-ui/tool-fallback";
+import { ToolCallBlockWrapper } from "@/components/assistant-ui/ToolCallBlockWrapper";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,7 @@ import {
 } from "lucide-react";
 import { useContext, useState, type FC } from "react";
 import { ChatConfigContext } from "@/pages/ChatPage";
+import { useStore } from "@/store";
 import { EReasoningEffort } from "@warpcore/shared";
 import { useMessageTiming } from "@assistant-ui/react";
 import { BrainCircuitIcon, ClockIcon } from "lucide-react";
@@ -314,6 +316,30 @@ const MessageStats: FC = () => {
   );
 };
 
+const ToolCallRenderer: FC = () => {
+  const part = useAuiState(s => s.part);
+  
+  return (
+    <ToolCallBlockWrapper
+      toolCallId={(part as any).toolCallId}
+      toolName={(part as any).toolName}
+      serverName={(part as any).serverName ?? 'unknown'}
+      args={(part as any).args}
+      result={(part as any).result}
+      status={mapStatusFromPart((part as any).status)}
+    />
+  );
+};
+
+function mapStatusFromPart(status: any): 'complete' | 'running' | 'requires-action' | 'error' {
+  if (!status) return 'complete';
+  if (status.type === 'complete') return 'complete';
+  if (status.type === 'running') return 'running';
+  if (status.type === 'requires-action') return 'requires-action';
+  if (status.type === 'error' || status.type === 'incomplete') return 'error';
+  return 'complete';
+}
+
 const AssistantMessage: FC = () => {
   return (
     <MessagePrimitive.Root
@@ -321,19 +347,19 @@ const AssistantMessage: FC = () => {
       data-role="assistant"
     >
       <div className="aui-assistant-message-content wrap-break-word px-2 text-foreground leading-relaxed">
-       <MessagePrimitive.Parts>
-          {({ part }) => {
-            if (part.type === "reasoning") return <ReasoningBlock />;
-            if (part.type === "text") return <MarkdownText />;
-            if (part.type === "tool-call")
-              return part.toolUI ?? <ToolFallback {...part} />;
-            return null;
+        <MessagePrimitive.Parts
+          components={{
+            Text: () => <MarkdownText />,
+            Reasoning: () => <ReasoningBlock />,
+            tools: {
+              Fallback: ToolCallRenderer,
+            },
           }}
-        </MessagePrimitive.Parts>
+        />
         <MessageError />
       </div>
 
-     <div className="aui-assistant-message-footer mt-1 ml-2 flex min-h-6 items-center">
+      <div className="aui-assistant-message-footer mt-1 ml-2 flex min-h-6 items-center">
         <MessageStats />
         <BranchPicker />
         <AssistantActionBar />

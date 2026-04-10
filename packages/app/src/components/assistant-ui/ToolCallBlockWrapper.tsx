@@ -33,6 +33,7 @@ export function ToolCallBlockWrapper({ toolCallId, toolName, serverName, args, r
 
 		const { decideMcpToolCall } = await import('@/api/mcpServices');
 		await decideMcpToolCall(
+			toolCallId,
 			decision,
 			currentThreadId,
 			currentServerId,

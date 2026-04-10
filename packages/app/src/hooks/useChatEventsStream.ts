@@ -28,7 +28,6 @@ export function useChatEventsStream() {
 			const event = JSON.parse(e.data) as IBridgeEvent;
 			switch (event.type) {
 				case 'thread.created':
-					console.log('[Chat SSE] thread.created:', JSON.stringify(event.thread));
 					applyThreadCreated(event.thread);
 					break;
 			case 'thread.updated':
@@ -38,11 +37,9 @@ export function useChatEventsStream() {
 				applyThreadDeleted(event.threadId);
 				break;
 			case 'message.created':
-					console.log('[Chat SSE] message.created:', JSON.stringify(event.message));
 					applyMessageCreated(event.message);
 					break;
 			case 'message.patched':
-				console.log('[Chat SSE] message.patched:', JSON.stringify(event.updates));
 				applyMessagePatched(event.messageId, event.threadId, event.updates);
 				break;
 			case 'message.deleted':

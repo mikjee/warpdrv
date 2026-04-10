@@ -105,10 +105,6 @@ async function scanModelDir(dirPath: string, user: string, modelName: string, ca
 			totalSizeMb,
 		};
 
-		if (parsedCount > 0 || cachedCount > 0) {
-			console.log(`[modelScanner] ${user}/${modelName}: ${parsedCount} parsed, ${cachedCount} from cache`);
-		}
-
 		return result;
 	} catch {
 		return null;
@@ -151,10 +147,7 @@ export async function scanAllModelRoots(roots: string[]): Promise<IModel[]> {
 	let cachedModels: IModel[] = [];
 	try {
 		cachedModels = await store.get<IModel[]>(MODELS_CACHE_KEY) ?? [];
-		if (cachedModels.length > 0) {
-			console.log(`[modelScanner] Loaded ${cachedModels.length} cached models`);
-		}
-	} catch (err) {
+		} catch (err) {
 		console.warn('[modelScanner] Failed to load cache:', err);
 	}
 

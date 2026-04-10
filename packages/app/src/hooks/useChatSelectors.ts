@@ -9,11 +9,13 @@ export function selectActiveMessages(state: AppState, threadId: TThreadId): ICha
 	const chain: IChatMessage[] = [];
 	let currentId = headId;
 
-	// Walk up via parentId - DO NOT filter TOOL role messages
+	// Walk up via parentId - filter out TOOL role messages
 	while (currentId) {
 		const msg = state.messagesByThread[threadId]?.[currentId];
 		if (!msg) break;
-		chain.push(msg);
+		if (msg.role !== 'tool') {
+			chain.push(msg);
+		}
 		const nextId = msg.parentId;
 		if (!nextId) break;
 		currentId = nextId;

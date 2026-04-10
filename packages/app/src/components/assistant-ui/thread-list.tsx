@@ -49,15 +49,12 @@ export function useThreadsAndFolders() {
 
 	// Initial load
 	useEffect(() => {
-		console.log('[ThreadList] Initial load effect running');
 		Promise.all([fetchThreads(), fetchFolders()]).then(([tRes, fRes]) => {
-			console.log('[ThreadList] fetchThreads result:', tRes.ok ? 'ok' : 'failed', 'data:', tRes.data);
 			if (tRes.ok && tRes.data) {
 				const threadsRecord = tRes.data.reduce((acc, t) => {
 					(acc as any)[t.id] = t;
 					return acc;
 				}, {} as Record<string, IChatThread>);
-				console.log('[ThreadList] Calling setThreads with', Object.keys(threadsRecord).length, 'threads');
 				setThreads(threadsRecord);
 			}
 			if (fRes.ok) setFolders(fRes.data);
@@ -237,7 +234,6 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect }: {
 				onStartDrag(thread.id);
 			}}
 			onClick={() => {
-				console.log('[ManualThreadListItem] Clicked thread:', thread.id, thread);
 				onSelect(thread.id);
 			}}
 			style={{ minHeight: '40px', cursor: 'grab' }}
@@ -643,13 +639,7 @@ export const ThreadList: FC = () => {
 	}, [handleDropThread]);
 
 	const handleSelectThread = useCallback((threadId: string) => {
-		console.log('[ThreadList] handleSelectThread called with:', threadId);
-		const storeState = useStore.getState();
-		console.log('[ThreadList] Threads in store:', Object.keys(storeState.threads).map(id => ({ id, title: storeState.threads[id]?.title })));
-		console.log('[ThreadList] Messages for thread:', threadId, '=>', Object.keys(storeState.messagesByThread[threadId] || {}));
-		console.log('[ThreadList] Head message ID:', storeState.headMessageIdByThread[threadId]);
 		threadsAPI.setCurrentThreadId(threadId);
-		console.log('[ThreadList] Current thread ID after selection:', storeState.currentThreadId);
 	}, [threadsAPI.setCurrentThreadId]);
 
 	const cycleSortField = useCallback(() => {

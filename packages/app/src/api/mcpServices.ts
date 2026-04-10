@@ -117,6 +117,7 @@ export function setMcpToolPermission(
 // Tool call approvals
 // ============================================================
 export function decideMcpToolCall(
+	toolCallId: string,
 	decision: 'approve' | 'deny',
 	threadId: string,
 	serverId: string,
@@ -124,7 +125,7 @@ export function decideMcpToolCall(
 	systemPrompt?: string,
 	inferenceParams?: Record<string, unknown>,
 ) {
-	return json<null>('/api/chat/tool-calls/resume', {
+	return json<null>(`/api/chat/tool-calls/${toolCallId}/resume`, {
 		method: 'POST',
 		body: JSON.stringify({
 			decision,
