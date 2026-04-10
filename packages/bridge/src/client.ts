@@ -21,3 +21,6 @@ export { FetchTransport, type IFetchTransportConfig } from './transport/fetch';
 
 // Store (universal)
 export { createChatStoreSlice, type IChatStoreState, type ImmerSet, type ImmerGet } from './store';
+
+// Message conversion (universal)
+export { convertMessagesToOpenAIFormat, type TOpenAIMessage } from './messageConverter';

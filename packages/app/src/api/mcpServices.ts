@@ -11,6 +11,7 @@ import type {
 	IServerPermission as IMcpServerPermission,
 	IToolCall,
 	EToolApprovalMode,
+	TOpenAIMessage,
 } from '@warpcore/bridge';
 
 const API_BASE = '';
@@ -121,7 +122,7 @@ export function decideMcpToolCall(
 	decision: 'approve' | 'deny',
 	threadId: string,
 	serverId: string,
-	messages?: Array<{ role: string; content: string }>,
+	messages?: TOpenAIMessage[],
 	systemPrompt?: string,
 	inferenceParams?: Record<string, unknown>,
 ) {

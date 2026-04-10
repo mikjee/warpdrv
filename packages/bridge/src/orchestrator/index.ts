@@ -714,16 +714,25 @@ export class Orchestrator {
 			chainToolCallIds.map(id => this.persistence.getToolCall(id))
 		);
 		const stillBlocking = allInChain.some(t =>
-			t && (t.status === EToolCallStatus.PENDING || t.status === EToolCallStatus.EXECUTING)
+			t && (t.status === EToolCallStatus.PENDING || t.status === EToolCallStatus.EXECUTING || t.status === EToolCallStatus.DENIED)
 		);
 		if (stillBlocking) return;
+
+		// Convert resolved tool calls to OpenAI format and append to messages
+		const toolOpenAIMessages = allInChain
+			.filter((tc): tc is IToolCall => tc !== null)
+			.map(tc => ({
+				role: 'tool' as const,
+				content: tc.result ?? JSON.stringify({ error: tc.error }),
+				tool_call_id: tc.id,
+			}));
 
 		// All tool calls resolved — trigger next inference pass
 		// Rebuild conversation context from thread history
 		const enabledTools = await this.permissions.getEnabledTools(this.mcpClient.getAllTools());
 		const baseMessages = request.systemPrompt
-			? [{ role: 'system' as const, content: request.systemPrompt }, ...request.messages]
-			: [...request.messages];
+			? [{ role: 'system' as const, content: request.systemPrompt }, ...request.messages, ...toolOpenAIMessages]
+			: [...request.messages, ...toolOpenAIMessages];
 
 		await this.executePass(
 			inferenceUrl,

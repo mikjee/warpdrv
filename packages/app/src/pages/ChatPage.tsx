@@ -25,7 +25,7 @@ import { buildMessageChain, selectToolCallsForThread, useDerivedMsgsForUI } from
 import { useThreadConfig } from '@/hooks/useThreadConfig';
 import { ToolCallBlockWrapper } from '@/components/assistant-ui/ToolCallBlockWrapper';
 import { useShallow } from 'zustand/shallow';
-import { convertMessagesToOpenAIFormat } from '@/utils/messageConverter';
+import { convertMessagesToOpenAIFormat } from '@warpcore/bridge';
 
 interface IChatConfig {
 	reasoningEffort: EReasoningEffort;

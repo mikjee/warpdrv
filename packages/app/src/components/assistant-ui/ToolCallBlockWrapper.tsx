@@ -1,6 +1,7 @@
 import { ToolCallBlock } from '@/components/ToolCallBlock';
 import { useStore } from '@/store';
-import { EToolCallStatus } from '@warpcore/bridge';
+import { EToolCallStatus, convertMessagesToOpenAIFormat } from '@warpcore/bridge';
+import { buildMessageChain } from '@/hooks/useChatSelectors';
 
 interface IToolCallBlockWrapperProps {
 	toolCallId: string;
@@ -20,13 +21,24 @@ export function ToolCallBlockWrapper({ toolCallId, toolName, serverName, args, r
 	async function handleDecision(decision: 'approve' | 'deny') {
 		if (!currentThreadId || !currentServerId) return;
 
+		// Build messages for the backend
+		const messagesForBackend = buildMessageChain(
+			useStore.getState(),
+			currentThreadId,
+			{ includeToolMessages: true }
+		);
+		const openAIMessages = convertMessagesToOpenAIFormat(
+			messagesForBackend,
+			useStore.getState().toolCallsById
+		);
+
 		const { decideMcpToolCall } = await import('@/api/mcpServices');
 		await decideMcpToolCall(
 			toolCallId,
 			decision,
 			currentThreadId,
 			currentServerId,
-			undefined,
+			openAIMessages,
 			currentSystemPrompt,
 			currentInferenceParams
 		);

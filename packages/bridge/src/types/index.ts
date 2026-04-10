@@ -355,3 +355,6 @@ export interface ISSEChunk {
 	warpcore_event?: string;
 	[key: string]: unknown;
 }
+
+// Message conversion utilities
+export { convertMessagesToOpenAIFormat, type TOpenAIMessage } from '../messageConverter';
