@@ -179,3 +179,98 @@ export function ChatToolsSidebar({ open, onToggle }: { open: boolean; onToggle: 
 		</Box>
 	);
 }
+
+// ============================================================
+// Content panel for tabbed sidebar (no header, no toggle strip)
+// ============================================================
+export function ChatToolsContentPanel() {
+	const mcpServers = useStore((s) => s.mcpServers);
+	const [serverPerms, setServerPerms] = useState<IMcpServerPermission[]>([]);
+	const [toolPerms, setToolPerms] = useState<IToolPermission[]>([]);
+	const [expandedServers, setExpandedServers] = useState<Record<string, boolean>>({});
+
+	useEffect(() => {
+		fetchMcpPermissions().then(res => {
+			if (res.ok) {
+				setServerPerms(res.data.servers);
+				setToolPerms(res.data.tools);
+			}
+		});
+	}, []);
+
+	const serverPermMap = new Map(serverPerms.map(p => [p.serverName, p.enabled]));
+	const toolPermMap = new Map(toolPerms.map(p => [`${p.serverName}:${p.toolName}`, p]));
+	const serverEntries = Object.entries(mcpServers);
+	const totalTools = serverEntries.reduce((sum, [, s]) => sum + s.tools.length, 0);
+
+	return (
+		<Box p="3">
+			{serverEntries.map(([name, state]) => {
+				const serverEnabled = serverPermMap.get(name) ?? true;
+				const isExpanded = expandedServers[name] ?? true;
+				const globalOpacity = 0.6;
+
+				return (
+					<Box key={name} mb="2" opacity={globalOpacity}>
+						<HStack
+							gap="2"
+							px="2"
+							py="1"
+							borderRadius="sm"
+							cursor="pointer"
+							_hover={{ bg: 'rgba(255,255,255,0.03)' }}
+							onClick={() => setExpandedServers(prev => ({ ...prev, [name]: !prev[name] }))}
+						>
+							{isExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+							<StatusDot status={state.status} />
+							<Text flex="1" fontSize="12px" color="rgba(255,255,255,0.7)" fontWeight="500">
+								{name}
+							</Text>
+							{!serverEnabled && (
+								<Text fontSize="9px" color="rgba(239,68,68,0.5)">OFF</Text>
+							)}
+						</HStack>
+
+						{isExpanded && serverEnabled && (
+							<VStack gap="0" pl="5" mt="0.5">
+								{state.tools.map(tool => {
+									const perm = toolPermMap.get(`${name}:${tool.name}`);
+									const toolEnabled = perm?.enabled ?? true;
+									const mode = perm?.approvalMode ?? EToolApprovalMode.ASK;
+
+									return (
+										<HStack
+											key={tool.name}
+											gap="2"
+											w="100%"
+											px="2"
+											py="1"
+											borderRadius="sm"
+											opacity={toolEnabled ? 1 : 0.4}
+										>
+											<Box color={approvalColors[mode]} flexShrink={0}>
+												{approvalIcons[mode]}
+											</Box>
+											<Text fontSize="11px" color="rgba(255,255,255,0.6)" flex="1" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+												{tool.name}
+											</Text>
+										</HStack>
+									);
+								})}
+								{state.tools.length === 0 && (
+									<Text fontSize="10px" color="rgba(255,255,255,0.2)" px="2" py="1">No tools</Text>
+								)}
+							</VStack>
+						)}
+					</Box>
+				);
+			})}
+
+			{serverEntries.length === 0 && (
+				<Text fontSize="11px" color="rgba(255,255,255,0.2)" textAlign="center" py="4">
+					No MCP servers
+				</Text>
+			)}
+		</Box>
+	);
+}

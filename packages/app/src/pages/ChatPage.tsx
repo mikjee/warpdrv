@@ -21,6 +21,7 @@ import { ChatConfigSidebar, DEFAULT_INFERENCE_PARAMS } from '../components/ChatC
 import '../styles/assistant-ui.css';
 import { createContext } from 'react';
 import { ChatToolsSidebar } from '../components/ChatToolsSidebar';
+import { ChatSidebar } from '../components/ChatSidebar';
 import { buildMessageChain, selectToolCallsForThread, useDerivedMsgsForUI } from '@/hooks/useChatSelectors';
 import { useThreadConfig } from '@/hooks/useThreadConfig';
 import { ToolCallBlockWrapper } from '@/components/assistant-ui/ToolCallBlockWrapper';
@@ -137,8 +138,8 @@ function ServerSelector({
 // ============================================================
 const emptyMsgs = {};
 const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
-	const [configOpen, setConfigOpen] = useState(false);
-	const [toolsOpen, setToolsOpen] = useState(false);
+	// Removed: const [configOpen, setConfigOpen] = useState(false);
+	// Removed: const [toolsOpen, setToolsOpen] = useState(false);
 	const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
 
 	// Get current thread state from store
@@ -381,6 +382,17 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 						<Box flex="1" overflow="hidden">
 							<Thread isLoading={isLoadingThread} />
 						</Box>
+						{/* New unified sidebar with tabs */}
+					<ChatSidebar
+						configParams={currentInferenceParams}
+						configSystemPrompt={currentSystemPrompt}
+						configSelectedPresetId={selectedPresetId}
+						onConfigParamsChange={handleParamsChange}
+						onConfigSystemPromptChange={handleSystemPromptChange}
+						onConfigPresetSelect={handlePresetSelect}
+					/>
+
+					{/* Old sidebars (commented out for regression testing)
 						<ChatConfigSidebar
 							open={configOpen}
 							onToggle={() => setConfigOpen(!configOpen)}
@@ -392,6 +404,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 							onPresetSelect={handlePresetSelect}
 						/>
 						<ChatToolsSidebar open={toolsOpen} onToggle={() => setToolsOpen(!toolsOpen)} />
+						*/}
 					</Flex>
 				</AssistantRuntimeProvider>
 			</TooltipProvider>
