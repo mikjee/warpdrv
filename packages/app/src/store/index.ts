@@ -64,12 +64,12 @@ export const useStore = create<AppState>()(
 			applyToolCallUpdated: bridge.applyToolCallUpdated,
 			applyInferenceStarted: bridge.applyInferenceStarted,
 			applyInferenceEnded: bridge.applyInferenceEnded,
-seedThreadMessages: bridge.seedThreadMessages,
-		setThreads: bridge.setThreads,
-		setActiveThread: bridge.setActiveThread,
-		setHeadMessageId: bridge.setHeadMessageId,
+			seedThreadMessages: bridge.seedThreadMessages,
+			setThreads: bridge.setThreads,
+			setActiveThread: bridge.setActiveThread,
+			setHeadMessageId: bridge.setHeadMessageId,
 
-		// Current chat state
+			// Current chat state
 			currentThreadId: bridge.currentThreadId,
 			currentServerId: bridge.currentServerId,
 			currentSystemPrompt: bridge.currentSystemPrompt,

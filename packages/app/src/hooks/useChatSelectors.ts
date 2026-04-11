@@ -1,90 +1,132 @@
+import { useStore } from '@/store';
 import type { AppState } from '../store/types';
 import type { TThreadId, TMessageId, IChatMessage, IToolCall } from '@warpcore/bridge';
-import { EChatRole } from '@warpcore/bridge';
-import { useMemo, useRef } from 'react';
+import { EChatRole, EMessagePartType, EToolCallStatus } from '@warpcore/bridge';
+import { useCallback, useMemo, useRef } from 'react';
+import { ExportedMessageRepository } from '@assistant-ui/react';
 
-// Select active branch from head to root
-export function selectActiveMessages(state: AppState, threadId: TThreadId): IChatMessage[] {
-	const headId = state.headMessageIdByThread[threadId];
-	if (!headId) return [];
-
-	const chain: IChatMessage[] = [];
-	let currentId = headId;
-
-	// Walk up via parentId - filter out TOOL role messages
-	while (currentId) {
-		const msg = state.messagesByThread[threadId]?.[currentId];
-		if (!msg) break;
-		if (msg.role !== 'tool') {
-			chain.push(msg);
-		}
-		const nextId = msg.parentId;
-		if (!nextId) break;
-		currentId = nextId;
-	}
-
-	return chain.reverse(); // Root to head
-}
-
-// Returns active branch only (from root to headMessageId) for UI
-// Converts TOOL role to assistant with empty content for assistant-ui compatibility
-// Uses ref-based memoization to avoid re-creating message objects on every render
 export function useDerivedMsgsForUI(
 	msgs: Record<TMessageId, IChatMessage>,
+	currentThreadId: string | null,
 	headMessageId: TMessageId | null,
-): IChatMessage[] {
+): ExportedMessageRepository {
+	const toolCallsById = useStore(s => s.toolCallsById);
+
 	const derivedMsgsRef = useRef<Record<TMessageId, IChatMessage>>({});
+	const convertedMsgsRef = useRef<Record<TMessageId, any>>({});
+	const toolCallsByIdRef = useRef<typeof toolCallsById>(toolCallsById);
 
-	// Build active branch chain from head to root
-	const activeBranch = useMemo(() => {
-		if (!headMessageId) return [];
+	const convertMessage = useCallback((msg: any) => {
+			
+		// Use toolCallsById from closure (already reactive via useStore)
+		const threadToolCalls = Object.values(toolCallsById).filter((tc: any) => tc.threadId === currentThreadId);
+		const tcMap = new Map(threadToolCalls.map((tc: any) => [tc.id, tc]));
+		
+		const content = (msg.content ?? []).map((part: any) => {
+			// Convert TOOL_CALL parts to tool-call format
+			if (part.type === EMessagePartType.TOOL_CALL) {
+				const tc = tcMap.get(part.toolCallId);
+				if (tc) {
+					return {
+						type: 'tool-call' as const,
+						toolCallId: tc.id,
+						toolName: tc.toolName,
+						args: JSON.parse(tc.arguments),
+						argsText: tc.arguments,
+						result: tc.result ? JSON.parse(tc.result) : undefined,
+						serverName: tc.serverName,
+					};
+				}
+				return null;
+			}
+			if (part.type === EMessagePartType.TEXT) {
+				return { type: 'text' as const, text: part.text || '' };
+			}
+			if (part.type === EMessagePartType.REASONING) {
+				const reasoningText = part.text || '';
+				return { type: 'reasoning' as const, reasoning: reasoningText, text: reasoningText };
+			}
+			return { type: 'text' as const, text: '' };
+		}).filter(Boolean);
 
-		const chain: TMessageId[] = [];
-		let currentId: string | null = headMessageId;
+		const isAssistant = msg.role === EChatRole.ASSISTANT;
 
-		while (currentId) {
-			const msg = msgs[currentId] as IChatMessage;
-			if (!msg) break;
-			chain.push(currentId);
-			currentId = msg.parentId ?? null;
+		// Check if this assistant message has any pending tool calls
+		const hasPendingToolCalls = isAssistant && content.some(
+			(part: any) => part.type === 'tool-call' && 
+							part.toolCallId && 
+							tcMap.get(part.toolCallId)?.status === EToolCallStatus.PENDING
+		);
+
+		const result: any = {
+			id: msg.id,
+			role: msg.role as 'user' | 'assistant' | 'system' | 'tool',
+			content: content as any,
+			createdAt: new Date(msg.createdAt),
+			metadata: { unstable_state: {}, custom: msg.stats || {} },
+			attachments: [],
+		};
+
+		// Set message status based on whether there are pending tool calls
+		if (isAssistant) {
+			result.status = hasPendingToolCalls 
+				? { type: 'requires-action' as const, reason: 'tool-calls' as const }
+				: { type: 'complete' as const, reason: 'stop' as const };
 		}
 
-		return chain.reverse();
-	}, [msgs, headMessageId]);
+		return result;
+	}, [currentThreadId, toolCallsById]);
 
-	// Apply TOOL conversion with ref-based caching
-	useMemo(() => {
-		for (const msgId of activeBranch) {
-			const msg = msgs[msgId];
-			if (!msg) continue;
+	// ---
+	
+	const sortedMsgs = useMemo(() => {
+		const haveNewToolCalls = toolCallsById !== toolCallsByIdRef.current;
+
+		Object.values(msgs).forEach(msg => {
+			const msgId = msg.id;
 
 			if (msg.role === EChatRole.TOOL) {
-				if (!derivedMsgsRef.current[msgId]) {
+				if (!derivedMsgsRef.current[msgId] || haveNewToolCalls) {
 					derivedMsgsRef.current[msgId] = {
 						...msg,
 						role: EChatRole.ASSISTANT as const,
 						content: [],
 					};
+					convertedMsgsRef.current[msgId] = convertMessage(derivedMsgsRef.current[msgId]);
 				}
 			}
-			else if (derivedMsgsRef.current[msgId] !== msg) {
+
+			else if ((derivedMsgsRef.current[msgId] !== msg) || haveNewToolCalls) {
 				derivedMsgsRef.current[msgId] = msg;
+				convertedMsgsRef.current[msgId] = convertMessage(msg);
 			}
-		}
-	}, [msgs, activeBranch]);
+		});
 
-	// Cleanup: remove cached messages no longer in active branch
-	useMemo(() => {
-		const activeIds = new Set(activeBranch);
 		for (const cachedId of Object.keys(derivedMsgsRef.current)) {
-			if (!activeIds.has(cachedId)) {
+			if (!msgs[cachedId]) {
 				delete derivedMsgsRef.current[cachedId];
+				delete convertedMsgsRef.current[cachedId];
 			}
 		}
-	}, [activeBranch]);
 
-	// Return ordered array from root to head
-	return useMemo(() => activeBranch.map(msgId => derivedMsgsRef.current[msgId]!), [activeBranch, msgs]);
+		const sortedMessages = Object.values(convertedMsgsRef.current)
+			.map(msg => convertedMsgsRef.current[msg.id]!)
+			.sort((a, b) => a.createdAt - b.createdAt);
+
+		toolCallsByIdRef.current = toolCallsById;
+
+		return sortedMessages.map((msg) => ({
+			parentId: msgs[msg.id]?.parentId ?? null,
+			message: msg,
+		}));
+	}, [msgs, convertMessage, toolCallsById]);
+	
+	return useMemo(() => {
+		return {
+			messages: sortedMsgs,
+			headId: headMessageId,  // Use the stored head, not recalculated
+		};
+	}, [sortedMsgs, headMessageId]);
 }
 
 // Build message chain from a starting point to root (for backend API calls)

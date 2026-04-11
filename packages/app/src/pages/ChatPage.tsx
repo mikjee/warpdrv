@@ -214,14 +214,14 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	const headMessageId = useStore((s: AppState) => s.currentThreadId ? s.headMessageIdByThread[s.currentThreadId]! : null);
 	const setHeadMessageId = useStore(s => s.setHeadMessageId);
 
-	// Get messages for UI (active branch only, with TOOL messages converted)
+	// Get messages for UI (all messages, with TOOL messages converted)
 	const threadMessages = useStore(s => s.currentThreadId ? s.messagesByThread[s.currentThreadId] || emptyMsgs : emptyMsgs)!;
-	const messages = useDerivedMsgsForUI(threadMessages, headMessageId);
+	const msgRepo = useDerivedMsgsForUI(threadMessages, currentThreadId, headMessageId);
 	const isRunning = useStore(s => s.currentThreadId ? s.isRunningByThread[s.currentThreadId] ?? false : false);
 	const toolCallsById = useStore(s => s.toolCallsById);
 
 	// Check if thread exists in store (distinguishes new vs existing thread)
-	const threadInStore = useStore(s => currentThreadId ? s.threads[currentThreadId] : undefined);
+	const threadInStore = useStore(s => s.currentThreadId ? s.threads[s.currentThreadId] : undefined);
 
 	// Loading state for existing threads
 	const [isLoadingThread, setIsLoadingThread] = useState(false);
@@ -264,72 +264,6 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 		}
 		loadThread();
 	}, [currentThreadId, threadInStore]);
-
-	// Convert bridge messages to assistant-ui format
-	const convertMessage = useCallback((msg: any, index: number) => {
-		
-		// Use toolCallsById from closure (already reactive via useStore)
-		const threadToolCalls = Object.values(toolCallsById).filter((tc: any) => tc.threadId === currentThreadId);
-		const tcMap = new Map(threadToolCalls.map((tc: any) => [tc.id, tc]));
-		
-		const content = (msg.content ?? []).map((part: any) => {
-			// Convert TOOL_CALL parts to tool-call format
-			if (part.type === EMessagePartType.TOOL_CALL) {
-				const tc = tcMap.get(part.toolCallId);
-				if (tc) {
-					return {
-						type: 'tool-call' as const,
-						toolCallId: tc.id,
-						toolName: tc.toolName,
-						args: JSON.parse(tc.arguments),
-						argsText: tc.arguments,
-						result: tc.result ? JSON.parse(tc.result) : undefined,
-						serverName: tc.serverName,
-					};
-				}
-				return null;
-			}
-			if (part.type === EMessagePartType.TEXT) {
-				return { type: 'text' as const, text: part.text || '' };
-			}
-			if (part.type === EMessagePartType.REASONING) {
-				const reasoningText = part.text || '';
-				return { type: 'reasoning' as const, reasoning: reasoningText, text: reasoningText };
-			}
-			return { type: 'text' as const, text: '' };
-		}).filter(Boolean);
-
-		const isAssistant = msg.role === EChatRole.ASSISTANT;
-
-		// Check if this assistant message has any pending tool calls
-		const hasPendingToolCalls = isAssistant && content.some(
-			(part: any) => part.type === 'tool-call' && 
-						   part.toolCallId && 
-						   tcMap.get(part.toolCallId)?.status === EToolCallStatus.PENDING
-		);
-
-		const result: any = {
-			id: msg.id,
-			role: msg.role as 'user' | 'assistant' | 'system' | 'tool',
-			content: content as any,
-			createdAt: new Date(msg.createdAt),
-			metadata: { unstable_state: {}, custom: msg.stats || {} },
-			attachments: [],
-		};
-
-		// Set message status based on whether there are pending tool calls
-		if (isAssistant) {
-			result.status = hasPendingToolCalls 
-				? { type: 'requires-action' as const, reason: 'tool-calls' as const }
-				: { type: 'complete' as const, reason: 'stop' as const };
-		}
-
-		return result;
-	}, [currentThreadId, toolCallsById]);
-
-	const convertedMessages = useMemo(() => {
-		return messages.map((msg, idx) => convertMessage(msg, idx));
-	}, [messages, convertMessage]);
 
 	// Runtime callbacks
 	const onNew = useCallback(async (message: any) => {
@@ -398,8 +332,8 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 		}
 	}, [currentThreadId]);
 
-	const runtime = useExternalStoreRuntime({
-		messages: convertedMessages,
+	const runtime = useExternalStoreRuntime<ThreadMessage>({
+		messageRepository: msgRepo,
 		isRunning,
 		onNew,
 		onReload,
@@ -407,7 +341,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 		// Called by assistant-ui when messages update (including branch switches)
 		setMessages: (newMessages) => {
 			// Extract the last message ID from the new messages
-			const lastMessage = newMessages[newMessages.length - 1];
+			const lastMessage = newMessages[newMessages.length - 1] as any;
 			if (currentThreadId && lastMessage && !isRunning) {
 				// Map assistant-ui message ID back to our store's message ID
 				const ourMessageId = lastMessage.id;
