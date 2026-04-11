@@ -13,12 +13,101 @@ Monorepo with npm workspaces:
 ```
 packages/
   shared/    @warpcore/shared   — Types, enums, VRAM calculator. No runtime deps.
-  app/       @warpcore/app      — React 19 + Chakra UI v3 + Vite. Dark mode AI-app aesthetic.
-  server/    @warpcore/server   — Express 5 + JSON file store. Process management, GGUF parsing.
+  app/       @warpcore/app      — React 19 + Chakra UI v3 + Vite. Frontend with Zustand store.
+  server/    @warpcore/server   — Express 5, REST endpoints, SSE broadcaster integration.
+  bridge/    @warpcore/bridge   — Inference orchestration, MCP tools, message tree, SQLite persistence.
   desktop/   @warpcore/desktop  — Tauri v2 native shell. Tray icon, window management, server sidecar.
 ```
 
 Frontend proxies `/api` to backend via Vite dev server config. No CORS needed in dev.
+
+## Bridge Package (@warpcore/bridge)
+
+Core inference orchestration layer between WarpCore and llama-server. Single source of truth for chat state.
+
+### What Bridge Owns
+
+- All message IDs (user, assistant, tool) — frontend never generates IDs
+- Message tree structure via parentId references
+- Thread lifecycle (auto-creates threads on first message)
+- Inference orchestration (one pass = one assistant message)
+- Tool call lifecycle (PENDING → EXECUTING → COMPLETED/DENIED/ERROR)
+- Broadcasting all state changes via global SSE channel
+
+### What Bridge Does NOT Do
+
+- Handle inference-time params (temperature, samplers) — passed through from frontend
+- Manage llama-server lifecycle — that's WarpCore's job
+- Store non-chat data — uses WarpCore's JSON store for servers/models
+
+### Architecture
+
+**Orchestrator** (`packages/bridge/src/orchestrator/index.ts`):
+- `handleCompletion()` — Entry point, auto-creates thread if needed
+- `executePass()` — One inference pass, creates one assistant message
+- `runPass()` — Streams to llama-server, persists parts, emits chunk events
+- `resumeToolCall()` — Approve/deny tool, auto-triggers next pass when all resolved
+- Recursive multi-pass: if tools auto-resolve, recursively calls `executePass()` with new assistant child of last tool message
+
+**SqlitePersistence** (`packages/bridge/src/persistence/betterSqlite.ts`):
+- IPersistence implementation with better-sqlite3
+- Tables: threads, messages, message_parts, tool_calls, folders, thread_configs, mcp_server_permissions, mcp_tool_permissions
+- Message tree via parentId, no ORDER BY (traverses chain)
+- Foreign keys disabled for flexibility
+
+**SseBroadcaster** (`packages/bridge/src/broadcaster/sseBroadcaster.ts`):
+- IBridgeBroadcaster implementation with better-sse Channel
+- HTTP sessions register via `getChannel().register(session)`
+- In-process subscribers for local listeners
+- All events fan-out to all connected clients
+
+**McpClientManager** (`packages/bridge/src/mcp/client.ts`):
+- IMcpClient for tool discovery and execution
+- Manages MCP server connections (stdio/stdio transport)
+- `getAllTools()`, `findToolServer()`, `executeToolCall()`
+
+**PermissionManager** (`packages/bridge/src/permissions/index.ts`):
+- IPermissions for tool approval policies
+- `getToolApprovalMode(serverName, toolName)` → ALLOWED | ASK | DENIED
+- `getEnabledTools()` filters out DENIED tools
+
+### Event System
+
+All state changes emit events via `broadcaster.emit()`. Frontend subscribes once to `/api/chat/events`, receives all events for all threads, filters by threadId in Zustand store.
+
+**Event Types:**
+- `thread.created/updated/deleted` — Thread lifecycle
+- `message.created/patched/deleted` — Message lifecycle
+- `message.chunk` — Streaming delta (optional to consume)
+- `tool_call.created/updated` — Tool call lifecycle
+- `inference.started/ended` — Inference state
+
+**Checkpoint vs Progress Events:**
+- Checkpoint events (`message.created`, `message.patched`) carry full authoritative state
+- Progress events (`message.chunk`) carry streaming deltas for live typing
+- Frontend can drop all chunks and still display correct state via checkpoints
+
+### Message Tree Model
+
+Messages form a tree via `parentId` references. Tool messages chain linearly, not as siblings:
+
+```
+assistant (pass 1)
+  └── toolMsg(A)
+        └── toolMsg(B)
+              └── toolMsg(C)
+                    └── assistant (pass 2, after all tools resolved)
+```
+
+Branching via regen/edit: new message with same `parentId` creates branch. `headMessageIdByThread` tracks current active branch in frontend store.
+
+### Tool Call Lifecycle
+
+1. Model emits tool calls → `tool_call.created` (PENDING)
+2. If ASK: wait for user approval via `/api/chat/tool-calls/:id/resume`
+3. If ALLOWED: auto-execute, emit `tool_call.updated` (EXECUTING)
+4. MCP execution → `tool_call.updated` (COMPLETED/ERROR)
+5. All sibling tools resolved → recursive `executePass()` with new assistant
 
 ## Running
 
@@ -51,15 +140,18 @@ VSCode: Use "warpcore-all (single terminal)" launch config for debugging both se
 ## Tech Stack
 
 - React 19, TypeScript, Chakra UI v3, Vite, React Router, Lucide icons
-- Node.js, Express 5, JSON file persistence, tsx
+- Node.js, Express 5, better-sqlite3, tsx
+- @warpcore/bridge for inference orchestration and MCP tool execution
+- better-sse for real-time event broadcasting to all connected clients
 - Tauri v2 (Rust) for desktop wrapper, tray icon, server lifecycle
 - GGUF binary header parser (custom, reads metadata without loading full file)
 - VRAM estimation using oobabooga's regression formula
 - @huggingface/hub for HF API (model search, file listing)
 - node-downloader-helper for model downloads (pause/resume/progress)
 - markdown-to-jsx + DOMPurify for README rendering
-- assistant-ui + Vercel AI SDK for chat UI (see Chat section)
-- sql.js (WASM) for chat persistence (no native addons, bundles with pkg)
+- @assistant-ui/react with useExternalStoreRuntime for chat UI
+- Zustand for frontend state management, mirrors Bridge events
+- @modelcontextprotocol/sdk for MCP server connections and tool execution
 
 ## Key Design Decisions
 
@@ -75,49 +167,203 @@ VSCode: Use "warpcore-all (single terminal)" launch config for debugging both se
 
 ## Chat Feature
 
-The chat page is a convenience feature for testing servers and evaluating models. Thread management is intentionally minimal.
+Full-featured chat interface powered by Bridge orchestrator. Frontend is a dumb client that mirrors Bridge events into Zustand store.
 
 ### Stack
 
-- `@assistant-ui/react` + `@assistant-ui/react-ai-sdk` for the chat UI (thread list, composer, message rendering, branching, editing, attachments, markdown, code blocks — all provided by the library, not maintained by us)
-- Vercel AI SDK (`ai` + `@ai-sdk/openai`) for streaming — `createOpenAI` pointed directly at the llama-server port from the browser, using `provider.chat('model')` to force Chat Completions API (AI SDK v6 defaults to Responses API which llama-server doesn't support)
-- `sql.js` (SQLite compiled to WASM) for chat persistence on the backend — no native addons, bundles cleanly with esbuild + `@yao-pkg/pkg`
-- Tailwind scoped via `@layer` ordering so it doesn't clobber Chakra UI styles on other pages
+- **Backend:** @warpcore/bridge orchestrator, better-sqlite3, better-sse
+- **Frontend:** Zustand store, @assistant-ui/react with useExternalStoreRuntime
+- **MCP:** @modelcontextprotocol/sdk for tool execution
+- **SSE:** Global event channel at `/api/chat/events`, single connection per client
 
-### Backend
+### Architectural Pattern: Dumb Frontend
 
-- `packages/server/src/util/chatDb.ts` — sql.js wrapper with debounced saves to `~/.config/warpcore/chat.db`
-- `packages/server/src/routes/chat.ts` — REST router mounted at `/api/chat`
-- SQLite schema: `threads`, `messages`, `folders`, `thread_configs` tables
-- Chat presets stored via `chatPresets.ts` (JSON file service)
-- In pkg builds, sql.js WASM binary is loaded from filesystem candidates next to the executable (detects `process.pkg` and searches known paths)
+Frontend never:
+- Generates message IDs — Bridge owns all IDs
+- Optimistically updates state — only changes via SSE events
+- Decides message tree structure — Bridge dictates parent-child relationships
+- Filters tool messages — they're part of the chain, converted for display
 
-### Frontend
+Frontend does:
+- Subscribe to Bridge SSE channel at app start (`/api/chat/events`)
+- Mirror Bridge events into Zustand store via apply* actions
+- Trigger actions via POST endpoints (completions, cancel, tool approval)
+- Render from Zustand store via assistant-ui's useExternalStoreRuntime
 
-- `ChatPage.tsx` — `useLocalRuntime` + `useRemoteThreadListRuntime`, server selector dropdown, assistant-ui shadcn components
-- `ChatConfigSidebar.tsx` — collapsible right panel with full inference params (temperature, top_p, top_k, min_p, repeat_penalty, frequency_penalty, presence_penalty, max_tokens, seed, mirostat, response_format, reasoning_format, enable_thinking, cache_prompt), system prompt editor, preset save/load/delete
-- Config persistence per-thread via `thread_configs` table, debounced save, loaded on thread switch using `useAuiState` for reactive thread ID detection
-- Per-message timing stats captured via metadata (tokens/second, prompt tokens, completion tokens)
-- Empty-thread-on-launch bug fixed by deferring backend thread creation to first message append
+### Backend Architecture
 
-### Shared Types
+**Orchestrator Flow:**
 
-- `IChatThread`, `IChatMessage`, `IChatFolder`, `IChatInferenceParams`, `IChatPreset`, `IThreadConfig`, `IChatMessageStats`
-- `EChatRole`, `EResponseFormat`, `EReasoningFormat` enums
-- Chat thread/message/folder create payloads
+1. Frontend POSTs `/api/chat/completions` with `threadId`, `messages`, `systemPrompt`, `inferenceParams`
+2. Route tracks `AbortController` per thread, aborts previous if in-flight
+3. Orchestrator auto-creates thread if not exists, emits `thread.created`
+4. If `userMessage` provided: Bridge generates ID, saves, emits `message.created`
+5. `executePass()` creates assistant message, emits `inference.started`
+6. `runPass()` streams to llama-server:
+   - Emits `message.patched` for each new part (text/reasoning)
+   - Emits `message.chunk` for streaming deltas (optional)
+   - On tool calls: `tool_call.created` + `message.patched` (assistant gets tool_call part)
+7. Tool messages chain linearly: each tool message's parent = previous tool message
+8. If tools need approval (ASK): emit `inference.ended`, wait for resume
+9. If tools auto-resolve: recursively call `executePass()` with new assistant child of last tool
+10. Final checkpoint: `message.patched` with full parts + stats, then `inference.ended`
+
+**Tool Approval Flow:**
+
+1. User clicks approve/deny in ToolCallBlock
+2. Frontend POSTs `/api/chat/tool-calls/:id/resume` with `decision`, `threadId`, `messages`
+3. Orchestrator `resumeToolCall()`:
+   - Update tool call status (DENIED or EXECUTING → COMPLETED/ERROR)
+   - Emit `tool_call.updated`
+   - Walk tool message chain, check if all siblings resolved
+   - If all resolved: `executePass()` with new assistant child of tool message
+   - If still pending: wait for more approvals
+
+**SSE Broadcaster:**
+
+- `GET /api/chat/events` — Opens SSE session, registers on broadcaster Channel
+- Session never closes normally, closes on client disconnect
+- All Bridge events fan-out to all registered sessions
+- Frontend filters events by `threadId` in Zustand store
+
+### Frontend Architecture
+
+**Zustand Store** (`packages/app/src/store/index.ts`):
+
+Bridge slice from `@warpcore/bridge/client`:
+```typescript
+{
+  threads: Record<TThreadId, IChatThread>,
+  messagesByThread: Record<TThreadId, Record<TMessageId, IChatMessage>>,
+  headMessageIdByThread: Record<TThreadId, TMessageId>,
+  toolCallsById: Record<TToolCallId, IToolCall>,
+  isRunningByThread: Record<TThreadId, boolean>,
+  
+  // Actions (called by SSE subscriber)
+  applyThreadCreated, applyThreadUpdated, applyThreadDeleted,
+  applyMessageCreated, applyMessagePatched, applyMessageDeleted,
+  applyMessageChunk,
+  applyToolCallCreated, applyToolCallUpdated,
+  applyInferenceStarted, applyInferenceEnded,
+  
+  // Initial seeding from API fetch
+  seedThreadMessages,
+  
+  // Current chat context
+  currentThreadId, currentServerId, currentSystemPrompt, currentInferenceParams,
+}
+```
+
+**SSE Subscriber** (`packages/app/src/store/slices/sseHandlers.ts`):
+
+- Opens single `EventSource('/api/chat/events')` at app start
+- Registers per-event-type listeners (`message.created`, `tool_call.updated`, etc.)
+- Each listener calls corresponding `apply*` action with event payload
+- Auto-reconnects on error (EventSource default behavior)
+
+**Message Conversion** (`packages/app/src/hooks/useChatSelectors.ts`):
+
+`useDerivedMsgsForUI(threadMessages, currentThreadId, headMessageId)`:
+- Converts Bridge `IChatMessage` → assistant-ui `ThreadMessage` format
+- Converts TOOL role messages to ASSISTANT with empty content (for display)
+- Converts TOOL_CALL parts to assistant-ui tool-call format with live status
+- Builds `ExportedMessageRepository` with explicit `parentId` for branching support
+- Returns `{ messages: [...], headId: "..." }` for `useExternalStoreRuntime`
+
+Key pattern: Messages sorted by `createdAt`, repository uses explicit `parentId` (not positional) so assistant-ui reconstructs correct tree with branches.
+
+**Chat Page** (`packages/app/src/pages/ChatPage.tsx`):
+
+- `useExternalStoreRuntime` with `messageRepository` from hook
+- `onNew`: POST `/api/chat/completions` with user message, fire-and-forget
+- `onReload`: POST `/api/chat/completions` with `parentId` for regen, no user message
+- `onCancel`: POST `/api/chat/cancel/:threadId` to abort in-flight
+- `setMessages`: Called by assistant-ui on branch switch, updates `headMessageIdByThread`
+- Initial load: Fetch thread + tool calls, seed store with `seedThreadMessages`
+
+**Tool Call Display** (`packages/app/src/components/ToolCallBlock.tsx`):
+
+- Status indicators: PENDING (amber dot), EXECUTING (spinner + "Running"), COMPLETED (checkmark), DENIED (ban icon + "Denied"), ERROR (alert + "Error")
+- Approve/Deny buttons for PENDING state
+- Collapsible arguments/result panels
+- `ToolCallBlockWrapper` reads actual status from `toolCallsById` store (not assistant-ui status)
 
 ### Chat API Routes
 
 ```
-GET/POST         /api/chat/threads
-GET/PUT/DELETE   /api/chat/threads/:id
-GET/POST         /api/chat/threads/:id/messages
-GET/PUT          /api/chat/threads/:id/config
-GET/POST         /api/chat/folders
-PUT/DELETE       /api/chat/folders/:id
-GET/POST/DELETE  /api/chat/presets
-GET/PUT/DELETE   /api/chat/presets/:id
+# Threads
+GET/POST         /api/chat/threads              — List/create threads
+GET/PUT/DELETE   /api/chat/threads/:id          — Get/update/delete thread
+GET/PUT          /api/chat/threads/:id/config   — Thread config (system prompt, params)
+
+# Messages
+GET/POST         /api/chat/threads/:id/messages — Get/create messages (bulk seed)
+PUT/DELETE       /api/chat/messages/:id         — Edit/delete message parts
+
+# Folders
+GET/POST         /api/chat/folders              — List/create folders
+PUT/DELETE       /api/chat/folders/:id          — Update/delete folder
+PUT              /api/chat/folders/reorder      — Batch update sort orders
+
+# Presets
+GET/POST/DELETE  /api/chat/presets              — List/create/delete presets
+GET/PUT/DELETE   /api/chat/presets/:id          — Get/update preset
+
+# Inference
+POST             /api/chat/completions          — Fire-and-forget, updates via SSE
+POST             /api/chat/cancel/:threadId     — Abort in-flight completion
+
+# Tool Calls
+POST             /api/chat/tool-calls/:id/resume — Approve/deny pending tool
+
+# Real-time
+GET              /api/chat/events               — Global SSE event channel (never closes)
 ```
+
+### Key Files
+
+**Backend:**
+- `packages/bridge/src/orchestrator/index.ts` — Core inference orchestration (770 lines)
+- `packages/bridge/src/persistence/betterSqlite.ts` — SQLite persistence (467 lines)
+- `packages/bridge/src/broadcaster/sseBroadcaster.ts` — SSE fan-out
+- `packages/bridge/src/mcp/client.ts` — MCP tool execution
+- `packages/bridge/src/permissions/index.ts` — Tool approval policies
+- `packages/bridge/src/parser.ts` — SSE parsing from llama-server
+- `packages/server/src/routes/chat.ts` — REST + SSE endpoints (447 lines)
+
+**Frontend:**
+- `packages/app/src/pages/ChatPage.tsx` — Main chat UI with assistant-ui (438 lines)
+- `packages/app/src/hooks/useChatSelectors.ts` — Message conversion, repository building (185 lines)
+- `packages/app/src/store/index.ts` — Zustand store with Bridge slice (84 lines)
+- `packages/app/src/store/slices/sseHandlers.ts` — SSE event handlers
+- `packages/app/src/components/assistant-ui/ToolCallBlockWrapper.tsx` — Tool call status mapping
+- `packages/app/src/components/ToolCallBlock.tsx` — Tool call display with approve/deny
+
+### Important Patterns
+
+**Fire-and-Forget Completions:**
+
+Frontend POSTs `/api/chat/completions`, route returns `{ok: true}` immediately. All updates flow via SSE. Frontend waits for `message.created` + `inference.started` events, not HTTP response.
+
+**Abort on New Request:**
+
+Route tracks `AbortController` per thread in `activeAborts` Map. New completion for same thread aborts previous. `orchestrator.handleCompletion()` checks `abortSignal.aborted` throughout.
+
+**MessageRepository for Branching:**
+
+`useDerivedMsgsForUI` builds `ExportedMessageRepository` with explicit `parentId` (not positional). Assistant-ui's `import()` method respects explicit parentIds, reconstructs correct tree with branches. `headId` sets initial active branch.
+
+**Tool Message Chaining:**
+
+Tool messages chain linearly: `assistant → tool(A) → tool(B) → tool(C) → next assistant`. NOT siblings. Preserves single canonical message order, avoids branching for semantically one turn.
+
+**Checkpoint + Streaming:**
+
+`message.patched` with `addParts` declares new part with empty text. `message.chunk` streams deltas. Final `message.patched` with `replaceParts` + `stats` is authoritative checkpoint. Frontend can drop chunks, still correct via checkpoint.
+
+**No Optimistic Updates:**
+
+Frontend never updates state before SSE event. User action (submit, approve) POSTs to Bridge, waits for event. This ensures single source of truth, no race conditions.
 
 ## Desktop (Tauri)
 
@@ -183,8 +429,7 @@ OpenAI-compatible API that routes requests to backend llama-server instances by 
 
 ```
 GET    /api/proxy/status        — Proxy status (enabled, port, running, healthy, error)
-GET    /api/proxy/routes        — List current sticky routes (alias → server mapping)
-DELETE /api/proxy/routes        — Clear all sticky routes
+GET/DELETE /api/proxy/routes    — List/clear sticky routes
 DELETE /api/proxy/routes/:alias — Clear specific sticky route by alias
 POST   /api/proxy/start         — Start proxy server
 POST   /api/proxy/stop          — Stop proxy server
@@ -203,14 +448,12 @@ POST   /api/proxy/stop          — Stop proxy server
 ### Hub API Routes
 
 ```
-GET    /api/hub/search?q=&sort=&params_min=&params_max=
-GET    /api/hub/model/:author/:name
-POST   /api/hub/download
-GET    /api/hub/downloads
-POST   /api/hub/downloads/:id/pause
-POST   /api/hub/downloads/:id/resume
-POST   /api/hub/downloads/:id/cancel
-DELETE /api/hub/downloads/history
+GET    /api/hub/search?q=&sort=&params_min=&params_max= — Search models
+GET    /api/hub/model/:author/:name                     — Model details
+POST   /api/hub/download                                — Start download
+GET    /api/hub/downloads                               — Active downloads
+POST   /api/hub/downloads/:id/pause/resume/cancel       — Download control
+DELETE /api/hub/downloads/history                       — Clear history
 ```
 
 Browse and download GGUF models from HuggingFace:
@@ -224,19 +467,6 @@ Browse and download GGUF models from HuggingFace:
 - Download manager panel with progress bars, speed, ETA, pause/resume/cancel
 - Checkmark badge on already-downloaded files (checked across all model roots, persists across sessions)
 - Requires at least one model directory configured — shows guard screen otherwise
-
-### Hub API Routes
-
-```
-GET    /api/hub/search?q=&sort=&params_min=&params_max=
-GET    /api/hub/model/:author/:name
-POST   /api/hub/download
-GET    /api/hub/downloads
-POST   /api/hub/downloads/:id/pause
-POST   /api/hub/downloads/:id/resume
-POST   /api/hub/downloads/:id/cancel
-DELETE /api/hub/downloads/history
-```
 
 ## TypeScript Conventions
 
@@ -252,48 +482,57 @@ DELETE /api/hub/downloads/history
 
 ## API Routes
 
-```
-GET/PUT          /api/settings
-GET/POST         /api/backends
-GET/PUT/DELETE   /api/backends/:id
-POST             /api/backends/:id/validate
-GET              /api/models
-POST             /api/models/scan
-GET/POST         /api/servers
-POST             /api/servers/:id/stop
-POST             /api/servers/:id/restart
-DELETE           /api/servers/:id
-GET/DELETE       /api/servers/:id/logs
-GET/POST/DELETE  /api/presets
-GET              /api/update/check
-GET              /api/update/version
-GET              /api/health
-GET              /api/proxy/status
-GET/DELETE       /api/proxy/routes
-GET/DELETE       /api/proxy/routes/:alias
-POST             /api/proxy/start
-POST             /api/proxy/stop
-GET/POST         /api/chat/threads
-GET/PUT/DELETE   /api/chat/threads/:id
-GET/POST         /api/chat/threads/:id/messages
-GET/PUT          /api/chat/threads/:id/config
-GET/POST         /api/chat/folders
-PUT/DELETE       /api/chat/folders/:id
-GET/POST/DELETE  /api/chat/presets
-GET/PUT/DELETE   /api/chat/presets/:id
-```
-
-## Data Persistence (JSON File)
-
-Keys are namespaced in a single JSON file at `~/.config/warpcore/warpcore-data.json`:
+**WarpCore Management:**
 
 ```
-settings:general    — ISettings
-backends:{id}       — IBackend
-servers:{id}        — IServer
-presets:{id}        — IPreset
-downloads:{id}      — IDownload
+GET/PUT          /api/settings          — App settings (model dirs, proxy config)
+GET/POST         /api/backends          — Llama.cpp builds
+GET/PUT/DELETE   /api/backends/:id      — Backend CRUD
+POST             /api/backends/:id/validate — Validate backend path
+GET              /api/models            — Scanned GGUF models
+POST             /api/models/scan       — Rescan model directories
+GET/POST         /api/servers           — Llama-server instances
+POST             /api/servers/:id/stop  — Stop server
+POST             /api/servers/:id/restart — Restart server
+DELETE           /api/servers/:id       — Delete server config
+GET/DELETE       /api/servers/:id/logs  — Get/clear server logs
+GET/POST/DELETE  /api/presets           — Inference param presets (legacy)
+GET              /api/update/check      — Check for updates
+GET              /api/update/version    — Get current version
+GET              /api/health            — Health check
+```
+
+**Chat:** See Chat Feature section above.
+
+## Data Persistence
+
+**WarpCore Config** (`~/.config/warpcore/warpcore-data.json`):
+
+Keys are namespaced in a single JSON file:
+```
+settings:general    — ISettings (model dirs, proxy config, etc.)
+backends:{id}       — IBackend (llama.cpp builds)
+servers:{id}        — IServer (running llama-server instances)
+presets:{id}        — IPreset (inference param presets)
+downloads:{id}      — IDownload (model download history)
 _schemaVersion      — number (migration tracking)
 ```
 
-Chat data is stored separately in `~/.config/warpcore/chat.db` (SQLite via sql.js).
+**Chat Data** (`~/.config/warpcore/chat.db`):
+
+SQLite database via better-sqlite3. Bridge schema:
+
+- `threads` — Chat threads with metadata (title, folderId, systemPrompt, token counts)
+- `messages` — Message tree (id, parentId, threadId, role, stats, createdAt)
+- `message_parts` — Message content parts (id, messageId, type, orderIndex, text, toolCallId)
+- `tool_calls` — MCP tool execution records (id, messageId, threadId, serverName, toolName, arguments, result, status, error)
+- `folders` — Thread organization (id, name, parentId, sortOrder)
+- `thread_configs` — Per-thread config (threadId, presetId, systemPrompt, params JSON)
+- `mcp_server_permissions` — Server-level tool policies (serverName, mode: ALLOWED/ASK/DENIED)
+- `mcp_tool_permissions` — Per-tool approval mode (serverName, toolName, mode)
+
+WAL mode enabled, foreign keys disabled for flexibility. No `ORDER BY createdAt` in message fetch — traverses parentId chain instead.
+
+**Chat Presets** (`~/.config/warpcore/chat-presets.json`):
+
+JSON file service (not SQLite) for inference parameter presets. Separate from thread configs.

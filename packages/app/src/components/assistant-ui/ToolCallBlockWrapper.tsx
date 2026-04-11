@@ -17,6 +17,7 @@ export function ToolCallBlockWrapper({ toolCallId, toolName, serverName, args, r
 	const currentServerId = useStore(s => s.currentServerId);
 	const currentSystemPrompt = useStore(s => s.currentSystemPrompt);
 	const currentInferenceParams = useStore(s => s.currentInferenceParams);
+	const toolCall = useStore(s => s.toolCallsById[toolCallId]);
 
 	async function handleDecision(decision: 'approve' | 'deny') {
 		if (!currentThreadId || !currentServerId) return;
@@ -44,14 +45,16 @@ export function ToolCallBlockWrapper({ toolCallId, toolName, serverName, args, r
 		);
 	}
 
-	// Map status for display
-	const displayStatus: EToolCallStatus = status === 'requires-action'
-		? EToolCallStatus.PENDING
-		: status === 'running'
-		? EToolCallStatus.EXECUTING
-		: status === 'error'
-		? EToolCallStatus.ERROR
-		: EToolCallStatus.COMPLETED;
+	// Use actual status from store, fallback to mapped status if not available
+	const displayStatus: EToolCallStatus = toolCall?.status ?? (
+		status === 'requires-action'
+			? EToolCallStatus.PENDING
+			: status === 'running'
+			? EToolCallStatus.EXECUTING
+			: status === 'error'
+			? EToolCallStatus.ERROR
+			: EToolCallStatus.COMPLETED
+	);
 
 	return (
 		<ToolCallBlock

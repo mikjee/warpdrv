@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { persistence, orchestrator, broadcaster } from '../index';
 import { store } from '../util/store';
 import type { IChatThreadCreatePayload, IChatMessageCreatePayload } from '@warpcore/shared';
-import { EChatRole, EMessagePartType, ICompletionRequest } from '@warpcore/bridge';
+import { EChatRole, EMessagePartType, ICompletionRequest, type IFolder } from '@warpcore/bridge';
 import type { IServer } from '@warpcore/shared';
 
 export const chatRouter = Router();
@@ -164,30 +164,31 @@ chatRouter.get('/folders', async (_req, res) => {
 });
 
 chatRouter.post('/folders', async (req, res) => {
-	try {
-		const { name, parentId, sortOrder } = req.body;
-		await persistence.createFolder({
-			id: crypto.randomUUID(),
-			name: name || 'New Folder',
-			parentId: parentId ?? null,
-			sortOrder: sortOrder ?? 0,
-			createdAt: Date.now(),
-		});
-		res.json({ ok: true, data: null, error: null });
-	} catch (err) {
-		res.status(500).json({ ok: false, data: null, error: String(err) });
-	}
-});
+		try {
+			const { name, parentId, sortOrder } = req.body;
+			const folder: IFolder = {
+				id: crypto.randomUUID(),
+				name: name || 'New Folder',
+				parentId: parentId ?? null,
+				sortOrder: sortOrder ?? 0,
+				createdAt: Date.now(),
+			};
+			await persistence.createFolder(folder);
+			res.json({ ok: true, data: folder, error: null });
+		} catch (err) {
+			res.status(500).json({ ok: false, data: null, error: String(err) });
+		}
+	});
 
 chatRouter.put('/folders/:id', async (req, res) => {
-	try {
-		const { name, parentId, sortOrder } = req.body;
-		await persistence.updateFolder(req.params.id, { name, parentId, sortOrder });
-		res.json({ ok: true, data: null, error: null });
-	} catch (err) {
-		res.status(500).json({ ok: false, data: null, error: String(err) });
-	}
-});
+		try {
+			const { name, parentId, sortOrder } = req.body;
+			await persistence.updateFolder(req.params.id, { name, parentId, sortOrder });
+			res.json({ ok: true, data: null, error: null });
+		} catch (err) {
+			res.status(500).json({ ok: false, data: null, error: String(err) });
+		}
+	});
 
 chatRouter.delete('/folders/:id', async (req, res) => {
 	try {

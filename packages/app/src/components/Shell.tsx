@@ -45,12 +45,12 @@ const PAGE_REGISTRY: Record<string, TPageConfig> = {
 	'/servers': { component: ServersPage, closeOnSwitch: false },
 	'/proxy': { component: ProxyPage, closeOnSwitch: true },
 	'/hub': { component: HubPage, closeOnSwitch: false },
-	'/models': { component: ModelsPage, closeOnSwitch: false },
+	'/models': { component: ModelsPage, closeOnSwitch: true },
 	'/backends': { component: BackendsPage, closeOnSwitch: false },
-	'/devices': { component: DevicesPage, closeOnSwitch: false },
+	'/devices': { component: DevicesPage, closeOnSwitch: true },
 	'/settings': { component: SettingsPage, closeOnSwitch: true },
 	'/about': { component: AboutPage, closeOnSwitch: true },
-	'/mcp': { component: McpPage, closeOnSwitch: true },
+	'/mcp': { component: McpPage, closeOnSwitch: false },
 };
 
 interface INavItem {

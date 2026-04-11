@@ -223,11 +223,13 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect }: {
 	onSelect: (threadId: string) => void;
 }) {
 	const [renaming, setRenaming] = useState(false);
+	const currentThreadId = useStore(s => s.currentThreadId);
+	const selected = thread.id === currentThreadId;
 
 	return (
 		<Box
 			w="100%"
-			className="group"
+			className={`group ${selected ? 'bg-blue-500/10' : ''}`}
 			draggable
 			onDragStart={(e: any) => {
 				e.dataTransfer.setData('threadId', thread.id);
@@ -387,10 +389,11 @@ function FolderSection({
 				<Text fontSize="10px" color="rgba(255,255,255,0.2)" flexShrink={0}>{threads.length}</Text>
 				<Box
 					onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
-					opacity={0} _groupHover={{ opacity: 1 }}
+					opacity={0.4}
 					cursor="pointer" p="0.5"
-					className="group-hover:!opacity-60"
-					_hover={{ opacity: 1 }}
+					className="group-hover:!opacity-100"
+					_hover={{ opacity: 1, bg: 'rgba(255,255,255,0.06)' }}
+					borderRadius="sm"
 				>
 					<MoreHorizontalIcon size={12} />
 				</Box>
@@ -429,93 +432,6 @@ function FolderSection({
 				</Box>
 			)}
 		</Box>
-	);
-}
-
-// ============================================================
-// Enhanced Thread List Item (wraps assistant-ui primitives)
-// ============================================================
-function EnhancedThreadListItem({ thread, onRename, onStartDrag, onSelect }: {
-	thread: IChatThread;
-	onRename: (id: string, title: string) => void;
-	onStartDrag: (threadId: string) => void;
-	onSelect: (threadId: string) => void;
-}) {
-	const [renaming, setRenaming] = useState(false);
-
-	return (
-		<ThreadListItemPrimitive.Root
-			className="aui-thread-list-item group flex items-center gap-1 rounded-lg transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none data-active:bg-muted"
-			draggable
-			onDragStart={(e: any) => {
-				e.dataTransfer.setData('threadId', thread.id);
-				onStartDrag(thread.id);
-			}}
-			onClick={() => onSelect(thread.id)}
-			style={{ minHeight: '40px', cursor: 'grab' }}
-		>
-			{renaming ? (
-				<Box flex="1" px="2" py="1">
-					<RenamePopover
-						value={thread.title}
-						onSave={(v) => { onRename(thread.id, v); setRenaming(false); }}
-						onCancel={() => setRenaming(false)}
-					/>
-				</Box>
-			) : (
-				<ThreadListItemPrimitive.Trigger className="aui-thread-list-item-trigger flex min-w-0 flex-1 flex-col px-2.5 py-1.5 text-start">
-					<Text fontSize="12px" color="rgba(255,255,255,0.75)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" lineHeight="1.3">
-						{thread.title ?? 'New Chat'}
-					</Text>
-					<HStack gap="2" mt="0.5">
-					  <Text 
-							fontSize="10px" 
-							color="rgba(255,255,255,0.25)" 
-							fontFamily="mono"
-							title={(thread.totalPromptTokens ?? 0) + (thread.totalCompletionTokens ?? 0) > 0 ? `Prompt: ${(thread.totalPromptTokens ?? 0).toLocaleString()}, Completion: ${(thread.totalCompletionTokens ?? 0).toLocaleString()}` : undefined}
-						>
-							{(thread.totalTokens ?? 0) > 0 ? `${((thread.totalTokens ?? 0) / 1000).toFixed(1)}k tok` : (thread.messageCount ?? 0) > 0 ? `${thread.messageCount ?? 0} msg` : 'empty'}
-						</Text>
-						<Text fontSize="10px" color="rgba(255,255,255,0.2)">
-							{timeAgo(thread.updatedAt)}
-						</Text>
-					</HStack>
-				</ThreadListItemPrimitive.Trigger>
-			)}
-			<ThreadListItemMorePrimitive.Root>
-				<ThreadListItemMorePrimitive.Trigger asChild>
-					<Box
-						cursor="pointer" p="1" mr="1" borderRadius="sm"
-						opacity={0} className="group-hover:!opacity-50 group-data-active:!opacity-50"
-						_hover={{ bg: 'rgba(255,255,255,0.06)' }}
-						onClick={(e) => e.stopPropagation()}
-					>
-						<MoreHorizontalIcon size={13} />
-					</Box>
-				</ThreadListItemMorePrimitive.Trigger>
-				<ThreadListItemMorePrimitive.Content
-					side="bottom" align="start"
-					className="aui-thread-list-item-more-content z-50 min-w-32 overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
-				>
-					<ThreadListItemMorePrimitive.Item
-						className="aui-thread-list-item-more-item flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
-						onClick={() => setRenaming(true)}
-						onClickCapture={(e) => e.stopPropagation()}
-					>
-						<PencilIcon className="size-4" />
-						Rename
-					</ThreadListItemMorePrimitive.Item>
-					<ThreadListItemPrimitive.Delete asChild>
-						<ThreadListItemMorePrimitive.Item className="aui-thread-list-item-more-item flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-destructive text-sm outline-none hover:bg-destructive/10"
-							onClickCapture={(e) => e.stopPropagation()}
-						>
-							<TrashIcon className="size-4" />
-							Delete
-						</ThreadListItemMorePrimitive.Item>
-					</ThreadListItemPrimitive.Delete>
-				</ThreadListItemMorePrimitive.Content>
-			</ThreadListItemMorePrimitive.Root>
-		</ThreadListItemPrimitive.Root>
 	);
 }
 
@@ -799,33 +715,3 @@ export const ThreadList: FC = () => {
 		</ThreadListPrimitive.Root>
 	);
 };
-
-
-// ============================================================
-// Helper: renders only items matching a thread filter
-// ThreadListPrimitive.Items renders ALL items — we filter visually
-// ============================================================
-function ThreadListRootItem({ threads, onRename, onStartDrag, onSelect }: {
-	threads: IChatThread[];
-	onRename: (id: string, title: string) => void;
-	onStartDrag: (threadId: string) => void;
-	onSelect: (threadId: string) => void;
-}) {
-	// Get current item's remoteId to check if it's a root thread
-	const remoteId = useAuiState((s) => s.threadListItem?.remoteId);
-	const thread = threads.find((t) => t.id === remoteId);
-	if (!thread) return null; // Not a root thread, hide it
-	return <EnhancedThreadListItem thread={thread} onRename={onRename} onStartDrag={onStartDrag} onSelect={onSelect} />;
-}
-
-function ThreadListFilteredItems({ threads, onRename, onStartDrag, onSelect }: {
-	threads: IChatThread[];
-	onRename: (id: string, title: string) => void;
-	onStartDrag: (threadId: string) => void;
-	onSelect: (threadId: string) => void;
-}) {
-	const remoteId = useAuiState((s) => s.threadListItem?.remoteId);
-	const thread = threads.find((t) => t.id === remoteId);
-	if (!thread) return null;
-	return <EnhancedThreadListItem thread={thread} onRename={onRename} onStartDrag={onStartDrag} onSelect={onSelect} />;
-}

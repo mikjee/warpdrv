@@ -10,11 +10,12 @@ import { Box, Flex, Text, HStack, VStack } from '@chakra-ui/react';
 import {
 	Wrench,
 	Check,
-	X,
+	Ban,
 	ChevronDown,
 	ChevronRight,
 	Loader,
 	AlertCircle,
+	X
 } from 'lucide-react';
 import { decideMcpToolCall } from '../api/mcpServices';
 import { EToolCallStatus } from '@warpcore/bridge';
@@ -40,7 +41,7 @@ const statusColors: Record<EToolCallStatus, string> = {
 const statusLabels: Record<EToolCallStatus, string> = {
 	[EToolCallStatus.PENDING]: 'Awaiting approval',
 	[EToolCallStatus.DENIED]: 'Denied',
-	[EToolCallStatus.EXECUTING]: 'Executing...',
+	[EToolCallStatus.EXECUTING]: 'Running',
 	[EToolCallStatus.COMPLETED]: 'Completed',
 	[EToolCallStatus.ERROR]: 'Error',
 };
@@ -100,12 +101,41 @@ export function ToolCallBlock({
 				</Text>
 				<Box flex="1" />
 				<HStack gap="1">
-					{isExecuting && <Loader size={11} color={statusColor} className="animate-spin" />}
-					{status === EToolCallStatus.ERROR && <AlertCircle size={11} color={statusColor} />}
-					<Box w="6px" h="6px" borderRadius="full" bg={statusColor} />
-					<Text fontSize="10px" color={statusColor}>
-						{statusLabels[status]}
-					</Text>
+					{isExecuting && (
+						<>
+							<Loader size={11} color={statusColor} className="animate-spin" />
+							<Text fontSize="10px" color={statusColor}>
+								{statusLabels[status]}
+							</Text>
+						</>
+					)}
+					{status === EToolCallStatus.COMPLETED && (
+						<Check size={11} color={statusColor} />
+					)}
+					{status === EToolCallStatus.DENIED && (
+						<>
+							<Ban size={11} color={statusColor} />
+							<Text fontSize="10px" color={statusColor}>
+								{statusLabels[status]}
+							</Text>
+						</>
+					)}
+					{status === EToolCallStatus.ERROR && (
+						<>
+							<AlertCircle size={11} color={statusColor} />
+							<Text fontSize="10px" color={statusColor}>
+								{statusLabels[status]}
+							</Text>
+						</>
+					)}
+					{isPending && (
+						<>
+							<Box w="6px" h="6px" borderRadius="full" bg={statusColor} />
+							<Text fontSize="10px" color={statusColor}>
+								{statusLabels[status]}
+							</Text>
+						</>
+					)}
 				</HStack>
 			</HStack>
 
