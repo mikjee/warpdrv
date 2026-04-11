@@ -145,7 +145,12 @@ export class SqlitePersistence implements IPersistence {
 		const dir = path.dirname(this.dbPath);
 		if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-		this.db = new Database(this.dbPath);
+		this.db = new Database(this.dbPath, {
+			nativeBinding: (process as any).pkg
+				? path.join(process.env.WARPCORE_RESOURCE_DIR ?? path.dirname(process.execPath), 'binaries', 'better_sqlite3.node')
+				: undefined
+		});
+
 		this.db.pragma('journal_mode = WAL');
 		this.db.pragma('foreign_keys = ON');
 		this.db.exec(buildSchema(this.t));

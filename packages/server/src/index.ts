@@ -33,6 +33,9 @@ export let mcpConfig: McpConfig;
 export let broadcaster: SseBroadcaster;
 
 async function main() {
+	console.log('[debug] RESOURCE_DIR:', process.env.RESOURCE_DIR);
+	console.log('[debug] execPath:', process.execPath);
+	console.log('[debug] pkg:', (process as any).pkg);
 	await runMigrations();
 
 	// Ensure default settings exist

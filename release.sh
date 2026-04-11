@@ -72,12 +72,12 @@ npx esbuild src/index.ts \
 	--minify=false
 
 # Compile to standalone binary with pkg
+cp "$REPO_ROOT/node_modules/better-sqlite3/build/Release/better_sqlite3.node" "$SERVER_DIR/dist/better_sqlite3.node"
+
 npx @yao-pkg/pkg dist/server.cjs \
-	--target node22-linux-x64 \
+	--target node24-linux-x64 \
 	--output dist/warpcore-server \
 	--compress GZip
-
-cp "$REPO_ROOT/node_modules/sql.js/dist/sql-wasm.wasm" "$SERVER_DIR/dist/sql-wasm.wasm"
 
 echo "Server binary: $SERVER_DIR/dist/warpcore-server"
 ls -lh "$SERVER_DIR/dist/warpcore-server"
@@ -86,7 +86,7 @@ echo ""
 echo "=== Step 3/4: Preparing Tauri sidecar ==="
 mkdir -p "$DESKTOP_DIR/binaries"
 cp "$SERVER_DIR/dist/warpcore-server" "$DESKTOP_DIR/binaries/warpcore-server-$TARGET_TRIPLE"
-cp "$REPO_ROOT/node_modules/sql.js/dist/sql-wasm.wasm" "$DESKTOP_DIR/binaries/sql-wasm.wasm"
+cp "$SERVER_DIR/dist/better_sqlite3.node" "$DESKTOP_DIR/binaries/better_sqlite3.node"
 chmod +x "$DESKTOP_DIR/binaries/warpcore-server-$TARGET_TRIPLE"
 
 rm -r "$DESKTOP_DIR/app-dist" 2>/dev/null || true
