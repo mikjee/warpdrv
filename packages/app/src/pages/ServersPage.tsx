@@ -18,6 +18,14 @@ import { fetchBackends, fetchBackendGroups, fetchModels, stopServer, restartServ
 import type { IServer, IServerStats, IBackend, IBackendGroup, IModel, TSortField, TSortOrder } from '@warpcore/shared';
 import { EServerStatus } from '@warpcore/shared';
 
+const QUANT_COLORS: Record<string, string> = {
+	Q5_K_XL: '#34d399', Q6_K_XL: '#34d399', Q6_K: '#34d399', Q4_K_M: '#34d399',
+	Q5_K_M: '#34d399', Q5_K_S: '#34d399', Q4_K_S: '#34d399', Q3_K_M: '#fbbf24',
+	Q8_0: '#22d3ee', IQ3_XXS: '#fbbf24', IQ3_M: '#fbbf24', IQ3_XS: '#fbbf24',
+	IQ4_XS: '#fbbf24', MXFP4: '#a78bfa', NVFP4: '#a78bfa',
+	F32: 'rgba(255, 255, 255, 0.4)', BF16: 'rgba(255, 255, 255, 0.4)', F16: 'rgba(255, 255, 255, 0.4)',
+};
+
 function formatUptime(startedAt: number | null): string {
 	if (!startedAt) return '-';
 	const ms = Date.now() - startedAt;
@@ -472,7 +480,7 @@ export function ServersPage() {
 						</VStack>
 					</Flex>
 				) : (
-					<VStack align="stretch" gap="2">
+					<VStack align="stretch" gap="2.5">
 						{filteredServers.map(server => {
 							const isRunning = server.status === EServerStatus.RUNNING;
 							const isLoading = server.status === EServerStatus.LOADING;
@@ -480,7 +488,7 @@ export function ServersPage() {
 							return (
 								<Card
 									key={server.id}
-									p="3.5"
+									p="3"
 									hasGradient={isRunning || isLoading}
 									gradientFrom={isRunning ? "rgba(52, 211, 153, 0.025)" : "rgba(251, 191, 36, 0.025)"}
 									gradientTo="transparent"
@@ -488,7 +496,7 @@ export function ServersPage() {
 								>
 									<VStack align="stretch" gap="4">
 										<Flex justify="space-between" align="start">
-											<HStack gap="3">
+											<HStack gap="3" pr="3">
 												<Flex
 													w="10" h="10" borderRadius="lg" alignItems="center" justifyContent="center"
 													position="relative"
@@ -500,8 +508,9 @@ export function ServersPage() {
 													{/* {isRunning && <Box position="absolute" top="-1px" right="-1px" w="8px" h="8px" borderRadius="full" bg="#34d399" shadow="0 0 8px #34d399" />} */}
 												</Flex>
 												<Box>
-													<HStack gap="2" alignItems="center">
+													<HStack gap="2" alignItems="center" flexWrap="wrap">
 														<Text fontSize="12px" fontWeight="600" color="#e4e4e7">{server.serverName}</Text>
+														<StatusBadge status={server.status as EServerStatus} port={server.port} />
 														{server.serverAlias && server.serverAlias.length > 0 && (
 															<>
 																{server.serverAlias.map(alias => (
@@ -568,15 +577,6 @@ export function ServersPage() {
 																</Popover.Positioner>
 															</Portal>
 														</Popover.Root>
-													</HStack>
-													<HStack gap="3" mt="0.5">
-														<StatusBadge status={server.status as EServerStatus} port={server.port} />
-														{server.error && (
-															<>
-																<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">|</Text>
-																<Text fontSize="11px" color="#fb7185" lineClamp={1}>{server.error}</Text>
-															</>
-														)}
 														{isRunning && (
 															<HStack gap="1" color="rgba(255, 255, 255, 0.35)">
 																<Clock size={11} />
@@ -584,10 +584,59 @@ export function ServersPage() {
 															</HStack>
 														)}
 													</HStack>
+													{/* Details row */}
+													<HStack gap="2" flexWrap="wrap" mt="1.5">
+														{(() => {
+															const backend = backendMap.get(server.backendId || '');
+															const group = groupMap.get(server.backendGroupId || '');
+															const model = modelByPath.get(server.modelPath);
+															const draftModel = server.params.specDecode?.draftModelPath ? modelByPath.get(server.params.specDecode.draftModelPath) : null;
+															const backendType = getBackendType(server);
+															const deviceName = getDeviceName(server);
+															const modelMaxCtx = getModelMaxContext(server);
+															const configuredCtx = server.params.contextSize;
+															const displayCtx = configuredCtx === 0 ? 
+																(modelMaxCtx ? formatCount(modelMaxCtx) : 'auto') : formatCount(configuredCtx);
+															const backendName = group?.name ? `${group.name} (${group.backendIds.length} backends)` : backend?.name ?? "Backend Not Found!";
+															const activeBackendName = group?.activeBackendId ? backendMap.get(group.activeBackendId)?.name : null;
+
+															return (
+																<>
+																	<HStack gap="1">
+																		<StatPill icon={<FaBrain size={12} />} label="Model" value={model?.name ?? "Model Not Found!"} />
+																		{model?.primaryFile?.metadata?.quantType && (
+																			<Badge
+																				px="1.5" py="0.25" borderRadius="md" fontSize="10px"
+																				fontFamily='"Geist Mono", monospace'
+																				bg={`color-mix(in srgb, ${QUANT_COLORS[model.primaryFile.metadata.quantType] ?? 'rgba(255, 255, 255, 0.3)'} 15%, transparent)`}
+																				color={QUANT_COLORS[model.primaryFile.metadata.quantType] ?? 'rgba(255, 255, 255, 0.5)'}
+																				borderWidth="1px"
+																				borderColor={`color-mix(in srgb, ${QUANT_COLORS[model.primaryFile.metadata.quantType] ?? 'rgba(255, 255, 255, 0.3)'} 30%, transparent)`}
+																			>
+																				{model.primaryFile.metadata.quantType}
+																			</Badge>
+																		)}
+																	</HStack>
+																	{server.params.specDecode?.enabled && draftModel && (
+																		<StatPill icon={<Sparkles size={12} />} label="Draft" value={draftModel.name} />
+																	)}
+																	<StatPill icon={<Blocks size={12} />} label="Backend" value={backendName} />
+																	{group && activeBackendName && (
+																		<StatPill icon={<Terminal size={10} />} label="Active" value={activeBackendName} />
+																	)}
+																	<StatPill icon={<Cpu size={12} />} label="Device" value={deviceName} />
+																	<StatPill icon={<FaBookOpen size={12} />} label="Context" value={`${displayCtx}`} />
+																</>
+															);
+														})()}
+													</HStack>
+													{server.error && (
+														<Text fontSize="11px" color="#fb7185" lineClamp={1} mt="0.5">{server.error}</Text>
+													)}
 												</Box>
 											</HStack>
 
-											<HStack gap="1">
+											<HStack gap="1" my="auto" pl="3" borderLeft={"1px solid rgba(255,255,255,0.08)"}>
 												{/* Run/Restart */}
 												{!isRunning && !isLoading && (
 													<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' }} borderRadius="md" onClick={() => handleRestart(server.id)}>
@@ -625,39 +674,6 @@ export function ServersPage() {
 												)}
 											</HStack>
 										</Flex>
-
-										{/* Details row */}
-										<HStack gap="2" flexWrap="wrap" mt="-1.5">
-											{(() => {
-												const backend = backendMap.get(server.backendId || '');
-												const group = groupMap.get(server.backendGroupId || '');
-												const model = modelByPath.get(server.modelPath);
-												const draftModel = server.params.specDecode?.draftModelPath ? modelByPath.get(server.params.specDecode.draftModelPath) : null;
-												const backendType = getBackendType(server);
-												const deviceName = getDeviceName(server);
-												const modelMaxCtx = getModelMaxContext(server);
-												const configuredCtx = server.params.contextSize;
-												const displayCtx = configuredCtx === 0 ? 
-													(modelMaxCtx ? formatCount(modelMaxCtx) : 'auto') : formatCount(configuredCtx);
-												const backendName = group?.name ? `${group.name} (${group.backendIds.length} backends)` : backend?.name ?? "Backend Not Found!";
-												const activeBackendName = group?.activeBackendId ? backendMap.get(group.activeBackendId)?.name : null;
-
-												return (
-													<>
-														<StatPill icon={<FaBrain size={12} />} label="Model" value={model?.name ?? "Model Not Found!"} />
-														{server.params.specDecode?.enabled && draftModel && (
-															<StatPill icon={<Sparkles size={12} />} label="Draft" value={draftModel.name} />
-														)}
-														<StatPill icon={<Blocks size={12} />} label="Backend" value={backendName} />
-														{group && activeBackendName && (
-															<StatPill icon={<Terminal size={10} />} label="Active" value={activeBackendName} />
-														)}
-														<StatPill icon={<Cpu size={12} />} label="Device" value={deviceName} />
-														<StatPill icon={<FaBookOpen size={12} />} label="Context" value={`${displayCtx}`} />
-													</>
-												);
-											})()}
-										</HStack>
 
 										{/* Stats */}
 										{(() => {

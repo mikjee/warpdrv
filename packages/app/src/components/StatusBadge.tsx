@@ -15,9 +15,9 @@ export function StatusBadge({ status, port }: { status: EServerStatus; port?: nu
 	let label = config.label;
 	if (port != null) {
 		if (status === EServerStatus.RUNNING) {
-			label = `Running on port ${port}`;
+			label = `Port ${port}`;
 		} else if (status === EServerStatus.STOPPED) {
-			label = `Stopped (port ${port})`;
+			label = `Port ${port}`;
 		} else if (status === EServerStatus.LOADING) {
 			label = `Loading on port ${port}`;
 		} else if (status === EServerStatus.ERROR) {
