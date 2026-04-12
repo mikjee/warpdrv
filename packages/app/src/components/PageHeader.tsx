@@ -40,7 +40,7 @@ export function PageHeader({ title, subtitle, icon, actions }: IPageHeaderProps)
 					</Flex>
 				)}
 				<Box>
-					<Text fontSize="20px" fontWeight="500" letterSpacing="-0.02em" color="#afafaf">
+					<Text fontSize="16px" fontWeight="500" letterSpacing="-0.02em" color="#afafaf">
 						{title}
 					</Text>
 					{subtitle && (

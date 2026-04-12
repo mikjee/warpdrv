@@ -43,7 +43,7 @@ export function StatusBadge({ status, port }: { status: EServerStatus; port?: nu
 				shadow={status === EServerStatus.RUNNING ? `0 0 8px ${config.color}` : 'none'}
 				animation={status === EServerStatus.LOADING ? 'pulse 1.5s ease infinite' : undefined}
 			/>
-			<Text fontSize="11px" fontWeight="600" color={config.color} letterSpacing="0.02em">
+			<Text fontSize="10px" fontWeight="600" color={config.color} letterSpacing="0.02em">
 				{label}
 			</Text>
 		</HStack>

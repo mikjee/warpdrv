@@ -35,10 +35,10 @@ function formatCount(n: number): string {
 
 function StatPill({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
 	return (
-		<HStack gap="1.5" px="2" py="1" borderRadius="lg" bg="rgba(255, 255, 255, 0.03)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.05)">
+		<HStack gap="1.5" px="1.5" py="0.5" borderRadius="lg" bg="rgba(255, 255, 255, 0.03)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.05)">
 			<Box color="rgba(255, 255, 255, 0.3)">{icon}</Box>
 			{/* <Text fontSize="11px" color="rgba(255, 255, 255, 0.35)">{label}</Text> */}
-			<Text fontSize="12px" fontWeight="400" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace'>{value}</Text>
+			<Text fontSize="11px" fontWeight="400" color="rgba(255, 255, 255, 0.75)" fontFamily='"Geist Mono", monospace'>{value}</Text>
 		</HStack>
 	);
 }
@@ -113,7 +113,6 @@ export function ServersPage() {
 	}, [models]);
 
 	// Build backend and group lookup maps
-	const backendMap = useMemo(() => new Map(backends.map(b => [b.id, b])), [backends]);
 	const groupMap = useMemo(() => new Map(groups.map(g => [g.id, g])), [groups]);
 
 	// Fuzzy search matching against multiple fields
@@ -473,7 +472,7 @@ export function ServersPage() {
 						</VStack>
 					</Flex>
 				) : (
-					<VStack align="stretch" gap="4">
+					<VStack align="stretch" gap="2">
 						{filteredServers.map(server => {
 							const isRunning = server.status === EServerStatus.RUNNING;
 							const isLoading = server.status === EServerStatus.LOADING;
@@ -481,6 +480,7 @@ export function ServersPage() {
 							return (
 								<Card
 									key={server.id}
+									p="3.5"
 									hasGradient={isRunning || isLoading}
 									gradientFrom={isRunning ? "rgba(52, 211, 153, 0.025)" : "rgba(251, 191, 36, 0.025)"}
 									gradientTo="transparent"
@@ -501,7 +501,7 @@ export function ServersPage() {
 												</Flex>
 												<Box>
 													<HStack gap="2" alignItems="center">
-														<Text fontSize="15px" fontWeight="600" color="#e4e4e7">{server.serverName}</Text>
+														<Text fontSize="12px" fontWeight="600" color="#e4e4e7">{server.serverName}</Text>
 														{server.serverAlias && server.serverAlias.length > 0 && (
 															<>
 																{server.serverAlias.map(alias => (
@@ -627,7 +627,7 @@ export function ServersPage() {
 										</Flex>
 
 										{/* Details row */}
-										<HStack gap="2" flexWrap="wrap">
+										<HStack gap="2" flexWrap="wrap" mt="-1.5">
 											{(() => {
 												const backend = backendMap.get(server.backendId || '');
 												const group = groupMap.get(server.backendGroupId || '');

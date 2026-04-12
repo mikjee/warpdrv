@@ -223,7 +223,7 @@ export function ProxyPage() {
 										{!proxyStatus?.error && proxyStatus?.running && proxyStatus?.healthy && <Box position="absolute" top="-1px" right="-1px" w="8px" h="8px" borderRadius="full" bg="#34d399" shadow="0 0 8px #34d399" />}
 									</Flex>
 									<Box>
-										<Text fontSize="15px" fontWeight="600" color="#e4e4e7">Server Alias</Text>
+										<Text fontSize="14px" fontWeight="600" color="#e4e4e7">Server Alias</Text>
 										<HStack gap="3" mt="0.5">
 											<ProxyStatusBadge status={proxyStatus ?? { enabled: false, port: 0, running: false, healthy: false, error: null }} />
 										</HStack>
@@ -276,7 +276,7 @@ export function ProxyPage() {
 					{/* Auth Settings Section */}
 					<Card>
 						<VStack align="stretch" gap="3">
-							<HStack gap="2">
+							<HStack gap="2" mb="2">
 								<Shield size={14} color="rgba(255, 255, 255, 0.5)" />
 								<Text fontSize="14px" fontWeight="600" color="#e4e4e7">Authentication</Text>
 							</HStack>

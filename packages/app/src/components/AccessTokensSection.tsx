@@ -183,6 +183,7 @@ export function AccessTokensSection() {
 				onClick={() => setExpanded(!expanded)}
 				_hover={{ bg: 'rgba(255,255,255,0.02)' }}
 				transition="background 0.15s ease"
+				mb="2"
 			>
 				<HStack gap="3">
 					<Box color="rgba(255,255,255,0.4)">

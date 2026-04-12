@@ -12,9 +12,10 @@ interface ICardProps {
 	hasGradient?: boolean;
 	gradientFrom?: string;
 	gradientTo?: string;
+	p?: string;
 }
 
-export function Card({ children, variant = 'default', accentColor, onClick, selected, bg, borderColor, hasGradient, gradientFrom, gradientTo }: ICardProps) {
+export function Card({ children, variant = 'default', accentColor, onClick, selected, bg, borderColor, hasGradient, gradientFrom, gradientTo, p = '5' }: ICardProps) {
 	const isClickable = !!onClick;
 
 	return (
@@ -27,7 +28,7 @@ export function Card({ children, variant = 'default', accentColor, onClick, sele
 			borderRadius="xl"
 			borderWidth="1px"
 			borderColor={selected ? 'rgba(51, 129, 255, 0.4)' : borderColor ?? 'rgba(255, 255, 255, 0.06)'}
-			p="5"
+			p={p}
 			cursor={isClickable ? 'pointer' : 'default'}
 			transition="all 0.2s ease"
 			overflow="hidden"
