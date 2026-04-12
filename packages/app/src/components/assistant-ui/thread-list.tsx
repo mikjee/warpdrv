@@ -229,7 +229,7 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect }: {
 	return (
 		<Box
 			w="100%"
-			className={`group ${selected ? 'bg-blue-500/10' : ''}`}
+			className={`group ${selected ? 'bg-[#2a2a2a]' : ''}`}
 			draggable
 			onDragStart={(e: any) => {
 				e.dataTransfer.setData('threadId', thread.id);
