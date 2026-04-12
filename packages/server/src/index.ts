@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import { store } from './util/store';
 import { settingsRouter } from './routes/settings';
 import { backendsRouter } from './routes/backends';
@@ -7,6 +8,9 @@ import { modelsRouter, loadCachedModels } from './routes/models';
 import { serversRouter, reconcileServers, launchAutoStartServers } from './routes/servers';
 import { presetsRouter } from './routes/presets';
 import { hubRouter } from './routes/hub';
+import { tokensRouter } from './routes/tokens';
+import { authRouter } from './routes/auth';
+import { authMiddleware } from './middleware/auth';
 import type { ISettings, IServer, IDownload, IDevice, IBackend } from '@warpcore/shared';
 import { DEFAULT_SETTINGS, EServerStatus, EDownloadStatus } from '@warpcore/shared';
 import { runMigrations } from './services/migrationRunner';
@@ -75,30 +79,37 @@ async function main() {
 
 	app.use(cors());
 	app.use(express.json());
+	app.use(cookieParser());
 
-	// API routes
-	app.use('/api/settings', settingsRouter);
-	app.use('/api/backends', backendsRouter);
-	app.use('/api/models', modelsRouter);
-	app.use('/api/servers', serversRouter);
-	app.use('/api/presets', presetsRouter);
-	app.use('/api/hub', hubRouter);
-	app.use('/api/update', updateRouter);
-	app.use('/api/proxy', proxyRouter);
-	app.use('/api/chat', chatRouter);
-	app.use('/api/mcp', mcpRouter);
-	app.use('/api/summary', summaryRouter);
+	// Auth routes (no middleware - public endpoints)
+	app.use('/api/auth', authRouter);
 
-	// SSE endpoint
-	app.get('/api/events', async (req, res) => {
+	// Token routes (require admin auth)
+	app.use('/api/tokens', authMiddleware, tokensRouter);
+
+	// API routes with auth middleware
+	app.use('/api/settings', authMiddleware, settingsRouter);
+	app.use('/api/backends', authMiddleware, backendsRouter);
+	app.use('/api/models', authMiddleware, modelsRouter);
+	app.use('/api/servers', authMiddleware, serversRouter);
+	app.use('/api/presets', authMiddleware, presetsRouter);
+	app.use('/api/hub', authMiddleware, hubRouter);
+	app.use('/api/update', authMiddleware, updateRouter);
+	app.use('/api/proxy', authMiddleware, proxyRouter);
+	app.use('/api/chat', authMiddleware, chatRouter);
+	app.use('/api/mcp', authMiddleware, mcpRouter);
+	app.use('/api/summary', authMiddleware, summaryRouter);
+
+	// SSE endpoint (protected by auth)
+	app.get('/api/events', authMiddleware, async (req, res) => {
 		console.log('[SSE] New client');
 		await sseManager.handleConnection(req, res, () => {
 			console.log('[SSE] Client disconnected');
 		});
 	});
 
-	// Stats endpoint — returns live stats for a running server
-	app.get('/api/servers/:id/stats', (req, res) => {
+	// Stats endpoint — returns live stats for a running server (protected by auth)
+	app.get('/api/servers/:id/stats', authMiddleware, (req, res) => {
 		const { getServerStats } = require('./services/statsPoller');
 		const stats = getServerStats(req.params.id);
 		res.json({ ok: true, data: stats, error: null });

@@ -9,6 +9,7 @@ async function request<T>(
 	try {
 		const res = await fetch(`${API_BASE}${path}`, {
 			headers: { 'Content-Type': 'application/json' },
+			credentials: 'include',
 			...options,
 		});
 		const json = await res.json();
@@ -25,6 +26,7 @@ async function requestList<T>(
 	try {
 		const res = await fetch(`${API_BASE}${path}`, {
 			headers: { 'Content-Type': 'application/json' },
+			credentials: 'include',
 			...options,
 		});
 		const json = await res.json();
@@ -44,3 +46,34 @@ export const api = {
 	del: <T>(path: string) =>
 		request<T>(path, { method: 'DELETE' }),
 };
+
+// Auth-specific functions that handle Bearer tokens
+export async function login(token: string): Promise<IApiResponse<unknown>> {
+	try {
+		const res = await fetch(`${API_BASE}/auth/login`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${token}`,
+			},
+			credentials: 'include',
+		});
+		const json = await res.json();
+		return json as IApiResponse<unknown>;
+	} catch (err) {
+		return { ok: false, data: null, error: String(err) };
+	}
+}
+
+export async function logout(): Promise<IApiResponse<null>> {
+	return api.post<null>('/auth/logout');
+}
+
+export async function fetchAuthCheck(): Promise<IApiResponse<unknown>> {
+	return api.get<unknown>('/auth/check');
+}
+
+export async function fetchAuthMe(): Promise<IApiResponse<unknown>> {
+	return api.get<unknown>('/auth/me');
+}
+

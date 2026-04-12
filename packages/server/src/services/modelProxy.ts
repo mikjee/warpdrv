@@ -5,6 +5,7 @@ import { store } from '../util/store';
 import type { IServer, ISettings } from '@warpcore/shared';
 import { EServerStatus, DEFAULT_SETTINGS } from '@warpcore/shared';
 import { sseManager } from './sseManagerInstance';
+import { proxyAuthMiddleware } from '../middleware/auth';
 
 const SERVERS_PREFIX = 'servers:';
 const SETTINGS_KEY = 'settings:general';
@@ -178,6 +179,9 @@ function createProxyApp(): express.Express {
 			next();
 		});
 	});
+
+	// Apply auth middleware to all /v1/* routes
+	app.use('/v1/', proxyAuthMiddleware);
 
 	// GET /v1/models — list all available aliases
 	app.get('/v1/models', async (_req, res) => {

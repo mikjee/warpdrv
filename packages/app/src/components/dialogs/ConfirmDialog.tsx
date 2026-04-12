@@ -9,9 +9,11 @@ interface IConfirmDialogProps {
 	onConfirm: () => void;
 	onCancel: () => void;
 	isLoading?: boolean;
+	confirmLabel?: string;
+	loadingLabel?: string;
 }
 
-export function ConfirmDialog({ title, message, isOpen, onConfirm, onCancel, isLoading = false }: IConfirmDialogProps) {
+export function ConfirmDialog({ title, message, isOpen, onConfirm, onCancel, isLoading = false, confirmLabel = 'Delete', loadingLabel }: IConfirmDialogProps) {
 	const [open, setOpen] = useState(isOpen);
 
 	return (
@@ -68,7 +70,7 @@ export function ConfirmDialog({ title, message, isOpen, onConfirm, onCancel, isL
 									onClick={() => { onConfirm(); setOpen(false); }}
 									disabled={isLoading}
 								>
-									{isLoading ? 'Deleting...' : 'Delete'}
+									{isLoading ? (loadingLabel ?? `${confirmLabel}...`) : confirmLabel}
 								</Button>
 							</HStack>
 						</VStack>

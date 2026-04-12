@@ -1,15 +1,17 @@
-import { Box, Text, HStack, VStack, Flex, Button, Spinner, Badge } from '@chakra-ui/react';
-import { Globe, Trash2, Server, ArrowRight, Play, Square } from 'lucide-react';
-import { useState, useCallback } from 'react';
+import { Box, Text, HStack, VStack, Flex, Button, Spinner, Badge, Switch } from '@chakra-ui/react';
+import { Globe, Trash2, Server, ArrowRight, Play, Square, Shield } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
-import { useMutation } from '../hooks/useQuery';
+import { useQuery, useMutation } from '../hooks/useQuery';
 import { useStore } from '../store';
-import { clearStickyRoute, clearAllStickyRoutes, startProxy, stopProxy } from '../api/services';
+import { clearStickyRoute, clearAllStickyRoutes, startProxy, stopProxy, fetchSettings, updateSettings } from '../api/services';
 import type { IProxyStatus, IStickyRouteInfo } from '../api/services';
+import type { ISettings } from '@warpcore/shared';
 import { useToast } from '../components/ToastProvider';
 import { BsRouter } from 'react-icons/bs';
+import { AccessTokensSection } from '../components/AccessTokensSection';
 
 function StatPill({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
 	return (
@@ -83,10 +85,30 @@ export function ProxyPage() {
 	const proxyRoutes = useStore((s) => s.proxyRoutes);
 
 	const [clearingAll, setClearingAll] = useState(false);
+	const [proxyAuthEnabled, setProxyAuthEnabled] = useState(false);
+	const [apiAuthEnabled, setApiAuthEnabled] = useState(false);
+	const [authRequireForLocalhost, setAuthRequireForLocalhost] = useState(false);
+	const [restartConfirm, setRestartConfirm] = useState(false);
+
+	const fetcher = useCallback(() => fetchSettings(), []);
+	const { data: settings } = useQuery<ISettings>(fetcher, { pollInterval: 0 });
+
 	const clearAllMut = useMutation<void, null>(useCallback(() => clearAllStickyRoutes(), []));
 	const clearOneMut = useMutation<string, { cleared: boolean }>(useCallback((alias) => clearStickyRoute(alias), []));
 	const startMut = useMutation<void, null>(useCallback(() => startProxy(), []));
 	const stopMut = useMutation<void, null>(useCallback(() => stopProxy(), []));
+	const saveSettingsMut = useMutation<Partial<ISettings>, ISettings>(
+		useCallback((data: Partial<ISettings>) => updateSettings(data), [])
+	);
+
+	// Sync settings from API
+	useEffect(() => {
+		if (settings) {
+			setProxyAuthEnabled(settings.proxyAuthEnabled ?? false);
+			setApiAuthEnabled(settings.apiAuthEnabled ?? false);
+			setAuthRequireForLocalhost(settings.authRequireForLocalhost ?? false);
+		}
+	}, [settings]);
 
 	const handleClearAll = async () => {
 		await clearAllMut.mutate();
@@ -103,6 +125,36 @@ export function ProxyPage() {
 
 	const handleStop = async () => {
 		await stopMut.mutate(undefined);
+	};
+
+	const handleProxyAuthToggle = async (details: { checked: boolean }) => {
+		const checked = details.checked;
+		if (checked && proxyStatus?.running) {
+			setRestartConfirm(true);
+		} else {
+			setProxyAuthEnabled(checked);
+			await saveSettingsMut.mutate({ proxyAuthEnabled: checked });
+		}
+	};
+
+	const handleApiAuthToggle = async (details: { checked: boolean }) => {
+		const checked = details.checked;
+		setApiAuthEnabled(checked);
+		await saveSettingsMut.mutate({ apiAuthEnabled: checked });
+	};
+
+	const handleAuthRequireForLocalhostToggle = async (details: { checked: boolean }) => {
+		const checked = details.checked;
+		setAuthRequireForLocalhost(checked);
+		await saveSettingsMut.mutate({ authRequireForLocalhost: checked });
+	};
+
+	const handleRestartAndApply = async () => {
+		await stopMut.mutate(undefined);
+		await saveSettingsMut.mutate({ proxyAuthEnabled: true });
+		await startMut.mutate(undefined);
+		setProxyAuthEnabled(true);
+		setRestartConfirm(false);
 	};
 
 	const getStatusSubtitle = (status: IProxyStatus, routeCount: number): string => {
@@ -221,6 +273,51 @@ export function ProxyPage() {
 						</VStack>
 					</Card>
 
+					{/* Auth Settings Section */}
+					<Card>
+						<VStack align="stretch" gap="3">
+							<HStack gap="2">
+								<Shield size={14} color="rgba(255, 255, 255, 0.5)" />
+								<Text fontSize="14px" fontWeight="600" color="#e4e4e7">Authentication</Text>
+							</HStack>
+							<VStack gap="2" align="stretch">
+								<HStack justify="space-between" alignItems="center" px="3" py="2" borderRadius="lg" bg="rgba(255,255,255,0.02)">
+									<Box flex="1">
+										<Text fontSize="12px" fontWeight="500" color="rgba(255,255,255,0.7)">Proxy Auth</Text>
+										<Text fontSize="10px" color="rgba(255,255,255,0.3)">Require Bearer token for /v1/* endpoints</Text>
+									</Box>
+									<Switch.Root checked={proxyAuthEnabled} onCheckedChange={handleProxyAuthToggle}>
+										<Switch.HiddenInput />
+										<Switch.Control />
+									</Switch.Root>
+								</HStack>
+								<HStack justify="space-between" alignItems="center" px="3" py="2" borderRadius="lg" bg="rgba(255,255,255,0.02)">
+									<Box flex="1">
+										<Text fontSize="12px" fontWeight="500" color="rgba(255,255,255,0.7)">Control API Auth</Text>
+										<Text fontSize="10px" color="rgba(255,255,255,0.3)">Require auth for /api/* endpoints</Text>
+									</Box>
+									<Switch.Root checked={apiAuthEnabled} onCheckedChange={handleApiAuthToggle}>
+										<Switch.HiddenInput />
+										<Switch.Control />
+									</Switch.Root>
+								</HStack>
+								<HStack justify="space-between" alignItems="center" px="3" py="2" borderRadius="lg" bg="rgba(255,255,255,0.02)">
+									<Box flex="1">
+										<Text fontSize="12px" fontWeight="500" color="rgba(255,255,255,0.7)">Require Auth for Localhost</Text>
+										<Text fontSize="10px" color="rgba(255,255,255,0.3)">Enforce auth even for localhost requests (testing)</Text>
+									</Box>
+									<Switch.Root checked={authRequireForLocalhost} onCheckedChange={handleAuthRequireForLocalhostToggle}>
+										<Switch.HiddenInput />
+										<Switch.Control />
+									</Switch.Root>
+								</HStack>
+							</VStack>
+						</VStack>
+					</Card>
+
+					{/* Access Tokens Section */}
+					<AccessTokensSection />
+
 					{/* Routing Table Section */}
 					<Card>
 						<VStack align="stretch" gap="3">
@@ -279,6 +376,18 @@ export function ProxyPage() {
 					isLoading={clearAllMut.loading}
 					onCancel={() => setClearingAll(false)}
 					onConfirm={handleClearAll}
+				/>
+			)}
+
+			{restartConfirm && (
+				<ConfirmDialog
+					title="Restart Proxy Required"
+					message="Enabling proxy authentication requires restarting the proxy. This will terminate all existing connections. New connections will require authentication."
+					isOpen={true}
+					isLoading={stopMut.loading || startMut.loading || saveSettingsMut.loading}
+					onCancel={() => { setRestartConfirm(false); setProxyAuthEnabled(false); }}
+					onConfirm={handleRestartAndApply}
+					confirmLabel="Restart"
 				/>
 			)}
 		</Box>
