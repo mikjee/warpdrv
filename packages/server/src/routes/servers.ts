@@ -16,6 +16,7 @@ import type {
 	IServer,
 	IServerCreatePayload,
 	IBackend,
+	IBackendGroup,
 	ISettings,
 } from '@warpcore/shared';
 import { EServerStatus } from '@warpcore/shared';
@@ -116,10 +117,27 @@ serversRouter.get('/:id', async (req, res) => {
 serversRouter.post('/', async (req, res) => {
 	const payload = req.body as IServerCreatePayload;
 
-	// Validate backend exists
-	const backend = await store.get<IBackend>('backends:' + payload.backendId);
-	if (!backend) {
-		res.status(400).json({ ok: false, data: null, error: 'Backend not found' });
+	// Use backendGroupId if provided, otherwise use backendId
+	let backend: IBackend | null = null;
+	if (payload.backendGroupId) {
+		const group = await store.get<IBackendGroup>('backendGroups:' + payload.backendGroupId);
+		if (!group) {
+			res.status(400).json({ ok: false, data: null, error: 'Backend group not found' });
+			return;
+		}
+		backend = await store.get<IBackend>('backends:' + group.activeBackendId);
+		if (!backend) {
+			res.status(400).json({ ok: false, data: null, error: 'Active backend in group not found' });
+			return;
+		}
+	} else if (payload.backendId) {
+		backend = await store.get<IBackend>('backends:' + payload.backendId);
+		if (!backend) {
+			res.status(400).json({ ok: false, data: null, error: 'Backend not found' });
+			return;
+		}
+	} else {
+		res.status(400).json({ ok: false, data: null, error: 'Either backendId or backendGroupId is required' });
 		return;
 	}
 
@@ -137,6 +155,7 @@ serversRouter.post('/', async (req, res) => {
 	const server: IServer = {
 		id,
 		backendId: payload.backendId,
+		backendGroupId: payload.backendGroupId,
 		modelPath: payload.modelPath,
 		mmprojPath: payload.mmprojPath,
 		serverName,
@@ -225,10 +244,24 @@ serversRouter.post('/:id/restart', async (req, res) => {
 		return;
 	}
 
-	const backend = await store.get<IBackend>('backends:' + server.backendId);
-	if (!backend) {
-		res.status(400).json({ ok: false, data: null, error: 'Backend not found' });
-		return;
+	let backend: IBackend | null = null;
+	if (server.backendGroupId) {
+		const group = await store.get<IBackendGroup>('backendGroups:' + server.backendGroupId);
+		if (!group) {
+			res.status(400).json({ ok: false, data: null, error: 'Backend group not found' });
+			return;
+		}
+		backend = await store.get<IBackend>('backends:' + group.activeBackendId);
+		if (!backend) {
+			res.status(400).json({ ok: false, data: null, error: 'Active backend in group not found' });
+			return;
+		}
+	} else if (server.backendId) {
+		backend = await store.get<IBackend>('backends:' + server.backendId);
+		if (!backend) {
+			res.status(400).json({ ok: false, data: null, error: 'Backend not found' });
+			return;
+		}
 	}
 
 	// Kill existing and wait for termination
@@ -270,15 +303,44 @@ serversRouter.put('/:id', async (req, res) => {
 		return;
 	}
 
-	type TUpdatePayload = Partial<Pick<IServer, 'backendId' | 'modelPath' | 'mmprojPath' | 'serverName' | 'params' | 'serverAlias' | 'autoLaunch'>> & { relaunch?: boolean };
+	type TUpdatePayload = Partial<Pick<IServer, 'backendId' | 'backendGroupId' | 'modelPath' | 'mmprojPath' | 'serverName' | 'params' | 'serverAlias' | 'autoLaunch'>> & { relaunch?: boolean };
 	const updatePayload = req.body as TUpdatePayload;
 	const shouldRelaunch = updatePayload.relaunch ?? true;
 
 	// Validate new backend if changed
-	let backend = await store.get<IBackend>('backends:' + (updatePayload.backendId ?? server.backendId));
-	if (!backend) {
-		res.status(400).json({ ok: false, data: null, error: 'Backend not found' });
-		return;
+	let backend: IBackend | null = null;
+	if (updatePayload.backendGroupId) {
+		const group = await store.get<IBackendGroup>('backendGroups:' + updatePayload.backendGroupId);
+		if (!group) {
+			res.status(400).json({ ok: false, data: null, error: 'Backend group not found' });
+			return;
+		}
+		backend = await store.get<IBackend>('backends:' + group.activeBackendId);
+		if (!backend) {
+			res.status(400).json({ ok: false, data: null, error: 'Active backend in group not found' });
+			return;
+		}
+	} else if (updatePayload.backendId) {
+		backend = await store.get<IBackend>('backends:' + updatePayload.backendId);
+		if (!backend) {
+			res.status(400).json({ ok: false, data: null, error: 'Backend not found' });
+			return;
+		}
+	} else {
+		// Use existing backend
+		if (server.backendGroupId) {
+			const group = await store.get<IBackendGroup>('backendGroups:' + server.backendGroupId);
+			if (group) {
+				backend = await store.get<IBackend>('backends:' + group.activeBackendId);
+			}
+		}
+		if (!backend && server.backendId) {
+			backend = await store.get<IBackend>('backends:' + server.backendId);
+		}
+		if (!backend) {
+			res.status(400).json({ ok: false, data: null, error: 'Backend not found' });
+			return;
+		}
 	}
 
 	// Kill existing if running and relaunching
@@ -288,7 +350,8 @@ serversRouter.put('/:id', async (req, res) => {
 	}
 
 	// Update fields
-	if (updatePayload.backendId) server.backendId = updatePayload.backendId;
+	if (updatePayload.backendId !== undefined) server.backendId = updatePayload.backendId;
+	if (updatePayload.backendGroupId !== undefined) server.backendGroupId = updatePayload.backendGroupId;
 	if (updatePayload.modelPath) server.modelPath = updatePayload.modelPath;
 	if (updatePayload.mmprojPath !== undefined) server.mmprojPath = updatePayload.mmprojPath;
 	if (updatePayload.serverName != null) server.serverName = updatePayload.serverName;

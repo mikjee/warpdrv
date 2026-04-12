@@ -13,7 +13,8 @@ import {
 export type TBackendId = string;
 export type TServerId = string;
 export type TPresetId = string;
-export type TModelId = string; // hash of file path
+export type TModelId = string;
+export type TBackendGroupId = string;
 // ============================================================
 // Devices
 // ============================================================
@@ -53,6 +54,30 @@ export interface IBackendUpdatePayload {
 	path?: string;
 	defaultArgs?: string[];
 	description?: string;
+}
+
+export interface IBackendGroup {
+	id: TBackendGroupId;
+	name: string;
+	description?: string;
+	backendIds: TBackendId[];
+	activeBackendId: TBackendId;
+	createdAt: number;
+	updatedAt: number;
+}
+
+export interface IBackendGroupCreatePayload {
+	name: string;
+	description?: string;
+	backendIds: TBackendId[];
+	activeBackendId: TBackendId;
+}
+
+export interface IBackendGroupUpdatePayload {
+	name?: string;
+	description?: string;
+	backendIds?: TBackendId[];
+	activeBackendId?: TBackendId;
 }
 // ============================================================
 // GGUF Metadata (parsed from file headers)
@@ -169,7 +194,8 @@ export const DEFAULT_LAUNCH_PARAMS: ILaunchParams = {
 // ============================================================
 export interface IServer {
 	id: TServerId;
-	backendId: TBackendId;
+	backendId?: TBackendId;
+	backendGroupId?: TBackendGroupId;
 	modelPath: string; // path to primary GGUF file
 	mmprojPath: string | null;
 	serverName: string; // user-defined name, or auto-generated from model filename
@@ -198,7 +224,8 @@ export interface IServerStats {
 	slots: ISlotStats[];
 }
 export interface IServerCreatePayload {
-	backendId: TBackendId;
+	backendId?: TBackendId;
+	backendGroupId?: TBackendGroupId;
 	modelPath: string;
 	mmprojPath: string | null;
 	serverName: string | null; // null = auto-generate from model filename

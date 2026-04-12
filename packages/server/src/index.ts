@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import { store } from './util/store';
 import { settingsRouter } from './routes/settings';
 import { backendsRouter } from './routes/backends';
+import { backendGroupsRouter } from './routes/backendGroups';
 import { modelsRouter, loadCachedModels } from './routes/models';
 import { serversRouter, reconcileServers, launchAutoStartServers } from './routes/servers';
 import { presetsRouter } from './routes/presets';
@@ -80,16 +81,14 @@ async function main() {
 	app.use(cors());
 	app.use(express.json());
 	app.use(cookieParser());
-
 	// Auth routes (no middleware - public endpoints)
 	app.use('/api/auth', authRouter);
-
 	// Token routes (require admin auth)
 	app.use('/api/tokens', authMiddleware, tokensRouter);
-
 	// API routes with auth middleware
 	app.use('/api/settings', authMiddleware, settingsRouter);
 	app.use('/api/backends', authMiddleware, backendsRouter);
+	app.use('/api/backend-groups', authMiddleware, backendGroupsRouter);
 	app.use('/api/models', authMiddleware, modelsRouter);
 	app.use('/api/servers', authMiddleware, serversRouter);
 	app.use('/api/presets', authMiddleware, presetsRouter);
@@ -99,7 +98,6 @@ async function main() {
 	app.use('/api/chat', authMiddleware, chatRouter);
 	app.use('/api/mcp', authMiddleware, mcpRouter);
 	app.use('/api/summary', authMiddleware, summaryRouter);
-
 	// SSE endpoint (protected by auth)
 	app.get('/api/events', authMiddleware, async (req, res) => {
 		console.log('[SSE] New client');
