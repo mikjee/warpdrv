@@ -4,6 +4,7 @@ import { ChakraProvider } from '@chakra-ui/react';
 import { BrowserRouter } from 'react-router-dom';
 import { system } from './theme/system';
 import { ToastProvider } from './components/ToastProvider';
+import { AuthProvider } from './components/AuthProvider';
 import { App } from './App';
 
 createRoot(document.getElementById('root')!).render(
@@ -11,7 +12,9 @@ createRoot(document.getElementById('root')!).render(
 		<ChakraProvider value={system}>
 			<BrowserRouter>
 				<ToastProvider>
-					<App />
+					<AuthProvider>
+						<App />
+					</AuthProvider>
 				</ToastProvider>
 			</BrowserRouter>
 		</ChakraProvider>

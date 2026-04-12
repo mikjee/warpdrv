@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, login, logout, fetchAuthCheck, fetchAuthMe } from './client';
 import type {
 	ISettings,
 	IBackend,
@@ -21,6 +21,10 @@ import type {
 	IThreadConfig,
 	IChatThreadCreatePayload,
 	IChatMessageCreatePayload,
+	IAccessTokenInfo,
+	IAccessTokenCreatePayload,
+	IAccessTokenUpdatePayload,
+	IAccessTokenCreateResult,
 } from '@warpcore/shared';
 import type {
 	IChatThread,
@@ -280,4 +284,30 @@ export async function replaceMessageParts(messageId: string, parts: any[]) {
 // Folder reordering
 export async function reorderFolders(updates: Array<{ id: string; sortOrder: number }>) {
 	return api.put<null>('/chat/folders/reorder', { updates });
+}
+
+// ============================================================
+// Authentication
+// ============================================================
+
+export { login, logout, fetchAuthCheck, fetchAuthMe };
+
+// ============================================================
+// Access Tokens
+// ============================================================
+
+export async function fetchTokens() {
+	return api.getList<IAccessTokenInfo>('/tokens');
+}
+
+export async function createToken(data: IAccessTokenCreatePayload) {
+	return api.post<IAccessTokenCreateResult>('/tokens', data);
+}
+
+export async function updateToken(id: string, data: IAccessTokenUpdatePayload) {
+	return api.put<IAccessTokenInfo>(`/tokens/${id}`, data);
+}
+
+export async function deleteToken(id: string) {
+	return api.del<null>(`/tokens/${id}`);
 }

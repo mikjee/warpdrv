@@ -265,6 +265,9 @@ export interface ISettings {
 	apiPort: number;
 	proxyPort: number;
 	proxyEnabled: boolean;
+	proxyAuthEnabled: boolean;
+	apiAuthEnabled: boolean;
+	authRequireForLocalhost: boolean;
 	serversSortField: TSortField;
 	serversSortOrder: TSortOrder;
 	startMinimized?: boolean; // only effective when auto-launch at startup is enabled
@@ -280,6 +283,9 @@ export const DEFAULT_SETTINGS: ISettings = {
 	apiPort: 4400,
 	proxyPort: 1234,
 	proxyEnabled: true,
+	proxyAuthEnabled: false,
+	apiAuthEnabled: false,
+	authRequireForLocalhost: false,
 	serversSortField: 'name',
 	serversSortOrder: 'asc',
 	startMinimized: false,
@@ -393,4 +399,56 @@ export interface IChatPresetCreatePayload {
 	name: string;
 	systemPrompt: string;
 	params: IChatInferenceParams;
+}
+
+// ============================================================
+// Access Tokens
+// ============================================================
+
+export type TAccessTokenId = string;
+
+export interface IAccessToken {
+	id: TAccessTokenId;
+	name: string;
+	tokenHash: string; // bcrypt hash of the raw token
+	tokenPrefix: string; // first 11 chars for display (e.g. "wc_a3f8b2c9d")
+	admin: boolean; // full admin access
+	inference: true | string[]; // true = all servers, string[] = specific aliases/IDs
+	mcp_labelled: true | string[]; // true = all tools, string[] = specific tools from mcp.json
+	mcp_inline: true | string[]; // true = all tools, string[] = specific ephemeral tools
+	createdAt: number;
+}
+
+// What the API returns (excludes tokenHash)
+export interface IAccessTokenInfo {
+	id: TAccessTokenId;
+	name: string;
+	tokenPrefix: string;
+	admin: boolean;
+	inference: true | string[];
+	mcp_labelled: true | string[];
+	mcp_inline: true | string[];
+	createdAt: number;
+}
+
+export interface IAccessTokenCreatePayload {
+	name: string;
+	admin: boolean;
+	inference: true | string[];
+	mcp_labelled: true | string[];
+	mcp_inline: true | string[];
+}
+
+export interface IAccessTokenUpdatePayload {
+	name?: string;
+	admin?: boolean;
+	inference?: true | string[];
+	mcp_labelled?: true | string[];
+	mcp_inline?: true | string[];
+}
+
+// Returned only on create - includes the raw token (shown once)
+export interface IAccessTokenCreateResult {
+	token: string; // the raw Bearer token - shown once, never again
+	info: IAccessTokenInfo;
 }

@@ -1,6 +1,16 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
+import { store } from '../util/store';
+import { isRemote } from './auth';
+import type { ISettings } from '@warpcore/shared';
+import { DEFAULT_SETTINGS } from '@warpcore/shared';
+
+const SETTINGS_KEY = 'settings:general';
+
+async function getSettings(): Promise<ISettings> {
+	return (await store.get<ISettings>(SETTINGS_KEY)) ?? DEFAULT_SETTINGS;
+}
 
 export function serveStaticApp(app: express.Express): void {
 	const candidates = [
@@ -31,8 +41,17 @@ export function serveStaticApp(app: express.Express): void {
 
 	app.use(express.static(staticDir, { index: 'index.html' }));
 
-	app.use((req, res, next) => {
+	// SPA fallback with auth check
+	app.use(async (req, res, next) => {
 		if (req.path.startsWith('/api')) return next();
+
+		// Check if auth is required (remote request + auth enabled)
+		const settings = await getSettings();
+		if (isRemote(req) && settings.apiAuthEnabled) {
+			// Redirect to root - React app will show login via AuthProvider
+			return res.redirect('/');
+		}
+
 		res.sendFile(path.join(staticDir!, 'index.html'));
 	});
 }
