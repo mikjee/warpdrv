@@ -14,8 +14,8 @@ import { ServerLogs } from '../components/dialogs/ServerLogs';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
 import { useListQuery, useMutation } from '../hooks/useQuery';
 import { useStore } from '../store';
-import { fetchBackends, fetchModels, stopServer, restartServer, removeServer, updateServer, fetchSettings, updateSettings, clearStickyRoute } from '../api/services';
-import type { IServer, IServerStats, IBackend, IModel, TSortField, TSortOrder } from '@warpcore/shared';
+import { fetchBackends, fetchBackendGroups, fetchModels, stopServer, restartServer, removeServer, updateServer, fetchSettings, updateSettings, clearStickyRoute } from '../api/services';
+import type { IServer, IServerStats, IBackend, IBackendGroup, IModel, TSortField, TSortOrder } from '@warpcore/shared';
 import { EServerStatus } from '@warpcore/shared';
 
 function formatUptime(startedAt: number | null): string {
@@ -59,6 +59,7 @@ export function ServersPage() {
 	const servers = useMemo(() => Object.values(serversRecord), [serversRecord]);
 
 	const { data: backends, refetch: refetchBackends } = useListQuery<IBackend>(useCallback(() => fetchBackends(), []), { pollInterval: 0 });
+	const { data: groups, refetch: refetchGroups } = useListQuery<IBackendGroup>(useCallback(() => fetchBackendGroups(), []), { pollInterval: 0 });
 	const { data: models, refetch: refetchModels } = useListQuery<IModel>(useCallback(() => fetchModels(), []), { pollInterval: 0 });
 
 	// Filter and sort state
@@ -111,18 +112,24 @@ export function ServersPage() {
 		return map;
 	}, [models]);
 
+	// Build backend and group lookup maps
+	const backendMap = useMemo(() => new Map(backends.map(b => [b.id, b])), [backends]);
+	const groupMap = useMemo(() => new Map(groups.map(g => [g.id, g])), [groups]);
+
 	// Fuzzy search matching against multiple fields
 	function matchesSearch(server: IServer, query: string): boolean {
 		if (!query.trim()) return true;
 		const q = query.toLowerCase();
-		const backend = backendMap.get(server.backendId);
+		const backend = backendMap.get(server.backendId || '');
+		const group = groupMap.get(server.backendGroupId || '');
 		const model = modelByPath.get(server.modelPath);
 
-		// Search against: serverName, aliases, backend name, device, model name/path
+		// Search against: serverName, aliases, backend name, group name, device, model name/path
 		const searchableParts = [
 			server.serverName,
 			...(server.serverAlias ?? []),
 			backend?.name ?? '',
+			group?.name ?? '',
 			getDeviceName(server),
 			model?.name ?? '',
 			model?.primaryFile?.filePath ?? server.modelPath,
@@ -159,8 +166,8 @@ export function ServersPage() {
 					comparison = bStarted - aStarted; // newer first by default (desc)
 					break;
 				case 'backend': {
-					const backendA = backendMap.get(a.backendId)?.name ?? '';
-					const backendB = backendMap.get(b.backendId)?.name ?? '';
+					const backendA = a.backendGroupId ? groupMap.get(a.backendGroupId)?.name ?? 'Unknown' : backendMap.get(a.backendId)?.name ?? 'Unknown';
+					const backendB = b.backendGroupId ? groupMap.get(b.backendGroupId)?.name ?? 'Unknown' : backendMap.get(b.backendId)?.name ?? 'Unknown';
 					comparison = backendA.localeCompare(backendB);
 					break;
 				}
@@ -172,9 +179,17 @@ export function ServersPage() {
 		return result;
 	}, [servers, searchQuery, sortField, sortOrder, runningOnly, backendMap]);
 
-	// Get backend type from detected devices
-	function getBackendType(backendId: string): string {
-		const backend = backendMap.get(backendId);
+	// Get backend type from detected devices or group
+	function getBackendType(server: IServer): string {
+		if (server.backendGroupId) {
+			const group = groupMap.get(server.backendGroupId);
+			if (!group) return 'Unknown';
+			const activeBackend = backendMap.get(group.activeBackendId);
+			if (!activeBackend || activeBackend.detectedDevices.length === 0) return 'Unknown';
+			const types = new Set(activeBackend.detectedDevices.map(d => d.backendType));
+			return Array.from(types).join(' + ');
+		}
+		const backend = backendMap.get(server.backendId || '');
 		if (!backend || backend.detectedDevices.length === 0) return 'Unknown';
 		const types = new Set(backend.detectedDevices.map(d => d.backendType));
 		return Array.from(types).join(' + ');
@@ -182,7 +197,13 @@ export function ServersPage() {
 
 	// Get device display as "name (id)" format
 	function getDeviceName(server: IServer): string {
-		const backend = backendMap.get(server.backendId);
+		let backend: IBackend | undefined;
+		if (server.backendGroupId) {
+			const group = groupMap.get(server.backendGroupId);
+			if (group) backend = backendMap.get(group.activeBackendId);
+		} else {
+			backend = backendMap.get(server.backendId || '');
+		}
 		const device = backend?.detectedDevices.find(d => d.id === server.params.device);
 		if (device) {
 			return `${device.name} (${device.id})`;
@@ -608,15 +629,18 @@ export function ServersPage() {
 										{/* Details row */}
 										<HStack gap="2" flexWrap="wrap">
 											{(() => {
-												const backend = backendMap.get(server.backendId);
+												const backend = backendMap.get(server.backendId || '');
+												const group = groupMap.get(server.backendGroupId || '');
 												const model = modelByPath.get(server.modelPath);
 												const draftModel = server.params.specDecode?.draftModelPath ? modelByPath.get(server.params.specDecode.draftModelPath) : null;
-												const backendType = getBackendType(server.backendId);
+												const backendType = getBackendType(server);
 												const deviceName = getDeviceName(server);
 												const modelMaxCtx = getModelMaxContext(server);
 												const configuredCtx = server.params.contextSize;
 												const displayCtx = configuredCtx === 0 ? 
 													(modelMaxCtx ? formatCount(modelMaxCtx) : 'auto') : formatCount(configuredCtx);
+												const backendName = group?.name ? `${group.name} (${group.backendIds.length} backends)` : backend?.name ?? "Backend Not Found!";
+												const activeBackendName = group?.activeBackendId ? backendMap.get(group.activeBackendId)?.name : null;
 
 												return (
 													<>
@@ -624,7 +648,10 @@ export function ServersPage() {
 														{server.params.specDecode?.enabled && draftModel && (
 															<StatPill icon={<Sparkles size={12} />} label="Draft" value={draftModel.name} />
 														)}
-														<StatPill icon={<Blocks size={12} />} label="Backend" value={backend?.name ? `${backend.name} (${backendType})` : "Backend Not Found!"} />
+														<StatPill icon={<Blocks size={12} />} label="Backend" value={backendName} />
+														{group && activeBackendName && (
+															<StatPill icon={<Terminal size={10} />} label="Active" value={activeBackendName} />
+														)}
 														<StatPill icon={<Cpu size={12} />} label="Device" value={deviceName} />
 														<StatPill icon={<FaBookOpen size={12} />} label="Context" value={`${displayCtx}`} />
 													</>
@@ -680,6 +707,7 @@ export function ServersPage() {
 					editMode={{
 						serverId: editingServer.id,
 						backendId: editingServer.backendId,
+						backendGroupId: editingServer.backendGroupId,
 						modelPath: editingServer.modelPath,
 						mmprojPath: editingServer.mmprojPath ?? null,
 						serverName: editingServer.serverName,

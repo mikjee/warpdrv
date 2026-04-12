@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import {
 	EKvQuantType,
-	type IModel, type IBackend, type ILaunchParams, type IServer,
+	type IModel, type IBackend, type IBackendGroup, type ILaunchParams, type IServer,
 	type ISpecDecodeParams,
 	DEFAULT_LAUNCH_PARAMS, DEFAULT_SPEC_DECODE_PARAMS,
 	calculateVramEstimate, kvQuantToNumeric,
@@ -19,7 +19,7 @@ import { Card } from '../Card';
 import { VramBar } from '../VramBar';
 import { LaunchParamsPanel, EParamsMode, ToggleChip, SelectField, NumberField } from '../LaunchParamsPanel';
 import { useListQuery } from '../../hooks/useQuery';
-import { fetchModels, fetchBackends, fetchPresets, launchServer, createPreset, updateServer, fetchStickyRoutes, clearStickyRoute } from '../../api/services';
+import { fetchModels, fetchBackends, fetchBackendGroups, launchServer, createPreset, updateServer, fetchStickyRoutes, clearStickyRoute } from '../../api/services';
 import type { IStickyRouteInfo } from '../../api/services';
 import { useToast } from '../ToastProvider';
 
@@ -162,17 +162,21 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 	// Fetch real data
 	const modelsFetcher = useCallback(() => fetchModels(), []);
 	const backendsFetcher = useCallback(() => fetchBackends(), []);
+	const groupsFetcher = useCallback(() => fetchBackendGroups(), []);
 	const presetsFetcher = useCallback(() => fetchPresets(), []);
 	const stickyRoutesFetcher = useCallback(() => fetchStickyRoutes(), []);
 
 	const { data: models } = useListQuery<IModel>(modelsFetcher, { pollInterval: 0 });
 	const { data: backends } = useListQuery<IBackend>(backendsFetcher, { pollInterval: 0 });
+	const { data: groups } = useListQuery<IBackendGroup>(groupsFetcher, { pollInterval: 0 });
 	const { data: presets } = useListQuery<IPreset>(presetsFetcher, { pollInterval: 0 });
 	const { data: stickyRoutes } = useListQuery<IStickyRouteInfo>(stickyRoutesFetcher, { pollInterval: 0 });
 
 	// Selection state
 	const [selectedModelPath, setSelectedModelPath] = useState<string | null>(editMode?.modelPath ?? null);
 	const [selectedBackendId, setSelectedBackendId] = useState<string | null>(editMode?.backendId ?? null);
+	const [useBackendGroup, setUseBackendGroup] = useState<boolean>(!!editMode?.backendGroupId);
+	const [selectedBackendGroupId, setSelectedBackendGroupId] = useState<string | null>(editMode?.backendGroupId ?? null);
 	const [serverName, setServerName] = useState<string>(editMode?.serverName ?? '');
 	const [serverAliasesInput, setServerAliasesInput] = useState<string>(editMode?.serverAlias?.join(', ') ?? '');
 	const [autoLaunch, setAutoLaunch] = useState<boolean>(editMode?.autoLaunch ?? false);
@@ -231,7 +235,9 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 	}, [models]);
 
 	const selectedEntry = modelEntries.find(e => e.file.filePath === selectedModelPath);
-	const selectedBackend = backends.find(b => b.id === selectedBackendId);
+	const selectedBackend = useBackendGroup && selectedBackendGroupId
+		? backends.find(b => b.id === groups.find(g => g.id === selectedBackendGroupId)?.activeBackendId)
+		: backends.find(b => b.id === selectedBackendId);
 
 	// Draft model entries — filtered by compatible architecture
 	const targetArchitecture = selectedEntry?.file.metadata?.architecture ?? null;
@@ -291,11 +297,12 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 
 	// Save without relaunch (edit mode)
 	const handleSaveWithoutRelaunch = async () => {
-		if (!selectedEntry || !selectedBackendId || !editMode) return;
+		if (!selectedEntry || !selectedBackendId || !selectedBackendGroupId || !editMode) return;
 		setLaunching(true);
 		const aliases = parseAliases(serverAliasesInput);
 		const result = await updateServer(editMode.serverId, {
-			backendId: selectedBackendId,
+			backendId: !useBackendGroup ? selectedBackendId : undefined,
+			backendGroupId: useBackendGroup ? selectedBackendGroupId : undefined,
 			modelPath: selectedEntry.file.filePath,
 			mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
 			serverName: serverName.trim() || undefined,
@@ -314,12 +321,13 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 
 	// Launch/Relaunch handler
 	const handleLaunch = async () => {
-		if (!selectedEntry || !selectedBackendId) return;
+		if (!selectedEntry || (!selectedBackendId && !selectedBackendGroupId)) return;
 		setLaunching(true);
 		const aliases = parseAliases(serverAliasesInput);
 		if (editMode) {
 			const result = await updateServer(editMode.serverId, {
-				backendId: selectedBackendId,
+				backendId: !useBackendGroup ? selectedBackendId : undefined,
+				backendGroupId: useBackendGroup ? selectedBackendGroupId : undefined,
 				modelPath: selectedEntry.file.filePath,
 				mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
 				serverName: serverName.trim() || undefined,
@@ -336,7 +344,8 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 			}
 		} else {
 			const result = await launchServer({
-				backendId: selectedBackendId,
+				backendId: !useBackendGroup ? selectedBackendId : undefined,
+				backendGroupId: useBackendGroup ? selectedBackendGroupId : undefined,
 				modelPath: selectedEntry.file.filePath,
 				mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
 				serverName: serverName.trim() || null,
@@ -388,7 +397,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 		toast('info', `Loaded preset "${preset.name}"`);
 	};
 
-	const canLaunch = selectedModelPath && selectedBackendId && !launching;
+	const canLaunch = selectedModelPath && (selectedBackendId || selectedBackendGroupId) && !launching;
 
 	return (
 		<Box position="fixed" inset="0" zIndex="modal" display="flex" alignItems="center" justifyContent="center">
@@ -499,35 +508,116 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 							{/* Backend picker */}
 							<Box>
 								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">2. Select Backend</Text>
-								<VStack align="stretch" gap="2">
-									{backends.length === 0 && (
-										<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No backends registered. Go to Backends page.</Text>
-									)}
-									{backends.map((backend: IBackend) => {
-										const isSelected = selectedBackendId === backend.id;
-										const primaryDevice = backend.detectedDevices[0];
-										return (
-											<HStack key={backend.id} gap="3" px="4" py="3" borderRadius="lg" cursor="pointer"
-												bg={isSelected ? 'rgba(51, 129, 255, 0.08)' : 'rgba(255, 255, 255, 0.02)'}
-												borderWidth="1px" borderColor={isSelected ? 'rgba(51, 129, 255, 0.25)' : 'rgba(255, 255, 255, 0.06)'}
-												_hover={{ borderColor: isSelected ? 'rgba(51, 129, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)' }}
-												onClick={() => setSelectedBackendId(backend.id)} transition="all 0.15s ease"
+								<VStack align="stretch" gap="3">
+									{/* Backend source toggle */}
+									<HStack gap="3" mb="2">
+										<HStack gap="2" flex="1">
+											<Button
+												size="sm"
+												variant="outline"
+												flex="1"
+												justifyContent="center"
+												borderColor={useBackendGroup ? 'rgba(255, 255, 255, 0.08)' : 'rgba(167, 139, 250, 0.3)'}
+												borderWidth={useBackendGroup ? '1px' : '2px'}
+												color={useBackendGroup ? 'rgba(255, 255, 255, 0.4)' : '#a78bfa'}
+												bg={useBackendGroup ? 'rgba(255, 255, 255, 0.02)' : 'rgba(167, 139, 250, 0.05)'}
+												_hover={{ borderColor: useBackendGroup ? 'rgba(255, 255, 255, 0.15)' : 'rgba(167, 139, 250, 0.5)' }}
+												onClick={() => setUseBackendGroup(false)}
 											>
-												<Flex w="8" h="8" borderRadius="md" alignItems="center" justifyContent="center" bg={isSelected ? 'rgba(51, 129, 255, 0.12)' : 'rgba(255, 255, 255, 0.04)'} flexShrink={0}>
-													<Server size={16} color={isSelected ? '#3381ff' : 'rgba(255, 255, 255, 0.35)'} />
-												</Flex>
-												<Box flex="1" minW="0">
-													<Text fontSize="13px" fontWeight="500" color={isSelected ? '#e4e4e7' : 'rgba(255, 255, 255, 0.6)'}>{backend.name}</Text>
-													<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)" lineClamp={1}>{primaryDevice?.name ?? 'No devices detected'}</Text>
-												</Box>
-												{primaryDevice && (
-													<Box textAlign="right" flexShrink={0}>
-														<Text fontSize="11px" fontFamily='"Geist Mono", monospace' color="rgba(255, 255, 255, 0.5)">{(primaryDevice.vramFreeMb > 0 ? primaryDevice.vramFreeMb : primaryDevice.vramTotalMb) / 1024 | 0} GB</Text>
-													</Box>
-												)}
-											</HStack>
-										);
-									})}
+												<Text fontSize="13px" fontWeight="500">Direct Backend</Text>
+											</Button>
+											<Button
+												size="sm"
+												variant="outline"
+												flex="1"
+												justifyContent="center"
+												borderColor={useBackendGroup ? 'rgba(167, 139, 250, 0.3)' : 'rgba(255, 255, 255, 0.08)'}
+												borderWidth={useBackendGroup ? '2px' : '1px'}
+												color={useBackendGroup ? '#a78bfa' : 'rgba(255, 255, 255, 0.4)'}
+												bg={useBackendGroup ? 'rgba(167, 139, 250, 0.05)' : 'rgba(255, 255, 255, 0.02)'}
+												_hover={{ borderColor: useBackendGroup ? 'rgba(167, 139, 250, 0.5)' : 'rgba(255, 255, 255, 0.15)' }}
+												onClick={() => setUseBackendGroup(true)}
+											>
+												<Text fontSize="13px" fontWeight="500">Backend Group</Text>
+											</Button>
+										</HStack>
+									</HStack>
+
+									{useBackendGroup ? (
+										<Box>
+											{backends.length === 0 && (
+												<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No backends registered. Go to Backends page.</Text>
+											)}
+											{groups.length === 0 && (
+												<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No backend groups. Create one in Backends page.</Text>
+											)}
+											{backends.length > 0 && groups.length > 0 && (
+												<VStack align="stretch" gap="2">
+													{groups.map((group: IBackendGroup) => {
+														const isSelected = selectedBackendGroupId === group.id;
+														const activeBackend = backends.find(b => b.id === group.activeBackendId);
+														return (
+															<HStack key={group.id} gap="3" px="4" py="3" borderRadius="lg" cursor="pointer"
+																bg={isSelected ? 'rgba(167, 139, 250, 0.08)' : 'rgba(255, 255, 255, 0.02)'}
+																borderWidth="1px" borderColor={isSelected ? 'rgba(167, 139, 250, 0.25)' : 'rgba(255, 255, 255, 0.06)'}
+																_hover={{ borderColor: isSelected ? 'rgba(167, 139, 250, 0.3)' : 'rgba(255, 255, 255, 0.1)' }}
+																onClick={() => { setSelectedBackendGroupId(group.id); setSelectedBackendId(null); }} transition="all 0.15s ease"
+															>
+																<Flex w="8" h="8" borderRadius="md" alignItems="center" justifyContent="center" bg={isSelected ? 'rgba(167, 139, 250, 0.12)' : 'rgba(255, 255, 255, 0.04)'} flexShrink={0}>
+																	<Layers size={16} color={isSelected ? '#a78bfa' : 'rgba(255, 255, 255, 0.35)'} />
+																</Flex>
+																<Box flex="1" minW="0">
+																	<HStack justify="space-between" mb="0.5">
+																		<Text fontSize="13px" fontWeight="500" color={isSelected ? '#e4e4e7' : 'rgba(255, 255, 255, 0.6)'}>{group.name}</Text>
+																	</HStack>
+																	<HStack gap="2">
+																		<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">{group.backendIds.length} backends</Text>
+																		{group.description && <Text fontSize="10px" color="rgba(255, 255, 255, 0.25)">|</Text>}
+																		{group.description && <Text fontSize="10px" color="rgba(255, 255, 255, 0.25)">{group.description}</Text>}
+																	</HStack>
+																	<HStack gap="2" mt="1">
+																		<Text fontSize="11px" color="rgba(255, 255, 255, 0.4)">Active:</Text>
+																		<Text fontSize="11px" fontWeight="500" color="#a78bfa">{activeBackend?.name ?? 'Unknown'}</Text>
+																	</HStack>
+																</Box>
+															</HStack>
+														);
+													})}
+												</VStack>
+											)}
+										</Box>
+									) : (
+										<Box>
+											{backends.length === 0 && (
+												<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No backends registered. Go to Backends page.</Text>
+											)}
+											{backends.map((backend: IBackend) => {
+												const isSelected = selectedBackendId === backend.id;
+												const primaryDevice = backend.detectedDevices[0];
+												return (
+													<HStack key={backend.id} gap="3" px="4" py="3" borderRadius="lg" cursor="pointer"
+														bg={isSelected ? 'rgba(51, 129, 255, 0.08)' : 'rgba(255, 255, 255, 0.02)'}
+														borderWidth="1px" borderColor={isSelected ? 'rgba(51, 129, 255, 0.25)' : 'rgba(255, 255, 255, 0.06)'}
+														_hover={{ borderColor: isSelected ? 'rgba(51, 129, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)' }}
+														onClick={() => { setSelectedBackendId(backend.id); setSelectedBackendGroupId(null); }} transition="all 0.15s ease"
+													>
+														<Flex w="8" h="8" borderRadius="md" alignItems="center" justifyContent="center" bg={isSelected ? 'rgba(51, 129, 255, 0.12)' : 'rgba(255, 255, 255, 0.04)'} flexShrink={0}>
+															<Server size={16} color={isSelected ? '#3381ff' : 'rgba(255, 255, 255, 0.35)'} />
+														</Flex>
+														<Box flex="1" minW="0">
+															<Text fontSize="13px" fontWeight="500" color={isSelected ? '#e4e4e7' : 'rgba(255, 255, 255, 0.6)'}>{backend.name}</Text>
+															<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)" lineClamp={1}>{primaryDevice?.name ?? 'No devices detected'}</Text>
+														</Box>
+														{primaryDevice && (
+															<Box textAlign="right" flexShrink={0}>
+																<Text fontSize="11px" fontFamily='"Geist Mono", monospace' color="rgba(255, 255, 255, 0.5)">{(primaryDevice.vramFreeMb > 0 ? primaryDevice.vramFreeMb : primaryDevice.vramTotalMb) / 1024 | 0} GB</Text>
+															</Box>
+														)}
+													</HStack>
+												);
+											})}
+										</Box>
+									)}
 								</VStack>
 							</Box>
 

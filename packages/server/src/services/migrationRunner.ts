@@ -1,7 +1,7 @@
 import { store } from '../util/store';
 import { DEFAULT_SPEC_DECODE_PARAMS } from '@warpcore/shared';
 const SCHEMA_KEY = '_schemaVersion';
-const CURRENT_SCHEMA = 6;
+const CURRENT_SCHEMA = 7;
 // Each migration transforms data from version N to N+1
 // Add new migrations as the data shape evolves
 type TMigrationFn = () => Promise<void>;
@@ -84,6 +84,16 @@ const migrations: Record<number, TMigrationFn> = {
 		if (settings && 'autoLaunch' in settings) {
 			delete settings.autoLaunch;
 			await store.put('settings:general', settings);
+		}
+	},
+	// Migration v7: add backendGroupId to servers, add backendGroups namespace
+	7: async () => {
+		const servers = await store.list<Record<string, unknown>>('servers:');
+		for (const server of servers) {
+			if (server.backendId && !server.backendGroupId) {
+				server.backendGroupId = undefined;
+				await store.put('servers:' + server.id, server);
+			}
 		}
 	},
 };

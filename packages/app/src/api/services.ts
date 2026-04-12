@@ -4,6 +4,9 @@ import type {
 	IBackend,
 	IBackendCreatePayload,
 	IBackendUpdatePayload,
+	IBackendGroup,
+	IBackendGroupCreatePayload,
+	IBackendGroupUpdatePayload,
 	IModel,
 	IServer,
 	IServerCreatePayload,
@@ -66,6 +69,34 @@ export async function validateBackend(id: string) {
 }
 
 // ============================================================
+// Backend Groups
+// ============================================================
+
+export async function fetchBackendGroups() {
+	return api.getList<IBackendGroup>('/backend-groups');
+}
+
+export async function fetchBackendGroup(id: string) {
+	return api.get<IBackendGroup>(`/backend-groups/${id}`);
+}
+
+export async function createBackendGroup(data: IBackendGroupCreatePayload) {
+	return api.post<IBackendGroup>('/backend-groups', data);
+}
+
+export async function updateBackendGroup(id: string, data: IBackendGroupUpdatePayload) {
+	return api.put<IBackendGroup>(`/backend-groups/${id}`, data);
+}
+
+export async function deleteBackendGroup(id: string) {
+	return api.del<null>(`/backend-groups/${id}`);
+}
+
+export async function activateBackendInGroup(id: string, backendId: string) {
+	return api.post<IBackendGroup>(`/backend-groups/${id}/activate/${backendId}`);
+}
+
+// ============================================================
 // Models
 // ============================================================
 
@@ -105,7 +136,7 @@ export async function restartServer(id: string) {
 	return api.post<IServer>(`/servers/${id}/restart`);
 }
 
-export async function updateServer(id: string, data: Partial<Pick<IServer, 'backendId' | 'modelPath' | 'mmprojPath' | 'serverName' | 'params' | 'serverAlias' | 'autoLaunch'>>, relaunch = true) {
+export async function updateServer(id: string, data: Partial<Pick<IServer, 'backendId' | 'backendGroupId' | 'modelPath' | 'mmprojPath' | 'serverName' | 'params' | 'serverAlias' | 'autoLaunch'>>, relaunch = true) {
 	return api.put<IServer>(`/servers/${id}`, { ...data, relaunch });
 }
 
