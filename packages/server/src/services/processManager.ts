@@ -207,9 +207,14 @@ export async function killServer(serverId: string, pid?: number): Promise<boolea
 				processes.delete(serverId);
 				resolve(false);
 			}, 10000);
-			child.once('exit', () => {
+			child.once('exit', async (code) => {
 				clearTimeout(timeout);
 				processes.delete(serverId);
+				if (code !== 0 && code !== null) {
+					await emitServerUpdate(serverId, EServerStatus.ERROR, `Process exited with code ${code}`, null);
+				} else {
+					await emitServerUpdate(serverId, EServerStatus.STOPPED, null, null);
+				}
 				resolve(true);
 			});
 				try {

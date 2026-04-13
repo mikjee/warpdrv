@@ -426,10 +426,12 @@ serversRouter.delete('/:id', async (req, res) => {
 		return;
 	}
 
-	killServer(server.id, server.pid);
+	await killServer(server.id, server.pid);
 	usedPorts.delete(server.port);
 	clearServerLogs(server.id);
 	await store.del(PREFIX + server.id);
+
+	sseManager.emit('servers:delete', { [server.id]: null });
 
 	res.json({ ok: true, data: null, error: null });
 });
