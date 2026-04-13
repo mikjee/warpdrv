@@ -4,10 +4,8 @@ import { useCallback, useMemo } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
 import { VramBar } from '../components/VramBar';
-import { useListQuery } from '../hooks/useQuery';
 import { useStore } from '../store';
-import { fetchBackends } from '../api/services';
-import type { IBackend, IDevice } from '@warpcore/shared';
+import type { IDevice } from '@warpcore/shared';
 import { EDeviceBackendType } from '@warpcore/shared';
 
 const BACKEND_COLORS: Record<string, string> = {
@@ -17,21 +15,19 @@ const BACKEND_COLORS: Record<string, string> = {
 };
 
 export function DevicesPage() {
-	// Fetch backends once (for backend names)
-	const { data: backends, loading } = useListQuery<IBackend>(useCallback(() => fetchBackends(), []), { pollInterval: 0 });
-
-	// Use devices from SSE (for VRAM updates)
-	const devices = useStore((s: any) => s.devices);
+	// Use backends and devices from Zustand store
+	const backendsRecord = useStore((s) => s.backends);
+	const devices = useStore((s) => s.devices);
 
 	// Merge backend names with device data
 	const devicesWithBackend: (IDevice & { backendName: string })[] = useMemo(() => {
 		if (!Array.isArray(devices)) return [];
-		const backendMap = new Map(backends?.map(b => [b.id, b.name]));
+		const backendMap = new Map(Object.values(backendsRecord).map(b => [b.id, b.name]));
 		return devices.map((d: IDevice) => ({
 			...d,
 			backendName: backendMap.get(d.backendId) || 'Unknown',
 		}));
-	}, [devices, backends]);
+	}, [devices, backendsRecord]);
 
 	return (
 		<Box>
@@ -41,11 +37,7 @@ export function DevicesPage() {
 				icon={<Cpu size={20} />}
 			/>
 			<Box p="4">
-				{loading && devices.length === 0 ? (
-					<Flex h="200px" alignItems="center" justifyContent="center">
-						<Spinner size="lg" color="rgba(255, 255, 255, 0.2)" />
-					</Flex>
-				) : devices.length === 0 ? (
+				{devices.length === 0 ? (
 					<Flex h="200px" alignItems="center" justifyContent="center">
 						<VStack gap="3" color="rgba(255, 255, 255, 0.2)">
 							<MonitorSpeaker size={40} />

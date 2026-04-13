@@ -12,7 +12,8 @@ import { hubRouter } from './routes/hub';
 import { tokensRouter } from './routes/tokens';
 import { authRouter } from './routes/auth';
 import { authMiddleware } from './middleware/auth';
-import type { ISettings, IServer, IDownload, IDevice, IBackend } from '@warpcore/shared';
+import type { ISettings, IServer, IDownload, IDevice, IBackend, IBackendGroup } from '@warpcore/shared';
+import type { TBackendId, TBackendGroupId } from '@warpcore/shared';
 import { DEFAULT_SETTINGS, EServerStatus, EDownloadStatus } from '@warpcore/shared';
 import { runMigrations } from './services/migrationRunner';
 import { updateRouter } from './routes/update';
@@ -204,6 +205,26 @@ async function main() {
 			const states = mcpClient.getAllServerStates();
 			return Object.keys(states).length > 0 ? states : null;
 		}, 1000);
+
+		// Phase 1: Backends
+		sseManager.onConnect('backends:init', async () => {
+			const backends = await store.list<IBackend>(BACKENDS_PREFIX);
+			return backends.reduce((acc, b) => {
+				acc[b.id] = b;
+				return acc;
+			}, {} as Record<TBackendId, IBackend>);
+		});
+
+		// Phase 1: Backend Groups
+		const BACKEND_GROUPS_PREFIX = 'backendGroups:';
+
+		sseManager.onConnect('backend-groups:init', async () => {
+			const groups = await store.list<IBackendGroup>(BACKEND_GROUPS_PREFIX);
+			return groups.reduce((acc, g) => {
+				acc[g.id] = g;
+				return acc;
+			}, {} as Record<TBackendGroupId, IBackendGroup>);
+		});
 
 	}
 

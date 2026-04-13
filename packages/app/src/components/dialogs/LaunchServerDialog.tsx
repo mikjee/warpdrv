@@ -19,9 +19,10 @@ import { Card } from '../Card';
 import { VramBar } from '../VramBar';
 import { LaunchParamsPanel, EParamsMode, ToggleChip, SelectField, NumberField } from '../LaunchParamsPanel';
 import { useListQuery } from '../../hooks/useQuery';
-import { fetchModels, fetchBackends, fetchBackendGroups, launchServer, createPreset, updateServer, fetchStickyRoutes, clearStickyRoute, fetchPresets } from '../../api/services';
+import { fetchModels, launchServer, createPreset, updateServer, fetchStickyRoutes, clearStickyRoute, fetchPresets } from '../../api/services';
 import type { IStickyRouteInfo } from '../../api/services';
 import { useToast } from '../ToastProvider';
+import { useStore } from '../../store';
 
 const QUANT_COLORS: Record<string, string> = {
 	Q5_K_XL: '#34d399', Q6_K_XL: '#34d399', Q6_K: '#34d399', Q4_K_M: '#34d399',
@@ -160,18 +161,21 @@ interface ILaunchServerDialogProps {
 export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogProps) {
 	const { toast } = useToast();
 
+	// Get backends and groups from Zustand store
+	const backendsRecord = useStore((s) => s.backends);
+	const backendGroupsRecord = useStore((s) => s.backendGroups);
+
 	// Fetch real data
 	const modelsFetcher = useCallback(() => fetchModels(), []);
-	const backendsFetcher = useCallback(() => fetchBackends(), []);
-	const groupsFetcher = useCallback(() => fetchBackendGroups(), []);
 	const presetsFetcher = useCallback(() => fetchPresets(), []);
 	const stickyRoutesFetcher = useCallback(() => fetchStickyRoutes(), []);
 
 	const { data: models } = useListQuery<IModel>(modelsFetcher, { pollInterval: 0 });
-	const { data: backends } = useListQuery<IBackend>(backendsFetcher, { pollInterval: 0 });
-	const { data: groups } = useListQuery<IBackendGroup>(groupsFetcher, { pollInterval: 0 });
 	const { data: presets } = useListQuery<IPreset>(presetsFetcher, { pollInterval: 0 });
 	const { data: stickyRoutes } = useListQuery<IStickyRouteInfo>(stickyRoutesFetcher, { pollInterval: 0 });
+
+	const backends = useMemo(() => Object.values(backendsRecord), [backendsRecord]);
+	const groups = useMemo(() => Object.values(backendGroupsRecord), [backendGroupsRecord]);
 
 	// Selection state
 	const [selectedModelPath, setSelectedModelPath] = useState<string | null>(editMode?.modelPath ?? null);

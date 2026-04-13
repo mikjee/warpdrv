@@ -14,7 +14,7 @@ import { ServerLogs } from '../components/dialogs/ServerLogs';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
 import { useListQuery, useMutation } from '../hooks/useQuery';
 import { useStore } from '../store';
-import { fetchBackends, fetchBackendGroups, fetchModels, stopServer, restartServer, removeServer, updateServer, fetchSettings, updateSettings, clearStickyRoute } from '../api/services';
+import { fetchModels, stopServer, restartServer, removeServer, updateServer, fetchSettings, updateSettings, clearStickyRoute } from '../api/services';
 import type { IServer, IServerStats, IBackend, IBackendGroup, IModel, TSortField, TSortOrder } from '@warpcore/shared';
 import { EServerStatus } from '@warpcore/shared';
 
@@ -66,9 +66,12 @@ export function ServersPage() {
 	const serverStats = useStore((s) => s.serverStats);
 	const servers = useMemo(() => Object.values(serversRecord), [serversRecord]);
 
-	const { data: backends, refetch: refetchBackends } = useListQuery<IBackend>(useCallback(() => fetchBackends(), []), { pollInterval: 0 });
-	const { data: groups, refetch: refetchGroups } = useListQuery<IBackendGroup>(useCallback(() => fetchBackendGroups(), []), { pollInterval: 0 });
+	const backendsRecord = useStore((s) => s.backends);
+	const backendGroupsRecord = useStore((s) => s.backendGroups);
 	const { data: models, refetch: refetchModels } = useListQuery<IModel>(useCallback(() => fetchModels(), []), { pollInterval: 0 });
+
+	const backends = useMemo(() => Object.values(backendsRecord), [backendsRecord]);
+	const groups = useMemo(() => Object.values(backendGroupsRecord), [backendGroupsRecord]);
 
 	// Filter and sort state
 	const [searchQuery, setSearchQuery] = useState('');
@@ -88,14 +91,13 @@ export function ServersPage() {
 		});
 	}, []);
 
-	// Ensure backends/models are loaded when servers arrive via SSE (fixes "not found" errors)
+	// Ensure models are loaded when servers arrive via SSE (fixes "not found" errors)
 	useEffect(() => {
 		const serverIds = Object.keys(serversRecord);
-		if (serverIds.length > 0 && (backends.length === 0 || models.length === 0)) {
-			if (backends.length === 0) refetchBackends();
-			if (models.length === 0) refetchModels();
+		if (serverIds.length > 0 && models.length === 0) {
+			refetchModels();
 		}
-	}, [serversRecord, backends.length, models.length]);
+	}, [serversRecord, models.length]);
 
 	// Save sort settings when they change (only after initial load)
 	useEffect(() => {
@@ -173,8 +175,8 @@ export function ServersPage() {
 					comparison = bStarted - aStarted; // newer first by default (desc)
 					break;
 				case 'backend': {
-					const backendA = a.backendGroupId ? groupMap.get(a.backendGroupId)?.name ?? 'Unknown' : backendMap.get(a.backendId)?.name ?? 'Unknown';
-					const backendB = b.backendGroupId ? groupMap.get(b.backendGroupId)?.name ?? 'Unknown' : backendMap.get(b.backendId)?.name ?? 'Unknown';
+					const backendA = a.backendGroupId ? groupMap.get(a.backendGroupId)?.name ?? 'Unknown' : backendMap.get(a.backendId!)?.name ?? 'Unknown';
+					const backendB = b.backendGroupId ? groupMap.get(b.backendGroupId)?.name ?? 'Unknown' : backendMap.get(b.backendId!)?.name ?? 'Unknown';
 					comparison = backendA.localeCompare(backendB);
 					break;
 				}
@@ -722,7 +724,7 @@ export function ServersPage() {
 					onClose={() => setEditingServerId(null)}
 					editMode={{
 						serverId: editingServer.id,
-						backendId: editingServer.backendId,
+						backendId: editingServer.backendId!,
 						backendGroupId: editingServer.backendGroupId,
 						modelPath: editingServer.modelPath,
 						mmprojPath: editingServer.mmprojPath ?? null,

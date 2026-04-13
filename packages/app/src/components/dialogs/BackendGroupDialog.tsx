@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Box, Text, HStack, VStack, Flex, Input, Button, Spinner, Portal } from '@chakra-ui/react';
 import { Layers, CheckCircle, X } from 'lucide-react';
 import { createBackendGroup, updateBackendGroup, restartServer } from '../../api/services';
@@ -9,7 +9,6 @@ import { useToast } from '../ToastProvider';
 
 interface IBackendGroupDialogProps {
 	onClose: () => void;
-	onGroupUpdated?: () => void;
 	editData?: {
 		id: string;
 		name: string;
@@ -104,7 +103,6 @@ export function BackendGroupDialog({ onClose, editData, backends, servers }: IBa
 		setSaving(false);
 		if (result.ok) {
 			toast('success', isEdit ? `Group "${saveData.name}" updated` : `Group "${saveData.name}" created`);
-			if (isEdit && onGroupUpdated) onGroupUpdated();
 			onClose();
 		} else {
 			toast('error', result.error ?? (isEdit ? 'Failed to update group' : 'Failed to create group'));
@@ -132,7 +130,6 @@ export function BackendGroupDialog({ onClose, editData, backends, servers }: IBa
 
 		if (result.ok) {
 			toast('success', `Group "${pendingSave.name}" updated`);
-			if (onGroupUpdated) onGroupUpdated();
 
 			const restartPromises = capturedAffectedServers.map(async (server) => {
 				try {

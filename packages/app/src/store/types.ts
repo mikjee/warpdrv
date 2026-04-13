@@ -1,4 +1,4 @@
-import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice } from '@warpcore/shared';
+import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice, TBackendId, IBackend, TBackendGroupId, IBackendGroup } from '@warpcore/shared';
 import type { IProxyStatus, IStickyRouteInfo } from '@/api/services';
 export { type ImmerSet, type ImmerGet } from '@warpcore/bridge';
 import type {
@@ -34,6 +34,12 @@ export interface AppState {
 
 	// Devices (Phase 1)
 	devices: IDevice[];
+
+	// Backends (Phase 1)
+	backends: Record<TBackendId, IBackend>;
+
+	// Backend Groups (Phase 1)
+	backendGroups: Record<TBackendGroupId, IBackendGroup>;
 
 	// Proxy (Phase 1)
 	proxyStatus: IProxyStatus | null;

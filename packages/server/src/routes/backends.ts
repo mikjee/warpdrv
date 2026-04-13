@@ -65,6 +65,7 @@ backendsRouter.post('/', async (req, res) => {
 	};
 
 	await store.put(PREFIX + id, backend);
+	sseManager.emit('backends:update', backend);
 	await emitDevicesUpdate();
 	res.status(201).json({ ok: true, data: backend, error: null });
 });
@@ -93,6 +94,7 @@ backendsRouter.put('/:id', async (req, res) => {
 	}
 
 	await store.put(PREFIX + existing.id, updated);
+	sseManager.emit('backends:update', updated);
 	await emitDevicesUpdate();
 	res.json({ ok: true, data: updated, error: null });
 });
@@ -105,6 +107,7 @@ backendsRouter.delete('/:id', async (req, res) => {
 		return;
 	}
 await store.del(PREFIX + req.params.id);
+	sseManager.emit('backends:delete', existing);
 	await emitDevicesUpdate();
 	res.json({ ok: true, data: null, error: null });
 });
@@ -124,6 +127,7 @@ backendsRouter.post('/:id/validate', async (req, res) => {
 	existing.updatedAt = Date.now();
 
 await store.put(PREFIX + existing.id, existing);
+	sseManager.emit('backends:update', existing);
 	await emitDevicesUpdate();
-	res.json({ ok: true, data: existing, error: validation.error });
+	res.json({ ok: true, data: existing, validation: validation.error });
 });

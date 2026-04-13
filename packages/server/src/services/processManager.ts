@@ -276,9 +276,9 @@ export async function killServer(serverId: string, pid?: number): Promise<boolea
             
             // Send SIGTERM to process group
             try {
-                process.kill(-pidToUse, 'SIGTERM');
+                process.kill(-pidToUse!, 'SIGTERM');
             } catch (err) {
-                if (isProcessAlive(pidToUse)) {
+                if (isProcessAlive(pidToUse!)) {
                     finish(false);
                 } else {
                     finish(true);
@@ -288,9 +288,9 @@ export async function killServer(serverId: string, pid?: number): Promise<boolea
             
             // If not exited after 5 seconds, force kill with SIGKILL
             const timeout = setTimeout(() => {
-                if (isProcessAlive(pidToUse)) {
+                if (isProcessAlive(pidToUse!)) {
                     try {
-                        process.kill(-pidToUse, 'SIGKILL');
+                        process.kill(-pidToUse!, 'SIGKILL');
                     } catch {}
                     setTimeout(() => {
                         if (!resolved) {

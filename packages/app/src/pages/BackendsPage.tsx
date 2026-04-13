@@ -3,9 +3,9 @@ import { Blocks, Plus, Terminal, CheckCircle, Trash2, Edit, RefreshCw, AlertCirc
 import { useState, useCallback, useMemo } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
-import { useListQuery, useMutation } from '../hooks/useQuery';
+import { useMutation } from '../hooks/useQuery';
 import { useStore } from '../store';
-import { fetchBackends, deleteBackend, validateBackend, fetchBackendGroups, createBackendGroup, deleteBackendGroup, activateBackendInGroup, restartServer, updateBackendGroup } from '../api/services';
+import { deleteBackend, validateBackend, createBackendGroup, deleteBackendGroup, activateBackendInGroup, restartServer, updateBackendGroup } from '../api/services';
 import { BackendDialog } from '../components/dialogs/BackendDialog';
 import { BackendGroupDialog } from '../components/dialogs/BackendGroupDialog';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
@@ -21,11 +21,11 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function BackendsPage() {
-	const backendsFetcher = useCallback(() => fetchBackends(), []);
-	const { data: backends, loading, refetch } = useListQuery<IBackend>(backendsFetcher, { pollInterval: 0 });
+	const backendsRecord = useStore((s) => s.backends);
+	const backendGroupsRecord = useStore((s) => s.backendGroups);
 
-	const groupsFetcher = useCallback(() => fetchBackendGroups(), []);
-	const { data: groups, loading: groupsLoading, refetch: refetchGroups } = useListQuery<IBackendGroup>(groupsFetcher, { pollInterval: 0 });
+	const backends = useMemo(() => Object.values(backendsRecord), [backendsRecord]);
+	const groups = useMemo(() => Object.values(backendGroupsRecord), [backendGroupsRecord]);
 
 	const [showAddDialog, setShowAddDialog] = useState(false);
 	const [showAddGroup, setShowAddGroup] = useState(false);
@@ -37,6 +37,7 @@ export function BackendsPage() {
 	const [backendsExpanded, setBackendsExpanded] = useState(true);
 	const [groupsExpanded, setGroupsExpanded] = useState(true);
 	const [activatingBackend, setActivatingBackend] = useState<{ groupId: string; newBackendId: string } | null>(null);
+	const [expandedBackends, setExpandedBackends] = useState<Record<string, boolean>>({});
 
 	const serversRecord = useStore((s) => s.servers);
 	const servers = useMemo(() => Object.values(serversRecord), [serversRecord]);
@@ -51,7 +52,6 @@ export function BackendsPage() {
 
 	const handleDelete = async (id: string) => {
 		await deleteMut.mutate(id);
-		await refetch();
 		setDeletingId(null);
 	};
 
@@ -61,7 +61,6 @@ export function BackendsPage() {
 
 	const handleDeleteGroup = async (id: string) => {
 		await deleteGroupMut.mutate(id);
-		await refetchGroups();
 		setDeletingGroupId(null);
 	};
 
@@ -72,18 +71,24 @@ export function BackendsPage() {
 	const handleValidate = async (id: string) => {
 		setValidatingId(id);
 		await validateBackend(id);
-		await refetch();
 		setValidatingId(null);
 	};
 
 	const handleActivateBackend = async (groupId: string, backendId: string) => {
 		await activateBackendInGroup(groupId, backendId);
-		await refetchGroups();
 	};
 
 	const sortedGroups = useMemo(() => {
-		return [...(groups || [])].sort((a, b) => a.name.localeCompare(b.name));
+		return [...groups].sort((a, b) => a.name.localeCompare(b.name));
 	}, [groups]);
+
+	const toggleBackend = (id: string) => {
+		setExpandedBackends(prev => ({ ...prev, [id]: !prev[id] }));
+	};
+
+	const isBackendExpanded = (id: string) => {
+		return expandedBackends[id] ?? false;
+	};
 
 	return (
 		<Box>
@@ -110,11 +115,7 @@ export function BackendsPage() {
 					<Collapsible.Root open={backendsExpanded}>
 						<Collapsible.Content>
 							<Box px="4" pb="3">
-							{loading && backends.length === 0 ? (
-							<Flex h="200px" alignItems="center" justifyContent="center">
-								<Spinner size="lg" color="rgba(255, 255, 255, 0.2)" />
-							</Flex>
-						) : backends.length === 0 ? (
+							{backends.length === 0 ? (
 							<Flex h="200px" alignItems="center" justifyContent="center">
 								<VStack gap="3" color="rgba(255, 255, 255, 0.2)">
 									<Blocks size={40} />
@@ -122,67 +123,83 @@ export function BackendsPage() {
 								</VStack>
 							</Flex>
 						) : (
-							<VStack align="stretch" gap="4">
+							<VStack align="stretch" gap="2.5">
 								{backends.map(backend => {
 									const statusColor = STATUS_COLORS[backend.validation] ?? 'rgba(255, 255, 255, 0.3)';
+									const deviceCount = backend.detectedDevices?.length ?? 0;
+									const hasCollapsibleContent = backend.defaultArgs.length > 0 || deviceCount > 0;
+									const expanded = isBackendExpanded(backend.id);
 
 									return (
-										<Box key={backend.id} px="3" py="2" borderRadius="lg" bg="rgba(255, 255, 255, 0.02)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.06)">
-											<VStack align="stretch" gap="4">
-												<Flex justify="space-between" align="start">
-													<HStack gap="3">
-														<Flex w="10" h="10" borderRadius="lg" alignItems="center" justifyContent="center" bg="rgba(255, 255, 255, 0.04)">
-															<Terminal size={20} color="rgba(255, 255, 255, 0.5)" />
-														</Flex>
-														<Box>
-															<HStack gap="2">
-																<Text fontSize="15px" fontWeight="600" color="#e4e4e7">{backend.name}</Text>
-																<HStack gap="1" color={statusColor}>
-																	{backend.validation === EValidationStatus.VALID ? <CheckCircle size={13} /> : <AlertCircle size={13} />}
-																	<Text fontSize="11px" fontWeight="500">{backend.version || backend.validation}</Text>
+										<Collapsible.Root key={backend.id} open={expanded} onOpenChange={(o) => setExpandedBackends(prev => ({ ...prev, [backend.id]: o }))}>
+											<Box px="3" py="2" borderRadius="lg" bg="rgba(255, 255, 255, 0.02)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" cursor={hasCollapsibleContent ? 'pointer' : 'default'} _hover={{ borderColor: 'rgba(255, 255, 255, 0.1)' }} onClick={() => hasCollapsibleContent && toggleBackend(backend.id)}>
+												<VStack align="stretch" gap="3">
+													<Flex justify="space-between" align="center">
+														<HStack gap="3" flex="1">
+															<Flex w="10" h="10" borderRadius="lg" alignItems="center" justifyContent="center" bg="rgba(255, 255, 255, 0.04)">
+																<Terminal size={20} color="rgba(255, 255, 255, 0.5)" />
+															</Flex>
+															<Box flex="1">
+																<HStack gap="2" align="center">
+																	<Text fontSize="15px" fontWeight="600" color="#e4e4e7">{backend.name}</Text>
+																	<HStack gap="1" color={statusColor}>
+																		{backend.validation === EValidationStatus.VALID ? <CheckCircle size={13} /> : <AlertCircle size={13} />}
+																		<Text fontSize="11px" fontWeight="500">{backend.version || backend.validation}</Text>
+																	</HStack>
+																	{deviceCount > 0 && (
+																		<Badge size="sm" px="1.5" py="0.5" borderRadius="full" bg="rgba(59, 130, 246, 0.15)" color="#60a5fa" fontSize="10px" fontWeight="600">{deviceCount} Device(s)</Badge>
+																	)}
 																</HStack>
-															</HStack>
-															<Text fontSize="12px" color="rgba(255, 255, 255, 0.35)" fontFamily='"Geist Mono", monospace' lineClamp={1}>{backend.path}</Text>
-														</Box>
-													</HStack>
-													<HStack gap="1">
-														<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }} borderRadius="md" onClick={() => setEditingBackend(backend)}>
-															<Edit size={14} />
-														</Button>
-														<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="md" onClick={() => handleValidate(backend.id)} disabled={validatingId === backend.id}>
-															{validatingId === backend.id ? <Spinner size="xs" /> : <RefreshCw size={14} />}
-														</Button>
-														<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fb7185', bg: 'rgba(251, 113, 133, 0.08)' }} borderRadius="md" onClick={() => confirmDelete(backend.id)}>
-															<Trash2 size={14} />
-														</Button>
-													</HStack>
-												</Flex>
-
-												{backend.defaultArgs.length > 0 && (
-													<Box>
-														<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Default Arguments</Text>
-														<HStack gap="1.5" flexWrap="wrap">
-															{backend.defaultArgs.map((arg: string, i: number) => (
-																<Badge key={i} px="2" py="0.5" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="rgba(255, 255, 255, 0.04)" color="rgba(255, 255, 255, 0.6)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.06)">
-																	{arg}
-																</Badge>
-															))}
+																<Text fontSize="12px" color="rgba(255, 255, 255, 0.35)" fontFamily='"Geist Mono", monospace' lineClamp={1}>{backend.path}</Text>
+															</Box>
 														</HStack>
-													</Box>
-												)}
+														<HStack gap="2">
+															{hasCollapsibleContent && (
+																<Box color="rgba(255, 255, 255, 0.3)">
+																	{expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+																</Box>
+															)}
+															<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }} borderRadius="md" onClick={(e) => { e.stopPropagation(); setEditingBackend(backend); }}>
+																<Edit size={14} />
+															</Button>
+															<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="md" onClick={(e) => { e.stopPropagation(); handleValidate(backend.id); }} disabled={validatingId === backend.id}>
+																{validatingId === backend.id ? <Spinner size="xs" /> : <RefreshCw size={14} />}
+															</Button>
+															<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fb7185', bg: 'rgba(251, 113, 133, 0.08)' }} borderRadius="md" onClick={(e) => { e.stopPropagation(); confirmDelete(backend.id); }}>
+																<Trash2 size={14} />
+															</Button>
+														</HStack>
+													</Flex>
+												</VStack>
+											</Box>
+											<Collapsible.Content>
+												<Box px="3" pb="3" pt="2" border={"1px solid rgba(255,255,255,0.1)"} borderTop={"none"} borderBottomRadius={"8px"} borderTopRadius={"0"}>
+													{backend.defaultArgs.length > 0 && (
+														<Box mb="3">
+															<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Default Arguments</Text>
+															<HStack gap="1.5" flexWrap="wrap">
+																{backend.defaultArgs.map((arg: string, i: number) => (
+																	<Badge key={i} px="2" py="0.5" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="rgba(255, 255, 255, 0.04)" color="rgba(255, 255, 255, 0.6)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.06)">
+																		{arg}
+																	</Badge>
+																))}
+															</HStack>
+														</Box>
+													)}
 
-												{backend.detectedDevices.length > 0 && (
-													<Box>
-														<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Detected Devices</Text>
-														<VStack align="stretch" gap="1">
-															{backend.detectedDevices.map((device: { name: string; backendType: string }, i: number) => (
-																<Text key={i} fontSize="12px" color="rgba(255, 255, 255, 0.5)">{device.name} ({device.backendType})</Text>
-															))}
-														</VStack>
-													</Box>
-												)}
-											</VStack>
-										</Box>
+													{deviceCount > 0 && (
+														<Box>
+															<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Detected Devices ({deviceCount})</Text>
+															<VStack align="stretch" gap="1">
+																{backend.detectedDevices.map((device: { name: string; backendType: string }, i: number) => (
+																	<Text key={i} fontSize="12px" color="rgba(255, 255, 255, 0.5)">{device.name} ({device.backendType})</Text>
+																))}
+															</VStack>
+														</Box>
+													)}
+												</Box>
+											</Collapsible.Content>
+										</Collapsible.Root>
 									);
 								})}
 							</VStack>
@@ -198,8 +215,8 @@ export function BackendsPage() {
 						<HStack gap="3">
 							<Box color="rgba(255,255,255,0.4)">{groupsExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</Box>
 							<Layers size={16} color="rgba(255, 255, 255, 0.5)" />
-							<Text fontSize="13px" fontWeight="600" color="rgba(255,255,255,0.8)">Backend Groups</Text>
-							<Badge size="sm" px="1.5" borderRadius="full" bg="rgba(255,255,255,0.06)" color="rgba(255,255,255,0.4)" fontSize="10px" fontWeight="600">{groups?.length ?? 0}</Badge>
+							<Text fontSize="13px" fontWeight="600" color="rgba(255,255,255,0.8)">Groups</Text>
+							<Badge size="sm" px="1.5" borderRadius="full" bg="rgba(255,255,255,0.06)" color="rgba(255,255,255,0.4)" fontSize="10px" fontWeight="600">{groups.length}</Badge>
 						</HStack>
 						<Button size="xs" variant="ghost" color="rgba(255,255,255,0.5)" _hover={{ bg: 'rgba(167, 139, 250, 0.15)', color: '#a78bfa' }} onClick={(e) => { e.stopPropagation(); setShowAddGroup(true); }}>
 							<Plus size={15} />
@@ -208,11 +225,7 @@ export function BackendsPage() {
 					<Collapsible.Root open={groupsExpanded}>
 						<Collapsible.Content>
 							<Box px="4" pb="3">
-						{groupsLoading && groups.length === 0 ? (
-							<Flex h="200px" alignItems="center" justifyContent="center">
-								<Spinner size="lg" color="rgba(255, 255, 255, 0.2)" />
-							</Flex>
-						) : groups.length === 0 ? (
+						{groups.length === 0 ? (
 							<Flex h="200px" alignItems="center" justifyContent="center">
 								<VStack gap="3" color="rgba(255, 255, 255, 0.2)">
 									<Layers size={40} />
@@ -257,7 +270,7 @@ export function BackendsPage() {
 												</Flex>
 
 												<Box>
-													<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Member Backends ({memberBackends.length})</Text>
+													<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Members ({memberBackends.length})</Text>
 													<VStack align="stretch" gap="2">
 														{memberBackends.map(backend => {
 															const isActive = group.activeBackendId === backend.id;
@@ -298,7 +311,7 @@ export function BackendsPage() {
 
 			{showAddDialog && (
 				<BackendDialog
-					onClose={() => { setShowAddDialog(false); refetch(); }}
+					onClose={() => setShowAddDialog(false)}
 				/>
 			)}
 
@@ -311,7 +324,7 @@ export function BackendsPage() {
 						description: editingBackend.description ?? '',
 						defaultArgs: editingBackend.defaultArgs,
 					}}
-					onClose={() => { setEditingBackend(null); refetch(); }}
+					onClose={() => setEditingBackend(null)}
 				/>
 			)}
 
@@ -329,7 +342,7 @@ export function BackendsPage() {
 			{deletingGroupId && (
 				<ConfirmDialog
 					title="Delete Backend Group?"
-					message={`This will remove the group "${groups?.find(g => g.id === deletingGroupId)?.name}". Servers using this group will need to be reassigned.`}
+					message={`This will remove the group "${groups.find(g => g.id === deletingGroupId)?.name}". Servers using this group will need to be reassigned.`}
 					isOpen={true}
 					isLoading={deleteGroupMut.loading}
 					onCancel={() => setDeletingGroupId(null)}
@@ -342,7 +355,6 @@ export function BackendsPage() {
 					backends={backends}
 					servers={servers}
 					onClose={() => setShowAddGroup(false)}
-					onGroupUpdated={refetchGroups}
 				/>
 			)}
 
@@ -358,7 +370,6 @@ export function BackendsPage() {
 					backends={backends}
 					servers={servers}
 					onClose={() => setEditingGroup(null)}
-					onGroupUpdated={refetchGroups}
 				/>
 			)}
 
@@ -367,7 +378,7 @@ export function BackendsPage() {
 					isOpen={!!activatingBackend}
 					onClose={() => setActivatingBackend(null)}
 					groupId={activatingBackend.groupId}
-					group={groups?.find(g => g.id === activatingBackend.groupId)!}
+					group={groups.find(g => g.id === activatingBackend.groupId)!}
 					newBackendId={activatingBackend.newBackendId}
 					newBackend={backends.find(b => b.id === activatingBackend.newBackendId)!}
 					currentBackend={backends.find(b => b.id === groups?.find(g => g.id === activatingBackend.groupId)?.activeBackendId)!}

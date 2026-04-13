@@ -1,5 +1,5 @@
 import type { AppState, ImmerSet, ImmerGet } from '../types';
-import type { TServerId, IServer, IServerStats, TDownloadId, IDownload } from '@warpcore/shared';
+import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, TBackendId, IBackend, TBackendGroupId, IBackendGroup } from '@warpcore/shared';
 
 interface SSEHandlersSlice {
 	SSEHandlers: Record<string, (data: any) => void>;
@@ -63,6 +63,16 @@ export const sseHandlersSlice = (
 		// Phase 1: Devices
 		'devices:init': (data) => setState((state) => { state.devices = data; }),
 		'devices:vram': (data) => setState((state) => { state.devices = data; }),
+
+		// Phase 1: Backends
+		'backends:init': (data: Record<TBackendId, IBackend>) => setState((state) => { state.backends = data; }),
+		'backends:update': (data: IBackend) => setState((state) => { state.backends[data.id] = data; }),
+		'backends:delete': (data: IBackend) => setState((state) => { delete state.backends[data.id]; }),
+
+		// Phase 1: Backend Groups
+		'backend-groups:init': (data: Record<TBackendGroupId, IBackendGroup>) => setState((state) => { state.backendGroups = data; }),
+		'backend-groups:update': (data: IBackendGroup) => setState((state) => { state.backendGroups[data.id] = data; }),
+		'backend-groups:delete': (data: IBackendGroup) => setState((state) => { delete state.backendGroups[data.id]; }),
 
 		// MCP
 		'mcp:init': (data) => setState((state) => { state.mcpServers = data; }),
