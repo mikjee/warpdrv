@@ -6,13 +6,7 @@ import { Card } from '../components/Card';
 import { VramBar } from '../components/VramBar';
 import { useStore } from '../store';
 import type { IDevice } from '@warpcore/shared';
-import { EDeviceBackendType } from '@warpcore/shared';
-
-const BACKEND_COLORS: Record<string, string> = {
-	[EDeviceBackendType.CUDA]: '#76b900',
-	[EDeviceBackendType.ROCM]: '#ed1c24',
-	[EDeviceBackendType.VULKAN]: '#a78bfa',
-};
+import { BACKEND_COLORS } from '../lib/deviceColors';
 
 export function DevicesPage() {
 	// Use backends and devices from Zustand store

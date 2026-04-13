@@ -1,4 +1,4 @@
-import { Box, Text, HStack, VStack, Flex, Badge, Button, Spinner, Input, Collapsible } from '@chakra-ui/react';
+import { Box, Text, HStack, VStack, Flex, Badge, Button, Spinner, Input, Collapsible, SimpleGrid } from '@chakra-ui/react';
 import { Blocks, Plus, Terminal, CheckCircle, Trash2, Edit, RefreshCw, AlertCircle, Layers, ChevronDown, ChevronRight } from 'lucide-react';
 import { useState, useCallback, useMemo } from 'react';
 import { PageHeader } from '../components/PageHeader';
@@ -10,7 +10,8 @@ import { BackendDialog } from '../components/dialogs/BackendDialog';
 import { BackendGroupDialog } from '../components/dialogs/BackendGroupDialog';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
 import { ActivateBackendDialog } from '../components/dialogs/ActivateBackendDialog';
-import type { IBackend, IBackendGroup, IServer } from '@warpcore/shared';
+import { DeviceCard } from '../components/DeviceCard';
+import type { IBackend, IBackendGroup, IServer, IDevice } from '@warpcore/shared';
 import { EValidationStatus, EServerStatus } from '@warpcore/shared';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -41,6 +42,61 @@ export function BackendsPage() {
 
 	const serversRecord = useStore((s) => s.servers);
 	const servers = useMemo(() => Object.values(serversRecord), [serversRecord]);
+
+	const devices = useStore((s) => s.devices);
+
+	const devicesByBackend = useMemo(() => {
+		const map = new Map<string, IDevice[]>();
+		for (const backend of backends) {
+			map.set(backend.id, devices.filter(d => d.backendId === backend.id));
+		}
+		return map;
+	}, [backends, devices]);
+
+	const totalServersByBackend = useMemo(() => {
+		const map = new Map<string, number>();
+		for (const backend of backends) {
+			map.set(backend.id, 0);
+		}
+		for (const server of servers) {
+			let backendId: string | null = null;
+			if (server.backendId) {
+				backendId = server.backendId;
+			} else if (server.backendGroupId) {
+				const group = backendGroupsRecord[server.backendGroupId];
+				if (group) {
+					backendId = group.activeBackendId;
+				}
+			}
+			if (backendId && map.has(backendId)) {
+				map.set(backendId, map.get(backendId)! + 1);
+			}
+		}
+		return map;
+	}, [backends, servers, backendGroupsRecord]);
+
+	const runningServersByBackend = useMemo(() => {
+		const map = new Map<string, number>();
+		for (const backend of backends) {
+			map.set(backend.id, 0);
+		}
+		for (const server of servers) {
+			if (server.status !== EServerStatus.RUNNING) continue;
+			let backendId: string | null = null;
+			if (server.backendId) {
+				backendId = server.backendId;
+			} else if (server.backendGroupId) {
+				const group = backendGroupsRecord[server.backendGroupId];
+				if (group) {
+					backendId = group.activeBackendId;
+				}
+			}
+			if (backendId && map.has(backendId)) {
+				map.set(backendId, map.get(backendId)! + 1);
+			}
+		}
+		return map;
+	}, [backends, servers, backendGroupsRecord]);
 
 	const deleteMut = useMutation<string, null>(
 		useCallback((id: string) => deleteBackend(id), [])
@@ -126,8 +182,11 @@ export function BackendsPage() {
 							<VStack align="stretch" gap="2.5">
 								{backends.map(backend => {
 									const statusColor = STATUS_COLORS[backend.validation] ?? 'rgba(255, 255, 255, 0.3)';
-									const deviceCount = backend.detectedDevices?.length ?? 0;
-									const hasCollapsibleContent = backend.defaultArgs.length > 0 || deviceCount > 0;
+									const backendDevices = devicesByBackend.get(backend.id) ?? backend.detectedDevices ?? [];
+									const deviceCount = backendDevices.length;
+									const totalServerCount = totalServersByBackend.get(backend.id) ?? 0;
+									const runningServerCount = runningServersByBackend.get(backend.id) ?? 0;
+									const hasCollapsibleContent = deviceCount > 0;
 									const expanded = isBackendExpanded(backend.id);
 
 									return (
@@ -148,6 +207,12 @@ export function BackendsPage() {
 																	</HStack>
 																	{deviceCount > 0 && (
 																		<Badge size="sm" px="1.5" py="0.5" borderRadius="full" bg="rgba(59, 130, 246, 0.15)" color="#60a5fa" fontSize="10px" fontWeight="600">{deviceCount} Device(s)</Badge>
+																	)}
+																	{totalServerCount > 0 && (
+																		<Badge size="sm" px="1.5" py="0.5" borderRadius="full" bg="rgba(167, 139, 250, 0.15)" color="#a78bfa" fontSize="10px" fontWeight="600">{totalServerCount} Server(s)</Badge>
+																	)}
+																	{runningServerCount > 0 && (
+																		<Badge size="sm" px="1.5" py="0.5" borderRadius="full" bg="rgba(52, 211, 153, 0.15)" color="#34d399" fontSize="10px" fontWeight="600">{runningServerCount} Running</Badge>
 																	)}
 																</HStack>
 																<Text fontSize="12px" color="rgba(255, 255, 255, 0.35)" fontFamily='"Geist Mono", monospace' lineClamp={1}>{backend.path}</Text>
@@ -174,28 +239,16 @@ export function BackendsPage() {
 											</Box>
 											<Collapsible.Content>
 												<Box px="3" pb="3" pt="2" border={"1px solid rgba(255,255,255,0.1)"} borderTop={"none"} borderBottomRadius={"8px"} borderTopRadius={"0"}>
-													{backend.defaultArgs.length > 0 && (
-														<Box mb="3">
-															<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Default Arguments</Text>
-															<HStack gap="1.5" flexWrap="wrap">
-																{backend.defaultArgs.map((arg: string, i: number) => (
-																	<Badge key={i} px="2" py="0.5" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="rgba(255, 255, 255, 0.04)" color="rgba(255, 255, 255, 0.6)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.06)">
-																		{arg}
-																	</Badge>
-																))}
-															</HStack>
-														</Box>
-													)}
-
-													{deviceCount > 0 && (
-														<Box>
-															<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Detected Devices ({deviceCount})</Text>
-															<VStack align="stretch" gap="1">
-																{backend.detectedDevices.map((device: { name: string; backendType: string }, i: number) => (
-																	<Text key={i} fontSize="12px" color="rgba(255, 255, 255, 0.5)">{device.name} ({device.backendType})</Text>
-																))}
-															</VStack>
-														</Box>
+													{deviceCount === 0 ? (
+														<Flex h="60px" alignItems="center" justifyContent="center">
+															<Text fontSize="13px" color="rgba(255, 255, 255, 0.25)">No devices detected for this backend</Text>
+														</Flex>
+													) : (
+														<SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap="3" mt="2">
+															{backendDevices.map((device, idx) => (
+																<DeviceCard key={`${device.id}-${idx}`} device={device} />
+															))}
+														</SimpleGrid>
 													)}
 												</Box>
 											</Collapsible.Content>

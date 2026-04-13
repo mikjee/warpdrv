@@ -24,7 +24,6 @@ import { Plug } from 'lucide-react';
 
 // Page imports for registry
 import { AboutPage } from '../pages/AboutPage';
-import { DevicesPage } from '../pages/DevicesPage';
 import { ModelsPage } from '../pages/ModelsPage';
 import { BackendsPage } from '../pages/BackendsPage';
 import { ServersPage } from '../pages/ServersPage';
@@ -47,7 +46,6 @@ const PAGE_REGISTRY: Record<string, TPageConfig> = {
 	'/hub': { component: HubPage, closeOnSwitch: false },
 	'/models': { component: ModelsPage, closeOnSwitch: true },
 	'/backends': { component: BackendsPage, closeOnSwitch: false },
-	'/devices': { component: DevicesPage, closeOnSwitch: true },
 	'/settings': { component: SettingsPage, closeOnSwitch: true },
 	'/about': { component: AboutPage, closeOnSwitch: true },
 	'/mcp': { component: McpPage, closeOnSwitch: false },
@@ -128,11 +126,6 @@ const NAV_ITEMS: INavItem[] = [
 	},
 	{ path: '/models', label: 'Models', icon: <FolderOpen size={18} /> },
 	{ path: '/backends', label: 'Backends', icon: <Blocks size={18} /> },
-	{
-		path: '/devices',
-		label: 'Devices',
-		icon: <Cpu size={18} />,
-	},
 	{
 		path: '/hub',
 		label: 'Hub',
