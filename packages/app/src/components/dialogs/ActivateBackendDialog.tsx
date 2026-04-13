@@ -15,6 +15,8 @@ interface IActivateBackendDialogProps {
 	newBackend: IBackend;
 	currentBackend: IBackend;
 	affectedServers: IServer[];
+	onSwitchOnly?: () => Promise<void>;
+	onSwitchAndRestart?: () => Promise<void>;
 }
 
 interface IServerState {
@@ -25,8 +27,8 @@ interface IServerState {
 	error?: string;
 }
 
-export function ActivateBackendDialog({ isOpen, onClose, groupId, group, newBackendId, newBackend, currentBackend, affectedServers }: IActivateBackendDialogProps) {
-	const toast = useToast();
+export function ActivateBackendDialog({ isOpen, onClose, groupId, group, newBackendId, newBackend, currentBackend, affectedServers, onSwitchOnly, onSwitchAndRestart }: IActivateBackendDialogProps) {
+	const { toast } = useToast();
 	const [open, setOpen] = useState(isOpen);
 	const [isSwitching, setIsSwitching] = useState(false);
 	const [switchingDone, setSwitchingDone] = useState(false);
@@ -61,63 +63,85 @@ export function ActivateBackendDialog({ isOpen, onClose, groupId, group, newBack
 	}, [resetState, handleClose]);
 
 	const handleSwitchOnly = async () => {
-		setIsSwitching(true);
-		try {
-			await activateBackendInGroup(groupId, newBackendId);
-			toast.show('Active backend switched', 'The active backend for this group has been updated.', 'success');
+	if (onSwitchOnly) {
+		await onSwitchOnly();
+		return;
+	}
+	setIsSwitching(true);
+	try {
+		await activateBackendInGroup(groupId, newBackendId);
+		toast('success', 'The active backend for this group has been updated.');
+		resetState();
+		handleClose();
+	} catch (error) {
+		toast('error', 'Unable to update the active backend. Please try again.');
+		setIsSwitching(false);
+	}
+};
+
+const handleSwitchAndRestart = async () => {
+	if (onSwitchAndRestart) {
+		await onSwitchAndRestart();
+		return;
+	}
+	setIsSwitching(true);
+	setIsRestarting(true);
+
+	try {
+		await activateBackendInGroup(groupId, newBackendId);
+		setSwitchingDone(true);
+
+		if (Object.keys(serversState).length === 0) {
+			toast('success', 'The active backend for this group has been updated.');
 			resetState();
 			handleClose();
-		} catch (error) {
-			toast.show('Failed to switch backend', 'Unable to update the active backend. Please try again.', 'error');
-			setIsSwitching(false);
+			return;
 		}
-	};
 
-	const handleSwitchAndRestart = async () => {
-		setIsSwitching(true);
-		setIsRestarting(true);
-
-		try {
-			await activateBackendInGroup(groupId, newBackendId);
-			setSwitchingDone(true);
-
-			if (affectedServers.length === 0) {
-				toast.show('Active backend switched', 'The active backend for this group has been updated.', 'success');
-				resetState();
-				handleClose();
-				return;
+		setServersState(prev => {
+			const newState: Record<string, IServerState> = {};
+			for (const s of Object.values(prev)) {
+				newState[s.id] = { ...s, status: 'restarting' as const };
 			}
+			return newState;
+		});
 
-			setServersState(prev =>
-				Object.fromEntries(
-					Object.values(prev).map(s => [s.id, { ...s, status: 'restarting' as const }])
-				)
-			);
-
-			const restartPromises = affectedServers.map(async (server) => {
-				try {
-					await restartServer(server.id);
-					setServersState(prev => ({
+		const restartPromises = Object.values(serversState).map(async (server) => {
+			try {
+				await restartServer(server.id);
+				setServersState(prev => {
+					const existing = prev[server.id];
+					if (!existing) return prev;
+					return {
 						...prev,
-						[server.id]: { ...prev[server.id], status: 'completed' },
-					}));
-				} catch (error) {
-					setServersState(prev => ({
+						[server.id]: { id: existing.id, name: existing.name, port: existing.port, status: 'completed' },
+					};
+				});
+			} catch (error) {
+				setServersState(prev => {
+					const existing = prev[server.id];
+					if (!existing) return prev;
+					return {
 						...prev,
-						[server.id]: { ...prev[server.id], status: 'failed', error: 'Restart failed' },
-					}));
-				}
-			});
+						[server.id]: { id: existing.id, name: existing.name, port: existing.port, status: 'failed', error: 'Restart failed' },
+					};
+				});
+			}
+		});
 
-			await Promise.all(restartPromises);
-		} catch (error) {
-			toast.show('Failed to switch backend', 'Unable to update the active backend.', 'error');
-			setIsSwitching(false);
-			setIsRestarting(false);
-		}
-	};
+		await Promise.all(restartPromises);
 
-	const allCompleted = affectedServers.length > 0 && Object.values(serversState).every(s => s.status === 'completed' || s.status === 'failed');
+		toast('success', 'The active backend has been updated and servers restarted.');
+		resetState();
+		handleClose();
+	} catch (error) {
+		toast('error', 'Unable to update the active backend.');
+		setIsSwitching(false);
+		setIsRestarting(false);
+	}
+};
+
+	const allCompleted = Object.keys(serversState).length > 0 && Object.values(serversState).every(s => s.status === 'completed' || s.status === 'failed');
 
 	return (
 		<Dialog.Root open={open} onOpenChange={(details) => { if (!isSwitching && !isRestarting) setOpen(details.open); }}>
@@ -141,14 +165,14 @@ export function ActivateBackendDialog({ isOpen, onClose, groupId, group, newBack
 									Switch Active Backend?
 								</Dialog.Title>
 								<Text fontSize="13px" color="rgba(255, 255, 255, 0.5)" textAlign="center">
-									Changing from <Text color="#e4e4e7" fontWeight="500">{currentBackend.name}</Text> to <Text color="#e4e4e7" fontWeight="500">{newBackend.name}</Text>
+									Changing from <Text as="span" color="#e4e4e7" fontWeight="500">{currentBackend.name}</Text> to <Text as="span" color="#e4e4e7" fontWeight="500">{newBackend.name}</Text>
 								</Text>
 							</VStack>
 
-							{affectedServers.length > 0 ? (
+							{Object.keys(serversState).length > 0 ? (
 								<Box>
 									<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)" mb="2">
-										Affected running servers ({affectedServers.length}):
+										Affected running servers ({Object.keys(serversState).length}):
 									</Text>
 									<Box
 										borderWidth="1px"

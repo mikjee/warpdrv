@@ -202,30 +202,41 @@ export async function killServer(serverId: string, pid?: number): Promise<boolea
 	// Try to kill from in-memory process first, then fall back to PID
 	if (child?.pid) {
 		stopStatsPolling(serverId);
-		return new Promise((resolve) => {
-			const timeout = setTimeout(() => {
-				processes.delete(serverId);
-				resolve(false);
-			}, 10000);
-			child.once('exit', () => {
-				clearTimeout(timeout);
-				processes.delete(serverId);
-				resolve(true);
-			});
-				try {
-					if (child.pid) process.kill(-child.pid, 'SIGTERM');
-				} catch {
-				clearTimeout(timeout);
-				processes.delete(serverId);
-				resolve(false);
-			}
-		});
+		
+		// Phase 1: Graceful shutdown with SIGTERM
+		try {
+			if (child.pid) process.kill(-child.pid, 'SIGTERM');
+		} catch {
+			processes.delete(serverId);
+			return true;
+		}
+		
+		// Wait for graceful shutdown (5 seconds)
+		await new Promise(resolve => setTimeout(resolve, 5000));
+		
+		// Phase 2: Force kill with SIGKILL if still alive
+		if (isProcessAlive(child.pid)) {
+			try {
+				process.kill(-child.pid, 'SIGKILL');
+				await new Promise(resolve => setTimeout(resolve, 1000));
+			} catch {}
+		}
+		
+		processes.delete(serverId);
+		return true;
 	}
 	// If not in map, try to kill using PID from storage (orphan process)
 	if (pid) {
 		stopStatsPolling(serverId);
+		if (!isProcessAlive(pid)) {
+			return true;
+		}
 		try {
 			process.kill(-pid, 'SIGTERM');
+			await new Promise(resolve => setTimeout(resolve, 5000));
+			if (isProcessAlive(pid)) {
+				process.kill(-pid, 'SIGKILL');
+			}
 			return true;
 		} catch {
 			return false;

@@ -19,7 +19,7 @@ import { Card } from '../Card';
 import { VramBar } from '../VramBar';
 import { LaunchParamsPanel, EParamsMode, ToggleChip, SelectField, NumberField } from '../LaunchParamsPanel';
 import { useListQuery } from '../../hooks/useQuery';
-import { fetchModels, fetchBackends, fetchBackendGroups, launchServer, createPreset, updateServer, fetchStickyRoutes, clearStickyRoute } from '../../api/services';
+import { fetchModels, fetchBackends, fetchBackendGroups, launchServer, createPreset, updateServer, fetchStickyRoutes, clearStickyRoute, fetchPresets } from '../../api/services';
 import type { IStickyRouteInfo } from '../../api/services';
 import { useToast } from '../ToastProvider';
 
@@ -147,6 +147,7 @@ interface ILaunchServerDialogProps {
 	editMode?: {
 		serverId: string;
 		backendId: string;
+		backendGroupId?: string;
 		modelPath: string;
 		mmprojPath: string | null;
 		serverName: string;
@@ -297,12 +298,14 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 
 	// Save without relaunch (edit mode)
 	const handleSaveWithoutRelaunch = async () => {
-		if (!selectedEntry || !selectedBackendId || !selectedBackendGroupId || !editMode) return;
+		if (!selectedEntry || !editMode || (!selectedBackendId && !selectedBackendGroupId)) return;
 		setLaunching(true);
 		const aliases = parseAliases(serverAliasesInput);
+		const backendId = !useBackendGroup ? selectedBackendId ?? undefined : undefined;
+		const backendGroupId = useBackendGroup ? selectedBackendGroupId ?? undefined : undefined;
 		const result = await updateServer(editMode.serverId, {
-			backendId: !useBackendGroup ? selectedBackendId : undefined,
-			backendGroupId: useBackendGroup ? selectedBackendGroupId : undefined,
+			backendId,
+			backendGroupId,
 			modelPath: selectedEntry.file.filePath,
 			mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
 			serverName: serverName.trim() || undefined,
@@ -321,13 +324,15 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 
 	// Launch/Relaunch handler
 	const handleLaunch = async () => {
-		if (!selectedEntry || (!selectedBackendId && !selectedBackendGroupId)) return;
+		if (!selectedEntry || (!useBackendGroup ? !selectedBackendId : !selectedBackendGroupId)) return;
 		setLaunching(true);
 		const aliases = parseAliases(serverAliasesInput);
+		const backendId = !useBackendGroup ? selectedBackendId ?? undefined : undefined;
+		const backendGroupId = useBackendGroup ? selectedBackendGroupId ?? undefined : undefined;
 		if (editMode) {
 			const result = await updateServer(editMode.serverId, {
-				backendId: !useBackendGroup ? selectedBackendId : undefined,
-				backendGroupId: useBackendGroup ? selectedBackendGroupId : undefined,
+				backendId,
+				backendGroupId,
 				modelPath: selectedEntry.file.filePath,
 				mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
 				serverName: serverName.trim() || undefined,
@@ -344,8 +349,8 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 			}
 		} else {
 			const result = await launchServer({
-				backendId: !useBackendGroup ? selectedBackendId : undefined,
-				backendGroupId: useBackendGroup ? selectedBackendGroupId : undefined,
+				backendId,
+				backendGroupId,
 				modelPath: selectedEntry.file.filePath,
 				mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
 				serverName: serverName.trim() || null,
@@ -365,10 +370,14 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 
 	// Save preset
 	const handleSavePreset = async () => {
-		if (!presetName.trim() || !selectedEntry || !selectedBackendId) return;
+		if (!presetName.trim() || !selectedEntry || (!useBackendGroup ? !selectedBackendId : !selectedBackendGroupId)) return;
+		const activeBackendId = useBackendGroup && selectedBackendGroupId
+			? groups.find(g => g.id === selectedBackendGroupId)?.activeBackendId ?? null
+			: selectedBackendId;
+		if (!activeBackendId) return;
 		const result = await createPreset({
 			name: presetName.trim(),
-			backendId: selectedBackendId,
+			backendId: activeBackendId,
 			modelPath: selectedEntry.file.filePath,
 			mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
 			params,
@@ -397,7 +406,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 		toast('info', `Loaded preset "${preset.name}"`);
 	};
 
-	const canLaunch = selectedModelPath && (selectedBackendId || selectedBackendGroupId) && !launching;
+	const canLaunch = selectedModelPath && (!useBackendGroup ? selectedBackendId : selectedBackendGroupId) && !launching;
 
 	return (
 		<Box position="fixed" inset="0" zIndex="modal" display="flex" alignItems="center" justifyContent="center">
@@ -782,7 +791,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				{/* Footer */}
 				<Flex px="6" py="4" justify="space-between" align="center" borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" bg="rgba(255, 255, 255, 0.01)">
 					<HStack gap="4">
-						{selectedModelPath && selectedBackendId && !editMode && (
+						{selectedModelPath && (!useBackendGroup ? selectedBackendId : selectedBackendGroupId) && !editMode && (
 							<HStack gap="2">
 								<Input placeholder="Preset name..." size="sm" w="180px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(251, 191, 36, 0.4)', outline: 'none' }} value={presetName} onChange={e => setPresetName(e.target.value)} />
 								<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' }} borderRadius="lg" fontSize="12px" onClick={handleSavePreset} disabled={!presetName.trim()}>

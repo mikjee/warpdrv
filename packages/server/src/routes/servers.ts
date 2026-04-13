@@ -205,7 +205,7 @@ serversRouter.post('/:id/stop', async (req, res) => {
 		return;
 	}
 
-	killServer(server.id, server.pid);
+	await killServer(server.id, server.pid);
 	usedPorts.delete(server.port);
 
 	server.status = EServerStatus.STOPPED;
@@ -223,7 +223,7 @@ serversRouter.post('/stop-all', async (_req, res) => {
 	for (const server of servers) {
 		if (server.status === EServerStatus.RUNNING || server.status === EServerStatus.LOADING) {
 			if (server.pid) {
-				killServer(server.id, server.pid);
+				await killServer(server.id, server.pid);
 			}
 			usedPorts.delete(server.port);
 			server.status = EServerStatus.STOPPED;
@@ -426,7 +426,7 @@ serversRouter.delete('/:id', async (req, res) => {
 		return;
 	}
 
-	killServer(server.id, server.pid);
+	await killServer(server.id, server.pid);
 	usedPorts.delete(server.port);
 	clearServerLogs(server.id);
 	await store.del(PREFIX + server.id);
