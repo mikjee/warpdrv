@@ -98,7 +98,7 @@ const migrations: Record<number, TMigrationFn> = {
 	},
 	// Migration v8: clear model cache for parentModel grouping fix
 	8: async () => {
-		await store.delete('models:cache');
+		await store.del('models:cache');
 		console.log('[migration] Cleared model cache for parentModel grouping fix');
 	},
 };
