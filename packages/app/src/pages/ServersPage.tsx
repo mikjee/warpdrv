@@ -599,8 +599,7 @@ export function ServersPage() {
 															const configuredCtx = server.params.contextSize;
 															const displayCtx = configuredCtx === 0 ? 
 																(modelMaxCtx ? formatCount(modelMaxCtx) : 'auto') : formatCount(configuredCtx);
-															const backendName = group?.name ? `${group.name} (${group.backendIds.length} backends)` : backend?.name ?? "Backend Not Found!";
-															const activeBackendName = group?.activeBackendId ? backendMap.get(group.activeBackendId)?.name : null;
+															const backendName = group?.name ? `${group.name} (${backendMap.get(group.activeBackendId)?.name ?? 'Unknown'})` : backend?.name ?? "Backend Not Found!";
 
 															return (
 																<>
@@ -623,9 +622,6 @@ export function ServersPage() {
 																		<StatPill icon={<Sparkles size={12} />} label="Draft" value={draftModel.name} />
 																	)}
 																	<StatPill icon={<Blocks size={12} />} label="Backend" value={backendName} />
-																	{group && activeBackendName && (
-																		<StatPill icon={<Terminal size={10} />} label="Active" value={activeBackendName} />
-																	)}
 																	<StatPill icon={<Cpu size={12} />} label="Device" value={deviceName} />
 																	<StatPill icon={<FaBookOpen size={12} />} label="Context" value={`${displayCtx}`} />
 																</>
