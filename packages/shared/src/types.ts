@@ -106,6 +106,7 @@ export interface IGgufFile {
 	shardIndex: number | null; // 1-based, null if not a shard
 	shardTotal: number | null;
 	isMmproj: boolean;
+	parentModel: string | null; // base name without shard suffix
 }
 // A model = a group of related GGUF files in one directory
 export interface IModel {
