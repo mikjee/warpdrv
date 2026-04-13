@@ -1,7 +1,7 @@
 import { store } from '../util/store';
 import { DEFAULT_SPEC_DECODE_PARAMS } from '@warpcore/shared';
 const SCHEMA_KEY = '_schemaVersion';
-const CURRENT_SCHEMA = 7;
+const CURRENT_SCHEMA = 8;
 // Each migration transforms data from version N to N+1
 // Add new migrations as the data shape evolves
 type TMigrationFn = () => Promise<void>;
@@ -95,6 +95,11 @@ const migrations: Record<number, TMigrationFn> = {
 				await store.put('servers:' + server.id, server);
 			}
 		}
+	},
+	// Migration v8: clear model cache for parentModel grouping fix
+	8: async () => {
+		await store.delete('models:cache');
+		console.log('[migration] Cleared model cache for parentModel grouping fix');
 	},
 };
 export async function runMigrations(): Promise<void> {
