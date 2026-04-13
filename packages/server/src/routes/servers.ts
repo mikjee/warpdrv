@@ -431,6 +431,8 @@ serversRouter.delete('/:id', async (req, res) => {
 	clearServerLogs(server.id);
 	await store.del(PREFIX + server.id);
 
+	sseManager.emit('servers:delete', { [server.id]: null });
+
 	res.json({ ok: true, data: null, error: null });
 });
 

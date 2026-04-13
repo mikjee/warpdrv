@@ -198,51 +198,157 @@ export function spawnServer(
 }
 // Kill a running server process and wait for termination
 export async function killServer(serverId: string, pid?: number): Promise<boolean> {
-	const child = processes.get(serverId);
-	// Try to kill from in-memory process first, then fall back to PID
-	if (child?.pid) {
-		stopStatsPolling(serverId);
-		
-		// Phase 1: Graceful shutdown with SIGTERM
-		try {
-			if (child.pid) process.kill(-child.pid, 'SIGTERM');
-		} catch {
-			processes.delete(serverId);
-			return true;
-		}
-		
-		// Wait for graceful shutdown (5 seconds)
-		await new Promise(resolve => setTimeout(resolve, 5000));
-		
-		// Phase 2: Force kill with SIGKILL if still alive
-		if (isProcessAlive(child.pid)) {
-			try {
-				process.kill(-child.pid, 'SIGKILL');
-				await new Promise(resolve => setTimeout(resolve, 1000));
-			} catch {}
-		}
-		
-		processes.delete(serverId);
-		return true;
-	}
-	// If not in map, try to kill using PID from storage (orphan process)
-	if (pid) {
-		stopStatsPolling(serverId);
-		if (!isProcessAlive(pid)) {
-			return true;
-		}
-		try {
-			process.kill(-pid, 'SIGTERM');
-			await new Promise(resolve => setTimeout(resolve, 5000));
-			if (isProcessAlive(pid)) {
-				process.kill(-pid, 'SIGKILL');
-			}
-			return true;
-		} catch {
-			return false;
-		}
-	}
-	return false;
+    const child = processes.get(serverId);
+    
+    // Helper to check if port is free
+    const isPortFree = (port: number): Promise<boolean> => {
+        return new Promise((resolvePort) => {
+            const server = require('net').createServer();
+            server.listen(port, '127.0.0.1', () => {
+                server.close();
+                resolvePort(true);
+            });
+            server.on('error', () => resolvePort(false));
+        });
+    };
+    
+    // Try to kill from in-memory process first, then fall back to PID
+    if (child?.pid) {
+        stopStatsPolling(serverId);
+        
+        return new Promise((resolve) => {
+            const pidToUse = child.pid;
+            let resolved = false;
+            
+            const cleanup = () => {
+                if (!resolved) {
+                    resolved = true;
+                    processes.delete(serverId);
+                }
+            };
+            
+            const finish = (success: boolean) => {
+                cleanup();
+                resolve(success);
+            };
+            
+            // Listen for process exit
+            child.once('exit', (code) => {
+                const status = code !== 0 && code !== null 
+                    ? EServerStatus.ERROR 
+                    : EServerStatus.STOPPED;
+                const error = code !== 0 && code !== null 
+                    ? `Process exited with code ${code}` 
+                    : null;
+                
+                emitServerUpdate(serverId, status, error, null).catch(() => {});
+                
+                // Look up port from server config and wait for it to be free
+                const waitForPort = async () => {
+                    try {
+                        const server = await store.get<IServer>(`${SERVERS_PREFIX}${serverId}`);
+                        const port = server?.port || 0;
+                        
+                        if (port > 0) {
+                            let portAttempts = 0;
+                            const checkPort = async () => {
+                                const free = await isPortFree(port);
+                                if (free) {
+                                    finish(true);
+                                } else if (portAttempts < 20) {
+                                    portAttempts++;
+                                    setTimeout(checkPort, 250);
+                                } else {
+                                    finish(true);
+                                }
+                            };
+                            checkPort();
+                        } else {
+                            finish(true);
+                        }
+                    } catch {
+                        finish(true);
+                    }
+                };
+                
+                waitForPort();
+            });
+            
+            // Send SIGTERM to process group
+            try {
+                process.kill(-pidToUse, 'SIGTERM');
+            } catch (err) {
+                if (isProcessAlive(pidToUse)) {
+                    finish(false);
+                } else {
+                    finish(true);
+                }
+                return;
+            }
+            
+            // If not exited after 5 seconds, force kill with SIGKILL
+            const timeout = setTimeout(() => {
+                if (isProcessAlive(pidToUse)) {
+                    try {
+                        process.kill(-pidToUse, 'SIGKILL');
+                    } catch {}
+                    setTimeout(() => {
+                        if (!resolved) {
+                            finish(true);
+                        }
+                    }, 200);
+                }
+            }, 5000);
+        });
+    }
+    
+    // If not in map, try to kill using PID from storage (orphan process)
+    if (pid) {
+        stopStatsPolling(serverId);
+        if (!isProcessAlive(pid)) {
+            return true;
+        }
+        
+        return new Promise((resolve) => {
+            let resolved = false;
+            
+            const finish = (success: boolean) => {
+                if (!resolved) {
+                    resolved = true;
+                    resolve(success);
+                }
+            };
+            
+            // Send SIGTERM
+            try {
+                process.kill(-pid, 'SIGTERM');
+            } catch {
+                finish(false);
+                return;
+            }
+            
+            // Poll until process is dead
+            const checkInterval = setInterval(async () => {
+                if (!isProcessAlive(pid)) {
+                    clearInterval(checkInterval);
+                    finish(true);
+                }
+            }, 100);
+            
+            // Force kill after 5 seconds
+            setTimeout(() => {
+                clearInterval(checkInterval);
+                if (isProcessAlive(pid)) {
+                    try {
+                        process.kill(-pid, 'SIGKILL');
+                    } catch {}
+                    setTimeout(() => finish(true), 200);
+                }
+            }, 5000);
+        });
+    }
+    
+    return false;
 }
 // Check if a process is still alive by PID
 export function isProcessAlive(pid: number): boolean {

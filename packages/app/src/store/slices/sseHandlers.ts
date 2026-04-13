@@ -20,6 +20,11 @@ export const sseHandlersSlice = (
 				state.servers[id] = server;
 			}
 		}),
+		'servers:delete': (data: Record<TServerId, null>) => setState((state) => {
+			for (const id of Object.keys(data)) {
+				delete state.servers[id];
+			}
+		}),
 		'servers:stats': (data: Record<TServerId, IServerStats>) => {
 			if (data && Object.keys(data).length > 0) {
 				setState((state) => {
