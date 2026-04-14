@@ -41,13 +41,33 @@ import { useStore } from "@/store";
 import { EReasoningEffort } from "@warpcore/shared";
 import { useMessageTiming } from "@assistant-ui/react";
 import { BrainCircuitIcon, ClockIcon } from "lucide-react";
+import { EReasoningEffort, EServerStatus } from "@warpcore/shared";
 import { encodingForModel } from 'js-tiktoken';
 
 const tokenEncoder = encodingForModel('gpt-4o');
 
+interface IServerStatusContext {
+	currentServerId: string | null;
+	currentServerStatus: EServerStatus | null;
+	isValidServer: boolean;
+}
+
+export const ServerStatusContext = createContext<IServerStatusContext>({
+	currentServerId: null,
+	currentServerStatus: null,
+	isValidServer: false,
+});
+
 export const Thread: FC<{ isLoading?: boolean }> = ({ isLoading = false }) => {
+  const currentServerId = useStore(s => s.currentServerId);
+  const serversMap = useStore(s => s.servers);
+  const currentServer = currentServerId ? serversMap[currentServerId] || null : null;
+  const currentServerStatus = currentServer?.status || null;
+  const isValidServer = currentServerId && currentServer?.status === EServerStatus.RUNNING;
+
   return (
-    <ThreadPrimitive.Root
+    <ServerStatusContext.Provider value={{ currentServerId, currentServerStatus, isValidServer }}>
+      <ThreadPrimitive.Root
       className="aui-root aui-thread-root @container flex h-full flex-col"
       style={{
         ["--thread-max-width" as string]: "44rem",
@@ -84,7 +104,7 @@ export const Thread: FC<{ isLoading?: boolean }> = ({ isLoading = false }) => {
           </div>
         )}
       </ThreadPrimitive.Viewport>
-    </ThreadPrimitive.Root>
+    </ServerStatusContext.Provider>
   );
 };
 
@@ -245,6 +265,8 @@ const ReasoningEffortToggle: FC = () => {
 };
 
 const ComposerAction: FC = () => {
+  const { isValidServer } = useContext(ServerStatusContext);
+
   return (
     <div className="aui-composer-action-wrapper relative flex items-center justify-between">
       <div className="flex items-center gap-1">
@@ -254,13 +276,14 @@ const ComposerAction: FC = () => {
       <AuiIf condition={(s) => !s.thread.isRunning}>
         <ComposerPrimitive.Send asChild>
           <TooltipIconButton
-            tooltip="Send message"
+            disabled={!isValidServer}
+            tooltip={!isValidServer ? "Select and start a model first" : "Send message"}
             side="bottom"
             type="button"
             variant="default"
             size="icon"
-            className="aui-composer-send size-8 rounded-full"
-            aria-label="Send message"
+            className={`${!isValidServer ? 'opacity-50 cursor-not-allowed' : ''} aui-composer-send size-8 rounded-full`}
+            aria-label={!isValidServer ? "Send message - model not selected" : "Send message"}
           >
             <ArrowUpIcon className="aui-composer-send-icon size-4" />
           </TooltipIconButton>
@@ -294,27 +317,27 @@ const MessageError: FC = () => {
 };
 
 const MessageStats: FC = () => {
-  const custom = useAuiState((s) => s.message.role === 'assistant' ? (s.message.metadata as any)?.custom : undefined);
-  if (!custom) return null;
-  const { ppSpeed, tgSpeed, promptTokens, completionTokens, reasoningTokens, ttftMs, totalMs } = custom;
-  if (!ppSpeed && !tgSpeed && !promptTokens) return null;
-  return (
-    <div className="flex items-center gap-3 mr-2 text-muted-foreground/50 text-xs font-mono">
-      {ppSpeed > 0 && (
-        <span title="Prompt processing speed">pp {ppSpeed.toFixed(1)} t/s</span>
-      )}
-      {tgSpeed > 0 && (
-        <span title="Token generation speed">tg {tgSpeed.toFixed(1)} t/s</span>
-      )}
-     {completionTokens != null && completionTokens > 0 && (
-        <span title="Token count">{completionTokens} tok</span>
-      )}
-      {totalMs > 0 && (
-        <span title="Total time">{(totalMs / 1000).toFixed(1)}s</span>
-      )}
-    </div>
-  );
-};
+   const custom = useAuiState((s) => s.message.role === 'assistant' ? (s.message.metadata as any)?.custom : undefined);
+   if (!custom) return null;
+   const { promptPerSecond, predictedPerSecond, promptTokens, completionTokens, reasoningTokens, promptMs, predictedMs } = custom;
+   if (!promptPerSecond && !predictedPerSecond && !promptTokens) return null;
+   return (
+     <div className="flex items-center gap-3 mr-2 text-muted-foreground/50 text-xs font-mono">
+       {promptPerSecond > 0 && (
+         <span title="Prompt processing speed">pp {promptPerSecond.toFixed(1)} t/s</span>
+       )}
+       {predictedPerSecond > 0 && (
+         <span title="Token generation speed">tg {predictedPerSecond.toFixed(1)} t/s</span>
+       )}
+      {completionTokens != null && completionTokens > 0 && (
+         <span title="Token count">{completionTokens} tok</span>
+       )}
+       {predictedMs > 0 && (
+         <span title="Total time">{(predictedMs / 1000).toFixed(1)}s</span>
+       )}
+     </div>
+   );
+ };
 
 const ToolCallRenderer: FC = () => {
   const part = useAuiState(s => s.part);
@@ -365,13 +388,13 @@ const AssistantMessage: FC = () => {
       </div>
 
       <div className="aui-assistant-message-footer mt-1 ml-2 flex min-h-6 items-center">
-        <MessageStats />
-        <BranchPicker />
-        <AssistantActionBar />
-      </div>
-    </MessagePrimitive.Root>
-  );
-};
+         <MessageStats />
+         <BranchPickerWrapper />
+         <AssistantActionBar />
+       </div>
+     </MessagePrimitive.Root>
+   );
+ };
 
 const ReasoningBlock: FC = () => {
   const reasoning = useAuiState((s) => {
@@ -507,6 +530,12 @@ const EditComposer: FC = () => {
       </ComposerPrimitive.Root>
     </MessagePrimitive.Root>
   );
+};
+
+const BranchPickerWrapper: FC = () => {
+  const { isValidServer } = useContext(ServerStatusContext);
+  if (!isValidServer) return null;
+  return <BranchPicker />;
 };
 
 const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({

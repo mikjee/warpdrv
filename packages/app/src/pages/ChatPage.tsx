@@ -44,6 +44,7 @@ export const ChatConfigContext = createContext<IChatConfig>({
 function ServerDot({ status }: { status: EServerStatus }) {
 	if (status === EServerStatus.RUNNING) return <Box w="8px" h="8px" borderRadius="full" bg="#22c55e" flexShrink={0} />;
 	if (status === EServerStatus.LOADING) return <Box w="8px" h="8px" borderRadius="full" bg="#f59e0b" flexShrink={0} />;
+	if (status === EServerStatus.ERROR) return <Box w="8px" h="8px" borderRadius="full" bg="#ef4444" flexShrink={0} />;
 	return <Box w="8px" h="8px" borderRadius="full" bg="rgba(255,255,255,0.15)" flexShrink={0} />;
 }
 function ServerSelector({
@@ -152,6 +153,11 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	const setCurrentThreadId = useStore(s => s.setCurrentThreadId);
 	const setCurrentSystemPrompt = useStore(s => s.setCurrentSystemPrompt);
 	const setCurrentInferenceParams = useStore(s => s.setCurrentInferenceParams);
+
+	// Check if current server is valid (selected AND running)
+	const serversMap = useStore(s => s.servers);
+	const currentServer = serversMap[currentServerId || ''] || null;
+	const isValidServer = currentServerId && currentServer?.status === EServerStatus.RUNNING;
 
 	// Load config when thread changes
 	useThreadConfig(currentThreadId);
@@ -268,7 +274,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 
 	// Runtime callbacks
 	const onNew = useCallback(async (message: any) => {
-		if (!currentServerId) return;
+		if (!isValidServer) return;
 		const text = (message.content as any[]).filter(p => p.type === 'text').map(p => p.text).join('');
 		
 		// Generate new thread ID if none exists - orchestrator will auto-create the thread
@@ -298,10 +304,10 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 				inferenceParams: currentInferenceParams,
 			}),
 		});
-	}, [currentThreadId, currentServerId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, toolCallsById]);
+	}, [currentThreadId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, toolCallsById]);
 
 	const onReload = useCallback(async (parentId: string | null) => {
-		if (!currentThreadId || !currentServerId || !parentId) return;
+		if (!isValidServer || !parentId) return;
 		
 		// Build messages from the regen point (parentId), not from head
 		// Messages below parentId should not be included
@@ -325,13 +331,13 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 				inferenceParams: currentInferenceParams,
 			}),
 		});
-	}, [currentThreadId, currentServerId, currentSystemPrompt, currentInferenceParams, toolCallsById]);
+	}, [currentThreadId, currentSystemPrompt, currentInferenceParams, toolCallsById]);
 
 	const onCancel = useCallback(async () => {
-		if (currentThreadId) {
+		if (currentThreadId && isValidServer) {
 			await fetch(`/api/chat/cancel/${currentThreadId}`, { method: 'POST' });
 		}
-	}, [currentThreadId]);
+	}, [currentThreadId, isValidServer]);
 
 	const runtime = useExternalStoreRuntime<ThreadMessage>({
 		messageRepository: msgRepo,
