@@ -409,6 +409,12 @@ export class Orchestrator {
 				predictedMs: timings?.predicted_ms ?? 0,
 			};
 			await this.persistence.updateMessage(turn.assistantMessageId, { stats });
+			this.broadcaster.emit({
+				type: 'message.patched',
+				messageId: turn.assistantMessageId,
+				threadId: request.threadId,
+				updates: { stats },
+			});
 			await this.persistence.incrementThreadTokens(
 				request.threadId,
 				stats.promptTokens,
