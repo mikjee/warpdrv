@@ -5,6 +5,33 @@ import { EChatRole, EMessagePartType, EToolCallStatus } from '@warpcore/bridge';
 import { useCallback, useMemo, useRef } from 'react';
 import { ExportedMessageRepository } from '@assistant-ui/react';
 
+function shallowEqualExcluding<T extends object>(
+    a: T,
+    b: T,
+    excludeKey: keyof T
+): boolean {
+    const keys = Object.keys(a) as (keyof T)[];
+    
+    for (const key of keys) {
+        if (key === excludeKey) continue;
+        if (!(key in b)) return false;
+        if (a[key] !== b[key]) return false;
+    }
+    
+    // ensure b has no extra keys (beyond the excluded one)
+    for (const key of Object.keys(b) as (keyof T)[]) {
+        if (key === excludeKey) continue;
+        if (!(key in a)) return false;
+    }
+    
+    return true;
+}
+
+type TWrappedConvertedMessage = {
+	parentId: string | null;
+	message: any;
+};
+
 export function useDerivedMsgsForUI(
 	msgs: Record<TMessageId, IChatMessage>,
 	currentThreadId: string | null,
@@ -14,7 +41,10 @@ export function useDerivedMsgsForUI(
 
 	const derivedMsgsRef = useRef<Record<TMessageId, IChatMessage>>({});
 	const convertedMsgsRef = useRef<Record<TMessageId, any>>({});
-	const toolCallsByIdRef = useRef<typeof toolCallsById>(toolCallsById);
+	const toolCallsByIdRef = useRef<typeof toolCallsById | null>(null);
+	const sortedMsgsRef = useRef<TWrappedConvertedMessage[]>([]);
+	const lastThreadIdRef = useRef<typeof currentThreadId | null>(null);
+	const mapIdToIndexRef = useRef<Record<TMessageId, number>>({});
 
 	const convertMessage = useCallback((msg: any) => {
 			
@@ -58,7 +88,7 @@ export function useDerivedMsgsForUI(
 							tcMap.get(part.toolCallId)?.status === EToolCallStatus.PENDING
 		);
 
-		const result: any = {
+		const result = {
 			id: msg.id,
 			role: msg.role as 'user' | 'assistant' | 'system' | 'tool',
 			content: content as any,
@@ -69,7 +99,7 @@ export function useDerivedMsgsForUI(
 
 		// Set message status based on whether there are pending tool calls
 		if (isAssistant) {
-			result.status = hasPendingToolCalls 
+			(result as any).status = hasPendingToolCalls 
 				? { type: 'requires-action' as const, reason: 'tool-calls' as const }
 				: { type: 'complete' as const, reason: 'stop' as const };
 		}
@@ -77,49 +107,109 @@ export function useDerivedMsgsForUI(
 		return result;
 	}, [currentThreadId, toolCallsById]);
 
+	const updateCachedMessage = useCallback((convertedMsg: ReturnType<typeof convertMessage>) => {
+		const id = convertedMsg.id;
+		const idx = mapIdToIndexRef.current[convertedMsg.id];
+		if (idx === undefined) {
+			console.error("Could not find message in cache to update!", id, convertedMsg);
+			return false;
+		}
+
+		const msg = sortedMsgsRef.current[idx];
+		if (!msg) {
+			console.error("Index lookup fail - Could not find message in cache to update!", id, convertedMsg);
+			return false;
+		}
+
+		const needReconvert = shallowEqualExcluding(msg.message, convertedMsg, "content");
+		if (needReconvert) return false;
+
+		msg.message.content = [...convertedMsg.content];
+		return true;
+	}, []);
+
 	// ---
 	
 	const sortedMsgs = useMemo(() => {
-		const haveNewToolCalls = toolCallsById !== toolCallsByIdRef.current;
 
+		// reset all on thread change
+		if (lastThreadIdRef.current !== currentThreadId) {
+			derivedMsgsRef.current = {};
+			convertedMsgsRef.current = {};
+			toolCallsByIdRef.current = null;
+			sortedMsgsRef.current = [];
+			mapIdToIndexRef.current = {};
+		}
+
+		// prep
+		const haveNewToolCalls = toolCallsById !== toolCallsByIdRef.current;
+		let haveNewMsgs: boolean = false;
+
+		// remove msgs not in current object
+		for (const cachedId of Object.keys(derivedMsgsRef.current)) {
+			if (!msgs[cachedId]) {
+				delete derivedMsgsRef.current[cachedId];
+				delete convertedMsgsRef.current[cachedId];
+				haveNewMsgs = true;
+			}
+		}
+
+		// update message by type after conversion / or just update the content
 		Object.values(msgs).forEach(msg => {
 			const msgId = msg.id;
 
 			if (msg.role === EChatRole.TOOL) {
 				if (!derivedMsgsRef.current[msgId] || haveNewToolCalls) {
+					const isNewMsg = !derivedMsgsRef.current[msgId];
+
 					derivedMsgsRef.current[msgId] = {
 						...msg,
 						role: EChatRole.ASSISTANT as const,
 						content: [],
 					};
 					convertedMsgsRef.current[msgId] = convertMessage(derivedMsgsRef.current[msgId]);
+
+					if (isNewMsg || haveNewMsgs) haveNewMsgs = true;
+					else if (!updateCachedMessage(convertedMsgsRef.current[msgId])) haveNewMsgs = true;
 				}
 			}
 
 			else if ((derivedMsgsRef.current[msgId] !== msg) || haveNewToolCalls) {
+				const isNewMsg = !derivedMsgsRef.current[msgId];
+
 				derivedMsgsRef.current[msgId] = msg;
 				convertedMsgsRef.current[msgId] = convertMessage(msg);
+
+				if (isNewMsg || haveNewMsgs) haveNewMsgs = true;
+				else if (!updateCachedMessage(convertedMsgsRef.current[msgId])) haveNewMsgs = true;
 			}
 		});
 
-		for (const cachedId of Object.keys(derivedMsgsRef.current)) {
-			if (!msgs[cachedId]) {
-				delete derivedMsgsRef.current[cachedId];
-				delete convertedMsgsRef.current[cachedId];
-			}
-		}
-
-		const sortedMessages = Object.values(convertedMsgsRef.current)
-			.map(msg => convertedMsgsRef.current[msg.id]!)
-			.sort((a, b) => a.createdAt - b.createdAt);
-
+		// early exit
 		toolCallsByIdRef.current = toolCallsById;
+		if (!haveNewMsgs) return sortedMsgsRef.current;
 
-		return sortedMessages.map((msg) => ({
-			parentId: msgs[msg.id]?.parentId ?? null,
-			message: msg,
-		}));
-	}, [msgs, convertMessage, toolCallsById]);
+		// no early exit - have new msgs must reconstruct array
+		const sortedMessages = Object.values(convertedMsgsRef.current)
+			.sort((a, b) => a.createdAt - b.createdAt)
+			.map((msg) => ({
+				parentId: msgs[msg.id]!.parentId ?? null,
+				message: msg,
+			}));
+
+		// update refs
+		sortedMsgsRef.current = sortedMessages;
+
+		// Update o(1) lookup
+		mapIdToIndexRef.current = {};
+		sortedMessages.forEach((m, idx) => mapIdToIndexRef.current[m.message.id] = idx);
+		
+		// done
+		return sortedMessages;
+	}, [msgs, convertMessage, toolCallsById, currentThreadId]);
+
+	// Update thread ref
+	lastThreadIdRef.current = currentThreadId;
 	
 	return useMemo(() => {
 		return {

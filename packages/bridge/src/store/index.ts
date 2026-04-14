@@ -38,6 +38,11 @@ export interface IChatStoreState {
 
 	// Messages - nested map: threadId -> messageId -> IChatMessage
 	messagesByThread: Record<TThreadId, Record<TMessageId, IChatMessage>>;
+	chunksByMessageId: Record<string, {
+		partId: string,
+		chunk: string,
+		lastUpdate: Date,
+	}>;
 
 	// In-memory head tracking (NOT persisted to DB)
 	// Updated automatically on message.created
@@ -103,6 +108,7 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 		threads: {} as Record<TThreadId, IChatThread>,
 		activeThreadId: null as TThreadId | null,
 		messagesByThread: {} as Record<TThreadId, Record<TMessageId, IChatMessage>>,
+		chunksByMessageId: {},
 		headMessageIdByThread: {} as Record<TThreadId, TMessageId>,
 		toolCallsById: {} as Record<TToolCallId, IToolCall>,
 		isRunningByThread: {} as Record<TThreadId, boolean>,
@@ -164,6 +170,17 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 				const msg = draft.messagesByThread[threadId]?.[messageId];
 				if (!msg) return;
 
+				// Flush and remove chunks
+				const buffer = draft.chunksByMessageId[msg.id];
+				if (buffer && buffer.chunk.length > 0) {
+					const part = msg.content.find(p => p.id === buffer.partId);
+					if (part && (part.type === EMessagePartType.TEXT || part.type === EMessagePartType.REASONING)) {
+						part.text += buffer.chunk;
+					} else {
+					}
+				}
+				delete draft.chunksByMessageId[msg.id];
+
 				// Update stats if provided
 				if (updates.stats !== undefined) {
 					msg.stats = updates.stats;
@@ -200,22 +217,85 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 				const msg = draft.messagesByThread[threadId]?.[messageId];
 				if (!msg) return;
 
-				// Find the part by partId
+				const buffer = draft.chunksByMessageId[messageId];
+				const now = Date.now();
 				const part = msg.content.find(p => p.id === partId);
-				if (part) {
-					// Append delta to existing text
-					if (part.type === EMessagePartType.TEXT || part.type === EMessagePartType.REASONING) {
+
+				// Helper to flush buffer to part (creates part if needed)
+				const flushBuffer = (buf: { partId: string; chunk: string }) => {
+					const existingPart = msg.content.find(p => p.id === buf.partId);
+					if (existingPart && (existingPart.type === EMessagePartType.TEXT || existingPart.type === EMessagePartType.REASONING)) {
+						existingPart.text += buf.chunk;
+					} else {
+						const newPart = {
+							id: buf.partId,
+							type: EMessagePartType.TEXT,
+							orderIndex: msg.content.length,
+							text: buf.chunk,
+						} as any;
+						msg.content.push(newPart);
+					}
+				};
+
+				// Helper to create part if it doesn't exist
+				const ensurePartExists = () => {
+					if (!part) {
+						const newPart = {
+							id: partId,
+							type: EMessagePartType.TEXT,
+							orderIndex: msg.content.length,
+							text: deltaText,
+						} as any;
+						msg.content.push(newPart);
+					} else {
+						if (part.type === EMessagePartType.TEXT || part.type === EMessagePartType.REASONING) {
+							part.text += deltaText;
+						}
+					}
+				};
+
+				// No existing buffer - first chunk for this message
+				if (!buffer) {
+					ensurePartExists();
+					// Create empty buffer for future chunks
+					draft.chunksByMessageId[messageId] = {
+						partId,
+						chunk: '',
+						lastUpdate: new Date(now),
+					};
+					return;
+				}
+
+				// Buffer exists - check if partId changed
+				if (buffer.partId !== partId) {
+					// Flush old buffer to its part
+					flushBuffer(buffer);
+					// Handle new part
+					ensurePartExists();
+					// Create empty buffer for new part
+					draft.chunksByMessageId[messageId] = {
+						partId,
+						chunk: '',
+						lastUpdate: new Date(now),
+					};
+					return;
+				}
+
+				// Same partId - check time delta
+				const timeDelta = now - buffer.lastUpdate.getTime();
+				if (timeDelta <= 250) {
+					// Within 300ms - append to buffer
+					buffer.chunk += deltaText;
+				} else {
+					// Over 300ms - flush buffer and append new delta
+					flushBuffer(buffer);
+					// Append new delta directly to part
+					if (part && (part.type === EMessagePartType.TEXT || part.type === EMessagePartType.REASONING)) {
 						part.text += deltaText;
 					}
-				} else {
-					// Defensive: create part if it doesn't exist (shouldn't happen in normal flow)
-					const newPart = {
-						id: partId,
-						type: EMessagePartType.TEXT,
-						orderIndex: msg.content.length,
-						text: deltaText,
-					} as any;
-					msg.content.push(newPart);
+					// Reset buffer
+					buffer.chunk = '';
+					buffer.lastUpdate = new Date(now);
 				}
 			}),
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { Settings, ChevronRight } from 'lucide-react';
 import { Plug } from 'lucide-react';
@@ -15,14 +15,14 @@ interface IChatSidebarProps {
 	onConfigPresetSelect: (presetId: string | null, preset: IChatPreset | null) => void;
 }
 
-export function ChatSidebar({
+export const ChatSidebar = React.memo(({
 	configParams,
 	configSystemPrompt,
 	configSelectedPresetId,
 	onConfigParamsChange,
 	onConfigSystemPromptChange,
 	onConfigPresetSelect,
-}: IChatSidebarProps) {
+}: IChatSidebarProps) => {
 	const [open, setOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState<'config' | 'tools'>('config');
 
@@ -132,4 +132,4 @@ export function ChatSidebar({
 			</Flex>
 		</Flex>
 	);
-}
+});

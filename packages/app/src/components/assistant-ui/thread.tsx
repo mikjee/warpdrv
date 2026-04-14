@@ -14,6 +14,7 @@ import {
   ActionBarPrimitive,
   AuiIf,
   BranchPickerPrimitive,
+  ChainOfThoughtPrimitive,
   ComposerPrimitive,
   ErrorPrimitive,
   MessagePrimitive,
@@ -35,7 +36,7 @@ import {
   RefreshCwIcon,
   SquareIcon,
 } from "lucide-react";
-import { useContext, useState, type FC } from "react";
+import React, { useCallback, useContext, useMemo, useState, type FC } from "react";
 import { ChatConfigContext } from "@/pages/ChatPage";
 import { useStore } from "@/store";
 import { EReasoningEffort } from "@warpcore/shared";
@@ -45,7 +46,9 @@ import { encodingForModel } from 'js-tiktoken';
 
 const tokenEncoder = encodingForModel('gpt-4o');
 
-export const Thread: FC<{ isLoading?: boolean }> = ({ isLoading = false }) => {
+export const Thread: FC<{ isLoading?: boolean }> = React.memo(({ isLoading = false }) => {
+  const ThreadMsgFn = useCallback(() => <ThreadMessage />, []);
+
   return (
     <ThreadPrimitive.Root
       className="aui-root aui-thread-root @container flex h-full flex-col"
@@ -70,7 +73,7 @@ export const Thread: FC<{ isLoading?: boolean }> = ({ isLoading = false }) => {
             </AuiIf>
 
             <ThreadPrimitive.Messages>
-              {() => <ThreadMessage />}
+              {ThreadMsgFn}
             </ThreadPrimitive.Messages>
           </>
         )}
@@ -86,7 +89,7 @@ export const Thread: FC<{ isLoading?: boolean }> = ({ isLoading = false }) => {
       </ThreadPrimitive.Viewport>
     </ThreadPrimitive.Root>
   );
-};
+});
 
 const ThreadMessage: FC = () => {
   const role = useAuiState((s) => s.message.role);
@@ -340,7 +343,15 @@ function mapStatusFromPart(status: any): 'complete' | 'running' | 'requires-acti
   return 'complete';
 }
 
-const AssistantMessage: FC = () => {
+const componentsMap = {
+   Text: () => <MarkdownText />,
+    Reasoning: () => <ReasoningBlock />,
+    tools: {
+      Fallback: ToolCallRenderer,
+    },
+};
+
+const AssistantMessage: FC = React.memo(() => {
 	const parts = useAuiState((s) => s.message.content);
 
 	// Skip rendering empty assistant messages (converted TOOL messages)
@@ -353,13 +364,7 @@ const AssistantMessage: FC = () => {
 		>
 			<div className="aui-assistant-message-content wrap-break-word px-2 text-foreground text-[14px] leading-relaxed">
         <MessagePrimitive.Parts
-          components={{
-            Text: () => <MarkdownText />,
-            Reasoning: () => <ReasoningBlock />,
-            tools: {
-              Fallback: ToolCallRenderer,
-            },
-          }}
+          components={componentsMap}
         />
         <MessageError />
       </div>
@@ -371,16 +376,18 @@ const AssistantMessage: FC = () => {
       </div>
     </MessagePrimitive.Root>
   );
-};
+});
 
-const ReasoningBlock: FC = () => {
+const ReasoningBlock: FC = React.memo(() => {
   const reasoning = useAuiState((s) => {
     const part = s.part;
     return part?.type === 'reasoning' ? (part as any).reasoning : '';
   });
   const [open, setOpen] = useState(false);
   if (!reasoning) return null;
+
   return (
+    
     <div className="mb-3 rounded-lg border border-border/50 bg-muted/30">
       <button
         type="button"
@@ -398,7 +405,7 @@ const ReasoningBlock: FC = () => {
       )}
     </div>
   );
-};
+});
 
 const AssistantActionBar: FC = () => {
   return (

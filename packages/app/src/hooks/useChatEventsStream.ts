@@ -48,21 +48,21 @@ export function useChatEventsStream() {
 			case 'message.chunk':
 				applyMessageChunk(event.messageId, event.threadId, event.partId, event.deltaText);
 				break;
-				case 'tool_call.created':
-					applyToolCallCreated(event.toolCall);
-					break;
-				case 'tool_call.updated':
-					applyToolCallUpdated(event.toolCall);
-					break;
-				case 'inference.started':
-					applyInferenceStarted(event.threadId, event.messageId);
-					break;
-				case 'inference.ended':
-					applyInferenceEnded(event.threadId, event.messageId);
-					break;
-				default:
-					// Unknown event type, ignore
-					break;
+			case 'tool_call.created':
+				applyToolCallCreated(event.toolCall);
+				break;
+			case 'tool_call.updated':
+				applyToolCallUpdated(event.toolCall);
+				break;
+			case 'inference.started':
+				applyInferenceStarted(event.threadId, event.messageId);
+				break;
+			case 'inference.ended':
+				applyInferenceEnded(event.threadId, event.messageId);
+				break;
+			default:
+				// Unknown event type, ignore
+				break;
 			}
 		};
 

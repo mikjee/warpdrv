@@ -242,6 +242,11 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 			return;
 		}
 		
+		if (threadMessages !== emptyMsgs) {
+			setIsLoadingThread(false);
+			return;
+		}
+
 		// Existing thread - fetch and show loading
 		setIsLoadingThread(true);
 		
@@ -264,7 +269,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 			setIsLoadingThread(false);
 		}
 		loadThread();
-	}, [currentThreadId, threadInStore]);
+	}, [currentThreadId, threadInStore, threadMessages]);
 
 	// Runtime callbacks
 	const onNew = useCallback(async (message: any) => {
@@ -340,7 +345,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 		onReload,
 		onCancel,
 		// Called by assistant-ui when messages update (including branch switches)
-		setMessages: (newMessages) => {
+		setMessages: (newMessages: any) => {
 			// Extract the last message ID from the new messages
 			const lastMessage = newMessages[newMessages.length - 1] as any;
 			if (currentThreadId && lastMessage && !isRunning) {
@@ -391,27 +396,13 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 						onConfigSystemPromptChange={handleSystemPromptChange}
 						onConfigPresetSelect={handlePresetSelect}
 					/>
-
-					{/* Old sidebars (commented out for regression testing)
-						<ChatConfigSidebar
-							open={configOpen}
-							onToggle={() => setConfigOpen(!configOpen)}
-							params={currentInferenceParams}
-							systemPrompt={currentSystemPrompt}
-							selectedPresetId={selectedPresetId}
-							onParamsChange={handleParamsChange}
-							onSystemPromptChange={handleSystemPromptChange}
-							onPresetSelect={handlePresetSelect}
-						/>
-						<ChatToolsSidebar open={toolsOpen} onToggle={() => setToolsOpen(!toolsOpen)} />
-						*/}
 					</Flex>
 				</AssistantRuntimeProvider>
 			</TooltipProvider>
 		</ChatConfigContext.Provider>
 	);
 });
-export function ChatPage() {
+export const ChatPage = React.memo(() => {
 	const serversMap = useStore(s => s.servers);
 	const serversArray = useMemo(() => Object.values(serversMap), [serversMap]);
 	const currentServerId = useStore(s => s.currentServerId);
@@ -448,4 +439,4 @@ export function ChatPage() {
 			</Flex>
 		</Flex>
 	);
-}
+});

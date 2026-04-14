@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useMemo, type FC, type ReactNode, type DragEvent } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo, type FC, type ReactNode, type DragEvent } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import {
 	Box, Flex, Text, HStack, VStack, Input, Portal,
@@ -439,7 +439,7 @@ function FolderSection({
 // Main ThreadList component
 // ============================================================
 
-export const ThreadList: FC = () => {
+export const ThreadList: FC = React.memo(() => {
 	const threadsAPI = useThreadsAndFolders();
 	const [search, setSearch] = useState('');
 	const [sortField, setSortField] = useState<TSortField>('updatedAt');
@@ -714,4 +714,4 @@ export const ThreadList: FC = () => {
 			)}
 		</ThreadListPrimitive.Root>
 	);
-};
+});

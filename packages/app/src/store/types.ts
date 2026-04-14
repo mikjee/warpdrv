@@ -59,6 +59,10 @@ export interface AppState {
 
 	// Bridge Chat State
 	threads: Record<TThreadId, IChatThread>;
+	chunksByMessageId: Record<string, {
+		chunk: string,
+		lastUpdate: Date,
+	}>;
 	messagesByThread: Record<TThreadId, Record<TMessageId, IChatMessage>>;
 	headMessageIdByThread: Record<TThreadId, TMessageId>;
 	toolCallsById: Record<TToolCallId, IToolCall>;

@@ -42,9 +42,9 @@ type TPageConfig = {
 const PAGE_REGISTRY: Record<string, TPageConfig> = {
 	'/chat': { component: ChatPage, closeOnSwitch: false },
 	'/servers': { component: ServersPage, closeOnSwitch: false },
-	'/proxy': { component: ProxyPage, closeOnSwitch: true },
+	'/proxy': { component: ProxyPage, closeOnSwitch: false },
 	'/hub': { component: HubPage, closeOnSwitch: false },
-	'/models': { component: ModelsPage, closeOnSwitch: true },
+	'/models': { component: ModelsPage, closeOnSwitch: false },
 	'/backends': { component: BackendsPage, closeOnSwitch: false },
 	'/settings': { component: SettingsPage, closeOnSwitch: true },
 	'/about': { component: AboutPage, closeOnSwitch: true },
