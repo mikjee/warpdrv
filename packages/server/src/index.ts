@@ -38,7 +38,32 @@ export let orchestrator: Orchestrator;
 export let mcpConfig: McpConfig;
 export let broadcaster: SseBroadcaster;
 
+import { execSync } from 'child_process';
+
+function resolveShellPath(): string | null {
+	try {
+		const shell = process.env.SHELL || '/bin/bash';
+		const out = execSync(`${shell} -ilc 'echo $PATH'`, {
+			encoding: 'utf8',
+			timeout: 3000,
+			stdio: ['ignore', 'pipe', 'ignore'],
+		}).trim();
+		return out || null;
+	} catch {
+		return null;
+	}
+}
+
 async function main() {
+	
+	const shellPath = resolveShellPath();
+	if (shellPath && shellPath !== process.env.PATH) {
+		console.log('[debug] resolved shell PATH:', shellPath);
+		process.env.PATH = shellPath;
+	}
+
+	console.log('[debug] PATH:', process.env.PATH || '(not set)');
+	console.log('[debug] HOME:', process.env.HOME || '(not set)');
 	console.log('[debug] RESOURCE_DIR:', process.env.RESOURCE_DIR);
 	console.log('[debug] execPath:', process.execPath);
 	console.log('[debug] pkg:', (process as any).pkg);

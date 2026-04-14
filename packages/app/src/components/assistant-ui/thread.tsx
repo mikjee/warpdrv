@@ -104,6 +104,7 @@ export const Thread: FC<{ isLoading?: boolean }> = React.memo(({ isLoading = fal
           </div>
         )}
       </ThreadPrimitive.Viewport>
+      </ThreadPrimitive.Root>
     </ServerStatusContext.Provider>
   );
 });

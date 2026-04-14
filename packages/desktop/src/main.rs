@@ -110,9 +110,11 @@ fn spawn_server() -> Option<Child> {
 		.unwrap_or_else(|| ".".to_string());
 
 	// Get port from env var or settings, and pass to server process
-	let server_port = get_server_port();
-
+    let server_port = get_server_port();
+	let rust_path = env::var("PATH").unwrap_or_else(|_| "(not set)".to_string());
+	println!("[WarpCore] Rust PATH: {}", rust_path);
 	let mut cmd = Command::new(&bin);
+
 	cmd.args(&args)
 		.env("WARPCORE_RESOURCE_DIR", &resource_dir)
 		.env("CONTROL_API_PORT", server_port.to_string())

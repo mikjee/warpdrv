@@ -51,22 +51,27 @@ export class McpClientManager implements IMcpClient {
 
 		const client = new Client({ name: `warpbridge-${name}`, version: '1.0.0' });
 		let transport: StdioClientTransport | StreamableHTTPClientTransport;
-
+		let stdioEnv: Record<string, string> | null = null;
 		try {
 			if (transportType === EMcpTransportType.STDIO) {
-				const env: Record<string, string> = {};
+				stdioEnv = {};
 				for (const [k, v] of Object.entries(process.env)) {
-					if (v !== undefined) env[k] = v;
+					if (v !== undefined) stdioEnv[k] = v;
 				}
 				if (entry.env) {
 					for (const [k, v] of Object.entries(entry.env)) {
-						if (v !== undefined) env[k] = v;
+						if (v !== undefined) stdioEnv[k] = v;
 					}
 				}
+				console.log(`[MCP] Spawning '${name}':`, {
+					command: entry.command!,
+					args: entry.args ?? [],
+					path: stdioEnv.PATH || '(not set)',
+				});
 				transport = new StdioClientTransport({
 					command: entry.command!,
 					args: entry.args ?? [],
-					env,
+					env: stdioEnv,
 				});
 			} else {
 				const headers: Record<string, string> = {};
@@ -110,6 +115,12 @@ export class McpClientManager implements IMcpClient {
 			};
 		} catch (err) {
 			const errorMsg = err instanceof Error ? err.message : String(err);
+			console.error(`[MCP] Failed to connect '${name}':`, errorMsg);
+			if (transportType === EMcpTransportType.STDIO) {
+				console.error(`[MCP]   Command: ${entry.command ?? 'N/A'}`);
+				console.error(`[MCP]   Args: ${JSON.stringify(entry.args ?? [])}`);
+				console.error(`[MCP]   PATH: ${stdioEnv?.PATH || '(not set)'}`);
+			}
 			state.status = EMcpServerStatus.ERROR;
 			state.error = errorMsg;
 			this.clients[name] = { name, client, transport: transport!, state, reconnectTimer: null, config: entry };
