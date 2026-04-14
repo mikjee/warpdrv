@@ -223,8 +223,8 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 
 	// Get messages for UI (all messages, with TOOL messages converted)
 	const threadMessages = useStore(s => s.currentThreadId ? s.messagesByThread[s.currentThreadId] || emptyMsgs : emptyMsgs)!;
-	const msgRepo = useDerivedMsgsForUI(threadMessages, currentThreadId, headMessageId);
 	const isRunning = useStore(s => s.currentThreadId ? s.isRunningByThread[s.currentThreadId] ?? false : false);
+	const msgRepo = useDerivedMsgsForUI(threadMessages, currentThreadId, headMessageId, isRunning);
 	const toolCallsById = useStore(s => s.toolCallsById);
 
 	// Check if thread exists in store (distinguishes new vs existing thread)
@@ -344,10 +344,37 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 		}
 	}, [currentThreadId, isValidServer]);
 
+	const onEdit = useCallback(async (message: any) => {
+		if (!currentThreadId) return;
+		
+		// AppendMessage has sourceId (the edited message ID), not id
+		const messageId = message?.sourceId;
+		if (!messageId) {
+			console.error('[onEdit] No sourceId found in:', message);
+			return;
+		}
+		
+		const text = (message.content as any[]).filter((p: any) => p.type === 'text').map((p: any) => p.text).join('');
+		
+		const parts = [{
+			id: globalThis.crypto.randomUUID(),
+			type: 'text' as const,
+			orderIndex: 0,
+			text,
+		}];
+		
+		await fetch(`/api/chat/messages/${messageId}`, {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ parts }),
+		});
+	}, [currentThreadId]);
+
 	const runtime = useExternalStoreRuntime<ThreadMessage>({
 		messageRepository: msgRepo,
 		isRunning,
 		onNew,
+		onEdit,
 		onReload,
 		onCancel,
 		// Called by assistant-ui when messages update (including branch switches)

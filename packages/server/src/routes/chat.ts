@@ -371,6 +371,15 @@ chatRouter.put('/messages/:id', async (req, res) => {
 			return;
 		}
 		await persistence.replaceMessageParts(messageId, parts);
+		
+		// Emit SSE event for all clients
+		broadcaster.emit({
+			type: 'message.patched',
+			messageId,
+			threadId: msg.threadId,
+			updates: { replaceParts: parts },
+		});
+		
 		res.json({ ok: true, data: null, error: null });
 	} catch (err) {
 		res.status(500).json({ ok: false, data: null, error: String(err) });

@@ -36,6 +36,7 @@ export function useDerivedMsgsForUI(
 	msgs: Record<TMessageId, IChatMessage>,
 	currentThreadId: string | null,
 	headMessageId: TMessageId | null,
+	isRunning: boolean,
 ): ExportedMessageRepository {
 	const toolCallsById = useStore(s => s.toolCallsById);
 
@@ -44,6 +45,7 @@ export function useDerivedMsgsForUI(
 	const toolCallsByIdRef = useRef<typeof toolCallsById | null>(null);
 	const sortedMsgsRef = useRef<TWrappedConvertedMessage[]>([]);
 	const lastThreadIdRef = useRef<typeof currentThreadId | null>(null);
+	const lastIsRunningRef = useRef<boolean>(false);
 	const mapIdToIndexRef = useRef<Record<TMessageId, number>>({});
 
 	const convertMessage = useCallback((msg: any) => {
@@ -97,17 +99,21 @@ export function useDerivedMsgsForUI(
 			attachments: [],
 		};
 
-		// Set message status based on whether there are pending tool calls
+		// Set message status based on inference state AND pending tool calls
 		if (isAssistant) {
-			(result as any).status = hasPendingToolCalls 
-				? { type: 'requires-action' as const, reason: 'tool-calls' as const }
-				: { type: 'complete' as const, reason: 'stop' as const };
+			if (hasPendingToolCalls) {
+				(result as any).status = { type: 'requires-action' as const, reason: 'tool-calls' as const };
+			} else if (isRunning) {
+				(result as any).status = { type: 'running' as const };
+			} else {
+				(result as any).status = { type: 'complete' as const, reason: 'stop' as const };
+			}
 		}
 
 		return result;
-	}, [currentThreadId, toolCallsById]);
+	}, [currentThreadId, toolCallsById, isRunning]);
 
-	const updateCachedMessage = useCallback((convertedMsg: ReturnType<typeof convertMessage>) => {
+	const updateCachedMessage = useCallback((convertedMsg: ReturnType<typeof convertMessage>, isRunningChanged: boolean) => {
 		const id = convertedMsg.id;
 		const idx = mapIdToIndexRef.current[convertedMsg.id];
 		if (idx === undefined) {
@@ -122,9 +128,13 @@ export function useDerivedMsgsForUI(
 		}
 
 		const needReconvert = shallowEqualExcluding(msg.message, convertedMsg, "content");
-		if (needReconvert) return false;
+		if (needReconvert) {
+			if (isRunningChanged && msg.message.role === 'assistant') msg.message.status = convertedMsg.status;
+			return false;
+		}
 
 		msg.message.content = [...convertedMsg.content];
+		if (isRunningChanged && msg.message.role === 'assistant') msg.message.status = convertedMsg.status;
 		return true;
 	}, []);
 
@@ -143,6 +153,7 @@ export function useDerivedMsgsForUI(
 
 		// prep
 		const haveNewToolCalls = toolCallsById !== toolCallsByIdRef.current;
+		const hasIsRunningChanged = isRunning !== lastIsRunningRef.current;
 		let haveNewMsgs: boolean = false;
 
 		// remove msgs not in current object
@@ -159,7 +170,7 @@ export function useDerivedMsgsForUI(
 			const msgId = msg.id;
 
 			if (msg.role === EChatRole.TOOL) {
-				if (!derivedMsgsRef.current[msgId] || haveNewToolCalls) {
+				if (!derivedMsgsRef.current[msgId] || haveNewToolCalls || hasIsRunningChanged) {
 					const isNewMsg = !derivedMsgsRef.current[msgId];
 
 					derivedMsgsRef.current[msgId] = {
@@ -170,23 +181,24 @@ export function useDerivedMsgsForUI(
 					convertedMsgsRef.current[msgId] = convertMessage(derivedMsgsRef.current[msgId]);
 
 					if (isNewMsg || haveNewMsgs) haveNewMsgs = true;
-					else if (!updateCachedMessage(convertedMsgsRef.current[msgId])) haveNewMsgs = true;
+					else if (!updateCachedMessage(convertedMsgsRef.current[msgId], hasIsRunningChanged)) haveNewMsgs = true;
 				}
 			}
 
-			else if ((derivedMsgsRef.current[msgId] !== msg) || haveNewToolCalls) {
+			else if ((derivedMsgsRef.current[msgId] !== msg) || haveNewToolCalls || hasIsRunningChanged) {
 				const isNewMsg = !derivedMsgsRef.current[msgId];
 
 				derivedMsgsRef.current[msgId] = msg;
 				convertedMsgsRef.current[msgId] = convertMessage(msg);
 
 				if (isNewMsg || haveNewMsgs) haveNewMsgs = true;
-				else if (!updateCachedMessage(convertedMsgsRef.current[msgId])) haveNewMsgs = true;
+				else if (!updateCachedMessage(convertedMsgsRef.current[msgId], hasIsRunningChanged)) haveNewMsgs = true;
 			}
 		});
 
 		// early exit
 		toolCallsByIdRef.current = toolCallsById;
+		lastIsRunningRef.current = isRunning;
 		if (!haveNewMsgs) return sortedMsgsRef.current;
 
 		// no early exit - have new msgs must reconstruct array
@@ -206,17 +218,17 @@ export function useDerivedMsgsForUI(
 		
 		// done
 		return sortedMessages;
-	}, [msgs, convertMessage, toolCallsById, currentThreadId]);
+	}, [msgs, convertMessage, toolCallsById, currentThreadId, isRunning]);
 
 	// Update thread ref
 	lastThreadIdRef.current = currentThreadId;
 	
 	return useMemo(() => {
-		return {
-			messages: sortedMsgs,
-			headId: headMessageId,  // Use the stored head, not recalculated
-		};
-	}, [sortedMsgs, headMessageId]);
+	return {
+		messages: sortedMsgs,
+		headId: headMessageId,
+	};
+}, [sortedMsgs, headMessageId, isRunning]);
 }
 
 // Build message chain from a starting point to root (for backend API calls)

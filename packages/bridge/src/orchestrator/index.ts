@@ -317,7 +317,11 @@ export class Orchestrator {
 			buffer = remaining;
 
 			for (const chunk of chunks) {
-				if (abortSignal.aborted) return { hadToolCalls: false, needsAsk: false, lastToolMessageId: null };
+				if (abortSignal.aborted) {
+					await this.flushReasoningPart(turn);
+					await this.flushTextPart(turn);
+					return { hadToolCalls: false, needsAsk: false, lastToolMessageId: null };
+				}
 				const delta = chunk.choices?.[0]?.delta;
 
 				if (delta?.content) {
