@@ -280,7 +280,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	// Runtime callbacks
 	const onNew = useCallback(async (message: any) => {
 		if (!isValidServer) return;
-		const text = (message.content as any[]).filter(p => p.type === 'text').map(p => p.text).join('');
+		const text = (message.content as any[]).filter((p: any) => p.type === 'text').map((p: any) => p.text).join('');
 		
 		// Generate new thread ID if none exists - orchestrator will auto-create the thread
 		const threadId = currentThreadId ?? globalThis.crypto.randomUUID();
@@ -296,18 +296,64 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 		);
 		const openAIMessages = convertMessagesToOpenAIFormat(messagesForBackend, toolCallsById);
 		
+		// Process attachments - convert File objects to base64
+		const attachments = message.attachments || [];
+		const attachmentParts: any[] = [];
+		
+		for (const att of attachments) {
+			if (att.file instanceof File) {
+				// Read file as base64
+				const base64 = await new Promise<string>((resolve, reject) => {
+					const reader = new FileReader();
+					reader.onload = () => resolve(reader.result as string);
+					reader.onerror = reject;
+					reader.readAsDataURL(att.file);
+				});
+				
+				attachmentParts.push({
+					id: att.id || crypto.randomUUID(),
+					type: 'attachment',
+					orderIndex: 0,
+					data: base64,
+					mimeType: att.file.type || 'application/octet-stream',
+					fileName: att.file.name,
+					fileSize: att.file.size,
+				});
+			} else if (att.content) {
+				// Already converted attachment
+				const imagePart = att.content.find((p: any) => p.type === 'image');
+				if (imagePart) {
+					attachmentParts.push({
+						id: att.id || crypto.randomUUID(),
+						type: 'attachment',
+						orderIndex: 0,
+						data: imagePart.image,
+						mimeType: att.contentType || 'image/*',
+						fileName: att.name,
+						fileSize: 0,
+					});
+				}
+			}
+		}
+		
+		const body: any = {
+			threadId,
+			userMessage: { content: text },
+			parentId: headMessageId,
+			serverId: currentServerId,
+			messages: openAIMessages,
+			systemPrompt: currentSystemPrompt,
+			inferenceParams: currentInferenceParams,
+		};
+		
+		if (attachmentParts.length > 0) {
+			body.attachments = attachmentParts;
+		}
+		
 		await fetch('/api/chat/completions', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				threadId,
-				userMessage: { content: text },
-				parentId: headMessageId,
-				serverId: currentServerId,
-				messages: openAIMessages,
-				systemPrompt: currentSystemPrompt,
-				inferenceParams: currentInferenceParams,
-			}),
+			body: JSON.stringify(body),
 		});
 	}, [currentThreadId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, toolCallsById]);
 
@@ -316,6 +362,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 		
 		// Build messages from the regen point (parentId), not from head
 		// Messages below parentId should not be included
+		if (!currentThreadId) return;
 		const messagesFromParent = buildMessageChain(
 			useStore.getState(),
 			currentThreadId,

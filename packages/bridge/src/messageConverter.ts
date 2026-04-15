@@ -8,7 +8,7 @@ import { EChatRole, EMessagePartType } from './types';
 
 export type TOpenAIMessage = {
 	role: 'system' | 'user' | 'assistant' | 'tool';
-	content?: string;
+	content?: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
 	tool_calls?: Array<{
 		id: string;
 		type: 'function';
@@ -30,8 +30,29 @@ export function convertMessagesToOpenAIFormat(
 		switch (msg.role) {
 			case EChatRole.USER: {
 				const textParts = msg.content.filter(p => p.type === EMessagePartType.TEXT);
-				const content = textParts.map(p => p.text || '').join('');
-				result.push({ role: 'user', content });
+				const attachmentParts = msg.content.filter(p => p.type === EMessagePartType.ATTACHMENT);
+				
+				if (attachmentParts.length === 0) {
+					const content = textParts.map(p => p.text || '').join('');
+					result.push({ role: 'user', content });
+				} else {
+					const contentArray: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
+					
+					for (const part of textParts) {
+						if (part.text) contentArray.push({ type: 'text', text: part.text });
+					}
+					
+					for (const att of attachmentParts) {
+						if (att.mimeType.startsWith('image/')) {
+							const dataUrl = att.data.startsWith('data:') ? att.data : `data:${att.mimeType};base64,${att.data}`;
+							contentArray.push({ type: 'image_url', image_url: { url: dataUrl } });
+						} else {
+							contentArray.push({ type: 'text', text: att.data });
+						}
+					}
+					
+					result.push({ role: 'user', content: contentArray });
+				}
 				break;
 			}
 

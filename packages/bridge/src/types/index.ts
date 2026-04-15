@@ -30,6 +30,7 @@ export enum EMessagePartType {
 	TEXT = 'text',
 	REASONING = 'reasoning',
 	TOOL_CALL = 'tool_call',
+	ATTACHMENT = 'attachment',
 }
 
 export enum EToolCallStatus {
@@ -168,7 +169,16 @@ export interface IChatMessageCreatePayload {
 export type IMessagePart =
 	| IMessagePartText
 	| IMessagePartReasoning
-	| IMessagePartToolCall;
+	| IMessagePartToolCall
+	| IMessagePartAttachment;
+
+export interface IMessagePartAttachment extends IMessagePartBase {
+	type: EMessagePartType.ATTACHMENT;
+	data: string;
+	mimeType: string;
+	fileName: string;
+	fileSize: number;
+}
 
 export interface IMessagePartBase {
 	id: TMessagePartId;
@@ -287,6 +297,7 @@ export interface ICompletionRequest {
 	systemPrompt?: string;
 	inferenceParams: Record<string, unknown>;
 	tools?: IOpenAITool[];
+	attachments?: IMessagePartAttachment[];
 }
 
 // ============================================================

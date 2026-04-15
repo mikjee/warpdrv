@@ -46,8 +46,8 @@ export function useDerivedMsgsForUI(
 	const lastThreadIdRef = useRef<typeof currentThreadId | null>(null);
 	const mapIdToIndexRef = useRef<Record<TMessageId, number>>({});
 
-	const convertMessage = useCallback((msg: any) => {
-			
+const convertMessage = useCallback((msg: any) => {
+		
 		// Use toolCallsById from closure (already reactive via useStore)
 		const threadToolCalls = Object.values(toolCallsById).filter((tc: any) => tc.threadId === currentThreadId);
 		const tcMap = new Map(threadToolCalls.map((tc: any) => [tc.id, tc]));
@@ -75,6 +75,14 @@ export function useDerivedMsgsForUI(
 			if (part.type === EMessagePartType.REASONING) {
 				const reasoningText = part.text || '';
 				return { type: 'reasoning' as const, reasoning: reasoningText, text: reasoningText };
+			}
+			if (part.type === EMessagePartType.ATTACHMENT) {
+				if (part.mimeType.startsWith('image/')) {
+					const imageUrl = part.data.startsWith('data:') ? part.data : `data:${part.mimeType};base64,${part.data}`;
+					return { type: 'image' as const, image: imageUrl, filename: part.fileName };
+				} else {
+					return { type: 'text' as const, text: part.data };
+				}
 			}
 			return { type: 'text' as const, text: '' };
 		}).filter(Boolean);
