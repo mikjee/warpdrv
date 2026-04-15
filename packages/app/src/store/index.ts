@@ -10,6 +10,7 @@ import { devicesSlice } from './slices/devices';
 import { backendsSlice } from './slices/backends';
 import { proxySlice } from './slices/proxy';
 import { recipesSlice } from './slices/recipes';
+import { checkpointsSlice } from './slices/checkpoints';
 import { createChatStoreSlice } from '@warpcore/bridge/client';
 
 export const useStore = create<AppState>()(
@@ -21,8 +22,9 @@ export const useStore = create<AppState>()(
 				const devices = devicesSlice(set, get);
 				const backends = backendsSlice(set, get);
 const proxy = proxySlice(set, get);
-			const recipes = recipesSlice(set, get);
-			const sseHandlers = sseHandlersSlice(set, get);
+const recipes = recipesSlice(set, get);
+		const checkpoints = checkpointsSlice(set, get);
+		const sseHandlers = sseHandlersSlice(set, get);
 				const bridge = createChatStoreSlice(set, get);
 
 				return {
@@ -31,17 +33,19 @@ const proxy = proxySlice(set, get);
 					setSseConnected: sseConnection.setSseConnected!,
 					testData: sseConnection.testData!,
 					servers: servers.servers!,
-					serverStats: servers.serverStats!,
-					serverLogs: servers.serverLogs!,
+serverStats: servers.serverStats!,
+				serverLogs: servers.serverLogs!,
+				serverSlots: servers.serverSlots!,
 					downloads: downloads.downloads!,
 					devices: devices.devices!,
 					backends: backends.backends!,
 					backendGroups: backends.backendGroups!,
 proxyStatus: proxy.proxyStatus!,
 				proxyRoutes: proxy.proxyRoutes!,
-				recipes: recipes.recipes!,
-				activeRun: recipes.activeRun!,
-				stepOutputs: recipes.stepOutputs!,
+recipes: recipes.recipes!,
+			activeRun: recipes.activeRun!,
+			stepOutputs: recipes.stepOutputs!,
+			checkpoints: checkpoints.checkpoints!,
 				SSEHandlers: sseHandlers.SSEHandlers!,
 
 					// Bridge Chat State

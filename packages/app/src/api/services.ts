@@ -32,6 +32,12 @@ import type {
 	IAccessTokenCreatePayload,
 	IAccessTokenUpdatePayload,
 	IAccessTokenCreateResult,
+	ICheckpoint,
+	ISaveCheckpointRequest,
+	ISaveCheckpointResponse,
+	IRestoreCheckpointRequest,
+	IRestoreCheckpointResponse,
+	TCheckpointId,
 } from '@warpcore/shared';
 import type {
 	IChatThread,

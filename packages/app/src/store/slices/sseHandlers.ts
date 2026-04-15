@@ -1,5 +1,5 @@
 import type { AppState, ImmerSet, ImmerGet } from '../types';
-import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, IRecipesInitPayload, IRunsStepStartedPayload, IRunsStepOutputPayload, IRunsStepFinishedPayload, IRunsFinishedPayload, ERecipeStreamKind } from '@warpcore/shared';
+import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, IRecipesInitPayload, IRunsStepStartedPayload, IRunsStepOutputPayload, IRunsStepFinishedPayload, IRunsFinishedPayload, ERecipeStreamKind, ISseSlotStatePayload, ISseServerSlotsSnapshotPayload, IServerSlotsState, ISseCheckpointPayload, ISseCheckpointDeletedPayload } from '@warpcore/shared';
 import { ERecipeStepStatus } from '@warpcore/shared';
 
 interface SSEHandlersSlice {
@@ -42,6 +42,38 @@ export const sseHandlersSlice = (
 				state.serverLogs[serverId] = appended.length > 500 ? appended.slice(-500) : appended;
 			}
 		}),
+		'slot:state': (data: ISseSlotStatePayload) => setState((state) => {
+			const existing = state.serverSlots[data.serverId];
+			if (!existing) {
+				state.serverSlots[data.serverId] = { serverId: data.serverId, slots: [data.state], metadata: {} };
+				return;
+			}
+			const idx = existing.slots.findIndex(s => s.slotId === data.state.slotId);
+			if (idx >= 0) existing.slots[idx] = data.state;
+			else existing.slots.push(data.state);
+		}),
+		'server:slots-snapshot': (data: ISseServerSlotsSnapshotPayload | Record<TServerId, IServerSlotsState>) => setState((state) => {
+			// On-connect handler returns Record<serverId, snapshot>; live emit sends { snapshot }
+			if ('snapshot' in data) {
+				state.serverSlots[data.snapshot.serverId] = data.snapshot;
+			} else {
+				for (const [serverId, snap] of Object.entries(data)) {
+					state.serverSlots[serverId] = snap;
+				}
+			}
+		}),
+		'checkpoint:created': (data: ISseCheckpointPayload) => setState((state) => {
+			state.checkpoints[data.checkpoint.id] = data.checkpoint;
+		}),
+		'checkpoint:updated': (data: ISseCheckpointPayload) => setState((state) => {
+			state.checkpoints[data.checkpoint.id] = data.checkpoint;
+		}),
+		'checkpoint:deleted': (data: ISseCheckpointDeletedPayload) => setState((state) => {
+			delete state.checkpoints[data.checkpointId];
+		}),
+		'checkpoint:restored': () => {
+			// State change is observed via subsequent slot:state events
+		},
 
 		// Phase 1: Proxy
 		'proxy:init': (data) => setState((state) => { state.proxyStatus = data.status; state.proxyRoutes = data.routes; }),

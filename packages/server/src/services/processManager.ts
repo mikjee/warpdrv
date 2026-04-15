@@ -3,6 +3,7 @@ import http from 'http';
 import type { IServer, ILaunchParams } from '@warpcore/shared';
 import { EServerStatus, EKvQuantType } from '@warpcore/shared';
 import { startStatsPolling, stopStatsPolling } from './statsPoller';
+import { bootstrapServer, teardownServer, parseLogLine } from './slotStateTracker';
 import { store } from '../util/store';
 import { sseManager } from './sseManagerInstance';
 
@@ -142,6 +143,7 @@ export function spawnServer(
 			for (const line of lines) {
 				appendLog(line);
 				sseManager.emit('servers:logs', { [serverId]: [line] });
+				parseLogLine(serverId, line);
 			}
 		});
 		child.stderr?.on('data', (data: Buffer) => {
@@ -149,6 +151,7 @@ export function spawnServer(
 			for (const line of lines) {
 				appendLog(line);
 				sseManager.emit('servers:logs', { [serverId]: [line] });
+				parseLogLine(serverId, line);
 			}
 		});
 		// Extract port from args for health polling
@@ -162,7 +165,8 @@ export function spawnServer(
 				async () => {
 					onStatusChange(EServerStatus.RUNNING);
 					await emitServerUpdate(serverId, EServerStatus.RUNNING, null, Date.now());
-					startStatsPolling(serverId, port);
+					// startStatsPolling(serverId, port);
+					await bootstrapServer(serverId, port);
 				},
 				async (err) => {
 					onStatusChange(EServerStatus.ERROR, err);
@@ -177,7 +181,8 @@ export function spawnServer(
 		});
 		child.on('exit', (code) => {
 			if (healthInterval) clearInterval(healthInterval);
-			stopStatsPolling(serverId);
+			// stopStatsPolling(serverId);
+			teardownServer(serverId);
 			processes.delete(serverId);
 			if (code !== 0 && code !== null) {
 				onStatusChange(EServerStatus.ERROR, `Process exited with code ${code}`);
@@ -214,7 +219,8 @@ export async function killServer(serverId: string, pid?: number): Promise<boolea
     
     // Try to kill from in-memory process first, then fall back to PID
     if (child?.pid) {
-        stopStatsPolling(serverId);
+        // stopStatsPolling(serverId);
+        teardownServer(serverId);
         
         return new Promise((resolve) => {
             const pidToUse = child.pid;
@@ -304,7 +310,8 @@ export async function killServer(serverId: string, pid?: number): Promise<boolea
     
     // If not in map, try to kill using PID from storage (orphan process)
     if (pid) {
-        stopStatsPolling(serverId);
+        // stopStatsPolling(serverId);
+        teardownServer(serverId);
         if (!isProcessAlive(pid)) {
             return true;
         }

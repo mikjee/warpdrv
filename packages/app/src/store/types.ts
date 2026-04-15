@@ -1,4 +1,4 @@
-import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, TStepId } from '@warpcore/shared';
+import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, TStepId, IServerSlotsState, ICheckpoint, TCheckpointId } from '@warpcore/shared';
 import type { IProxyStatus, IStickyRouteInfo } from '@/api/services';
 export { type ImmerSet, type ImmerGet } from '@warpcore/bridge';
 import type {
@@ -28,6 +28,7 @@ export interface AppState {
 	servers: Record<TServerId, IServer>;
 	serverStats: Record<TServerId, IServerStats>;
 	serverLogs: Record<TServerId, string[]>;
+	serverSlots: Record<TServerId, IServerSlotsState>;
 
 	// Downloads (Phase 1)
 	downloads: Record<TDownloadId, IDownload>;
@@ -60,6 +61,7 @@ export interface AppState {
 	// Bridge Chat State
 	threads: Record<TThreadId, IChatThread>;
 	chunksByMessageId: Record<string, {
+		partId: string,
 		chunk: string,
 		lastUpdate: Date,
 	}>;
@@ -100,4 +102,6 @@ export interface AppState {
 	recipes: Record<TRecipeId, IRecipe>;
 	activeRun: IRecipeRunState | null;
 	stepOutputs: Record<TStepId, string>;
+	// Checkpoints
+	checkpoints: Record<TCheckpointId, ICheckpoint>;
 }

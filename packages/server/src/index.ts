@@ -14,7 +14,7 @@ import { authRouter } from './routes/auth';
 import { authMiddleware } from './middleware/auth';
 import type { ISettings, IServer, IDownload, IDevice, IBackend, IBackendGroup } from '@warpcore/shared';
 import type { TBackendId, TBackendGroupId } from '@warpcore/shared';
-import { DEFAULT_SETTINGS, EServerStatus, EDownloadStatus } from '@warpcore/shared';
+import { DEFAULT_SETTINGS, EServerStatus, EDownloadStatus, SSE_CHANNELS_CHECKPOINT } from '@warpcore/shared';
 import { runMigrations } from './services/migrationRunner';
 import { updateRouter } from './routes/update';
 import { chatRouter } from './routes/chat';
@@ -24,7 +24,9 @@ import { startModelProxy, getProxyStatus } from './services/modelProxy';
 import { summaryRouter } from './routes/summary';
 import { sseManager } from './services/sseManagerInstance';
 import { getAllServerStats, getServerStats } from './services/statsPoller';
+import { getAllServerSlots, getServerSlots } from './services/slotStateTracker';
 import { recipesRouter } from './routes/recipes';
+import { checkpointsRouter } from './routes/checkpoints';
 import { setRecipeRunnerSSE, getActiveRun } from './services/recipeRunner';
 import { listRecipes } from './services/recipeStore';
 import { getAllDownloads, getAllDownloadsRecord } from './services/downloadManager';
@@ -128,6 +130,7 @@ async function main() {
 	app.use('/api/mcp', authMiddleware, mcpRouter);
 	app.use('/api/summary', authMiddleware, summaryRouter);
 	app.use('/api/recipes', authMiddleware, recipesRouter);
+	app.use('/api/checkpoints', authMiddleware, checkpointsRouter);
 	// SSE endpoint (protected by auth)
 	app.get('/api/events', authMiddleware, async (req, res) => {
 		console.log('[SSE] New client');
@@ -179,10 +182,14 @@ async function main() {
 			return result;
 		});
 
-		sseManager.onInterval('servers:stats', () => {
-			const stats = getAllServerStats();
-			return Object.keys(stats).length > 0 ? stats : null;
-		}, 1500);
+		// sseManager.onInterval('servers:stats', () => {
+		// 	const stats = getAllServerStats();
+		// 	return Object.keys(stats).length > 0 ? stats : null;
+		// }, 1500);
+		sseManager.onConnect(SSE_CHANNELS_CHECKPOINT.SERVER_SLOTS_SNAPSHOT, async () => {
+			const all = getAllServerSlots();
+			return Object.keys(all).length > 0 ? all : null;
+		});
 
 		// Phase 1: Proxy
 		sseManager.onConnect('proxy:init', async () => {

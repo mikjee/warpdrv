@@ -211,6 +211,9 @@ export interface IServer {
 	stats: IServerStats | null;
 	// Auto-launch at startup (optional for backwards compatibility)
 	autoLaunch?: boolean;
+	// Auto checkpoint behavior (optional for backwards compatibility)
+	autoSaveCheckpointOnStop?: boolean;
+	autoLoadCheckpointOnStart?: boolean;
 }
 export interface ISlotStats {
 	id: number;
