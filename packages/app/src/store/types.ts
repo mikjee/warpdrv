@@ -1,4 +1,4 @@
-import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice, TBackendId, IBackend, TBackendGroupId, IBackendGroup } from '@warpcore/shared';
+import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, TStepId } from '@warpcore/shared';
 import type { IProxyStatus, IStickyRouteInfo } from '@/api/services';
 export { type ImmerSet, type ImmerGet } from '@warpcore/bridge';
 import type {
@@ -95,4 +95,9 @@ export interface AppState {
 	setCurrentServerId: (id: string | null) => void;
 	setCurrentSystemPrompt: (prompt: string) => void;
 	setCurrentInferenceParams: (params: Record<string, unknown>) => void;
+
+	// Recipes
+	recipes: Record<TRecipeId, IRecipe>;
+	activeRun: IRecipeRunState | null;
+	stepOutputs: Record<TStepId, string>;
 }

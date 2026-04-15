@@ -10,6 +10,7 @@ import {
 	Globe,
 	Info,
 	Server,
+	ScrollText,
 } from 'lucide-react';
 import { BsRouter } from 'react-icons/bs';
 import { MessageSquare } from 'lucide-react';
@@ -32,6 +33,7 @@ import { SettingsPage } from '../pages/SettingsPage';
 import { ProxyPage } from '../pages/ProxyPage';
 import { ChatPage } from '../pages/ChatPage';
 import { McpPage } from '../pages/McpPage';
+import { RecipesPage } from '../pages/RecipesPage';
 
 // Page lifecycle config: closeOnSwitch=false means page persists (hidden but not unmounted)
 type TPageConfig = {
@@ -49,6 +51,7 @@ const PAGE_REGISTRY: Record<string, TPageConfig> = {
 	'/settings': { component: SettingsPage, closeOnSwitch: true },
 	'/about': { component: AboutPage, closeOnSwitch: true },
 	'/mcp': { component: McpPage, closeOnSwitch: false },
+	'/recipes': { component: RecipesPage, closeOnSwitch: false },
 };
 
 interface INavItem {
@@ -160,7 +163,8 @@ const NAV_ITEMS: INavItem[] = [
 			return null;
 		},
 	},
-	{ path: '/mcp', label: 'MCP', icon: <Plug size={18} /> }
+	{ path: '/mcp', label: 'MCP', icon: <Plug size={18} /> },
+	{ path: '/recipes', label: 'Recipes', icon: <ScrollText size={18} /> },
 ];
 
 const NAV_ITEMS_BOTTOM: INavItem[] = [

@@ -9,6 +9,7 @@ import { downloadsSlice } from './slices/downloads';
 import { devicesSlice } from './slices/devices';
 import { backendsSlice } from './slices/backends';
 import { proxySlice } from './slices/proxy';
+import { recipesSlice } from './slices/recipes';
 import { createChatStoreSlice } from '@warpcore/bridge/client';
 
 export const useStore = create<AppState>()(
@@ -19,8 +20,9 @@ export const useStore = create<AppState>()(
 				const downloads = downloadsSlice(set, get);
 				const devices = devicesSlice(set, get);
 				const backends = backendsSlice(set, get);
-				const proxy = proxySlice(set, get);
-				const sseHandlers = sseHandlersSlice(set, get);
+const proxy = proxySlice(set, get);
+			const recipes = recipesSlice(set, get);
+			const sseHandlers = sseHandlersSlice(set, get);
 				const bridge = createChatStoreSlice(set, get);
 
 				return {
@@ -35,9 +37,12 @@ export const useStore = create<AppState>()(
 					devices: devices.devices!,
 					backends: backends.backends!,
 					backendGroups: backends.backendGroups!,
-					proxyStatus: proxy.proxyStatus!,
-					proxyRoutes: proxy.proxyRoutes!,
-					SSEHandlers: sseHandlers.SSEHandlers!,
+proxyStatus: proxy.proxyStatus!,
+				proxyRoutes: proxy.proxyRoutes!,
+				recipes: recipes.recipes!,
+				activeRun: recipes.activeRun!,
+				stepOutputs: recipes.stepOutputs!,
+				SSEHandlers: sseHandlers.SSEHandlers!,
 
 					// Bridge Chat State
 					threads: bridge.threads,

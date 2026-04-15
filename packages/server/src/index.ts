@@ -24,6 +24,9 @@ import { startModelProxy, getProxyStatus } from './services/modelProxy';
 import { summaryRouter } from './routes/summary';
 import { sseManager } from './services/sseManagerInstance';
 import { getAllServerStats, getServerStats } from './services/statsPoller';
+import { recipesRouter } from './routes/recipes';
+import { setRecipeRunnerSSE, getActiveRun } from './services/recipeRunner';
+import { listRecipes } from './services/recipeStore';
 import { getAllDownloads, getAllDownloadsRecord } from './services/downloadManager';
 import { SqlitePersistence, McpClientManager, McpConfig, PermissionManager, Orchestrator, SseBroadcaster } from '@warpcore/bridge/server';
 import path from 'path';
@@ -124,6 +127,7 @@ async function main() {
 	app.use('/api/chat', authMiddleware, chatRouter);
 	app.use('/api/mcp', authMiddleware, mcpRouter);
 	app.use('/api/summary', authMiddleware, summaryRouter);
+	app.use('/api/recipes', authMiddleware, recipesRouter);
 	// SSE endpoint (protected by auth)
 	app.get('/api/events', authMiddleware, async (req, res) => {
 		console.log('[SSE] New client');
@@ -254,6 +258,15 @@ async function main() {
 	}
 
 	registerSSEChannels();
+
+	setRecipeRunnerSSE(sseManager);
+
+	sseManager.onConnect('recipes:init', async () => {
+		const recipes = await listRecipes();
+		const recipesMap: Record<string, typeof recipes[number]> = {};
+		for (const r of recipes) recipesMap[r.id] = r;
+		return { recipes: recipesMap, activeRun: getActiveRun() };
+	});
 
 	app.listen(port, host, () => {
 		console.log(`[WarpCore] API server listening on ${host}:${port}`);

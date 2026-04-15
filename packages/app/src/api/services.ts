@@ -1,5 +1,12 @@
 import { api, login, logout, fetchAuthCheck, fetchAuthMe } from './client';
 import type {
+	IRecipe,
+	IRecipeCreatePayload,
+	IRecipeUpdatePayload,
+	IRecipeRunRequest,
+	IRecipeRunResponse,
+	IRecipeState,
+	IRecipeRunState,
 	ISettings,
 	IBackend,
 	IBackendCreatePayload,
@@ -310,4 +317,44 @@ export async function updateToken(id: string, data: IAccessTokenUpdatePayload) {
 
 export async function deleteToken(id: string) {
 	return api.del<null>(`/tokens/${id}`);
+}
+
+// ============================================================
+// Recipes
+// ============================================================
+
+export async function fetchRecipes() {
+	return api.getList<IRecipe>('/recipes');
+}
+
+export async function fetchRecipe(id: string) {
+	return api.get<IRecipe>(`/recipes/${id}`);
+}
+
+export async function fetchRecipeState(id: string) {
+	return api.get<IRecipeState | null>(`/recipes/${id}/state`);
+}
+
+export async function createRecipe(data: IRecipeCreatePayload) {
+	return api.post<IRecipe>('/recipes', data);
+}
+
+export async function updateRecipe(id: string, data: IRecipeUpdatePayload) {
+	return api.put<IRecipe>(`/recipes/${id}`, data);
+}
+
+export async function deleteRecipe(id: string) {
+	return api.del<null>(`/recipes/${id}`);
+}
+
+export async function runRecipe(id: string, data: IRecipeRunRequest) {
+	return api.post<IRecipeRunResponse>(`/recipes/${id}/run`, data);
+}
+
+export async function cancelRecipeRun() {
+	return api.post<{ cancelled: boolean }>('/recipes/runs/cancel');
+}
+
+export async function fetchActiveRecipeRun() {
+	return api.get<IRecipeRunState | null>('/recipes/runs/active');
 }

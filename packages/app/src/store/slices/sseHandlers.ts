@@ -1,5 +1,6 @@
 import type { AppState, ImmerSet, ImmerGet } from '../types';
-import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, TBackendId, IBackend, TBackendGroupId, IBackendGroup } from '@warpcore/shared';
+import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, IRecipesInitPayload, IRunsStepStartedPayload, IRunsStepOutputPayload, IRunsStepFinishedPayload, IRunsFinishedPayload, ERecipeStreamKind } from '@warpcore/shared';
+import { ERecipeStepStatus } from '@warpcore/shared';
 
 interface SSEHandlersSlice {
 	SSEHandlers: Record<string, (data: any) => void>;
@@ -77,5 +78,49 @@ export const sseHandlersSlice = (
 		// MCP
 		'mcp:init': (data) => setState((state) => { state.mcpServers = data; }),
 		'mcp:servers': (data) => setState((state) => { state.mcpServers = data; }),
+
+		// Recipes
+		'recipes:init': (data: IRecipesInitPayload) => setState((state) => {
+			state.recipes = data.recipes;
+			state.activeRun = data.activeRun;
+			state.stepOutputs = {};
+		}),
+		'recipes:update': (data: IRecipe) => setState((state) => {
+			state.recipes[data.id] = data;
+		}),
+		'recipes:delete': (data: IRecipe) => setState((state) => {
+			delete state.recipes[data.id];
+		}),
+		'runs:started': (data: IRecipeRunState) => setState((state) => {
+			state.activeRun = data;
+			state.stepOutputs = {};
+		}),
+		'runs:step-started': (data: IRunsStepStartedPayload) => setState((state) => {
+			if (!state.activeRun || state.activeRun.runId !== data.runId) return;
+			const step = state.activeRun.steps.find(s => s.id === data.stepId);
+			if (step) {
+				step.status = ERecipeStepStatus.RUNNING;
+				step.startedAt = data.startedAt;
+			}
+		}),
+		'runs:step-output': (data: IRunsStepOutputPayload) => setState((state) => {
+			if (!state.activeRun || state.activeRun.runId !== data.runId) return;
+			const existing = state.stepOutputs[data.stepId] ?? '';
+			state.stepOutputs[data.stepId] = existing + data.data;
+		}),
+		'runs:step-finished': (data: IRunsStepFinishedPayload) => setState((state) => {
+			if (!state.activeRun || state.activeRun.runId !== data.runId) return;
+			const step = state.activeRun.steps.find(s => s.id === data.stepId);
+			if (step) {
+				step.status = data.status;
+				step.exitCode = data.exitCode;
+				step.finishedAt = data.finishedAt;
+			}
+		}),
+		'runs:finished': (data: IRunsFinishedPayload) => setState((state) => {
+			if (!state.activeRun || state.activeRun.runId !== data.runId) return;
+			state.activeRun.status = data.status;
+			state.activeRun.finishedAt = data.finishedAt;
+		}),
 	},
 });

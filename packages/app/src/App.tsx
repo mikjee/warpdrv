@@ -52,6 +52,7 @@ export function App() {
 				<Route path="/chat" />
 				<Route path="/settings" />
 				<Route path="/mcp" />
+				<Route path="/recipes" />
 			</Route>
 		</Routes>
 	);
