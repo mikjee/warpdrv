@@ -13,6 +13,10 @@ export function useThreadConfig(threadId: TThreadId | null) {
 	useEffect(() => {
 		if (!threadId) return;
 
+		// Reset refs when threadId changes to ensure fresh config is loaded
+		lastFetchedPromptRef.current = '';
+		lastFetchedParamsRef.current = '{}';
+
 		async function loadConfig() {
 			const res = await fetch(`/api/chat/threads/${threadId}/config`);
 			if (res.ok) {
