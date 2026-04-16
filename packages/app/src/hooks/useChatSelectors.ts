@@ -8,7 +8,7 @@ import { ExportedMessageRepository } from '@assistant-ui/react';
 function shallowEqualExcluding<T extends object>(
     a: T,
     b: T,
-    excludeKey: keyof T
+    excludeKey?: keyof T
 ): boolean {
     const keys = Object.keys(a) as (keyof T)[];
     
@@ -135,7 +135,10 @@ const convertMessage = useCallback((msg: any) => {
 			return false;
 		}
 
-		const needReconvert = shallowEqualExcluding(msg.message, convertedMsg, "content");
+		const needReconvert = 
+			shallowEqualExcluding(msg.message, convertedMsg, "content")
+			|| shallowEqualExcluding(msg.message.metadata.custom || {}, convertedMsg.metadata.custom || {}, "content");
+			
 		if (needReconvert) {
 			if (isRunningChanged && msg.message.role === 'assistant') msg.message.status = convertedMsg.status;
 			return false;

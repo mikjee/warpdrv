@@ -40,7 +40,7 @@ export function SlotPill({ slot, metadata }: ISlotPillProps) {
 			bg={`color-mix(in srgb, ${color} 10%, transparent)`}
 			borderWidth="1px"
 			borderColor={`color-mix(in srgb, ${color} 20%, transparent)`}
-			minW="140px"
+			minW="80px"
 			overflow="hidden"
 		>
 			<HStack gap="2" fontSize="10px" fontFamily='"Geist Mono", monospace' color={color}>
