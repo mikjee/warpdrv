@@ -4,6 +4,8 @@ import type { IServer, ILaunchParams } from '@warpcore/shared';
 import { EServerStatus, EKvQuantType } from '@warpcore/shared';
 import { startStatsPolling, stopStatsPolling } from './statsPoller';
 import { bootstrapServer, teardownServer, parseLogLine } from './slotStateTracker';
+import { listCheckpoints, restoreCheckpoint, saveCheckpoint } from './checkpointService';
+import { ECheckpointSaveMode } from '@warpcore/shared';
 import { store } from '../util/store';
 import { sseManager } from './sseManagerInstance';
 
@@ -167,6 +169,7 @@ export function spawnServer(
 					await emitServerUpdate(serverId, EServerStatus.RUNNING, null, Date.now());
 					// startStatsPolling(serverId, port);
 					await bootstrapServer(serverId, port);
+					await maybeAutoLoadCheckpoint(serverId);
 				},
 				async (err) => {
 					onStatusChange(EServerStatus.ERROR, err);
@@ -203,6 +206,9 @@ export function spawnServer(
 }
 // Kill a running server process and wait for termination
 export async function killServer(serverId: string, pid?: number): Promise<boolean> {
+    // Auto-save checkpoint before kill if enabled
+    await maybeAutoSaveCheckpoint(serverId);
+
     const child = processes.get(serverId);
     
     // Helper to check if port is free
@@ -377,4 +383,43 @@ export function clearServerLogs(serverId: string): void {
 // Get all tracked process IDs
 export function getTrackedServerIds(): string[] {
 	return [...processes.keys()];
+}
+
+// Auto-load latest compatible checkpoint if enabled on this server
+async function maybeAutoLoadCheckpoint(serverId: string): Promise<void> {
+	try {
+		const { store } = await import('../util/store');
+		const server = await store.get<IServer>(`servers:${serverId}`);
+		if (!server || !server.autoLoadCheckpointOnStart) return;
+		const all = await listCheckpoints({ serverId: null, threadId: null });
+		const forThisServer = all.filter(c => c.serverId === serverId);
+		if (forThisServer.length === 0) return;
+		const latest = forThisServer.sort((a, b) => b.createdAt - a.createdAt)[0]!;
+		const targetBundleId = latest.bundleId;
+		await restoreCheckpoint({
+			checkpointId: targetBundleId ? null : latest.id,
+			bundleId: targetBundleId,
+			targetServerId: serverId,
+		});
+	} catch (err) {
+		console.error(`[auto-load] ${serverId}:`, err);
+	}
+}
+
+// Auto-save all slots as a bundle if enabled on this server
+async function maybeAutoSaveCheckpoint(serverId: string): Promise<void> {
+	try {
+		const { store } = await import('../util/store');
+		const server = await store.get<IServer>(`servers:${serverId}`);
+		if (!server || !server.autoSaveCheckpointOnStop) return;
+		await saveCheckpoint({
+			serverId,
+			slotIds: null,
+			mode: ECheckpointSaveMode.SAVE,
+			name: `Auto-save ${new Date().toISOString()}`,
+			notes: null,
+		});
+	} catch (err) {
+		console.error(`[auto-save] ${serverId}:`, err);
+	}
 }
