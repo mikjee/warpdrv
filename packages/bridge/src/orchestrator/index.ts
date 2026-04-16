@@ -98,17 +98,34 @@ export class Orchestrator {
 			// If userMessage content provided, bridge generates ID and saves
 			if (request.userMessage) {
 				const userMessageId = crypto.randomUUID();
+				const content: IMessagePart[] = [{
+					id: crypto.randomUUID(),
+					type: EMessagePartType.TEXT,
+					orderIndex: 0,
+					text: request.userMessage.content,
+				}];
+				
+				if (request.attachments?.length) {
+					for (let i = 0; i < request.attachments.length; i++) {
+						const att = request.attachments[i];
+						content.push({
+							id: crypto.randomUUID(),
+							type: EMessagePartType.ATTACHMENT,
+							orderIndex: content.length,
+							data: att.data,
+							mimeType: att.mimeType,
+							fileName: att.fileName,
+							fileSize: att.fileSize,
+						});
+					}
+				}
+				
 				const userMsg: IChatMessage = {
 					id: userMessageId,
 					parentId: request.parentId ?? null,
 					threadId: request.threadId,
 					role: EChatRole.USER,
-					content: [{
-						id: crypto.randomUUID(),
-						type: EMessagePartType.TEXT,
-						orderIndex: 0,
-						text: request.userMessage.content,
-					}],
+					content,
 					stats: null,
 					createdAt: Date.now(),
 				};
