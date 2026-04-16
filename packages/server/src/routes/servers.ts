@@ -168,6 +168,8 @@ serversRouter.post('/', async (req, res) => {
 		error: null,
 		stats: null,
 		autoLaunch: payload.autoLaunch ?? false,
+		autoSaveCheckpointOnStop: payload.autoSaveCheckpointOnStop ?? false,
+		autoLoadCheckpointOnStart: payload.autoLoadCheckpointOnStart ?? false,
 	};
 
 	// Build args and spawn
@@ -303,7 +305,7 @@ serversRouter.put('/:id', async (req, res) => {
 		return;
 	}
 
-	type TUpdatePayload = Partial<Pick<IServer, 'backendId' | 'backendGroupId' | 'modelPath' | 'mmprojPath' | 'serverName' | 'params' | 'serverAlias' | 'autoLaunch'>> & { relaunch?: boolean };
+	type TUpdatePayload = Partial<Pick<IServer, 'backendId' | 'backendGroupId' | 'modelPath' | 'mmprojPath' | 'serverName' | 'params' | 'serverAlias' | 'autoLaunch' | 'autoSaveCheckpointOnStop' | 'autoLoadCheckpointOnStart'>> & { relaunch?: boolean };
 	const updatePayload = req.body as TUpdatePayload;
 	const shouldRelaunch = updatePayload.relaunch ?? true;
 
@@ -380,6 +382,12 @@ serversRouter.put('/:id', async (req, res) => {
 	}
 	if (updatePayload.autoLaunch !== undefined) {
 		server.autoLaunch = updatePayload.autoLaunch;
+	}
+	if (updatePayload.autoSaveCheckpointOnStop !== undefined) {
+		server.autoSaveCheckpointOnStop = updatePayload.autoSaveCheckpointOnStop;
+	}
+	if (updatePayload.autoLoadCheckpointOnStart !== undefined) {
+		server.autoLoadCheckpointOnStart = updatePayload.autoLoadCheckpointOnStart;
 	}
 
 	if (shouldRelaunch) {

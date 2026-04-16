@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
 	saveCheckpoint,
 	restoreCheckpoint,
+	restoreCheckpointsMapped,
 	listCheckpoints,
 	deleteCheckpoint,
 	updateCheckpoint,
@@ -10,6 +11,7 @@ import { sseManager } from '../services/sseManagerInstance';
 import type {
 	ISaveCheckpointRequest,
 	IRestoreCheckpointRequest,
+	IRestoreCheckpointsMappedRequest,
 } from '@warpcore/shared';
 import { SSE_CHANNELS_CHECKPOINT } from '@warpcore/shared';
 
@@ -89,6 +91,25 @@ checkpointsRouter.delete('/:id', async (req, res) => {
 		}
 		sseManager.emit(SSE_CHANNELS_CHECKPOINT.CHECKPOINT_DELETED, { checkpointId: req.params.id });
 		res.json({ ok: true, data: { id: req.params.id }, error: null });
+	} catch (err) {
+		const message = err instanceof Error ? err.message : 'Unknown error';
+		res.status(500).json({ ok: false, data: null, error: message });
+	}
+});
+
+// POST /api/checkpoints/restore-mapped
+checkpointsRouter.post('/restore-mapped', async (req, res) => {
+	try {
+		const payload = req.body as IRestoreCheckpointsMappedRequest;
+		const result = await restoreCheckpointsMapped(payload);
+		if (result.success) {
+			sseManager.emit(SSE_CHANNELS_CHECKPOINT.CHECKPOINT_RESTORED, {
+				targetServerId: payload.targetServerId,
+				restoredSlotCount: result.restoredSlotCount,
+				bundleId: null,
+			});
+		}
+		res.json({ ok: result.success, data: result, error: null });
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Unknown error';
 		res.status(500).json({ ok: false, data: null, error: message });

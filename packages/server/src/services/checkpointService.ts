@@ -11,6 +11,7 @@ import type {
 	ISaveCheckpointResponse,
 	IRestoreCheckpointRequest,
 	IRestoreCheckpointResponse,
+	IRestoreCheckpointsMappedRequest,
 	IListCheckpointsQuery,
 	IFingerprintMismatch,
 	IServer,
@@ -150,6 +151,19 @@ export async function saveCheckpoint(req: ISaveCheckpointRequest): Promise<ISave
 	if (slotIds.length === 0) throw new Error('No slots to save');
 
 	const dir = await getCheckpointsDir();
+
+	// Enforce disk cap - reject if already at or over limit
+	const settings = await store.get<ISettings>(SETTINGS_KEY) ?? DEFAULT_SETTINGS;
+	const capGB = settings.maxCheckpointDiskGB ?? 50;
+	if (capGB > 0) {
+		const existing = await listCheckpoints({ serverId: null, threadId: null });
+		const usedBytes = existing.reduce((s, c) => s + c.sizeBytes, 0);
+		const capBytes = capGB * 1024 * 1024 * 1024;
+		if (usedBytes >= capBytes) {
+			throw new Error(`Checkpoint disk cap reached (${capGB} GB). Delete old checkpoints before saving.`);
+		}
+	}
+
 	const fingerprint = buildFingerprint(server.modelPath);
 	const fingerprintHash = computeFingerprintHash(fingerprint);
 	const createdAt = Date.now();
@@ -323,4 +337,79 @@ export async function updateCheckpoint(id: TCheckpointId, patch: { name?: string
 	if (patch.notes !== undefined) existing.notes = patch.notes ? truncatePreview(patch.notes) : null;
 	writeSidecar(filePath, existing);
 	return existing;
+}
+
+// Restore multiple checkpoints with explicit slot mapping
+export async function restoreCheckpointsMapped(req: IRestoreCheckpointsMappedRequest): Promise<IRestoreCheckpointResponse> {
+	if (req.mappings.length === 0) throw new Error('No mappings provided');
+
+	// Validate no duplicate target slots
+	const targetSet = new Set<TSlotId>();
+	for (const m of req.mappings) {
+		if (targetSet.has(m.targetSlotId)) throw new Error(`Duplicate target slot: ${m.targetSlotId}`);
+		targetSet.add(m.targetSlotId);
+	}
+
+	const server = await store.get<IServer>(`${SERVERS_PREFIX}${req.targetServerId}`);
+	if (!server) throw new Error(`Target server not found: ${req.targetServerId}`);
+
+	const all = await listCheckpoints({ serverId: null, threadId: null });
+	const mapByCheckpointId: Record<TCheckpointId, ICheckpoint> = {};
+	for (const cp of all) mapByCheckpointId[cp.id] = cp;
+
+	// Validate all mapped checkpoints exist
+	for (const m of req.mappings) {
+		if (mapByCheckpointId[m.checkpointId] == null) {
+			throw new Error(`Checkpoint not found: ${m.checkpointId}`);
+		}
+	}
+
+	// Validate target server has those slots
+	const slotsRes = await httpGetJson(server.port, '/slots');
+	if (slotsRes.status !== 200) throw new Error(`GET /slots failed with status ${slotsRes.status}`);
+	const serverSlots = JSON.parse(slotsRes.body) as Array<{ id: TSlotId }>;
+	const serverSlotSet = new Set(serverSlots.map(s => s.id));
+	for (const m of req.mappings) {
+		if (!serverSlotSet.has(m.targetSlotId)) {
+			throw new Error(`Target server has no slot ${m.targetSlotId}`);
+		}
+	}
+
+	// Validate fingerprint against target server's model
+	const targetFingerprint = buildFingerprint(server.modelPath);
+	const targetHash = computeFingerprintHash(targetFingerprint);
+	const mismatches: IFingerprintMismatch[] = [];
+	const sample = mapByCheckpointId[req.mappings[0]!.checkpointId]!;
+	if (sample.fingerprintHash !== targetHash) {
+		if (sample.fingerprint.modelFilename !== targetFingerprint.modelFilename) {
+			mismatches.push({
+				field: 'modelFilename',
+				expected: sample.fingerprint.modelFilename,
+				actual: targetFingerprint.modelFilename,
+			});
+		}
+		if (sample.fingerprint.modelSizeBytes !== targetFingerprint.modelSizeBytes) {
+			mismatches.push({
+				field: 'modelSizeBytes',
+				expected: sample.fingerprint.modelSizeBytes,
+				actual: targetFingerprint.modelSizeBytes,
+			});
+		}
+	}
+	if (mismatches.length > 0) {
+		return { success: false, restoredSlotCount: 0, fingerprintMismatches: mismatches };
+	}
+
+	// Execute restores
+	let restored = 0;
+	for (const m of req.mappings) {
+		const cp = mapByCheckpointId[m.checkpointId]!;
+		const res = await httpPostJson(server.port, `/slots/${m.targetSlotId}?action=restore`, { filename: cp.filename });
+		if (res.status !== 200) {
+			throw new Error(`Restore failed for target slot ${m.targetSlotId} (checkpoint ${cp.id}): status ${res.status}, body: ${res.body}`);
+		}
+		restored++;
+	}
+
+	return { success: true, restoredSlotCount: restored, fingerprintMismatches: [] };
 }

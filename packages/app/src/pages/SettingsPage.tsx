@@ -38,6 +38,8 @@ export function SettingsPage() {
 	const [proxyPort, setProxyPort] = useState(1234);
 	const [autoLaunch, setAutoLaunch] = useState<boolean | null>(null); // null = loading/not desktop, true/false = OS autostart status
 	const [startMinimized, setStartMinimized] = useState(false);
+	const [checkpointsPath, setCheckpointsPath] = useState('');
+	const [maxCheckpointDiskGB, setMaxCheckpointDiskGB] = useState(50);
 	const [newRoot, setNewRoot] = useState('');
 	const [saved, setSaved] = useState(false);
 
@@ -56,6 +58,8 @@ export function SettingsPage() {
 			setProxyEnabled(settings.proxyEnabled ?? false);
 			setProxyPort(settings.proxyPort ?? 1234);
 			setStartMinimized(settings.startMinimized ?? false);
+			setCheckpointsPath(settings.checkpointsPath ?? '');
+			setMaxCheckpointDiskGB(settings.maxCheckpointDiskGB ?? 50);
 		}
 	}, [settings]);
 
@@ -138,6 +142,8 @@ export function SettingsPage() {
 			proxyEnabled,
 			proxyPort,
 				startMinimized,
+			checkpointsPath,
+			maxCheckpointDiskGB,
 		});
 
 		if (saveMut.error) {
@@ -275,6 +281,23 @@ export function SettingsPage() {
 						</VStack>
 					</Card>
 
+					{/* Checkpoints */}
+					<Card>
+						<VStack align="stretch" gap="4">
+							<Box>
+								<Text fontSize="14px" fontWeight="600" color="#e4e4e7" mb="1">Checkpoints</Text>
+								<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)">KV cache checkpoint storage. Leave path blank for default.</Text>
+							</Box>
+							<HStack gap="3">
+								<Input value={checkpointsPath} onChange={e => setCheckpointsPath(e.target.value)} size="sm" flex="1" placeholder="~/.config/warpcore/checkpoints/" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
+							</HStack>
+							<HStack gap="3">
+								<Text fontSize="13px" color="rgba(255, 255, 255, 0.5)">Max disk usage</Text>
+								<Input value={maxCheckpointDiskGB} onChange={e => setMaxCheckpointDiskGB(Number(e.target.value))} type="number" size="sm" w="100px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
+								<Text fontSize="13px" color="rgba(255, 255, 255, 0.4)">GB</Text>
+							</HStack>
+						</VStack>
+					</Card>
 					{/* API */}
 					<Card>
 						<VStack align="stretch" gap="4">

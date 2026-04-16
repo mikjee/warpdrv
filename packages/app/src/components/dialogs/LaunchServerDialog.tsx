@@ -155,6 +155,8 @@ interface ILaunchServerDialogProps {
 		serverAlias: string[];
 		params: ILaunchParams;
 		autoLaunch?: boolean;
+		autoSaveCheckpointOnStop?: boolean;
+		autoLoadCheckpointOnStart?: boolean;
 	};
 }
 
@@ -185,6 +187,8 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 	const [serverName, setServerName] = useState<string>(editMode?.serverName ?? '');
 	const [serverAliasesInput, setServerAliasesInput] = useState<string>(editMode?.serverAlias?.join(', ') ?? '');
 	const [autoLaunch, setAutoLaunch] = useState<boolean>(editMode?.autoLaunch ?? false);
+	const [autoSaveCheckpointOnStop, setAutoSaveCheckpointOnStop] = useState<boolean>(editMode?.autoSaveCheckpointOnStop ?? false);
+	const [autoLoadCheckpointOnStart, setAutoLoadCheckpointOnStart] = useState<boolean>(editMode?.autoLoadCheckpointOnStart ?? false);
 	const [showPresets, setShowPresets] = useState(false);
 	const [presetName, setPresetName] = useState('');
 	const [launching, setLaunching] = useState(false);
@@ -316,6 +320,8 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 			params,
 			serverAlias: aliases,
 			autoLaunch,
+			autoSaveCheckpointOnStop,
+			autoLoadCheckpointOnStart,
 		}, false);
 		setLaunching(false);
 		if (result.ok) {
@@ -343,6 +349,8 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				params,
 				serverAlias: aliases,
 				autoLaunch,
+				autoSaveCheckpointOnStop,
+				autoLoadCheckpointOnStart,
 			}, true);
 			setLaunching(false);
 			if (result.ok) {
@@ -361,6 +369,8 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				params,
 				serverAlias: aliases,
 				autoLaunch,
+				autoSaveCheckpointOnStop,
+				autoLoadCheckpointOnStart,
 			});
 			setLaunching(false);
 			if (result.ok) {
@@ -808,6 +818,20 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 							<Switch.Control />
 							<Switch.Label ml="2" fontSize="13px" color={autoLaunch ? '#34d399' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
 								Auto-launch at startup
+							</Switch.Label>
+						</Switch.Root>
+						<Switch.Root label="Auto-load latest checkpoint on start" checked={autoLoadCheckpointOnStart} onCheckedChange={(details) => setAutoLoadCheckpointOnStart(details.checked)} color={autoLoadCheckpointOnStart ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'}>
+							<Switch.HiddenInput />
+							<Switch.Control />
+							<Switch.Label ml="2" fontSize="13px" color={autoLoadCheckpointOnStart ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
+								Auto-load latest checkpoint on start
+							</Switch.Label>
+						</Switch.Root>
+						<Switch.Root label="Auto-save checkpoint on stop" checked={autoSaveCheckpointOnStop} onCheckedChange={(details) => setAutoSaveCheckpointOnStop(details.checked)} color={autoSaveCheckpointOnStop ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'}>
+							<Switch.HiddenInput />
+							<Switch.Control />
+							<Switch.Label ml="2" fontSize="13px" color={autoSaveCheckpointOnStop ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
+								Auto-save all slots on stop
 							</Switch.Label>
 						</Switch.Root>
 					</HStack>

@@ -25,6 +25,7 @@ import { summaryRouter } from './routes/summary';
 import { sseManager } from './services/sseManagerInstance';
 import { getAllServerStats, getServerStats } from './services/statsPoller';
 import { getAllServerSlots, getServerSlots } from './services/slotStateTracker';
+import { listCheckpoints } from './services/checkpointService';
 import { recipesRouter } from './routes/recipes';
 import { checkpointsRouter } from './routes/checkpoints';
 import { setRecipeRunnerSSE, getActiveRun } from './services/recipeRunner';
@@ -189,6 +190,12 @@ async function main() {
 		sseManager.onConnect(SSE_CHANNELS_CHECKPOINT.SERVER_SLOTS_SNAPSHOT, async () => {
 			const all = getAllServerSlots();
 			return Object.keys(all).length > 0 ? all : null;
+		});
+		sseManager.onConnect(SSE_CHANNELS_CHECKPOINT.CHECKPOINTS_INIT, async () => {
+			const checkpoints = await listCheckpoints({ serverId: null, threadId: null });
+			const result: Record<string, typeof checkpoints[number]> = {};
+			for (const cp of checkpoints) result[cp.id] = cp;
+			return result;
 		});
 
 		// Phase 1: Proxy

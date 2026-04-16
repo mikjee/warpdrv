@@ -1,7 +1,7 @@
 import { Box, Text, HStack, VStack, Flex, Button, Spinner, Badge, Input, Switch, InputGroup, Combobox, createListCollection, Portal, Popover } from '@chakra-ui/react';
 import {
 	Play, Square, RotateCcw, Server, Clock, Trash2, X, Plus,
-	Activity, Gauge, Cpu, Blocks, Terminal, Edit, Search, ChevronDown, ArrowUpAZ, ArrowDownZA, Sparkles
+	Activity, Gauge, Cpu, Blocks, Terminal, Edit, Search, ChevronDown, ArrowUpAZ, ArrowDownZA, Sparkles, Save, Zap
 } from 'lucide-react';
 import { FaBrain, FaBookOpen } from 'react-icons/fa6';
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -16,6 +16,9 @@ import { useListQuery, useMutation } from '../hooks/useQuery';
 import { useStore } from '../store';
 import { fetchModels, stopServer, restartServer, removeServer, updateServer, fetchSettings, updateSettings, clearStickyRoute } from '../api/services';
 import type { IServer, IServerStats, IBackend, IBackendGroup, IModel, TSortField, TSortOrder } from '@warpcore/shared';
+import { SlotPill } from '../components/SlotPill';
+import { SaveCheckpointDialog } from '../components/dialogs/SaveCheckpointDialog';
+import { LoadCheckpointDialog } from '../components/dialogs/LoadCheckpointDialog';
 import { EServerStatus } from '@warpcore/shared';
 
 const QUANT_COLORS: Record<string, string> = {
@@ -64,6 +67,7 @@ function toggleSortOrder(order: TSortOrder): TSortOrder {
 export function ServersPage() {
 	const serversRecord = useStore((s) => s.servers);
 	const serverStats = useStore((s) => s.serverStats);
+	const serverSlots = useStore((s) => s.serverSlots);
 	const servers = useMemo(() => Object.values(serversRecord), [serversRecord]);
 
 	const backendsRecord = useStore((s) => s.backends);
@@ -233,6 +237,8 @@ export function ServersPage() {
 	const [showLaunch, setShowLaunch] = useState(false);
 	const [logsServerId, setLogsServerId] = useState<string | null>(null);
 	const [editingServerId, setEditingServerId] = useState<string | null>(null);
+	const [saveCheckpointServerId, setSaveCheckpointServerId] = useState<string | null>(null);
+	const [loadCheckpointServerId, setLoadCheckpointServerId] = useState<string | null>(null);
 	const [deletingServerId, setDeletingServerId] = useState<string | null>(null);
 	const [removingAlias, setRemovingAlias] = useState<{ serverId: string; alias: string } | null>(null);
 	const [addingAlias, setAddingAlias] = useState<{ serverId: string; serverName: string } | null>(null);
@@ -635,6 +641,18 @@ export function ServersPage() {
 											</HStack>
 
 											<HStack gap="1" my="auto" pl="3" borderLeft={"1px solid rgba(255,255,255,0.08)"}>
+												{/* Load checkpoint */}
+												<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }} borderRadius="md" onClick={() => setLoadCheckpointServerId(server.id)}>
+													<Zap size={14} />
+												</Button>
+												{/* Save checkpoint (running only) */}
+												{isRunning && (
+													<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }} borderRadius="md" onClick={() => setSaveCheckpointServerId(server.id)}>
+														<Save size={14} />
+													</Button>
+												)}
+												{/* Separator */}
+												<Box w="1px" h="16px" bg="rgba(255, 255, 255, 0.08)" my="auto" />
 												{/* Run/Restart */}
 												{!isRunning && !isLoading && (
 													<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' }} borderRadius="md" onClick={() => handleRestart(server.id)}>
@@ -674,7 +692,7 @@ export function ServersPage() {
 										</Flex>
 
 										{/* Stats */}
-										{(() => {
+										{/* {(() => {
 											const stats = serverStats[server.id] || null;
 											if (!stats || (stats.slots ?? []).length === 0) return null;
 											return (
@@ -696,6 +714,21 @@ export function ServersPage() {
 															</Badge>
 														);
 													})}
+												</HStack>
+											);
+										})()} */}
+										{(() => {
+											const slotsState = serverSlots[server.id] ?? null;
+											if (!slotsState || slotsState.slots.length === 0) return null;
+											return (
+												<HStack gap="2" flexWrap="wrap">
+													{slotsState.slots.map(slot => (
+														<SlotPill
+															key={slot.slotId}
+															slot={slot}
+															metadata={slotsState.metadata[slot.slotId] ?? null}
+														/>
+													))}
 												</HStack>
 											);
 										})()}
@@ -728,7 +761,23 @@ export function ServersPage() {
 						serverAlias: editingServer.serverAlias ?? [],
 						params: editingServer.params,
 						autoLaunch: editingServer.autoLaunch ?? false,
+						autoSaveCheckpointOnStop: editingServer.autoSaveCheckpointOnStop ?? false,
+						autoLoadCheckpointOnStart: editingServer.autoLoadCheckpointOnStart ?? false,
 					}}
+				/>
+			)}
+			{saveCheckpointServerId && serversRecord[saveCheckpointServerId] && (
+				<SaveCheckpointDialog
+					server={serversRecord[saveCheckpointServerId]!}
+					isOpen={true}
+					onClose={() => setSaveCheckpointServerId(null)}
+				/>
+			)}
+			{loadCheckpointServerId && serversRecord[loadCheckpointServerId] && (
+				<LoadCheckpointDialog
+					server={serversRecord[loadCheckpointServerId]!}
+					isOpen={true}
+					onClose={() => setLoadCheckpointServerId(null)}
 				/>
 			)}
 

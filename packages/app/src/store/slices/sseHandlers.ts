@@ -1,5 +1,5 @@
 import type { AppState, ImmerSet, ImmerGet } from '../types';
-import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, IRecipesInitPayload, IRunsStepStartedPayload, IRunsStepOutputPayload, IRunsStepFinishedPayload, IRunsFinishedPayload, ERecipeStreamKind, ISseSlotStatePayload, ISseServerSlotsSnapshotPayload, IServerSlotsState, ISseCheckpointPayload, ISseCheckpointDeletedPayload } from '@warpcore/shared';
+import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, IRecipesInitPayload, IRunsStepStartedPayload, IRunsStepOutputPayload, IRunsStepFinishedPayload, IRunsFinishedPayload, ERecipeStreamKind, ISseSlotStatePayload, ISseServerSlotsSnapshotPayload, IServerSlotsState, ISseCheckpointPayload, ISseCheckpointDeletedPayload, ICheckpoint, TCheckpointId } from '@warpcore/shared';
 import { ERecipeStepStatus } from '@warpcore/shared';
 
 interface SSEHandlersSlice {
@@ -61,6 +61,9 @@ export const sseHandlersSlice = (
 					state.serverSlots[serverId] = snap;
 				}
 			}
+		}),
+		'checkpoints:init': (data: Record<TCheckpointId, ICheckpoint>) => setState((state) => {
+			state.checkpoints = data;
 		}),
 		'checkpoint:created': (data: ISseCheckpointPayload) => setState((state) => {
 			state.checkpoints[data.checkpoint.id] = data.checkpoint;

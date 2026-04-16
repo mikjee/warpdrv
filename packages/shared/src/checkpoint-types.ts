@@ -94,6 +94,16 @@ export interface IRestoreCheckpointRequest {
 	targetServerId: TServerId;
 }
 
+export interface ICheckpointSlotMapping {
+	checkpointId: TCheckpointId;
+	targetSlotId: TSlotId;
+}
+
+export interface IRestoreCheckpointsMappedRequest {
+	targetServerId: TServerId;
+	mappings: ICheckpointSlotMapping[];
+}
+
 export interface IRestoreCheckpointResponse {
 	success: boolean;
 	restoredSlotCount: number;
@@ -113,6 +123,7 @@ export const SSE_CHANNELS_CHECKPOINT = {
 	CHECKPOINT_UPDATED: 'checkpoint:updated',
 	CHECKPOINT_DELETED: 'checkpoint:deleted',
 	CHECKPOINT_RESTORED: 'checkpoint:restored',
+	CHECKPOINTS_INIT: 'checkpoints:init',
 } as const;
 
 export type TSseCheckpointChannel = typeof SSE_CHANNELS_CHECKPOINT[keyof typeof SSE_CHANNELS_CHECKPOINT];

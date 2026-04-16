@@ -1,0 +1,382 @@
+import { useState, useMemo } from 'react';
+import { Dialog, Portal, Box, Text, HStack, VStack, Button } from '@chakra-ui/react';
+import { Upload } from 'lucide-react';
+import { useStore } from '../../store';
+import { restoreCheckpointsMapped } from '../../api/services';
+import { useToast } from '../ToastProvider';
+import type { IServer, ICheckpoint, ICheckpointSlotMapping, TCheckpointId, TSlotId } from '@warpcore/shared';
+import { ConfirmDialog } from './ConfirmDialog';
+
+type TFilter = 'THIS_SERVER' | 'ALL_COMPATIBLE';
+
+interface ILoadCheckpointDialogProps {
+	server: IServer;
+	isOpen: boolean;
+	onClose: () => void;
+}
+
+function formatBytes(n: number): string {
+	if (n >= 1024 * 1024 * 1024) return `${(n / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+	if (n >= 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(0)} MB`;
+	if (n >= 1024) return `${(n / 1024).toFixed(0)} KB`;
+	return `${n} B`;
+}
+
+function formatAge(createdAt: number): string {
+	const ms = Date.now() - createdAt;
+	const mins = Math.floor(ms / 60000);
+	if (mins < 60) return `${mins}m ago`;
+	const hours = Math.floor(mins / 60);
+	if (hours < 24) return `${hours}h ago`;
+	const days = Math.floor(hours / 24);
+	return `${days}d ago`;
+}
+
+export function LoadCheckpointDialog({ server, isOpen, onClose }: ILoadCheckpointDialogProps) {
+	const { toast } = useToast();
+	const allCheckpoints = useStore((s) => s.checkpoints);
+	const serverSlots = useStore((s) => s.serverSlots[server.id] ?? null);
+
+	const [filter, setFilter] = useState<TFilter>('THIS_SERVER');
+	const [selected, setSelected] = useState<Record<TCheckpointId, TSlotId>>({});
+	const [isLoading, setIsLoading] = useState<boolean>(false);
+	const [confirmOpen, setConfirmOpen] = useState<boolean>(false);
+
+	const targetSlotIds = useMemo<TSlotId[]>(() => {
+		return (serverSlots?.slots ?? []).map(s => s.slotId).sort((a, b) => a - b);
+	}, [serverSlots]);
+
+	// Filter checkpoints for this server's model fingerprint
+	const filtered = useMemo<ICheckpoint[]>(() => {
+		const list = Object.values(allCheckpoints);
+		if (filter === 'THIS_SERVER') {
+			return list.filter(c => c.serverId === server.id);
+		}
+		// ALL_COMPATIBLE: match fingerprint
+		const ownFp = list.find(c => c.serverId === server.id)?.fingerprintHash;
+		if (ownFp) return list.filter(c => c.fingerprintHash === ownFp);
+		return list;
+	}, [allCheckpoints, filter, server.id]);
+
+	// Group by bundleId (or single-checkpoint "bundles")
+	const bundles = useMemo(() => {
+		const byBundle: Record<string, ICheckpoint[]> = {};
+		const standalone: ICheckpoint[] = [];
+		for (const cp of filtered) {
+			if (cp.bundleId == null) {
+				standalone.push(cp);
+			} else {
+				if (!byBundle[cp.bundleId]) byBundle[cp.bundleId] = [];
+				byBundle[cp.bundleId]!.push(cp);
+			}
+		}
+		const bundleGroups = Object.entries(byBundle).map(([bundleId, items]) => ({
+			bundleId,
+			items: items.sort((a, b) => a.slotIndex - b.slotIndex),
+		}));
+		bundleGroups.sort((a, b) => (b.items[0]?.createdAt ?? 0) - (a.items[0]?.createdAt ?? 0));
+		return { bundleGroups, standalone: standalone.sort((a, b) => b.createdAt - a.createdAt) };
+	}, [filtered]);
+
+	// Auto-assign default target slot for a newly selected checkpoint
+	function autoAssignTarget(currentSelection: Record<TCheckpointId, TSlotId>): TSlotId {
+		const used = new Set(Object.values(currentSelection));
+		for (const t of targetSlotIds) {
+			if (!used.has(t)) return t;
+		}
+		return targetSlotIds[0] ?? 0;
+	}
+
+	function toggleCheckpoint(cp: ICheckpoint) {
+		setSelected(prev => {
+			const next = { ...prev };
+			if (cp.id in next) {
+				delete next[cp.id];
+			} else {
+				next[cp.id] = autoAssignTarget(next);
+			}
+			return next;
+		});
+	}
+
+	function toggleBundle(items: ICheckpoint[]) {
+		const allSelected = items.every(cp => cp.id in selected);
+		setSelected(prev => {
+			const next = { ...prev };
+			if (allSelected) {
+				for (const cp of items) delete next[cp.id];
+			} else {
+				for (const cp of items) {
+					if (!(cp.id in next)) next[cp.id] = autoAssignTarget(next);
+				}
+			}
+			return next;
+		});
+	}
+
+	function setTargetSlot(cpId: TCheckpointId, targetSlot: TSlotId) {
+		setSelected(prev => ({ ...prev, [cpId]: targetSlot }));
+	}
+
+	const mappings: ICheckpointSlotMapping[] = useMemo(() => {
+		return Object.entries(selected).map(([checkpointId, targetSlotId]) => ({ checkpointId, targetSlotId }));
+	}, [selected]);
+
+	const hasDuplicateTargets = useMemo(() => {
+		const targets = mappings.map(m => m.targetSlotId);
+		return targets.length !== new Set(targets).size;
+	}, [mappings]);
+
+	const canLoad = mappings.length > 0 && !hasDuplicateTargets && targetSlotIds.length > 0;
+
+	async function performLoad() {
+		setIsLoading(true);
+		try {
+			const res = await restoreCheckpointsMapped({
+				targetServerId: server.id,
+				mappings,
+			});
+			if (res.ok && res.data?.success) {
+				toast('success', `Loaded ${res.data.restoredSlotCount} slot(s)`);
+				onClose();
+			} else if (res.data?.fingerprintMismatches.length) {
+				toast('error', 'Checkpoint incompatible with target server');
+			} else {
+				toast('error', res.error ?? 'Load failed');
+			}
+		} catch (err) {
+			toast('error', String(err));
+		} finally {
+			setIsLoading(false);
+		}
+	}
+
+	const filterButtonStyle = (active: boolean) => ({
+		flex: '1',
+		size: 'sm' as const,
+		bg: active ? 'rgba(51, 129, 255, 0.12)' : 'transparent',
+		color: active ? '#3381ff' : 'rgba(255, 255, 255, 0.5)',
+		borderWidth: '1px',
+		borderColor: active ? 'rgba(51, 129, 255, 0.25)' : 'rgba(255, 255, 255, 0.08)',
+		_hover: { bg: active ? 'rgba(51, 129, 255, 0.18)' : 'rgba(255, 255, 255, 0.04)' },
+		borderRadius: 'lg',
+		fontSize: '12px',
+		fontWeight: '500',
+	});
+
+	function CheckpointRow({ cp, indent }: { cp: ICheckpoint; indent: boolean }) {
+		const isSelected = cp.id in selected;
+		const target = selected[cp.id];
+		return (
+			<HStack
+				gap="2"
+				px="2"
+				py="1.5"
+				borderRadius="md"
+				bg={isSelected ? 'rgba(51, 129, 255, 0.06)' : 'transparent'}
+				_hover={{ bg: isSelected ? 'rgba(51, 129, 255, 0.1)' : 'rgba(255, 255, 255, 0.03)' }}
+				pl={indent ? '6' : '2'}
+				cursor="pointer"
+				onClick={() => toggleCheckpoint(cp)}
+			>
+				<Box
+					w="14px"
+					h="14px"
+					borderRadius="sm"
+					borderWidth="1px"
+					borderColor={isSelected ? '#3381ff' : 'rgba(255, 255, 255, 0.2)'}
+					bg={isSelected ? '#3381ff' : 'transparent'}
+					flexShrink="0"
+				/>
+				<VStack gap="0" align="stretch" flex="1">
+					<HStack gap="2">
+						<Text fontSize="12px" color="#e4e4e7" fontFamily='"Geist Mono", monospace'>
+							Slot {cp.slotIndex}
+						</Text>
+						<Text fontSize="11px" color="rgba(255, 255, 255, 0.4)" fontFamily='"Geist Mono", monospace'>
+							{cp.tokens.toLocaleString()} tok
+						</Text>
+					</HStack>
+				</VStack>
+				{isSelected && (
+					<HStack gap="1" onClick={(e) => e.stopPropagation()}>
+						<Text fontSize="11px" color="rgba(255, 255, 255, 0.4)">→</Text>
+						<select
+							value={target}
+							onChange={(e) => setTargetSlot(cp.id, parseInt(e.target.value, 10))}
+							style={{
+								background: 'rgba(255, 255, 255, 0.05)',
+								border: '1px solid rgba(255, 255, 255, 0.1)',
+								borderRadius: '4px',
+								color: '#e4e4e7',
+								fontSize: '11px',
+								fontFamily: '"Geist Mono", monospace',
+								padding: '2px 4px',
+							}}
+						>
+							{targetSlotIds.map(t => (
+								<option key={t} value={t}>{t}</option>
+							))}
+						</select>
+					</HStack>
+				)}
+			</HStack>
+		);
+	}
+
+	function BundleHeader({ bundleId, items }: { bundleId: string; items: ICheckpoint[] }) {
+		const allSelected = items.every(cp => cp.id in selected);
+		const someSelected = !allSelected && items.some(cp => cp.id in selected);
+		const first = items[0]!;
+		const totalSize = items.reduce((sum, i) => sum + i.sizeBytes, 0);
+		return (
+			<HStack
+				gap="2"
+				px="2"
+				py="1.5"
+				borderRadius="md"
+				bg="rgba(255, 255, 255, 0.02)"
+				cursor="pointer"
+				onClick={() => toggleBundle(items)}
+				_hover={{ bg: 'rgba(255, 255, 255, 0.04)' }}
+			>
+				<Box
+					w="14px"
+					h="14px"
+					borderRadius="sm"
+					borderWidth="1px"
+					borderColor={allSelected ? '#3381ff' : someSelected ? 'rgba(51, 129, 255, 0.5)' : 'rgba(255, 255, 255, 0.2)'}
+					bg={allSelected ? '#3381ff' : someSelected ? 'rgba(51, 129, 255, 0.3)' : 'transparent'}
+					flexShrink="0"
+				/>
+				<VStack gap="0" align="stretch" flex="1">
+					<Text fontSize="12px" color="#e4e4e7" fontWeight="500">{first.name}</Text>
+					<Text fontSize="10px" color="rgba(255, 255, 255, 0.4)" fontFamily='"Geist Mono", monospace'>
+						{items.length} slots · {formatBytes(totalSize)} · {formatAge(first.createdAt)}
+					</Text>
+				</VStack>
+			</HStack>
+		);
+	}
+
+	return (
+		<>
+			<Dialog.Root open={isOpen} onOpenChange={(d) => { if (!d.open) onClose(); }}>
+				<Portal>
+					<Dialog.Backdrop />
+					<Dialog.Positioner>
+						<Dialog.Content
+							maxW="520px"
+							bg="#0f0f12"
+							borderColor="rgba(255, 255, 255, 0.08)"
+							borderRadius="2xl"
+							shadow="0 24px 80px rgba(0, 0, 0, 0.6)"
+						>
+							<VStack gap="4" px="6" py="5" align="stretch">
+								<HStack gap="2">
+									<Box w="8" h="8" borderRadius="lg" display="flex" alignItems="center" justifyContent="center" bg="rgba(51, 129, 255, 0.12)">
+										<Upload size={16} color="#3381ff" />
+									</Box>
+									<Dialog.Title fontSize="15px" fontWeight="700" color="#e4e4e7">
+										Load Checkpoint
+									</Dialog.Title>
+								</HStack>
+
+								<HStack gap="2">
+									<Button {...filterButtonStyle(filter === 'THIS_SERVER')} onClick={() => setFilter('THIS_SERVER')}>
+										This server
+									</Button>
+									<Button {...filterButtonStyle(filter === 'ALL_COMPATIBLE')} onClick={() => setFilter('ALL_COMPATIBLE')}>
+										All compatible
+									</Button>
+								</HStack>
+
+								<VStack
+									gap="1"
+									align="stretch"
+									maxH="320px"
+									overflowY="auto"
+									borderRadius="lg"
+									bg="rgba(255, 255, 255, 0.02)"
+									borderWidth="1px"
+									borderColor="rgba(255, 255, 255, 0.05)"
+									p="2"
+								>
+									{bundles.bundleGroups.length === 0 && bundles.standalone.length === 0 && (
+										<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)" textAlign="center" py="4">
+											No checkpoints available
+										</Text>
+									)}
+									{bundles.bundleGroups.map(({ bundleId, items }) => (
+										<VStack key={bundleId} gap="0" align="stretch">
+											<BundleHeader bundleId={bundleId} items={items} />
+											{items.map(cp => (
+												<CheckpointRow key={cp.id} cp={cp} indent={true} />
+											))}
+										</VStack>
+									))}
+									{bundles.standalone.map(cp => (
+										<CheckpointRow key={cp.id} cp={cp} indent={false} />
+									))}
+								</VStack>
+
+								<HStack justify="space-between">
+									<Text fontSize="11px" color={hasDuplicateTargets ? '#fb7185' : 'rgba(255, 255, 255, 0.5)'}>
+										{hasDuplicateTargets
+											? 'Duplicate target slots - adjust assignments'
+											: `Loading ${mappings.length} slot(s) into target server`}
+									</Text>
+								</HStack>
+
+								<HStack gap="2" w="100%" pt="2">
+									<Button
+										flex="1"
+										size="sm"
+										variant="ghost"
+										color="rgba(255, 255, 255, 0.4)"
+										_hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }}
+										borderRadius="lg"
+										fontSize="13px"
+										onClick={onClose}
+										disabled={isLoading}
+									>
+										Cancel
+									</Button>
+									<Button
+										flex="1"
+										size="sm"
+										bg="rgba(51, 129, 255, 0.12)"
+										color="#3381ff"
+										borderWidth="1px"
+										borderColor="rgba(51, 129, 255, 0.25)"
+										_hover={{ bg: 'rgba(51, 129, 255, 0.2)' }}
+										borderRadius="lg"
+										fontSize="13px"
+										fontWeight="500"
+										onClick={() => setConfirmOpen(true)}
+										disabled={isLoading || !canLoad}
+									>
+										{isLoading ? 'Loading...' : 'Load'}
+									</Button>
+								</HStack>
+							</VStack>
+						</Dialog.Content>
+					</Dialog.Positioner>
+				</Portal>
+			</Dialog.Root>
+
+			{confirmOpen && (
+				<ConfirmDialog
+					isOpen={confirmOpen}
+					title="Overwrite target slots?"
+					message="Loading will replace the current KV cache in the selected target slots."
+					confirmLabel="Load"
+					loadingLabel="Loading..."
+					isLoading={isLoading}
+					onConfirm={() => { setConfirmOpen(false); performLoad(); }}
+					onCancel={() => setConfirmOpen(false)}
+				/>
+			)}
+		</>
+	);
+}

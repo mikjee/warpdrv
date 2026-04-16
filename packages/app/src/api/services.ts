@@ -37,6 +37,7 @@ import type {
 	ISaveCheckpointResponse,
 	IRestoreCheckpointRequest,
 	IRestoreCheckpointResponse,
+	IRestoreCheckpointsMappedRequest,
 	TCheckpointId,
 } from '@warpcore/shared';
 import type {
@@ -363,4 +364,26 @@ export async function cancelRecipeRun() {
 
 export async function fetchActiveRecipeRun() {
 	return api.get<IRecipeRunState | null>('/recipes/runs/active');
+}
+// ============================================================
+// Checkpoints
+// ============================================================
+export async function fetchCheckpoints(serverId?: string) {
+	const query = serverId ? `?serverId=${encodeURIComponent(serverId)}` : '';
+	return api.getList<ICheckpoint>(`/checkpoints${query}`);
+}
+export async function saveCheckpoint(data: ISaveCheckpointRequest) {
+	return api.post<ISaveCheckpointResponse>('/checkpoints', data);
+}
+export async function restoreCheckpoint(data: IRestoreCheckpointRequest) {
+	return api.post<IRestoreCheckpointResponse>('/checkpoints/restore', data);
+}
+export async function restoreCheckpointsMapped(data: IRestoreCheckpointsMappedRequest) {
+	return api.post<IRestoreCheckpointResponse>('/checkpoints/restore-mapped', data);
+}
+export async function updateCheckpoint(id: TCheckpointId, data: { name?: string; notes?: string | null }) {
+	return api.put<ICheckpoint>(`/checkpoints/${id}`, data);
+}
+export async function deleteCheckpoint(id: TCheckpointId) {
+	return api.del<{ id: TCheckpointId }>(`/checkpoints/${id}`);
 }

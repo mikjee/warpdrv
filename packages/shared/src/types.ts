@@ -236,6 +236,8 @@ export interface IServerCreatePayload {
 	params: ILaunchParams;
 	serverAlias?: string[]; // optional aliases for proxy routing
 	autoLaunch?: boolean; // auto-launch at startup
+	autoSaveCheckpointOnStop?: boolean; // save all slots as bundle on server stop
+	autoLoadCheckpointOnStart?: boolean; // load latest checkpoint after server becomes ready
 }
 // ============================================================
 // Presets
@@ -278,6 +280,8 @@ export interface ISettings {
 	sidebarCollapsed?: boolean; // sidebar collapsed state
 	windowWidth?: number; // desktop window width (desktop only)
 	windowHeight?: number; // desktop window height (desktop only)
+	checkpointsPath?: string; // where to save KV cache checkpoints
+	maxCheckpointDiskGB?: number; // max disk usage cap for checkpoints in GB
 }
 export const DEFAULT_SETTINGS: ISettings = {
 	modelRoots: [],
@@ -296,6 +300,8 @@ export const DEFAULT_SETTINGS: ISettings = {
 	sidebarCollapsed: false,
 	windowWidth: 1100,
 	windowHeight: 750,
+	checkpointsPath: '',
+	maxCheckpointDiskGB: 50,
 };
 // ============================================================
 // VRAM Calculator
