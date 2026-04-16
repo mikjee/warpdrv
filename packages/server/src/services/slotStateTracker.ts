@@ -14,24 +14,33 @@ const serversState: Record<TServerId, IServerSlotsState> = {};
 
 // Bootstrap: read GET /slots once and seed the map
 export async function bootstrapServer(serverId: TServerId, port: number): Promise<void> {
-	const slots = await fetchSlotsSnapshot(port);
-	if (slots == null) {
-		serversState[serverId] = { serverId, slots: [], metadata: {} };
-		return;
+	const maxRetries = 5;
+	const retryDelay = 300;
+
+	for (let attempt = 0; attempt < maxRetries; attempt++) {
+		const slots = await fetchSlotsSnapshot(port);
+		if (slots != null) {
+			const liveSlots: ISlotLiveState[] = slots.map(s => ({
+				slotId: s.id,
+				isProcessing: s.is_processing,
+				taskId: s.id_task ?? null,
+				promptTokens: 0,
+				generatedTokens: s.next_token?.[0]?.n_decoded ?? 0,
+				cachedTokens: s.next_token?.[0]?.n_decoded ?? 0,
+				prefillProgress: null,
+				nCtx: s.n_ctx,
+				lastActivityAt: Date.now(),
+			}));
+			serversState[serverId] = { serverId, slots: liveSlots, metadata: {} };
+			emitSnapshot(serverId);
+			return;
+		}
+		if (attempt < maxRetries - 1) {
+			await new Promise(r => setTimeout(r, retryDelay));
+		}
 	}
-	const liveSlots: ISlotLiveState[] = slots.map(s => ({
-		slotId: s.id,
-		isProcessing: s.is_processing,
-		taskId: s.id_task ?? null,
-		promptTokens: 0,
-		generatedTokens: s.next_token?.[0]?.n_decoded ?? 0,
-		cachedTokens: s.next_token?.[0]?.n_decoded ?? 0,
-		prefillProgress: null,
-		nCtx: s.n_ctx,
-		lastActivityAt: Date.now(),
-	}));
-	serversState[serverId] = { serverId, slots: liveSlots, metadata: {} };
-	emitSnapshot(serverId);
+	console.warn(`[slotStateTracker] Failed to fetch slots for ${serverId} after ${maxRetries} attempts`);
+	serversState[serverId] = { serverId, slots: [], metadata: {} };
 }
 
 // Tear down state when server stops
@@ -98,8 +107,19 @@ export function parseLogLine(serverId: TServerId, line: string): void {
 		return;
 	}
 
-	// process_toke: id N | task M | n_decoded = X, n_remaining = Y, ...
-	const tokenMatch = line.match(/process_toke:\s*id\s+(\d+)\s*\|\s*task\s+(\d+)\s*\|\s*n_decoded\s*=\s*(\d+),\s*n_remaining\s*=\s*(-?\d+)/);
+	// update_slots: id N | task M | prompt processing done, n_tokens = X, batch.n_tokens = Y
+	const doneMatch = line.match(/update_slots:\s*id\s+(\d+)\s*\|\s*task\s+(\d+)\s*\|\s*prompt processing done/);
+	if (doneMatch) {
+		const slotId = parseInt(doneMatch[1]!, 10);
+		updateSlot(serverId, slotId, {
+			prefillProgress: null,
+			lastActivityAt: Date.now(),
+		});
+		return;
+	}
+
+	// process_token: id N | task M | n_decoded = X, n_remaining = Y, ...
+	const tokenMatch = line.match(/process_token:\s*id\s+(\d+)\s*\|\s*task\s+(\d+)\s*\|\s*n_decoded\s*=\s*(\d+),\s*n_remaining\s*=\s*(-?\d+)/);
 	if (tokenMatch) {
 		const slotId = parseInt(tokenMatch[1]!, 10);
 		const nDecoded = parseInt(tokenMatch[3]!, 10);

@@ -51,9 +51,10 @@ export function App() {
 				<Route path="/proxy" />
 				<Route path="/chat" />
 				<Route path="/settings" />
-				<Route path="/mcp" />
-				<Route path="/recipes" />
-			</Route>
+<Route path="/mcp" />
+			<Route path="/recipes" />
+			<Route path="/checkpoints" />
+		</Route>
 		</Routes>
 	);
 }

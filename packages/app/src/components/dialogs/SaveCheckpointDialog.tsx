@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Dialog, Portal, Box, Text, HStack, VStack, Button, Input } from '@chakra-ui/react';
+import { Dialog, Portal, Box, Text, HStack, VStack, Button, Input, Spinner } from '@chakra-ui/react';
 import { Save } from 'lucide-react';
 import { useStore } from '../../store';
 import { saveCheckpoint, fetchCheckpoints, deleteCheckpoint } from '../../api/services';
@@ -130,7 +130,8 @@ export function SaveCheckpointDialog({ server, isOpen, onClose }: ISaveCheckpoin
 							borderRadius="2xl"
 							shadow="0 24px 80px rgba(0, 0, 0, 0.6)"
 						>
-							<VStack gap="4" px="6" py="5" align="stretch">
+							<Box position="relative">
+								<VStack gap="4" px="6" py="5" align="stretch" style={{ opacity: isSaving ? 0.5 : 1 }}>
 								<HStack gap="2">
 									<Box w="8" h="8" borderRadius="lg" display="flex" alignItems="center" justifyContent="center" bg="rgba(51, 129, 255, 0.12)">
 										<Save size={16} color="#3381ff" />
@@ -273,6 +274,25 @@ export function SaveCheckpointDialog({ server, isOpen, onClose }: ISaveCheckpoin
 									</Button>
 								</HStack>
 							</VStack>
+
+							{isSaving && (
+								<Box
+									position="absolute"
+									top="0"
+									left="0"
+									right="0"
+									bottom="0"
+									bg="rgba(0, 0, 0, 0.3)"
+									display="flex"
+									alignItems="center"
+									justifyContent="center"
+									borderRadius="2xl"
+									zIndex={1}
+								>
+									<Spinner size="md" color="#3381ff" />
+								</Box>
+							)}
+						</Box>
 						</Dialog.Content>
 					</Dialog.Positioner>
 				</Portal>

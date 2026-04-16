@@ -189,7 +189,7 @@ async function main() {
 		// }, 1500);
 		sseManager.onConnect(SSE_CHANNELS_CHECKPOINT.SERVER_SLOTS_SNAPSHOT, async () => {
 			const all = getAllServerSlots();
-			return Object.keys(all).length > 0 ? all : null;
+			return Object.keys(all).length > 0 ? all : undefined;
 		});
 		sseManager.onConnect(SSE_CHANNELS_CHECKPOINT.CHECKPOINTS_INIT, async () => {
 			const checkpoints = await listCheckpoints({ serverId: null, threadId: null });

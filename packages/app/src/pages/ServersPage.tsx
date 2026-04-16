@@ -640,7 +640,7 @@ export function ServersPage() {
 												</Box>
 											</HStack>
 
-											<HStack gap="1" my="auto" pl="3" borderLeft={"1px solid rgba(255,255,255,0.08)"}>
+											<HStack gap="1" my="auto" pl="3">
 												{/* Load checkpoint */}
 												<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }} borderRadius="md" onClick={() => setLoadCheckpointServerId(server.id)}>
 													<Zap size={14} />

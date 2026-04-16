@@ -1,10 +1,11 @@
 import { spawn, type ChildProcess } from 'child_process';
 import http from 'http';
+import net from 'net';
 import type { IServer, ILaunchParams } from '@warpcore/shared';
 import { EServerStatus, EKvQuantType } from '@warpcore/shared';
 import { startStatsPolling, stopStatsPolling } from './statsPoller';
 import { bootstrapServer, teardownServer, parseLogLine } from './slotStateTracker';
-import { listCheckpoints, restoreCheckpoint, saveCheckpoint } from './checkpointService';
+import { listCheckpoints, restoreCheckpoint, saveCheckpoint, getCheckpointsDir } from './checkpointService';
 import { ECheckpointSaveMode } from '@warpcore/shared';
 import { store } from '../util/store';
 import { sseManager } from './sseManagerInstance';
@@ -65,6 +66,7 @@ export function buildArgs(
 	mmprojPath: string | null,
 	params: ILaunchParams,
 	defaultArgs: string[],
+	extraArgs?: Record<string, string>,
 ): string[] {
 	const args: string[] = [...defaultArgs];
 	const argsSet = new Set(defaultArgs);
@@ -111,11 +113,27 @@ export function buildArgs(
 	}
 	args.push('--host', '0.0.0.0');
 	args.push('--port', String(params.port));
+	// Injected extra args (e.g., --slot-save-path)
+	if (extraArgs) {
+		for (const [key, value] of Object.entries(extraArgs)) {
+			args.push(`--${key}`, value);
+		}
+	}
 	// Extra args — split by whitespace
 	if (params.extraArgs.trim()) {
 		args.push(...params.extraArgs.trim().split(/\s+/));
 	}
 	return args;
+}
+// Async wrapper that injects checkpoint path
+export async function buildServerArgs(
+	modelPath: string,
+	mmprojPath: string | null,
+	params: ILaunchParams,
+	defaultArgs: string[],
+): Promise<string[]> {
+	const checkpointDir = await getCheckpointsDir();
+	return buildArgs(modelPath, mmprojPath, params, defaultArgs, { 'slot-save-path': checkpointDir });
 }
 // Spawn a llama-server process
 export function spawnServer(
@@ -211,11 +229,11 @@ export async function killServer(serverId: string, pid?: number): Promise<boolea
 
     const child = processes.get(serverId);
     
-    // Helper to check if port is free
-    const isPortFree = (port: number): Promise<boolean> => {
-        return new Promise((resolvePort) => {
-            const server = require('net').createServer();
-            server.listen(port, '127.0.0.1', () => {
+// Helper to check if port is free
+	const isPortFree = (port: number): Promise<boolean> => {
+		return new Promise((resolvePort) => {
+			const server = net.createServer();
+			server.listen(port, '127.0.0.1', () => {
                 server.close();
                 resolvePort(true);
             });

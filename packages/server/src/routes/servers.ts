@@ -2,7 +2,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import { store } from '../util/store';
 import {
-	buildArgs,
+	buildServerArgs,
 	spawnServer,
 	killServer,
 	isProcessAlive,
@@ -68,7 +68,7 @@ export async function launchAutoStartServers(): Promise<void> {
 				continue;
 			}
 
-			const args = buildArgs(
+			const args = await buildServerArgs(
 				server.modelPath,
 				server.mmprojPath,
 				server.params,
@@ -173,7 +173,7 @@ serversRouter.post('/', async (req, res) => {
 	};
 
 	// Build args and spawn
-	const args = buildArgs(
+	const args = await buildServerArgs(
 		payload.modelPath,
 		payload.mmprojPath,
 		params,
@@ -270,7 +270,7 @@ serversRouter.post('/:id/restart', async (req, res) => {
 	await killServer(server.id, server.pid);
 
 	// Re-spawn
-	const args = buildArgs(
+	const args = await buildServerArgs(
 		server.modelPath,
 		server.mmprojPath,
 		server.params,
@@ -392,7 +392,7 @@ serversRouter.put('/:id', async (req, res) => {
 
 	if (shouldRelaunch) {
 		// Re-spawn with new params
-		const args = buildArgs(
+		const args = await buildServerArgs(
 			server.modelPath,
 			server.mmprojPath,
 			server.params,

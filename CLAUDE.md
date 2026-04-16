@@ -468,6 +468,156 @@ Browse and download GGUF models from HuggingFace:
 - Checkmark badge on already-downloaded files (checked across all model roots, persists across sessions)
 - Requires at least one model directory configured — shows guard screen otherwise
 
+## Checkpoint Feature
+
+Save and restore llama-server slot KV cache states for conversation resumption.
+
+### What It Does
+
+- **Save checkpoints:** Persist slot KV cache to disk (.bin files with JSON sidecars)
+- **Restore checkpoints:** Load saved KV cache into running server slots
+- **Bundle support:** Group multiple slot checkpoints together for multi-slot servers
+- **Auto-save/load:** Optional per-server auto-save on stop, auto-load on start
+- **Fingerprint validation:** Ensure checkpoints match target server's model
+- **Disk cap enforcement:** Configurable storage limit (default 50GB)
+
+### Architecture
+
+**Checkpoint Service** (`packages/server/src/services/checkpointService.ts`):
+- `saveCheckpoint()` — Trigger llama-server slot save, create sidecar metadata
+- `restoreCheckpoint()` — Validate fingerprint, restore single checkpoint or bundle
+- `restoreCheckpointsMapped()` — Explicit checkpoint-to-slot mapping
+- `listCheckpoints()` — Scan checkpoints directory, filter by serverId
+- `deleteCheckpoint()` — Remove .bin and .json files
+- `updateCheckpoint()` — Edit name/notes in sidecar
+
+**Slot State Tracker** (`packages/server/src/services/slotStateTracker.ts`):
+- `bootstrapServer()` — Read /slots API on server start, seed state
+- `teardownServer()` — Clear state on server stop
+- `parseLogLine()` — Extract slot events from llama-server logs
+- Real-time slot monitoring via log parsing (launch_slot_, update_slots, process_token, release)
+- SSE emission on state changes
+
+**Data Storage:**
+- Checkpoints stored in configurable directory (default: `~/.config/warpcore/checkpoints/`)
+- Each checkpoint: `<id>.bin` (KV cache binary) + `<id>.json` (metadata sidecar)
+- Sidecar contains: id, bundleId, serverId, slotIndex, fingerprint, sizeBytes, tokens, createdAt
+
+### Key Concepts
+
+**Checkpoint ID Format:**
+```
+<fingerprintHash>-<timestamp>-<slotIndex>
+Example: a1b2c3d4e5f67890-1704067200000-0
+```
+
+**Bundle Model:**
+- Multiple slots saved together share a `bundleId`
+- Restoring a bundle restores all slots in order (slotIndex 0→N)
+- Single-slot checkpoints have `bundleId: null`
+
+**Fingerprint Validation:**
+- Computed from model filename + file size (SHA-256, first 16 chars)
+- Prevents restoring checkpoints from wrong model
+- Returns error with mismatch details if validation fails
+
+**Slot State Tracking:**
+- Parsed from llama-server logs (not API polling)
+- Tracks: isProcessing, taskId, promptTokens, generatedTokens, cachedTokens, prefillProgress
+- Emits `slot:state` SSE events on changes
+- Snapshots emitted on connect via `server:slots-snapshot`
+
+### Save Modes
+
+**Per-Slot Selection:**
+- `ALL` — Save all slots as bundle
+- `LATEST` — Save most recently active slot
+- `LARGEST` — Save slot with most cached tokens
+- `SLOT` — Manually select specific slot
+
+**Replace vs New:**
+- `REPLACE_LATEST` — Delete existing latest bundle, save new one
+- `NEW` — Create new checkpoint/bundle with custom name
+
+### Auto-Save/Load
+
+Configurable per-server in LaunchServerDialog:
+- **autoSaveCheckpointOnStop:** Save all slots as bundle before server stop
+- **autoLoadCheckpointOnStart:** Load latest compatible checkpoint after server ready
+
+Implemented in `processManager.ts`:
+- `maybeAutoSaveCheckpoint()` — Called at start of `killServer()`
+- `maybeAutoLoadCheckpoint()` — Called after `bootstrapServer()` in health check
+
+### SSE Events
+
+**Channels:**
+- `slot:state` — Single slot state update
+- `slot:metadata` — Slot metadata (message count, preview)
+- `server:slots-snapshot` — Full server slot state (on-connect or live)
+- `checkpoint:created` — New checkpoint saved
+- `checkpoint:updated` — Checkpoint metadata edited
+- `checkpoint:deleted` — Checkpoint removed
+- `checkpoint:restored` — Restore operation completed
+- `checkpoints:init` — Initial checkpoint list (on-connect)
+
+### API Routes
+
+```
+# Checkpoint Management
+GET    /api/checkpoints?serverId=...&threadId=... — List checkpoints
+POST   /api/checkpoints                           — Save checkpoint(s)
+POST   /api/checkpoints/restore                   — Restore checkpoint/bundle
+POST   /api/checkpoints/restore-mapped            — Restore with explicit mapping
+PUT    /api/checkpoints/:id                       — Update name/notes
+DELETE /api/checkpoints/:id                       — Delete checkpoint
+```
+
+### Frontend Components
+
+**Dialogs:**
+- `SaveCheckpointDialog` — Slot selection, replace/new tabs, bundle deletion
+- `LoadCheckpointDialog` — Filter (THIS_SERVER/ALL_COMPATIBLE), bundle grouping, slot mapping
+
+**Page:**
+- `CheckpointsPage` — Search, sort, bundle grouping, inline rename, delete
+
+**Slot Monitoring:**
+- `SlotPill` — Real-time slot status badge (idle/processing, tokens)
+- Integrated into ServersPage server cards
+
+### Settings
+
+**Global (SettingsPage):**
+- `checkpointsPath` — Custom checkpoint directory (default: `~/.config/warpcore/checkpoints`)
+- `maxCheckpointDiskGB` — Storage cap in GB (default: 50, 0 = unlimited)
+
+**Per-Server (LaunchServerDialog):**
+- `autoSaveCheckpointOnStop` — Auto-save all slots on stop
+- `autoLoadCheckpointOnStart` — Auto-load latest on start
+
+### Important Patterns
+
+**Bundle Restoration:**
+- Bundle checkpoints restored in slotIndex order (0→N)
+- Target server must have ≥ bundle size slots
+- All checkpoints in bundle share same fingerprint
+
+**Explicit Mapping:**
+- `restoreCheckpointsMapped()` allows arbitrary checkpoint→slot assignments
+- Useful for restoring specific slots without full bundle
+- Validates no duplicate target slots
+
+**Fingerprint Mismatch Handling:**
+- Returns `{ success: false, fingerprintMismatches: [...] }`
+- Does NOT attempt restore if fingerprint doesn't match
+- Shows detailed error to user (expected vs actual filename/size)
+
+**Disk Cap Enforcement:**
+- Checked before save operation
+- Throws error if at/over cap: "Checkpoint disk cap reached (X GB). Delete old checkpoints before saving."
+- Cap includes all checkpoints (all servers, all models)
+
 ## TypeScript Conventions
 
 - Use Hard tab width 4 for coding, not space, only tabs. IMPORTANT

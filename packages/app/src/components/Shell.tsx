@@ -13,7 +13,7 @@ import {
 	ScrollText,
 } from 'lucide-react';
 import { BsRouter } from 'react-icons/bs';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Save } from 'lucide-react';
 import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff } from 'react-icons/vsc';
 import { UpdateBanner } from './UpdateBanner';
 import { TitleBar } from './TitleBar';
@@ -34,6 +34,7 @@ import { ProxyPage } from '../pages/ProxyPage';
 import { ChatPage } from '../pages/ChatPage';
 import { McpPage } from '../pages/McpPage';
 import { RecipesPage } from '../pages/RecipesPage';
+import { CheckpointsPage } from '../pages/CheckpointsPage';
 
 // Page lifecycle config: closeOnSwitch=false means page persists (hidden but not unmounted)
 type TPageConfig = {
@@ -52,13 +53,15 @@ const PAGE_REGISTRY: Record<string, TPageConfig> = {
 	'/about': { component: AboutPage, closeOnSwitch: true },
 	'/mcp': { component: McpPage, closeOnSwitch: false },
 	'/recipes': { component: RecipesPage, closeOnSwitch: false },
+	'/checkpoints': { component: CheckpointsPage, closeOnSwitch: true },
 };
 
 interface INavItem {
-	path: string;
-	label: string;
-	icon: ReactNode;
+	path?: string;
+	label?: string;
+	icon?: ReactNode;
 	badge?: (summary: ISummaryData | null) => ReactNode;
+	isSeparator?: boolean;
 }
 
 // Small count badge
@@ -114,7 +117,6 @@ function StatusDot({ online, hasError }: { online: boolean; hasError?: boolean }
 }
 
 const NAV_ITEMS: INavItem[] = [
-	{ path: '/chat', label: 'Chat', icon: <MessageSquare size={18} /> },
 	{
 		path: '/servers',
 		label: 'Servers',
@@ -127,8 +129,14 @@ const NAV_ITEMS: INavItem[] = [
 		icon: <BsRouter size={18} />,
 		badge: (s) => s ? <StatusDot online={s.router.online} hasError={s.router.hasError} /> : null,
 	},
-	{ path: '/models', label: 'Models', icon: <FolderOpen size={18} /> },
+	{ path: '/checkpoints', label: 'Checkpoints', icon: <Save size={18} /> },
+	{ isSeparator: true },
+
 	{ path: '/backends', label: 'Backends', icon: <Blocks size={18} /> },
+	{ path: '/recipes', label: 'Recipes', icon: <ScrollText size={18} /> },
+	{ isSeparator: true },
+
+	{ path: '/models', label: 'Models', icon: <FolderOpen size={18} /> },
 	{
 		path: '/hub',
 		label: 'Hub',
@@ -163,8 +171,10 @@ const NAV_ITEMS: INavItem[] = [
 			return null;
 		},
 	},
+	{ isSeparator: true },
+
 	{ path: '/mcp', label: 'MCP', icon: <Plug size={18} /> },
-	{ path: '/recipes', label: 'Recipes', icon: <ScrollText size={18} /> },
+	{ path: '/chat', label: 'Chat', icon: <MessageSquare size={18} /> },
 ];
 
 const NAV_ITEMS_BOTTOM: INavItem[] = [
@@ -181,12 +191,24 @@ function SidebarLink({
 	collapsed: boolean;
 	summary: ISummaryData | null;
 }) {
+	// Handle separator
+	if (item.isSeparator) {
+		return (
+			<Box
+				w="100%"
+				h="1px"
+				bg="rgba(255, 255, 255, 0.06)"
+				my="2"
+			/>
+		);
+	}
+
 	const location = useLocation();
 	const isActive = location.pathname === item.path || (location.pathname === '/' && item.path === '/servers');
 	const badgeNode = item.badge ? item.badge(summary) : null;
 
 	return (
-		<NavLink to={item.path} style={{ textDecoration: 'none', width: '100%' }}>
+		<NavLink to={item.path!} style={{ textDecoration: 'none', width: '100%' }}>
 			<HStack
 				gap={collapsed ? '0' : '3'}
 				px={collapsed ? '0' : '3'}

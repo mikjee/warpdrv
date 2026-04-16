@@ -291,6 +291,7 @@ export async function restoreCheckpoint(req: IRestoreCheckpointRequest): Promise
 		const cp = ordered[i]!;
 		const targetSlot = i;
 		const restoreRes = await httpPostJson(server.port, `/slots/${targetSlot}?action=restore`, { filename: cp.filename });
+		console.log(`[CheckpointService] Restore slot ${targetSlot} response - status: ${restoreRes.status}, body: ${restoreRes.body}`);
 		if (restoreRes.status !== 200) {
 			throw new Error(`Restore failed for slot ${targetSlot} (checkpoint ${cp.id}): status ${restoreRes.status}, body: ${restoreRes.body}`);
 		}
@@ -405,6 +406,7 @@ export async function restoreCheckpointsMapped(req: IRestoreCheckpointsMappedReq
 	for (const m of req.mappings) {
 		const cp = mapByCheckpointId[m.checkpointId]!;
 		const res = await httpPostJson(server.port, `/slots/${m.targetSlotId}?action=restore`, { filename: cp.filename });
+		console.log(`[CheckpointService] Restore slot ${m.targetSlotId} response - status: ${res.status}, body: ${res.body}`);
 		if (res.status !== 200) {
 			throw new Error(`Restore failed for target slot ${m.targetSlotId} (checkpoint ${cp.id}): status ${res.status}, body: ${res.body}`);
 		}

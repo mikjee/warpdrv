@@ -1,6 +1,6 @@
 import type { AppState, ImmerSet, ImmerGet } from '../types';
 import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, IRecipesInitPayload, IRunsStepStartedPayload, IRunsStepOutputPayload, IRunsStepFinishedPayload, IRunsFinishedPayload, ERecipeStreamKind, ISseSlotStatePayload, ISseServerSlotsSnapshotPayload, IServerSlotsState, ISseCheckpointPayload, ISseCheckpointDeletedPayload, ICheckpoint, TCheckpointId } from '@warpcore/shared';
-import { ERecipeStepStatus } from '@warpcore/shared';
+import { ERecipeStepStatus, EServerStatus } from '@warpcore/shared';
 
 interface SSEHandlersSlice {
 	SSEHandlers: Record<string, (data: any) => void>;
@@ -19,6 +19,10 @@ export const sseHandlersSlice = (
 		'servers:update': (data: Record<TServerId, IServer>) => setState((state) => {
 			for (const [id, server] of Object.entries(data)) {
 				state.servers[id] = server;
+				// Clear slot state when server stops
+				if (server.status === EServerStatus.STOPPED) {
+					delete state.serverSlots[id];
+				}
 			}
 		}),
 		'servers:delete': (data: Record<TServerId, null>) => setState((state) => {

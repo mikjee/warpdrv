@@ -16,14 +16,15 @@ export function SlotPill({ slot, metadata }: ISlotPillProps) {
 
 	if (isPrompt) {
 		color = '#fbbf24';
-		label = 'pp';
+		const pct = Math.round((slot.prefillProgress ?? 0) * 100);
+		label = pct >= 100 ? 'pp' : `pp ${pct}%`;
 		progress = slot.prefillProgress ?? 0;
 	} else if (isGen) {
 		color = '#22c55e';
-		label = `gen ${slot.generatedTokens}`;
+		label = slot.generatedTokens > 0 ? `gen ${slot.generatedTokens}` : 'gen';
 		progress = slot.nCtx > 0 ? slot.cachedTokens / slot.nCtx : 0;
 	} else {
-		color = '#3381ff';
+		color = 'rgba(255, 255, 255, 0.4)';
 		label = 'idle';
 		progress = slot.nCtx > 0 ? slot.cachedTokens / slot.nCtx : 0;
 	}

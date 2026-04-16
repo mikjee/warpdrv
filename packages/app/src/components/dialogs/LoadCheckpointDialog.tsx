@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
-import { Dialog, Portal, Box, Text, HStack, VStack, Button } from '@chakra-ui/react';
+import { Dialog, Portal, Box, Text, HStack, VStack, Button, Spinner } from '@chakra-ui/react';
 import { Upload } from 'lucide-react';
 import { useStore } from '../../store';
-import { restoreCheckpointsMapped } from '../../api/services';
+import { restoreCheckpointsMapped, restartServer } from '../../api/services';
 import { useToast } from '../ToastProvider';
 import type { IServer, ICheckpoint, ICheckpointSlotMapping, TCheckpointId, TSlotId } from '@warpcore/shared';
+import { EServerStatus } from '@warpcore/shared';
 import { ConfirmDialog } from './ConfirmDialog';
 
 type TFilter = 'THIS_SERVER' | 'ALL_COMPATIBLE';
@@ -40,11 +41,20 @@ export function LoadCheckpointDialog({ server, isOpen, onClose }: ILoadCheckpoin
 	const [filter, setFilter] = useState<TFilter>('THIS_SERVER');
 	const [selected, setSelected] = useState<Record<TCheckpointId, TSlotId>>({});
 	const [isLoading, setIsLoading] = useState<boolean>(false);
+	const [isLaunching, setIsLaunching] = useState<boolean>(false);
 	const [confirmOpen, setConfirmOpen] = useState<boolean>(false);
 
+	const isServerRunning = server.status === EServerStatus.RUNNING;
+
 	const targetSlotIds = useMemo<TSlotId[]>(() => {
-		return (serverSlots?.slots ?? []).map(s => s.slotId).sort((a, b) => a - b);
-	}, [serverSlots]);
+		// If server is running, use actual slot state
+		if (serverSlots?.slots && serverSlots.slots.length > 0) {
+			return serverSlots.slots.map(s => s.slotId).sort((a, b) => a - b);
+		}
+		// Server not running - use parallelSlots from config (default 4)
+		const slotCount = server.params.parallelSlots || 4;
+		return Array.from({ length: slotCount }, (_, i) => i as TSlotId);
+	}, [serverSlots, server.params.parallelSlots]);
 
 	// Filter checkpoints for this server's model fingerprint
 	const filtered = useMemo<ICheckpoint[]>(() => {
@@ -130,6 +140,46 @@ export function LoadCheckpointDialog({ server, isOpen, onClose }: ILoadCheckpoin
 	const canLoad = mappings.length > 0 && !hasDuplicateTargets && targetSlotIds.length > 0;
 
 	async function performLoad() {
+		// If server is not running, start it first
+		if (!isServerRunning) {
+			setIsLaunching(true);
+			try {
+				const startRes = await restartServer(server.id);
+				if (!startRes.ok) {
+					toast('error', startRes.error ?? 'Failed to start server');
+					setIsLaunching(false);
+					return;
+				}
+
+				// Wait for server to become RUNNING via SSE
+				await new Promise<void>((resolve, reject) => {
+					const unsubscribe = useStore.subscribe((state) => {
+						if (state.servers[server.id]?.status === EServerStatus.RUNNING) {
+							unsubscribe();
+							resolve();
+						}
+						if (state.servers[server.id]?.status === EServerStatus.ERROR) {
+							unsubscribe();
+							reject(new Error('Server failed to start'));
+						}
+					});
+
+					// Timeout as safety net (15s max)
+					setTimeout(() => {
+						unsubscribe();
+						reject(new Error('Server took too long to start'));
+					}, 15000);
+				});
+			} catch (err) {
+				toast('error', String(err));
+				setIsLaunching(false);
+				return;
+			} finally {
+				setIsLaunching(false);
+			}
+		}
+
+		// Now load checkpoints
 		setIsLoading(true);
 		try {
 			const res = await restoreCheckpointsMapped({
@@ -272,7 +322,8 @@ export function LoadCheckpointDialog({ server, isOpen, onClose }: ILoadCheckpoin
 							borderRadius="2xl"
 							shadow="0 24px 80px rgba(0, 0, 0, 0.6)"
 						>
-							<VStack gap="4" px="6" py="5" align="stretch">
+							<Box position="relative">
+								<VStack gap="4" px="6" py="5" align="stretch" style={{ opacity: (isLaunching || isLoading) ? 0.5 : 1 }}>
 								<HStack gap="2">
 									<Box w="8" h="8" borderRadius="lg" display="flex" alignItems="center" justifyContent="center" bg="rgba(51, 129, 255, 0.12)">
 										<Upload size={16} color="#3381ff" />
@@ -354,12 +405,31 @@ export function LoadCheckpointDialog({ server, isOpen, onClose }: ILoadCheckpoin
 										fontSize="13px"
 										fontWeight="500"
 										onClick={() => setConfirmOpen(true)}
-										disabled={isLoading || !canLoad}
+										disabled={isLoading || isLaunching || !canLoad}
 									>
-										{isLoading ? 'Loading...' : 'Load'}
+										{isLaunching ? 'Launching...' : isLoading ? 'Loading...' : isServerRunning ? 'Load' : 'Launch'}
 									</Button>
 								</HStack>
 							</VStack>
+
+							{(isLaunching || isLoading) && (
+								<Box
+									position="absolute"
+									top="0"
+									left="0"
+									right="0"
+									bottom="0"
+									bg="rgba(0, 0, 0, 0.3)"
+									display="flex"
+									alignItems="center"
+									justifyContent="center"
+									borderRadius="2xl"
+									zIndex={1}
+								>
+									<Spinner size="md" color="#3381ff" />
+								</Box>
+							)}
+						</Box>
 						</Dialog.Content>
 					</Dialog.Positioner>
 				</Portal>
