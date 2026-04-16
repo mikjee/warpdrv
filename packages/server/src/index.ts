@@ -64,11 +64,11 @@ async function main() {
 	
 	const shellPath = resolveShellPath();
 	if (shellPath && shellPath !== process.env.PATH) {
-		console.log('[debug] resolved shell PATH:', shellPath);
+		// console.log('[debug] resolved shell PATH:', shellPath);
 		process.env.PATH = shellPath;
 	}
 
-	console.log('[debug] PATH:', process.env.PATH || '(not set)');
+	// console.log('[debug] PATH:', process.env.PATH || '(not set)');
 	console.log('[debug] HOME:', process.env.HOME || '(not set)');
 	console.log('[debug] RESOURCE_DIR:', process.env.RESOURCE_DIR);
 	console.log('[debug] execPath:', process.execPath);
@@ -191,6 +191,7 @@ async function main() {
 			const all = getAllServerSlots();
 			return Object.keys(all).length > 0 ? all : undefined;
 		});
+
 		sseManager.onConnect(SSE_CHANNELS_CHECKPOINT.CHECKPOINTS_INIT, async () => {
 			const checkpoints = await listCheckpoints({ serverId: null, threadId: null });
 			const result: Record<string, typeof checkpoints[number]> = {};

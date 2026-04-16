@@ -22,11 +22,11 @@ export function SlotPill({ slot, metadata }: ISlotPillProps) {
 	} else if (isGen) {
 		color = '#22c55e';
 		label = slot.generatedTokens > 0 ? `gen ${slot.generatedTokens}` : 'gen';
-		progress = slot.nCtx > 0 ? slot.cachedTokens / slot.nCtx : 0;
+		progress = 0;
 	} else {
 		color = 'rgba(255, 255, 255, 0.4)';
-		label = 'idle';
-		progress = slot.nCtx > 0 ? slot.cachedTokens / slot.nCtx : 0;
+		label = `idle`;
+		progress = 0;
 	}
 
 	const msgCount = metadata?.messageCount ?? null;

@@ -63,11 +63,11 @@ export class McpClientManager implements IMcpClient {
 						if (v !== undefined) stdioEnv[k] = v;
 					}
 				}
-				console.log(`[MCP] Spawning '${name}':`, {
-					command: entry.command!,
-					args: entry.args ?? [],
-					path: stdioEnv.PATH || '(not set)',
-				});
+				// console.log(`[MCP] Spawning '${name}':`, {
+				// 	command: entry.command!,
+				// 	args: entry.args ?? [],
+				// 	path: stdioEnv.PATH || '(not set)',
+				// });
 				transport = new StdioClientTransport({
 					command: entry.command!,
 					args: entry.args ?? [],

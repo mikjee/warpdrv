@@ -1,5 +1,5 @@
 import http from 'http';
-import type { IServerStats, ISlotStats } from '@warpcore/shared';
+import type { IServerStats, ISlotStats, IServer } from '@warpcore/shared';
 
 const statsMap = new Map<string, IServerStats>();
 const pollers = new Map<string, ReturnType<typeof setInterval>>();
