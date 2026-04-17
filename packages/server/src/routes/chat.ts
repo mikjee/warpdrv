@@ -106,6 +106,10 @@ chatRouter.put('/threads/:id', async (req, res) => {
 chatRouter.delete('/threads/:id', async (req, res) => {
 	try {
 		await persistence.deleteThread(req.params.id);
+		broadcaster.emit({
+			type: 'thread.deleted',
+			threadId: req.params.id,
+		});
 		res.json({ ok: true, data: null, error: null });
 	} catch (err) {
 		res.status(500).json({ ok: false, data: null, error: String(err) });

@@ -216,13 +216,15 @@ function timeAgo(ts: number): string {
 // ============================================================
 // Manual Thread List Item - uses plain Chakra UI (no assistant-ui primitives)
 // ============================================================
-function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect }: {
+function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect, onDelete }: {
 	thread: IChatThread;
 	onRename: (id: string, title: string) => void;
 	onStartDrag: (threadId: string) => void;
 	onSelect: (threadId: string) => void;
+	onDelete: (id: string) => void;
 }) {
 	const [renaming, setRenaming] = useState(false);
+	const [menuOpen, setMenuOpen] = useState(false);
 	const currentThreadId = useStore(s => s.currentThreadId);
 	const selected = thread.id === currentThreadId;
 
@@ -270,6 +272,7 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect }: {
 							</Text>
 						</HStack>
 					</Box>
+				<Box position="relative">
 					<Box
 						cursor="pointer"
 						p="1"
@@ -280,12 +283,38 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect }: {
 						_hover={{ bg: 'rgba(255,255,255,0.06)' }}
 						onClick={(e) => {
 							e.stopPropagation();
-							setRenaming(true);
+							setMenuOpen(!menuOpen);
 						}}
 					>
-						<PencilIcon size={13} />
+						<MoreHorizontalIcon size={13} />
 					</Box>
-				</>
+					{menuOpen && (
+						<Box
+							position="absolute" right="0" top="100%" zIndex={50}
+							bg="#1a1a1a" borderWidth="1px" borderColor="rgba(255,255,255,0.1)"
+							borderRadius="md" py="1" minW="120px"
+							onClick={(e) => e.stopPropagation()}
+						>
+							<HStack
+								px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="rgba(255,255,255,0.7)"
+								_hover={{ bg: 'rgba(255,255,255,0.05)' }}
+								onClick={() => { setRenaming(true); setMenuOpen(false); }}
+							>
+								<PencilIcon size={12} />
+								<Text>Rename</Text>
+							</HStack>
+							<HStack
+								px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="rgba(220,80,80,0.8)"
+								_hover={{ bg: 'rgba(220,80,80,0.08)' }}
+								onClick={() => { onDelete(thread.id); setMenuOpen(false); }}
+							>
+								<TrashIcon size={12} />
+								<Text>Delete</Text>
+							</HStack>
+						</Box>
+					)}
+				</Box>
+			</>
 			)}
 		</Box>
 	);
@@ -444,7 +473,7 @@ export const ThreadList: FC = React.memo(() => {
 	const [search, setSearch] = useState('');
 	const [sortField, setSortField] = useState<TSortField>('updatedAt');
 	const [sortDir, setSortDir] = useState<TSortDir>('desc');
-	const [confirmDelete, setConfirmDelete] = useState<{ type: 'folder' | 'allChats'; id?: string } | null>(null);
+	const [confirmDelete, setConfirmDelete] = useState<{ type: 'folder' | 'allChats' | 'thread'; id?: string } | null>(null);
 	const [draggingThread, setDraggingThread] = useState<string | null>(null);
 	const [rootDragOver, setRootDragOver] = useState(false);
 
@@ -489,6 +518,15 @@ export const ThreadList: FC = React.memo(() => {
 	const handleDeleteFolder = useCallback(async (id: string) => {
 		setConfirmDelete({ type: 'folder', id });
 	}, []);
+
+	const handleDeleteThread = useCallback((id: string) => {
+		setConfirmDelete({ type: 'thread', id });
+	}, []);
+
+	const handleConfirmDeleteThread = useCallback(async (id: string) => {
+		await threadsAPI.removeThread(id);
+		setConfirmDelete(null);
+	}, [threadsAPI.removeThread]);
 
 	const handleConfirmDeleteFolder = useCallback(async (id: string) => {
 		await threadsAPI.removeFolder(id);
@@ -643,15 +681,16 @@ export const ThreadList: FC = React.memo(() => {
 				onReorderFolder={handleReorderFolders}
 			>
 					<VStack gap="0" align="start">
-						{(threadsByFolderMap[f.id] ?? []).map(thread => (
-							<ManualThreadListItem 
-								key={thread.id}
-								thread={thread}
-								onRename={handleRenameThread}
-								onStartDrag={setDraggingThread}
-								onSelect={handleSelectThread}
-							/>
-						))}
+				{(threadsByFolderMap[f.id] ?? []).map(thread => (
+						<ManualThreadListItem 
+							key={thread.id}
+							thread={thread}
+							onRename={handleRenameThread}
+							onStartDrag={setDraggingThread}
+							onSelect={handleSelectThread}
+							onDelete={handleDeleteThread}
+						/>
+					))}
 					</VStack>
 				</FolderSection>
 			))}
@@ -672,6 +711,7 @@ export const ThreadList: FC = React.memo(() => {
 							onRename={handleRenameThread}
 							onStartDrag={setDraggingThread}
 							onSelect={handleSelectThread}
+							onDelete={handleDeleteThread}
 						/>
 					))}
 				</VStack>
@@ -702,10 +742,13 @@ export const ThreadList: FC = React.memo(() => {
 						message={
 							confirmDelete.type === 'folder'
 								? 'Delete this folder? Threads inside will be moved to root.'
-								: 'Delete ALL chats? This cannot be undone.'
+								: confirmDelete.type === 'thread'
+									? 'Delete this thread? This cannot be undone.'
+									: 'Delete ALL chats? This cannot be undone.'
 						}
 						onConfirm={() => {
 							if (confirmDelete.type === 'folder' && confirmDelete.id) handleConfirmDeleteFolder(confirmDelete.id);
+							else if (confirmDelete.type === 'thread' && confirmDelete.id) handleConfirmDeleteThread(confirmDelete.id);
 							else if (confirmDelete.type === 'allChats') handleConfirmDeleteAllChats();
 						}}
 						onCancel={() => setConfirmDelete(null)}
