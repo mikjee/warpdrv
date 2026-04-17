@@ -186,10 +186,12 @@ async function scanModelDirGroupedByParentModel(
 			}
 		}
 
-		// Add mmproj files to their parent model's group
+		// Add mmproj files to ALL model groups (mmproj is quantization-agnostic)
 		for (const file of files) {
-			if (file.isMmproj && file.parentModel && modelGroups.has(file.parentModel)) {
-				modelGroups.get(file.parentModel)!.push(file);
+			if (file.isMmproj) {
+				for (const key of modelGroups.keys()) {
+					modelGroups.get(key)!.push(file);
+				}
 			}
 		}
 

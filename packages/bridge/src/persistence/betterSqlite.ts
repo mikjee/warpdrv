@@ -91,7 +91,11 @@ function buildSchema(t: ReturnType<typeof buildTableNames>): string {
 			type TEXT NOT NULL,
 			orderIndex INTEGER NOT NULL,
 			text TEXT,
-			toolCallId TEXT
+			toolCallId TEXT,
+			data TEXT,
+			mimeType TEXT,
+			fileName TEXT,
+			fileSize INTEGER
 		);
 		CREATE TABLE IF NOT EXISTS ${t.toolCalls} (
 			id TEXT PRIMARY KEY,
@@ -154,6 +158,23 @@ export class SqlitePersistence implements IPersistence {
 		this.db.pragma('journal_mode = WAL');
 		this.db.pragma('foreign_keys = ON');
 		this.db.exec(buildSchema(this.t));
+		this.runMigrations();
+	}
+
+	private runMigrations(): void {
+		const columnSchema = [
+			{ name: 'data', type: 'TEXT' },
+			{ name: 'mimeType', type: 'TEXT' },
+			{ name: 'fileName', type: 'TEXT' },
+			{ name: 'fileSize', type: 'INTEGER' },
+		];
+		for (const col of columnSchema) {
+			try {
+				this.db!.exec(`ALTER TABLE ${this.t.messageParts} ADD COLUMN ${col.name} ${col.type}`);
+			} catch {
+				// Column already exists (SQLite returns error on duplicate ADD COLUMN)
+			}
+		}
 	}
 
 	// ============================================================
@@ -337,9 +358,13 @@ export class SqlitePersistence implements IPersistence {
 			? part.text
 			: null;
 		const toolCallId = part.type === EMessagePartType.TOOL_CALL ? part.toolCallId : null;
+		const data = part.type === EMessagePartType.ATTACHMENT ? part.data : null;
+		const mimeType = part.type === EMessagePartType.ATTACHMENT ? part.mimeType : null;
+		const fileName = part.type === EMessagePartType.ATTACHMENT ? part.fileName : null;
+		const fileSize = part.type === EMessagePartType.ATTACHMENT ? part.fileSize : null;
 		this.db!.prepare(
-			`INSERT INTO ${this.t.messageParts} (id, messageId, type, orderIndex, text, toolCallId) VALUES (?, ?, ?, ?, ?, ?)`
-		).run(part.id, messageId, part.type, part.orderIndex, text, toolCallId);
+			`INSERT INTO ${this.t.messageParts} (id, messageId, type, orderIndex, text, toolCallId, data, mimeType, fileName, fileSize) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		).run(part.id, messageId, part.type, part.orderIndex, text, toolCallId, data, mimeType, fileName, fileSize);
 	}
 
 	private hydrateMessage(row: Record<string, unknown>): IChatMessage {
@@ -353,6 +378,15 @@ export class SqlitePersistence implements IPersistence {
 			}
 			if (p.type === EMessagePartType.REASONING) {
 				return { id: p.id as string, type: EMessagePartType.REASONING, orderIndex: p.orderIndex as number, text: (p.text as string) ?? '' };
+			}
+			if (p.type === EMessagePartType.ATTACHMENT) {
+				return {
+					id: p.id as string, type: EMessagePartType.ATTACHMENT, orderIndex: p.orderIndex as number,
+					data: (p.data as string) ?? '',
+					mimeType: (p.mimeType as string) ?? '',
+					fileName: (p.fileName as string) ?? '',
+					fileSize: (p.fileSize as number) ?? 0,
+				};
 			}
 			return { id: p.id as string, type: EMessagePartType.TOOL_CALL, orderIndex: p.orderIndex as number, toolCallId: p.toolCallId as string };
 		});

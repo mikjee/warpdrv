@@ -58,13 +58,18 @@ const convertMessage = useCallback((msg: any) => {
 		const content = (msg.content ?? []).map((part: any) => {
 			if (part.type === EMessagePartType.ATTACHMENT) {
 				if (part.mimeType.startsWith('image/') && part.data) {
-					const imageUrl = part.data.startsWith('data:') ? part.data : `data:${part.mimeType};base64,${part.data}`;
+					// part.data is raw base64 (no data: prefix — stripped in onNew)
+					const base64 = part.data.startsWith('data:') ? part.data.split(',')[1] : part.data;
+					const imageUrl = `data:${part.mimeType};base64,${base64}`;
+					// Decode base64 to binary Blob for proper File object
+					const bytes = atob(base64);
+					const blob = new Blob([new Uint8Array(Array.from(bytes, c => c.charCodeAt(0)))], { type: part.mimeType });
 					attachments.push({
 						id: part.id,
 						type: 'image' as const,
 						content: [{ type: 'image' as const, image: imageUrl, filename: part.fileName }],
 						name: part.fileName,
-						file: new File([imageUrl], part.fileName || 'attachment', { type: part.mimeType }),
+						file: new File([blob], part.fileName || 'attachment', { type: part.mimeType }),
 					});
 					return null;
 				}

@@ -28,6 +28,35 @@ import { ToolCallBlockWrapper } from '@/components/assistant-ui/ToolCallBlockWra
 import { useShallow } from 'zustand/shallow';
 import { convertMessagesToOpenAIFormat } from '@warpcore/bridge';
 
+const getFileDataURL = (file: File): Promise<string> =>
+	new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => resolve(reader.result as string);
+		reader.onerror = reject;
+		reader.readAsDataURL(file);
+	});
+
+const attachmentAdapter = {
+	accept: '*',
+	add: async ({ file }: { file: File }) => ({
+		id: file.name + '-' + Date.now(),
+		type: file.type.startsWith('image/') ? 'image' : 'document',
+		name: file.name,
+		contentType: file.type,
+		file,
+		status: { type: 'requires-action' as const, reason: 'composer-send' as const },
+	}),
+	remove: async () => {},
+	send: async (att: any) => {
+		const dataUrl = await getFileDataURL(att.file);
+		return {
+			...att,
+			status: { type: 'complete' as const },
+			content: [{ type: 'image', image: dataUrl }],
+		};
+	},
+};
+
 interface IChatConfig {
 	reasoningEffort: EReasoningEffort;
 	onReasoningEffortChange: (v: EReasoningEffort) => void;
@@ -142,6 +171,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	// Removed: const [configOpen, setConfigOpen] = useState(false);
 	// Removed: const [toolsOpen, setToolsOpen] = useState(false);
 	const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+	const [pendingChanges, setPendingChanges] = useState(false);
 
 	// Get current thread state from store
 	const currentThreadId = useStore(s => s.currentThreadId);
@@ -160,7 +190,20 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	const isValidServer = currentServerId && currentServer?.status === EServerStatus.RUNNING;
 
 	// Load config when thread changes
-	useThreadConfig(currentThreadId);
+	const flushPendingSaves = useCallback(() => {
+		if (!saveTimerRef.current) return;
+		clearTimeout(saveTimerRef.current);
+		saveTimerRef.current = null;
+		if (currentThreadId) {
+			updateThreadConfig(currentThreadId, {
+				presetId: selectedPresetId,
+				systemPrompt: currentSystemPrompt,
+				params: JSON.stringify(currentInferenceParams),
+			});
+			setPendingChanges(false);
+		}
+	}, [currentThreadId, currentSystemPrompt, currentInferenceParams, selectedPresetId]);
+	useThreadConfig(currentThreadId, flushPendingSaves);
 
 	// Get threads for adapter
 	const threadsAPI = useThreadsAndFolders();
@@ -172,12 +215,14 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 		setCurrentInferenceParams(newParams as unknown as Record<string, unknown>);
 		if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 		if (currentThreadId) {
+			setPendingChanges(true);
 			saveTimerRef.current = setTimeout(() => {
 				updateThreadConfig(currentThreadId, {
 					presetId: selectedPresetId,
 					systemPrompt: currentSystemPrompt,
 					params: JSON.stringify(newParams),
 				});
+				setPendingChanges(false);
 			}, 400);
 		}
 	}
@@ -186,12 +231,14 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 		setCurrentSystemPrompt(newPrompt);
 		if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 		if (currentThreadId) {
+			setPendingChanges(true);
 			saveTimerRef.current = setTimeout(() => {
 				updateThreadConfig(currentThreadId, {
 					presetId: selectedPresetId,
 					systemPrompt: newPrompt,
 					params: JSON.stringify(currentInferenceParams as unknown as Record<string, unknown>),
 				});
+				setPendingChanges(false);
 			}, 400);
 		}
 	}
@@ -323,11 +370,15 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 				// Already converted attachment
 				const imagePart = att.content.find((p: any) => p.type === 'image');
 				if (imagePart) {
+					// Strip data: prefix — adapter encodes as base64 data URL
+					const base64 = imagePart.image.startsWith('data:')
+						? imagePart.image.split(',')[1]
+						: imagePart.image;
 					attachmentParts.push({
 						id: att.id || crypto.randomUUID(),
 						type: 'attachment',
 						orderIndex: 0,
-						data: imagePart.image,
+						data: base64,
 						mimeType: att.contentType || 'image/*',
 						fileName: att.name,
 						fileSize: 0,
@@ -355,7 +406,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(body),
 		});
-	}, [currentThreadId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, toolCallsById]);
+	}, [currentThreadId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, toolCallsById, currentServerId]);
 
 	const onReload = useCallback(async (parentId: string | null) => {
 		if (!isValidServer || !parentId) return;
@@ -383,7 +434,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 				inferenceParams: currentInferenceParams,
 			}),
 		});
-	}, [currentThreadId, currentSystemPrompt, currentInferenceParams, toolCallsById]);
+	}, [currentThreadId, currentSystemPrompt, currentInferenceParams, toolCallsById, currentServerId]);
 
 	const onCancel = useCallback(async () => {
 		if (currentThreadId && isValidServer) {
@@ -446,6 +497,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 				threads: Object.values(threadsAPI.threads).map(t => ({ ...t, status: 'regular' as const })),
 				threadId: currentThreadId ?? undefined,
 			},
+			attachments: attachmentAdapter,
 		},
 	});
 

@@ -3,27 +3,22 @@ import { useStore } from '../store';
 import type { TThreadId } from '@warpcore/bridge';
 import { DEFAULT_INFERENCE_PARAMS } from '@/components/ChatConfigSidebar';
 
-export function useThreadConfig(threadId: TThreadId | null) {
+export function useThreadConfig(threadId: TThreadId | null, flushPendingSaves?: () => void) {
 	const setCurrentSystemPrompt = useStore(s => s.setCurrentSystemPrompt);
 	const setCurrentInferenceParams = useStore(s => s.setCurrentInferenceParams);
-
-	// Ref to track last fetched params — prevents re-updating on re-renders
-	const lastFetchedParamsRef = useRef<string>('');
 
 	useEffect(() => {
 		if (!threadId) return;
 
-		// Reset ref when threadId changes so the new thread's config is always applied
-		lastFetchedParamsRef.current = '';
+		// Flush any pending edits from the previous thread before loading new config
+		flushPendingSaves?.();
 
 		async function loadConfig() {
 			const res = await fetch(`/api/chat/threads/${threadId}/config`);
 			
 			if (!res.ok) {
-				// API error — reset to defaults
 				setCurrentInferenceParams({ ...DEFAULT_INFERENCE_PARAMS });
 				setCurrentSystemPrompt('');
-				lastFetchedParamsRef.current = JSON.stringify(DEFAULT_INFERENCE_PARAMS);
 				return;
 			}
 			
@@ -31,21 +26,17 @@ export function useThreadConfig(threadId: TThreadId | null) {
 			const config = data.data;
 			
 			if (!config) {
-				// No saved config (new thread) — reset to defaults
 				setCurrentInferenceParams({ ...DEFAULT_INFERENCE_PARAMS });
 				setCurrentSystemPrompt('');
-				lastFetchedParamsRef.current = JSON.stringify(DEFAULT_INFERENCE_PARAMS);
 				return;
 			}
 			
-			const newParamsStr = JSON.stringify(config.params || {});
-			if (newParamsStr !== lastFetchedParamsRef.current) {
-				setCurrentSystemPrompt(config.systemPrompt ?? '');
-				setCurrentInferenceParams(config.params || {});
-				lastFetchedParamsRef.current = newParamsStr;
-			}
+			// config.params is a JSON string from the API — parse it
+			const parsedParams = config.params ? JSON.parse(config.params) : {};
+			setCurrentSystemPrompt(config.systemPrompt ?? '');
+			setCurrentInferenceParams(parsedParams);
 		}
 
 		loadConfig();
-	}, [threadId]);
+	}, [threadId, flushPendingSaves]);
 }

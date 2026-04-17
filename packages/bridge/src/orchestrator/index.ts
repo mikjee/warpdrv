@@ -106,8 +106,7 @@ export class Orchestrator {
 				}];
 				
 				if (request.attachments?.length) {
-					for (let i = 0; i < request.attachments.length; i++) {
-						const att = request.attachments[i];
+					for (const att of request.attachments) {
 						content.push({
 							id: crypto.randomUUID(),
 							type: EMessagePartType.ATTACHMENT,
@@ -137,7 +136,7 @@ export class Orchestrator {
 			const enabledTools = await this.permissions.getEnabledTools(this.mcpClient.getAllTools());
 			
 			// Build base messages for LLM context
-			let baseMessages: Array<{ role: string; content: string }> = [];
+			let baseMessages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }> = [];
 			
 			// Add system prompt if provided
 			if (request.systemPrompt) {
@@ -145,11 +144,28 @@ export class Orchestrator {
 			}
 			
 			// Add conversation history
-			baseMessages.push(...request.messages);
+			baseMessages.push(...(request.messages as any[]));
 			
 			// Add the new user message if provided (critical for first message)
 			if (request.userMessage) {
-				baseMessages.push({ role: 'user', content: request.userMessage.content });
+				const text = request.userMessage.content;
+				const newAttachments = request.attachments ?? [];
+				
+				if (newAttachments.length > 0) {
+					// Build multimodal content: text + image_url for each attachment
+					const contentParts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
+					if (text) contentParts.push({ type: 'text', text });
+					for (const att of newAttachments) {
+						const base64 = att.data.startsWith('data:') ? att.data.split(',')[1] : att.data;
+						contentParts.push({
+							type: 'image_url',
+							image_url: { url: `data:${att.mimeType};base64,${base64}` },
+						});
+					}
+					baseMessages.push({ role: 'user', content: contentParts });
+				} else {
+					baseMessages.push({ role: 'user', content: text });
+				}
 			}
 
 			await this.executePass(
@@ -175,7 +191,7 @@ export class Orchestrator {
 		inferenceUrl: string,
 		request: ICompletionRequest,
 		parentId: TMessageId | null,
-		messages: Array<{ role: string; content: string; tool_calls?: unknown[]; tool_call_id?: string }>,
+		messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>,
 		enabledTools: IToolDefinition[],
 		abortSignal: AbortSignal,
 	): Promise<void> {
@@ -279,7 +295,7 @@ export class Orchestrator {
 	// emits chunk and patch events. Returns whether tool calls fired.
 	private async runPass(
 		inferenceUrl: string,
-		messages: Array<{ role: string; content: string; tool_calls?: unknown[]; tool_call_id?: string }>,
+		messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>,
 		enabledTools: IToolDefinition[],
 		request: ICompletionRequest,
 		abortSignal: AbortSignal,
