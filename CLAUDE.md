@@ -468,6 +468,310 @@ Browse and download GGUF models from HuggingFace:
 - Checkmark badge on already-downloaded files (checked across all model roots, persists across sessions)
 - Requires at least one model directory configured — shows guard screen otherwise
 
+## Recipes
+
+Automated bash script pipelines — define reusable workflows with typed inputs and sequential step execution.
+
+### What It Does
+
+- **Define** bash scripts with structured metadata (inputs as env vars, sequential steps)
+- **Run** recipes from the UI with typed input forms (text, number, toggle, dropdown)
+- **Monitor** real-time step execution with stdout/stderr streaming via SSE
+- **Cancel** running recipes (one-at-a-time execution enforced)
+
+### Recipe Syntax
+
+Plain bash scripts with two directive types:
+
+**Input directives** (`#!input NAME type [key=value ...]`):
+- Must appear before any `#!step` directives
+- Types: `STRING`, `NUMBER`, `BOOL`, `CHOICE` (with `options=a,b,c`)
+- Options: `default=...`, `description=...`
+
+**Step directives** (`#!step Step Name [cwd=path]`):
+- Followed by bash commands on subsequent lines
+- `cwd=path` sets working directory (supports `~` and `$HOME`)
+
+**Example:**
+```bash
+#!input MODEL_NAME string description="Model filename"
+#!input THREADS number default=4
+#!input QUANT bool default=true
+
+#!step Checkout
+git clone https://github.com/user/repo.git
+
+#!step Build [cwd=./repo]
+make -j$THREADS
+
+#!step Quantize
+./quantize repo.gguf repo-q4.gguf && echo "Done"
+```
+
+### Architecture
+
+**Parser** (`packages/shared/src/recipeParser.ts`):
+- Validates directives at creation/edit time
+- Checks input ordering (must precede steps), no duplicate names, required fields
+- Throws on invalid syntax with line-specific error messages
+
+**Store** (`packages/server/src/services/recipeStore.ts`):
+- Recipes stored under `recipe:{id}` in WarpCore JSON store
+- Per-recipe state (last inputs, last run status) under `recipeState:{id}`
+
+**Runner** (`packages/server/src/services/recipeRunner.ts`):
+- Sequential step execution (one at a time, in order)
+- Spawns bash subprocess per step with inputs as environment variables
+- Passes `CONTROL_API_PORT` to enable recipe steps to interact with running llama-servers
+- Streams stdout/stderr via SSE per step
+- Single-run mutual exclusion: only one run active at a time
+- `cancelRun()` sends SIGKILL (POSIX) or taskkill (Windows)
+
+**Frontend** (`packages/app/src/pages/RecipesPage.tsx`):
+- Recipe list with CRUD operations (built-in recipes are read-only)
+- `RecipeEditorDialog`: create/edit with syntax validation
+- `RunRecipeDialog`: input form + live step monitoring with output terminal
+- Active run banner with monitor/cancel buttons
+- Shared across all connected clients via SSE
+
+### SSE Events
+
+| Channel | Payload |
+|---------|---------|
+| `recipes:init` | `{ recipes: Record<TRecipeId, IRecipe>, activeRun: IRecipeRunState | null }` |
+| `recipes:update` | `IRecipe` (created or updated) |
+| `recipes:delete` | `IRecipe` (deleted) |
+| `runs:started` | `IRecipeRunState` (all steps PENDING) |
+| `runs:step-started` | `{ runId, stepId, startedAt }` |
+| `runs:step-output` | `{ runId, stepId, kind: STDOUT\|STDERR, data: string }` |
+| `runs:step-finished` | `{ runId, stepId, status, exitCode, finishedAt }` |
+| `runs:finished` | `{ runId, status, finishedAt }` |
+
+### Store Slice
+
+```typescript
+{
+  recipes: Record<TRecipeId, IRecipe>,
+  activeRun: IRecipeRunState | null,
+  stepOutputs: Record<TStepId, string>,
+}
+```
+
+### API Routes
+
+```
+GET/POST    /api/recipes                    — List/create recipes
+GET         /api/recipes/:id                — Get recipe
+PUT/DELETE  /api/recipes/:id                — Update/delete (built-in read-only)
+GET         /api/recipes/:id/state          — Get persisted recipe state
+POST        /api/recipes/:id/run            — Run recipe with inputs
+GET         /api/recipes/runs/active        — Get active run (null if none)
+POST        /api/recipes/runs/cancel        — Cancel active run
+```
+
+### Key Design Decisions
+
+- **Sequential execution**: Steps run in order; failure stops the pipeline (remaining steps marked SKIPPED)
+- **One-at-a-time**: Only one recipe runs across the entire app (prevents resource contention)
+- **Env injection**: Inputs become environment variables — the primary inter-step communication mechanism
+- **No sandboxing**: Recipes are raw bash, no build step or compilation
+- **Built-in vs custom**: `isBuiltIn` flag protects bundled recipes; custom recipes fully editable/deletable
+- **State persistence**: Last-used inputs and run results auto-populate on next run
+
+## Attachments
+
+Image and file attachments in chat — drag-and-drop, preview, and multi-modal message support.
+
+### What It Does
+
+- Attach images and files to chat messages via composer or drag-and-drop
+- Images displayed as thumbnails with full-size preview dialog on click
+- Non-image files shown as file icon tiles
+- Files base64-encoded and sent inline with completion requests
+- Client-side file validation (type, size, blocked extensions)
+
+### Supported Types
+
+**Allowed MIME types:** `image/*`, `application/pdf`, `text/*`, `application/json`, `application/*`
+
+**Blocked extensions:** executables (`.exe`, `.bat`, `.sh`, etc.), archives (`.zip`, `.tar.gz`, etc.), system binaries (`.dll`, `.so`, etc.)
+
+**Code files:** explicitly whitelisted despite extensions (`.js`, `.ts`, `.py`, `.md`, `.json`, etc.)
+
+**Size limit:** 10 MB per file
+
+### Architecture
+
+**File Reader Hook** (`packages/app/src/hooks/useFileReader.ts`):
+- `readFile(file)` — reads file → `IMessagePartAttachment` with base64 data
+- `extractTextFromFile(file)` — extracts text (plain text, code, or PDF via pdfjs-dist)
+
+**Attachment Adapter** (`packages/app/src/pages/ChatPage.tsx`):
+- `accept: '*'` — accepts all file types (further validated in send)
+- `add()` — creates attachment object with File reference, type inferred from MIME
+- `send()` — converts File to base64 data URL for assistant-ui
+
+**Send Flow:**
+1. User selects/drops files in composer
+2. `attachmentAdapter.add()` creates attachment objects
+3. On send: each attachment read as base64 via FileReader
+4. Construct `attachment` part: `{ id, type: 'attachment', data, mimeType, fileName, fileSize }`
+5. Appended to `body.attachments` in completion request
+
+**Message Conversion** (`packages/app/src/hooks/useChatSelectors.ts`):
+- `ATTACHMENT` parts with `image/` MIME → decoded to File object, displayed as `type: 'image'`
+- Non-image attachments → `null` in content (shown as separate attachment tile)
+- Attachments collected and passed to assistant-ui via `attachments` field
+
+**UI Components** (`packages/app/src/components/assistant-ui/attachment.tsx`):
+- `AttachmentUI` — thumbnail/preview tile, tooltip with filename
+- `AttachmentThumb` — avatar-based thumbnail (image preview or FileText fallback)
+- `AttachmentPreviewDialog` — dialog on tile click, up to 80vh max image size
+- `AttachmentRemove` — X button for composer-only attachments
+- `UserMessageAttachments` — renders in user messages (right-aligned)
+- `ComposerAttachments` — renders in composer
+- `ComposerAddAttachment` — "+" button triggering file picker
+
+### API Routes
+
+No dedicated API routes — attachments are sent inline with existing `/api/chat/completions` POST body.
+
+### Data Model
+
+**Sent format (body.attachments):**
+```json
+{ "id": "file.png-1234567890", "type": "attachment", "data": "iVBORw0...", "mimeType": "image/png", "fileName": "screenshot.png", "fileSize": 245678 }
+```
+
+**Stored format (message_parts):** Same structure, persisted in SQLite.
+
+**Display format (ThreadMessage.attachments):**
+```json
+{ "id": "...", "type": "image", "content": [{ "type": "image", "image": "data:image/png;base64,...", "filename": "..." }], "file": File { ... } }
+```
+
+### Key Design Decisions
+
+- **Client-side only**: No server-side file processing or storage
+- **No file persistence**: Files stored as base64 in message_parts, not on disk
+- **Image preview special case**: Images get thumbnail tiles with full-size dialog; non-image files get generic icon tiles
+- **Dual validation**: Both MIME type and file extension checked
+- **10MB limit**: Enforced at read time before base64 encoding
+- **No upload progress**: Files are local, read synchronously via FileReader
+
+## MCP Server Config
+
+Manage Model Context Protocol servers — configure stdio and HTTP servers, monitor connection status, and control permissions.
+
+### What It Does
+
+- **Configure** MCP servers via Cursor-compatible `mcp.json` file
+- **Manage** server lifecycle: connect, disconnect, restart, refresh tool list
+- **Monitor** real-time server connection status and discovered tools
+- **Control** permissions: per-server enable/disable, per-tool approval mode
+
+### Configuration File
+
+**Location:** `~/.config/warpcore/mcp.json` (platform-specific, see `GET /api/mcp/config/path`)
+
+**Format:** Cursor-compatible JSON:
+```json
+{
+  "mcpServers": {
+    "server-name": {
+      "command": "/usr/bin/node",
+      "args": ["/path/to/server.mjs"],
+      "env": { "API_KEY": "secret" },
+      "timeout": 30
+    }
+  }
+}
+```
+
+**Transport types:**
+- **stdio** (default): `command` + `args` run server as subprocess
+- **HTTP**: `url` points to external server, optional `headers` for auth
+
+**Server entry fields:** `command?`, `args?`, `env?`, `url?`, `headers?`, `timeout?`
+
+### Architecture
+
+**Config Service** (`packages/server/src/util/mcpConfig.ts`):
+- `readMcpConfig()` / `writeMcpConfig()` — read/write mcp.json with pretty-printing
+- `addMcpServer()` / `removeMcpServer()` / `updateMcpServer()` — CRUD on server entries
+- `getMcpConfigPath()` — platform-specific config path
+
+**Routes** (`packages/server/src/routes/mcp.ts`):
+- Uses Bridge's `mcpClient` for server lifecycle
+- Uses Bridge's `persistence` for permissions storage
+
+### Config API Routes
+
+```
+GET/PUT     /api/mcp/config           — Get/replace full config
+GET         /api/mcp/config/path      — Config file path on disk
+POST        /api/mcp/reload           — Reconnect all servers from config
+```
+
+### Server CRUD Routes
+
+```
+POST        /api/mcp/servers          — Add server (name + entry in body)
+PUT         /api/mcp/servers/:name    — Update server entry
+DELETE      /api/mcp/servers/:name    — Remove server (disconnects if connected)
+```
+
+### Server Lifecycle Routes
+
+```
+GET         /api/mcp/status           — All server states
+GET         /api/mcp/status/:name     — Single server state
+POST        /api/mcp/servers/:name/restart   — Disconnect and reconnect
+POST        /api/mcp/servers/:name/refresh   — Same as restart (refreshes tool list)
+```
+
+### Permissions Routes
+
+```
+GET         /api/mcp/permissions      — All server + tool permissions
+PUT         /api/mcp/permissions/server/:name — Set server permission (enabled/disabled)
+PUT         /api/mcp/permissions/tool         — Set tool permission (enabled + approvalMode)
+```
+
+### Tool Call Queries
+
+```
+GET         /api/mcp/tool-calls/pending           — Pending tool calls (need approval)
+GET         /api/mcp/tool-calls/thread/:threadId  — Tool calls for a thread
+```
+
+### Server States
+
+Each server tracks: `connected` (boolean), `lastConnectError` (string|null), `lastToolRefresh` (number|null), `tools` (IToolInfo[])
+
+### Config Write Flow
+
+1. Client calls config or server CRUD endpoint
+2. Server updates `mcp.json` via `writeMcpConfig()`
+3. On add/update: calls `mcpClient.connect(name, entry)` to start server
+4. On remove: calls `mcpClient.disconnect(name)` to stop server
+5. On bulk replace: iterates all entries, calls `connect()` for each
+
+### Reload Flow
+
+1. Client calls `POST /api/mcp/reload`
+2. Server reads current config
+3. Iterates all server entries, calls `mcpClient.reconnect(name)` for each
+
+### Key Design Decisions
+
+- **Cursor-compatible format**: Same `mcp.json` schema as Cursor editor for cross-editor compatibility
+- **File-based config**: Written to disk immediately, not stored in WarpCore JSON store or SQLite
+- **Config path endpoint**: Frontend can display config location to user
+- **Separation of concerns**: Config management (`routes/mcp.ts`) separate from execution (`packages/bridge/src/mcp/client.ts`)
+- **Permissions in SQLite**: Uses Bridge's persistence for consistency with chat tool approval flow
+- **Restart = Refresh**: Both endpoints call `mcpClient.reconnect()`
+
 ## Checkpoint Feature
 
 Save and restore llama-server slot KV cache states for conversation resumption.
