@@ -295,7 +295,7 @@ export function Shell() {
 	};
 
 	return (
-		<Flex direction="column" h="100vh" overflow="hidden">
+		<Flex direction="column" h="100%" overflow="hidden">
 			<TitleBar />
 			<Flex flex="1" overflow="hidden">
 				{/* Sidebar */}

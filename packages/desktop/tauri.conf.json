@@ -20,6 +20,7 @@
 				"decorations": false,
 				"resizable": true,
 				"useHttpsScheme": true,
+				"transparent": true,
 				"devtools": true
 			}
 		],

@@ -150,12 +150,12 @@ export function TitleBar() {
 			<Text
 				fontSize="12px"
 				fontWeight="500"
-				color="rgba(255, 255, 255, 0.35)"
+				color="rgba(255, 255, 255, 0.5)"
 				pl="16px"
 				letterSpacing="0.02em"
 				pointerEvents="none"
 			>
-				warpcore
+				myllama
 			</Text>
 
 			{/* Window controls */}

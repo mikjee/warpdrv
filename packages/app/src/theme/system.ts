@@ -3,11 +3,13 @@ import { createSystem, defaultConfig, defineConfig } from '@chakra-ui/react';
 const config = defineConfig({
 	globalCss: {
 		'html, body': {
-			bg: '#09090b',
+			bg: 'transparent',
 			color: '#e4e4e7',
 			fontFamily: '"Geist", sans-serif',
 			fontSize: '14px',
 			lineHeight: '1.6',
+			margin: 0,
+			padding: "0",
 		},
 		'*': {
 			borderColor: 'rgba(255, 255, 255, 0.06)',

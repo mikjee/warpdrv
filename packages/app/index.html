@@ -10,15 +10,28 @@
 		href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap"
 		rel="stylesheet">
 	<style>
-		html,
-		body,
+		#root-wrapper {
+			position: absolute;
+			padding: 15px;
+			width: 100%;
+			height: 100%;
+			overflow: hidden;
+			-webkit-app-region: no-drag;
+		}
 		#root {
+			position: relative;
+			background: #09090b;
+			border-radius: 12px;
+			width: 100%;
+			height: 100%;
+			overflow: hidden;
+			box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 1px 4px rgba(0, 0, 0, 0.3);
 			-webkit-app-region: no-drag;
 		}
 	</style>
 </head>
 <body>
-	<div id="root"></div>
+	<div id="root-wrapper"><div id="root"></div></div>
 	<script type="module" src="/src/main.tsx"></script>
 </body>
 </html>
