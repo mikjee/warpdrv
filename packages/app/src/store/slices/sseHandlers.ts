@@ -160,6 +160,7 @@ export const sseHandlersSlice = (
 			if (!state.activeRun || state.activeRun.runId !== data.runId) return;
 			state.activeRun.status = data.status;
 			state.activeRun.finishedAt = data.finishedAt;
+			state.activeRun = null;
 		}),
 	},
 });

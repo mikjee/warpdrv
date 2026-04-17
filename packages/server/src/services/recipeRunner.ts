@@ -1,5 +1,7 @@
 import { spawn, spawnSync, type ChildProcess } from 'child_process';
 import { randomUUID } from 'crypto';
+import os from 'os';
+import { resolveBashPath } from '../util/shellResolver';
 import {
 	ERecipeStepStatus,
 	ERecipeRunStatus,
@@ -13,7 +15,16 @@ import {
 	type TStepId,
 } from '@warpcore/shared';
 
-interface ISSEEmitter {
+function expandHome(p: string | undefined): string | undefined {
+	if (p === undefined) return undefined;
+	let out = p;
+	if (out === '~') return os.homedir();
+	if (out.startsWith('~/')) out = os.homedir() + out.slice(1);
+	out = out.replace(/\$HOME/g, os.homedir());
+	return out;
+}
+
+interface ISSEmitter {
 	emit(channel: string, data: unknown): void;
 }
 
@@ -177,13 +188,25 @@ function runStep(
 	runId: TRunId,
 ): Promise<IStepResult> {
 	return new Promise<IStepResult>((resolve) => {
-		const proc = spawn('bash', ['-c', body], {
-			cwd: cwd ?? process.cwd(),
-			env,
-			stdio: ['ignore', 'pipe', 'pipe'],
-			detached: true,
-		});
-
+		let proc: ChildProcess;
+		try {
+			proc = spawn(resolveBashPath(), ['-c', body], {
+				cwd: expandHome(cwd) ?? process.cwd(),
+				env,
+				stdio: ['ignore', 'pipe', 'pipe'],
+				detached: true,
+			});
+		}
+		catch (err) {
+			sseEmitter?.emit('runs:step-output', {
+				runId,
+				stepId,
+				kind: ERecipeStreamKind.STDERR,
+				data: `[runner] ${err instanceof Error ? err.message : String(err)}\n`,
+			});
+			resolve({ exitCode: 1, cancelled: false });
+			return;
+		}
 		if (activeRun !== null) activeRun.proc = proc;
 
 		proc.stdout?.on('data', (chunk: Buffer) => {
@@ -196,6 +219,7 @@ function runStep(
 		});
 
 		proc.stderr?.on('data', (chunk: Buffer) => {
+			console.log('[recipeRunner] stderr chunk:', chunk.length, 'bytes');
 			sseEmitter?.emit('runs:step-output', {
 				runId,
 				stepId,
@@ -215,6 +239,7 @@ function runStep(
 		});
 
 		proc.on('exit', (code, signal) => {
+			console.log('[recipeRunner] exit:', { stepId, code, signal });
 			if (activeRun !== null) activeRun.proc = null;
 			const cancelled = activeRun !== null && activeRun.cancelled;
 			const exitCode = code !== null ? code : (signal !== null ? 1 : 1);
