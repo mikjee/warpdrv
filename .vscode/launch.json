@@ -1,0 +1,79 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "warpcore-all",
+			"type": "node",
+			"request": "launch",
+			"runtimeExecutable": "npx",
+			"runtimeArgs": [
+				"concurrently",
+				"-n",
+				"server,app",
+				"-c",
+				"blue,green",
+				"cd packages/server && CONTROL_API_PORT=4401 npx tsx src/index.ts",
+				"cd packages/app && CONTROL_API_PORT=4401 npx vite"
+			],
+			"console": "integratedTerminal",
+			"cwd": "${workspaceFolder}"
+		},
+		{
+			"name": "warpcore-server",
+			"type": "node",
+			"request": "launch",
+			"cwd": "${workspaceFolder}/packages/server",
+			"runtimeExecutable": "npx",
+			"env": {
+				"CONTROL_API_PORT": "4401"
+			},
+			"runtimeArgs": [
+				"tsx",
+				"src/index.ts"
+			],
+			"console": "integratedTerminal",
+			"skipFiles": [
+				"<node_internals>/**"
+			],
+			"presentation": {
+				"group": "warpcore",
+				"order": 1
+			}
+		},
+		{
+			"name": "warpcore-app",
+			"type": "node",
+			"request": "launch",
+			"cwd": "${workspaceFolder}/packages/app",
+			"runtimeExecutable": "npx",
+			"env": {
+				"CONTROL_API_PORT": "4401"
+			},
+			"runtimeArgs": [
+				"vite"
+			],
+			"console": "integratedTerminal",
+			"presentation": {
+				"group": "warpcore",
+				"order": 2
+			}
+		},
+		{
+			"name": "warpcore-desktop",
+			"type": "node",
+			"request": "launch",
+			"runtimeExecutable": "npx",
+			"runtimeArgs": [
+				"concurrently",
+				"-n",
+				"server,desktop",
+				"-c",
+				"blue,yellow",
+				"cd packages/server && npx tsx src/index.ts",
+				"cd packages/desktop && npx cargo tauri dev"
+			],
+			"console": "integratedTerminal",
+			"cwd": "${workspaceFolder}"
+		}
+	]
+}

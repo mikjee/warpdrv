@@ -54,8 +54,22 @@ const convertMessage = useCallback((msg: any) => {
 		const threadToolCalls = Object.values(toolCallsById).filter((tc: any) => tc.threadId === currentThreadId);
 		const tcMap = new Map(threadToolCalls.map((tc: any) => [tc.id, tc]));
 		
+		const attachments: any[] = [];
 		const content = (msg.content ?? []).map((part: any) => {
-			// Convert TOOL_CALL parts to tool-call format
+			if (part.type === EMessagePartType.ATTACHMENT) {
+				if (part.mimeType.startsWith('image/') && part.data) {
+					const imageUrl = part.data.startsWith('data:') ? part.data : `data:${part.mimeType};base64,${part.data}`;
+					attachments.push({
+						id: part.id,
+						type: 'image' as const,
+						content: [{ type: 'image' as const, image: imageUrl, filename: part.fileName }],
+						name: part.fileName,
+						file: new File([imageUrl], part.fileName || 'attachment', { type: part.mimeType }),
+					});
+					return null;
+				}
+				return null;
+			}
 			if (part.type === EMessagePartType.TOOL_CALL) {
 				const tc = tcMap.get(part.toolCallId);
 				if (tc) {
@@ -78,14 +92,6 @@ const convertMessage = useCallback((msg: any) => {
 				const reasoningText = part.text || '';
 				return { type: 'reasoning' as const, reasoning: reasoningText, text: reasoningText };
 			}
-			if (part.type === EMessagePartType.ATTACHMENT) {
-				if (part.mimeType.startsWith('image/')) {
-					const imageUrl = part.data.startsWith('data:') ? part.data : `data:${part.mimeType};base64,${part.data}`;
-					return { type: 'image' as const, image: imageUrl, filename: part.fileName };
-				} else {
-					return { type: 'text' as const, text: part.data };
-				}
-			}
 			return { type: 'text' as const, text: '' };
 		}).filter(Boolean);
 
@@ -98,13 +104,13 @@ const convertMessage = useCallback((msg: any) => {
 							tcMap.get(part.toolCallId)?.status === EToolCallStatus.PENDING
 		);
 
-		const result = {
+		const result: any = {
 			id: msg.id,
 			role: msg.role as 'user' | 'assistant' | 'system' | 'tool',
 			content: content as any,
 			createdAt: new Date(msg.createdAt),
 			metadata: { unstable_state: {}, custom: msg.stats || {} },
-			attachments: [],
+			attachments,
 		};
 
 		// Set message status based on inference state AND pending tool calls

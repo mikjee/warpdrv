@@ -184,7 +184,6 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 				// Update stats if provided
 				if (updates.stats !== undefined) {
 					msg.stats = updates.stats;
-					console.log("got stats", msg.stats);
 				}
 
 				// Handle replaceParts — full replacement

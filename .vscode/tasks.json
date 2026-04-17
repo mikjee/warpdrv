@@ -1,0 +1,49 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "dev",
+			"type": "shell",
+			"command": "npm run dev",
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "dev:server",
+			"type": "shell",
+			"command": "npm run dev:server",
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"group": "warpcore"
+			}
+		},
+		{
+			"label": "dev:app",
+			"type": "shell",
+			"command": "npm run dev:app",
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"group": "warpcore"
+			}
+		},
+		{
+			"label": "install",
+			"type": "shell",
+			"command": "npm install",
+			"group": "build"
+		}
+	]
+}

@@ -48,7 +48,7 @@ const useFileSrc = (file: File | undefined) => {
 const useAttachmentSrc = () => {
   const { file, src } = useAuiState(
     useShallow((s): { file?: File; src?: string } => {
-      if (s.attachment.type !== "image") return {};
+      if (s.attachment.type !== "image" && s.attachment.type !== "file") return {};
       if (s.attachment.file) return { file: s.attachment.file };
       const src = s.attachment.content?.filter((c) => c.type === "image")[0]
         ?.image;
@@ -107,7 +107,7 @@ const AttachmentPreviewDialog: FC<PropsWithChildren> = ({ children }) => {
 };
 
 const AttachmentThumb: FC = () => {
-  const isImage = useAuiState((s) => s.attachment.type === "image");
+  const isImage = useAuiState((s) => s.attachment.type === "image" || s.attachment.type === "file");
   const src = useAttachmentSrc();
 
   return (
