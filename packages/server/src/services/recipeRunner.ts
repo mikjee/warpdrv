@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'child_process';
+import { spawn, spawnSync, type ChildProcess } from 'child_process';
 import { randomUUID } from 'crypto';
 import {
 	ERecipeStepStatus,
@@ -79,8 +79,17 @@ export function cancelRun(): boolean {
 	if (activeRun === null) return false;
 	activeRun.cancelled = true;
 	if (activeRun.proc !== null) {
-		try { activeRun.proc.kill('SIGTERM'); }
-		catch (err) { console.error('[recipeRunner] failed to SIGTERM:', err); }
+		try {
+			const proc = activeRun.proc;
+			const pid = proc.pid;
+			activeRun.proc = null;
+			if (pid !== undefined && process.platform !== 'win32') {
+				process.kill(-pid, 'SIGKILL');
+			} else if (pid !== undefined) {
+				spawnSync('taskkill', ['/T', '/F', '/PID', String(pid)], { stdio: 'ignore' });
+			}
+		}
+		catch (err) { console.error('[recipeRunner] failed to kill:', err); }
 	}
 	return true;
 }
@@ -172,6 +181,7 @@ function runStep(
 			cwd: cwd ?? process.cwd(),
 			env,
 			stdio: ['ignore', 'pipe', 'pipe'],
+			detached: true,
 		});
 
 		if (activeRun !== null) activeRun.proc = proc;
@@ -201,6 +211,7 @@ function runStep(
 				kind: ERecipeStreamKind.STDERR,
 				data: `[runner] failed to spawn: ${err.message}\n`,
 			});
+			resolve({ exitCode: 1, cancelled: false });
 		});
 
 		proc.on('exit', (code, signal) => {

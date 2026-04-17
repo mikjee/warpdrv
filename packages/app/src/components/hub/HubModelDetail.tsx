@@ -307,9 +307,12 @@ export function HubModelDetail({ modelId, modelRoots }: IHubModelDetailProps) {
 	// Sort display files by size
 	displayFiles.sort((a, b) => a.size - b.size);
 
-	// Count downloaded files (count all parts, not just primary)
-	const downloadedCount = allGgufFiles.filter((f: IHubFile) => f.isDownloaded).length;
-	const totalModels = fileGroups.size; // Count unique models, not individual files
+	// Count fully downloaded models (all parts must be downloaded)
+	let downloadedCount = 0;
+	for (const files of fileGroups.values()) {
+		if (files.every(f => f.isDownloaded)) downloadedCount++;
+	}
+	const totalModels = fileGroups.size;
 
 	// Find if any file from this repo exists in a root (for dir picker hint)
 	const existsInRoot = detail.files.find((f: IHubFile) => f.downloadedInRoot)?.downloadedInRoot ?? null;
