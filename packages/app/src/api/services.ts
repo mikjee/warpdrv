@@ -270,7 +270,7 @@ export async function deleteChatPreset(id: string) {
 
 // Thread Config
 export async function fetchThreadConfig(threadId: string) {
-	return api.get<IThreadConfig>(`/chat/threads/${threadId}/config`);
+	return api.get<Omit<IThreadConfig, "params"> & { params: string }>(`/chat/threads/${threadId}/config`);
 }
 export async function updateThreadConfig(threadId: string, data: { presetId?: string | null; systemPrompt?: string; params?: string }) {
 	return api.put<IThreadConfig>(`/chat/threads/${threadId}/config`, data);

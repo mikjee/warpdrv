@@ -171,7 +171,6 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	// Removed: const [configOpen, setConfigOpen] = useState(false);
 	// Removed: const [toolsOpen, setToolsOpen] = useState(false);
 	const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
-	const [pendingChanges, setPendingChanges] = useState(false);
 
 	// Get current thread state from store
 	const currentThreadId = useStore(s => s.currentThreadId);
@@ -190,58 +189,13 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	const isValidServer = currentServerId && currentServer?.status === EServerStatus.RUNNING;
 
 	// Load config when thread changes
-	const flushPendingSaves = useCallback(() => {
-		if (!saveTimerRef.current) return;
-		clearTimeout(saveTimerRef.current);
-		saveTimerRef.current = null;
-		if (currentThreadId) {
-			updateThreadConfig(currentThreadId, {
-				presetId: selectedPresetId,
-				systemPrompt: currentSystemPrompt,
-				params: JSON.stringify(currentInferenceParams),
-			});
-			setPendingChanges(false);
-		}
-	}, [currentThreadId, currentSystemPrompt, currentInferenceParams, selectedPresetId]);
-	useThreadConfig(currentThreadId, flushPendingSaves);
+	const {
+		handleParamsChange,
+		handleSystemPromptChange,
+	} = useThreadConfig(selectedPresetId);
 
 	// Get threads for adapter
 	const threadsAPI = useThreadsAndFolders();
-
-	// Debounced save
-	const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-	function handleParamsChange(newParams: IChatInferenceParams) {
-		setCurrentInferenceParams(newParams as unknown as Record<string, unknown>);
-		if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-		if (currentThreadId) {
-			setPendingChanges(true);
-			saveTimerRef.current = setTimeout(() => {
-				updateThreadConfig(currentThreadId, {
-					presetId: selectedPresetId,
-					systemPrompt: currentSystemPrompt,
-					params: JSON.stringify(newParams),
-				});
-				setPendingChanges(false);
-			}, 400);
-		}
-	}
-
-	function handleSystemPromptChange(newPrompt: string) {
-		setCurrentSystemPrompt(newPrompt);
-		if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-		if (currentThreadId) {
-			setPendingChanges(true);
-			saveTimerRef.current = setTimeout(() => {
-				updateThreadConfig(currentThreadId, {
-					presetId: selectedPresetId,
-					systemPrompt: newPrompt,
-					params: JSON.stringify(currentInferenceParams as unknown as Record<string, unknown>),
-				});
-				setPendingChanges(false);
-			}, 400);
-		}
-	}
 
 	function handlePresetSelect(presetId: string | null, preset: IChatPreset | null) {
 		setSelectedPresetId(presetId);
