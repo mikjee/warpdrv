@@ -298,6 +298,7 @@ export interface ICompletionRequest {
 	inferenceParams: Record<string, unknown>;
 	tools?: IOpenAITool[];
 	attachments?: IMessagePartAttachment[];
+	generateTitle?: boolean;
 }
 
 // ============================================================

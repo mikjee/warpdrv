@@ -74,9 +74,13 @@ export class Orchestrator {
 			let thread = await this.persistence.getThread(request.threadId);
 			if (!thread) {
 				const now = Date.now();
+				let title = 'New Chat';
+				if (request.userMessage) {
+					title = this.truncateTitle(request.userMessage.content);
+				}
 				thread = {
 					id: request.threadId,
-					title: 'New Chat',
+					title,
 					folderId: null,
 					systemPrompt: '',
 					meta: '{}',
@@ -176,6 +180,18 @@ export class Orchestrator {
 				enabledTools,
 				abortSignal,
 			);
+
+			// Fire title generation after response completes (fire-and-forget)
+			if (request.userMessage && request.generateTitle !== false) {
+				this.generateTitle(inferenceUrl, request.userMessage.content)
+					.then(title => {
+						this.persistence.updateThread(request.threadId, { title });
+						this.broadcaster.emit({ type: 'thread.updated', threadId: request.threadId, updates: { title } });
+					})
+					.catch(() => {
+						// Title generation failed, keep truncated title
+					});
+			}
 		} catch (err) {
 			const errorMsg = err instanceof Error ? err.message : String(err);
 			if (!abortSignal.aborted) {
@@ -809,5 +825,36 @@ export class Orchestrator {
 				} }
 				: {}),
 		};
+	}
+
+	private generateTitle(inferenceUrl: string, userContent: string): Promise<string> {
+		return fetch(`${inferenceUrl}/v1/chat/completions`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer warpcore' },
+			body: JSON.stringify({
+				model: 'model',
+				messages: [
+					{ role: 'user', content: 'Generate a concise 3-5 word title for the conversation below. Return ONLY the title text, no quotes, no explanation.\n\n' + userContent },
+				],
+				stream: false,
+				max_tokens: 30,
+				temperature: 0.3,
+				chat_template_kwargs: { enable_thinking: false },
+			}),
+		})
+			.then(res => {
+				if (!res.ok || !res.body) throw new Error('Title generation failed');
+				return res.json();
+			})
+			.then(body => {
+				const title = body?.choices?.[0]?.message?.content ?? '';
+				if (!title) throw new Error('Empty title response');
+				return title.replace(/^["']|["']$/g, '').trim();
+			});
+	}
+
+	private truncateTitle(text: string): string {
+		const words = text.split(/\s+/).filter(Boolean).slice(0, 5);
+		return words.join(' ') || 'New Chat';
 	}
 }
