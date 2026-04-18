@@ -40,6 +40,7 @@ export function SettingsPage() {
 	const [startMinimized, setStartMinimized] = useState(false);
 	const [checkpointsPath, setCheckpointsPath] = useState('');
 	const [maxCheckpointDiskGB, setMaxCheckpointDiskGB] = useState(50);
+	const [disabledTitleGen, setDisabledTitleGen] = useState(false);
 	const [newRoot, setNewRoot] = useState('');
 	const [saved, setSaved] = useState(false);
 
@@ -60,6 +61,7 @@ export function SettingsPage() {
 			setStartMinimized(settings.startMinimized ?? false);
 			setCheckpointsPath(settings.checkpointsPath ?? '');
 			setMaxCheckpointDiskGB(settings.maxCheckpointDiskGB ?? 50);
+			setDisabledTitleGen(settings.disabledTitleGen ?? false);
 		}
 	}, [settings]);
 
@@ -144,6 +146,7 @@ export function SettingsPage() {
 				startMinimized,
 			checkpointsPath,
 			maxCheckpointDiskGB,
+			disabledTitleGen,
 		});
 
 		if (saveMut.error) {
@@ -298,6 +301,28 @@ export function SettingsPage() {
 							</HStack>
 						</VStack>
 					</Card>
+
+					{/* Chat */}
+					<Card>
+						<VStack align="stretch" gap="4">
+							<HStack justify="space-between" alignItems="center" mb="2">
+								<Box flex="1">
+									<Text fontSize="14px" fontWeight="600" color="#e4e4e7">Generate conversation titles</Text>
+									<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)">
+										Use the loaded model to generate a concise title for new conversations. When disabled, titles are derived from your first message.
+									</Text>
+								</Box>
+								<Switch.Root label='Generate titles' checked={!disabledTitleGen} onCheckedChange={(details) => setDisabledTitleGen(!details.checked)} color={!disabledTitleGen ? '#34d399' : 'rgba(255, 255, 255, 0.4)'}>
+									<Switch.HiddenInput />
+									<Switch.Control />
+									<Switch.Label ml="2" fontSize="13px" color={!disabledTitleGen ? '#34d399' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
+										Generate titles
+									</Switch.Label>
+								</Switch.Root>
+							</HStack>
+						</VStack>
+					</Card>
+
 					{/* API */}
 					<Card>
 						<VStack align="stretch" gap="4">

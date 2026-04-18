@@ -13,7 +13,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { PageHeader } from '../components/PageHeader';
 import { useStore } from '../store';
 import type { AppState } from '../store/types';
-import { updateThreadConfig } from '../api/services';
+import { updateThreadConfig, fetchSettings } from '../api/services';
 import type { IServer, IChatPreset, IChatInferenceParams, IThreadConfig } from '@warpcore/shared';
 import { EServerStatus, EReasoningEffort } from '@warpcore/shared';
 import { EChatRole, EMessagePartType, EToolCallStatus, type IChatMessage } from '@warpcore/bridge';
@@ -171,6 +171,13 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	// Removed: const [configOpen, setConfigOpen] = useState(false);
 	// Removed: const [toolsOpen, setToolsOpen] = useState(false);
 	const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+	const [generateTitle, setGenerateTitle] = useState(true);
+
+	useEffect(() => {
+		fetchSettings().then(r => {
+			if (r.ok && r.data) setGenerateTitle(r.data.disabledTitleGen !== true);
+		});
+	}, []);
 
 	// Get current thread state from store
 	const currentThreadId = useStore(s => s.currentThreadId);
@@ -349,6 +356,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 			messages: openAIMessages,
 			systemPrompt: currentSystemPrompt,
 			inferenceParams: currentInferenceParams,
+			generateTitle,
 		};
 		
 		if (attachmentParts.length > 0) {
@@ -386,6 +394,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 				messages: openAIMessages,
 				systemPrompt: currentSystemPrompt,
 				inferenceParams: currentInferenceParams,
+				generateTitle,
 			}),
 		});
 	}, [currentThreadId, currentSystemPrompt, currentInferenceParams, toolCallsById, currentServerId]);

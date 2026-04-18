@@ -288,6 +288,7 @@ export interface ISettings {
 	windowHeight?: number; // desktop window height (desktop only)
 	checkpointsPath?: string; // where to save KV cache checkpoints
 	maxCheckpointDiskGB?: number; // max disk usage cap for checkpoints in GB
+	disabledTitleGen?: boolean; // if true, skip LLM title generation and use message truncation
 }
 export const DEFAULT_SETTINGS: ISettings = {
 	modelRoots: [],
@@ -312,6 +313,7 @@ export const DEFAULT_SETTINGS: ISettings = {
 	windowHeight: 750,
 	checkpointsPath: '',
 	maxCheckpointDiskGB: 50,
+	disabledTitleGen: false,
 };
 // ============================================================
 // VRAM Calculator
