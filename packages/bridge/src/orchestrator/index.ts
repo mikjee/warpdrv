@@ -196,6 +196,12 @@ export class Orchestrator {
 			const errorMsg = err instanceof Error ? err.message : String(err);
 			if (!abortSignal.aborted) {
 				console.error('[Orchestrator] handleCompletion error:', errorMsg);
+				this.broadcaster.emit({
+					type: 'inference.error',
+					threadId: request.threadId,
+					messageId: request.parentId ?? crypto.randomUUID(),
+					error: errorMsg,
+				});
 			}
 		}
 	}
@@ -344,7 +350,14 @@ export class Orchestrator {
 
 		if (!response.ok || !response.body) {
 			const errBody = await response.text().catch(() => '');
-			console.error(`[Orchestrator] Inference error ${response.status}: ${errBody}`);
+			const errorMessage = `Inference error ${response.status}: ${errBody}`;
+			console.error(`[Orchestrator] ${errorMessage}`);
+			this.broadcaster.emit({
+				type: 'inference.error',
+				threadId: request.threadId,
+				messageId: turn.assistantMessageId,
+				error: errorMessage,
+			});
 			return { hadToolCalls: false, needsAsk: false, lastToolMessageId: null };
 		}
 
@@ -357,6 +370,7 @@ export class Orchestrator {
 		let usage: Record<string, number> | null = null;
 		let finishReason = '';
 		const toolCallAccumulators: Record<number, IToolCallAccumulator> = {};
+		let streamError: string | null = null;
 
 		while (true) {
 			const { done, value } = await reader.read();
@@ -370,6 +384,10 @@ export class Orchestrator {
 					await this.flushReasoningPart(turn);
 					await this.flushTextPart(turn);
 					return { hadToolCalls: false, needsAsk: false, lastToolMessageId: null };
+				}
+				if (chunk.error || chunk.warpcore_event === 'error') {
+					streamError = chunk.error ?? 'Inference error from server';
+					break;
 				}
 				const delta = chunk.choices?.[0]?.delta;
 
@@ -448,6 +466,16 @@ export class Orchestrator {
 
 		await this.flushReasoningPart(turn);
 		await this.flushTextPart(turn);
+
+		if (streamError) {
+			this.broadcaster.emit({
+				type: 'inference.error',
+				threadId: request.threadId,
+				messageId: turn.assistantMessageId,
+				error: streamError,
+			});
+			return { hadToolCalls: false, needsAsk: false, lastToolMessageId: null };
+		}
 
 		const finalToolCalls = finalizeToolCalls(toolCallAccumulators);
 

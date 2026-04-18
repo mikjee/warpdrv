@@ -81,15 +81,10 @@ export function convertMessagesToOpenAIFormat(
 
 				const assistantMsg: TOpenAIMessage = { role: 'assistant' };
 
-				if (content) {
-					assistantMsg.content = content;
-				}
-
-				if (toolCalls.length > 0) {
-					assistantMsg.tool_calls = toolCalls;
-				}
-
-				result.push(assistantMsg);
+				if (content) assistantMsg.content = content;
+				if (toolCalls.length > 0) assistantMsg.tool_calls = toolCalls;
+				if (content || toolCalls.length > 0) result.push(assistantMsg);
+				
 				break;
 			}
 

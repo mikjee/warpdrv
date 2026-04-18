@@ -1,9 +1,10 @@
-import { Box, Text, HStack, VStack, Flex, Button, Spinner, Badge, Input, Switch, InputGroup, Combobox, createListCollection, Portal, Popover } from '@chakra-ui/react';
+import { Box, Text, HStack, VStack, Flex, Button, Spinner, Badge, Input, Switch, InputGroup, Combobox, createListCollection, Portal, Popover, HoverCard, Icon } from '@chakra-ui/react';
 import {
 	Play, Square, RotateCcw, Server, Clock, Trash2, X, Plus,
-	Activity, Gauge, Cpu, Blocks, Terminal, Edit, Search, ChevronDown, ArrowUpAZ, ArrowDownZA, Sparkles, Save, Zap
+	Activity, Gauge, Cpu, Blocks, Terminal, Edit, Search, ChevronDown, ArrowUpAZ, ArrowDownZA, Sparkles, Save, Zap,
+	ScanEye
 } from 'lucide-react';
-import { FaBrain, FaBookOpen } from 'react-icons/fa6';
+import { FaBrain, FaBookOpen, FaRegEye } from 'react-icons/fa6';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
@@ -422,10 +423,12 @@ export function ServersPage() {
 						</HStack>
 
 						{/* Running Only Toggle */}
-						<Switch.Root label="Show only running servers" checked={runningOnly} onCheckedChange={(details) => setRunningOnly(details.checked)} color={runningOnly ? '#34d399' : 'rgba(255, 255, 255, 0.4)'}>
+						<Switch.Root label="Show only running servers" checked={runningOnly} onCheckedChange={(details) => setRunningOnly(details.checked)} color={runningOnly ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'}>
 							<Switch.HiddenInput />
-							<Switch.Control />
-							<Switch.Label ml="2" fontSize="13px" color={runningOnly ? '#34d399' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
+							<Switch.Control css={{ bg: runningOnly ? '#3b86d6' : 'surface.4' }}>
+								<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+							</Switch.Control>
+							<Switch.Label ml="2" fontSize="13px" color={runningOnly ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
 								Running only
 							</Switch.Label>
 						</Switch.Root>
@@ -482,9 +485,9 @@ export function ServersPage() {
 									key={server.id}
 									p="3"
 									hasGradient={isRunning || isLoading}
-									gradientFrom={isRunning ? "rgba(52, 211, 153, 0.025)" : "rgba(251, 191, 36, 0.025)"}
+									gradientFrom={isRunning ? "rgba(52, 211, 153, 0.05)" : "rgba(251, 191, 36, 0.025)"}
 									gradientTo="transparent"
-									borderColor={isRunning ? 'rgba(52, 211, 153, 0.3)' : isLoading ? 'rgba(251, 191, 36, 0.3)' : undefined}
+									borderColor={isRunning ? 'rgba(52, 211, 153, 0.15)' : isLoading ? 'rgba(251, 191, 36, 0.3)' : undefined}
 								>
 									<VStack align="stretch" gap="4">
 										<Flex justify="space-between" align="start">
@@ -501,7 +504,30 @@ export function ServersPage() {
 												</Flex>
 												<Box>
 													<HStack gap="2" alignItems="center" flexWrap="wrap">
-														<Text fontSize="12px" fontWeight="600" color="#e4e4e7">{server.serverName}</Text>
+														<HoverCard.Root size="sm" openDelay={150}>
+														<HoverCard.Trigger asChild>
+															<Text fontSize="12px" fontWeight="600" color="#e4e4e7" cursor="help">{server.serverName}</Text>
+														</HoverCard.Trigger>
+														<Portal>
+															<HoverCard.Positioner>
+																<HoverCard.Content
+																	bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
+																	borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="3"
+																	maxW="500px"
+																>
+																	<VStack align="stretch" gap="2">
+																		<Box
+																			fontSize="10px" fontFamily='"Geist Mono", monospace' color="rgba(255, 255, 255, 0.7)"
+																			bg="rgba(255, 255, 255, 0.03)" borderRadius="md" p="2.5"
+																			whiteSpace="pre-wrap" wordBreak="break-all" lineHeight="1.4"
+																		>
+																			{server.launchCommand}
+																		</Box>
+																	</VStack>
+																</HoverCard.Content>
+															</HoverCard.Positioner>
+														</Portal>
+													</HoverCard.Root>
 														<StatusBadge status={server.status as EServerStatus} port={server.port} />
 														{server.serverAlias && server.serverAlias.length > 0 && (
 															<>
@@ -595,6 +621,9 @@ export function ServersPage() {
 																<>
 																	<HStack gap="1">
 																		<StatPill icon={<FaBrain size={12} />} label="Model" value={model?.name ?? "Model Not Found!"} />
+																		{model?.mmprojFile && (
+																			<Icon color="#ecbf42" boxSize="14px" ml="1" mr="1"><FaRegEye /></Icon>
+																		)}
 																		{model?.primaryFile?.metadata?.quantType && (
 																			<Badge
 																				px="1.5" py="0.25" borderRadius="md" fontSize="10px"
@@ -740,7 +769,6 @@ export function ServersPage() {
 						backendId: editingServer.backendId!,
 						backendGroupId: editingServer.backendGroupId,
 						modelPath: editingServer.modelPath,
-						mmprojPath: editingServer.mmprojPath ?? null,
 						serverName: editingServer.serverName,
 						serverAlias: editingServer.serverAlias ?? [],
 						params: editingServer.params,

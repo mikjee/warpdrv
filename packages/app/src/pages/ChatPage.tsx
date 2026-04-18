@@ -27,6 +27,7 @@ import { useThreadConfig } from '@/hooks/useThreadConfig';
 import { ToolCallBlockWrapper } from '@/components/assistant-ui/ToolCallBlockWrapper';
 import { useShallow } from 'zustand/shallow';
 import { convertMessagesToOpenAIFormat } from '@warpcore/bridge';
+import { useToast } from '../components/ToastProvider';
 
 const getFileDataURL = (file: File): Promise<string> =>
 	new Promise((resolve, reject) => {
@@ -182,6 +183,15 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 			if (r.ok && r.data) setGenerateTitle(r.data.disabledTitleGen !== true);
 		});
 	}, []);
+
+	const { toast } = useToast();
+	const inferenceError = useStore(s => s.inferenceError);
+	useEffect(() => {
+		if (inferenceError) {
+			toast('error', inferenceError.error);
+			useStore.setState(s => { s.inferenceError = null; });
+		}
+	}, [inferenceError, toast]);
 
 	// Get current thread state from store
 	const currentThreadId = useStore(s => s.currentThreadId);
@@ -481,10 +491,14 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 							minW="260px"
 							borderRightWidth="1px"
 							borderColor="rgba(255,255,255,0.06)"
-							overflow="auto"
+							h="full"
 							p="3"
+							display="flex"
+							flexDirection="column"
 						>
-							<ThreadList />
+							<Flex flex="1" flexDirection="column" overflow="hidden" gap="3">
+								<ThreadList />
+							</Flex>
 						</Box>
 						<Box flex="1" overflow="hidden">
 							<Thread isLoading={isLoadingThread} />

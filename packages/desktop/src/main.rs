@@ -98,16 +98,14 @@ fn get_server_port() -> u16 {
 	4400
 }
 
-fn spawn_server() -> Option<Child> {
+fn spawn_server(app: &tauri::AppHandle) -> Option<Child> {
 	let (bin, args) = find_server_binary()?;
-
 	let log_file = std::fs::File::create("/tmp/warpcore-server.log").unwrap();
 	let err_file = log_file.try_clone().unwrap();
-
-	// Find resource dir (Tauri puts resources in ../lib/WarpCore/ relative to the binary)
-	let resource_dir = env::current_exe().ok()
-		.and_then(|p| p.parent().map(|d| d.join("../lib/WarpCore").to_string_lossy().to_string()))
-		.unwrap_or_else(|| ".".to_string());
+	// Resolve resource dir via Tauri API - works cross-platform
+	let resource_dir = app.path().resource_dir()
+		.map(|p| p.to_string_lossy().to_string())
+		.unwrap_or_else(|_| ".".to_string());
 
 	// Get port from env var or settings, and pass to server process
     let server_port = get_server_port();
@@ -178,7 +176,7 @@ fn loading_html(port: u16) -> String {
         </style></head>
         <body>
             <div class="spinner"></div>
-            <div class="text">Starting WarpCore...</div>
+            <div class="text">[engaging warpdrv]</div>
             <div class="sub">Waiting for server on port {port}</div>
             <script>
                 setInterval(() => {{
@@ -422,8 +420,8 @@ fn main() {
             thread::spawn(move || {
                 let port = server_port;
 
-                if !is_server_running(port) {
-                    let child = spawn_server();
+               if !is_server_running(port) {
+                    let child = spawn_server(&app_handle);
                     if let Some(c) = child {
                         *app_handle.state::<ServerProcess>().0.lock().unwrap() = Some(c);
                     }
@@ -448,7 +446,7 @@ fn main() {
                     if was_running && !running {
                         println!("[WarpCore] Server died, respawning...");
                         let _ = app_handle.emit("server-status", "disconnected");
-                        let child = spawn_server();
+                        let child = spawn_server(&app_handle);
                         if let Some(c) = child {
                             *app_handle.state::<ServerProcess>().0.lock().unwrap() = Some(c);
                             if wait_for_server(port, 30) {
@@ -468,8 +466,8 @@ fn main() {
             });
 
             // Tray menu
-            let open_item = MenuItemBuilder::with_id("open", "Open WarpCore").build(app)?;
-            let hide_item = MenuItemBuilder::with_id("hide", "Hide Window").build(app)?;
+            let open_item = MenuItemBuilder::with_id("open", "Show warpdrv").build(app)?;
+            let hide_item = MenuItemBuilder::with_id("hide", "Hide warpdrv").build(app)?;
             let restart_item = MenuItemBuilder::with_id("restart", "Restart Server").build(app)?;
             let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
 
@@ -502,7 +500,7 @@ fn main() {
                         if let Some(mut child) = app.state::<ServerProcess>().0.lock().unwrap().take() {
                             let _ = child.kill();
                         }
-                        let child = spawn_server();
+                        let child = spawn_server(app);
                         if let Some(c) = child {
                             *app.state::<ServerProcess>().0.lock().unwrap() = Some(c);
                             let port = app.state::<ServerPort>().0;

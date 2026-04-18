@@ -77,7 +77,8 @@ export const Thread: FC<{ isLoading?: boolean }> = React.memo(({ isLoading = fal
     >
       <ThreadPrimitive.Viewport
         turnAnchor="top"
-        className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll scroll-smooth px-6 pt-4"
+        className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-6 pt-4"
+        style={{ overflowAnchor: "none" }}
       >
         {isLoading ? (
           <div className="flex h-full items-center justify-center">

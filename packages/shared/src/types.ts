@@ -198,7 +198,6 @@ export interface IServer {
 	backendId?: TBackendId;
 	backendGroupId?: TBackendGroupId;
 	modelPath: string; // path to primary GGUF file
-	mmprojPath: string | null;
 	serverName: string; // user-defined name, or auto-generated from model filename
 	serverAlias: string[]; // aliases for proxy routing
 	params: ILaunchParams;
@@ -214,6 +213,8 @@ export interface IServer {
 	// Auto checkpoint behavior (optional for backwards compatibility)
 	autoSaveCheckpointOnStop?: boolean;
 	autoLoadCheckpointOnStart?: boolean;
+	// Full command line used to launch the server
+	launchCommand?: string | null;
 }
 export interface ISlotStats {
 	id: number;
@@ -231,7 +232,6 @@ export interface IServerCreatePayload {
 	backendId?: TBackendId;
 	backendGroupId?: TBackendGroupId;
 	modelPath: string;
-	mmprojPath: string | null;
 	serverName: string | null; // null = auto-generate from model filename
 	params: ILaunchParams;
 	serverAlias?: string[]; // optional aliases for proxy routing
@@ -247,7 +247,6 @@ export interface IPreset {
 	name: string;
 	backendId: TBackendId;
 	modelPath: string;
-	mmprojPath: string | null;
 	params: ILaunchParams;
 	createdAt: number;
 }
@@ -255,7 +254,6 @@ export interface IPresetCreatePayload {
 	name: string;
 	backendId: TBackendId;
 	modelPath: string;
-	mmprojPath: string | null;
 	params: ILaunchParams;
 }
 // ============================================================

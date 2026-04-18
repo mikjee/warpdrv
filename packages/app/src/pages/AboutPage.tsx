@@ -8,7 +8,7 @@ export function AboutPage() {
 		<Box>
 			<PageHeader
 				title="About"
-				subtitle="WarpCore v0.1.0"
+				subtitle="warpdrv v0.4.0"
 				icon={<Github size={20} />}
 			/>
 			<Box p="4">
@@ -33,7 +33,7 @@ export function AboutPage() {
 						<VStack gap="3">
 							<Text fontSize="14px" fontWeight="600" color="#e4e4e7">Copyright</Text>
 							<Text fontSize="12px" color="rgba(255, 255, 255, 0.5)">
-								© 2025 mikjee. All rights reserved.
+								© 2026 mikjee. All rights reserved.
 							</Text>
 						</VStack>
 					</Card>
@@ -55,7 +55,7 @@ export function AboutPage() {
 
 					{/* Footer */}
 					<Text fontSize="11px" color="rgba(255, 255, 255, 0.2)" textAlign="center" mt="2">
-						Engine room for WarpDrv
+						Buy me a coffee	- 
 					</Text>
 				</VStack>
 			</Box>

@@ -336,7 +336,8 @@ export type IBridgeEvent =
 	| { type: 'tool_call.created'; toolCall: IToolCall }
 	| { type: 'tool_call.updated'; toolCall: IToolCall }
 	| { type: 'inference.started'; threadId: TThreadId; messageId: TMessageId }
-	| { type: 'inference.ended'; threadId: TThreadId; messageId: TMessageId };
+	| { type: 'inference.ended'; threadId: TThreadId; messageId: TMessageId }
+	| { type: 'inference.error'; threadId: TThreadId; messageId: TMessageId; error: string };
 
 export interface IMessagePatch {
 	stats?: IChatMessageStats;
@@ -365,6 +366,7 @@ export interface ISSEChunk {
 	timings?: Record<string, number>;
 	usage?: Record<string, number>;
 	warpcore_event?: string;
+	error?: string;
 	[key: string]: unknown;
 }
 

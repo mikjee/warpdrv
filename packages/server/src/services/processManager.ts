@@ -44,7 +44,7 @@ const logBuffers = new Map<string, string[]>();
 const MAX_LOG_LINES = 500;
 
 // Emit full server update via SSE
-async function emitServerUpdate(serverId: string, status: EServerStatus, error: string | null, startedAt?: number | null): Promise<void> {
+async function emitServerUpdate(serverId: string, status: EServerStatus, error: string | null, startedAt: number | null | undefined, launchCommand?: string): Promise<void> {
 	try {
 		const server = await store.get<IServer>(`${SERVERS_PREFIX}${serverId}`);
 		if (server) {
@@ -53,6 +53,7 @@ async function emitServerUpdate(serverId: string, status: EServerStatus, error: 
 				status,
 				error,
 				...(startedAt != null && { startedAt }),
+				...(launchCommand !== undefined && { launchCommand }),
 			};
 			sseManager.emit('servers:update', { [serverId]: updated });
 		}
@@ -143,6 +144,7 @@ export function spawnServer(
 	onStatusChange: (status: EServerStatus, error?: string) => void,
 ): number | null {
 	try {
+		const launchCommand = [binaryPath, ...args].join(' ');
 		const child = spawn(binaryPath, args, {
 			detached: true,
 			stdio: ['ignore', 'pipe', 'pipe'],
@@ -214,7 +216,7 @@ export function spawnServer(
 			}
 		});
 		onStatusChange(EServerStatus.LOADING);
-		emitServerUpdate(serverId, EServerStatus.LOADING, null, null).catch(() => {});
+		emitServerUpdate(serverId, EServerStatus.LOADING, null, null, launchCommand).catch(() => {});
 		return child.pid ?? null;
 	} catch (err) {
 		onStatusChange(EServerStatus.ERROR, String(err));

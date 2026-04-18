@@ -150,7 +150,6 @@ interface ILaunchServerDialogProps {
 		backendId: string;
 		backendGroupId?: string;
 		modelPath: string;
-		mmprojPath: string | null;
 		serverName: string;
 		serverAlias: string[];
 		params: ILaunchParams;
@@ -315,7 +314,6 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 			backendId,
 			backendGroupId,
 			modelPath: selectedEntry.file.filePath,
-			mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
 			serverName: serverName.trim() || undefined,
 			params,
 			serverAlias: aliases,
@@ -344,7 +342,6 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				backendId,
 				backendGroupId,
 				modelPath: selectedEntry.file.filePath,
-				mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
 				serverName: serverName.trim() || undefined,
 				params,
 				serverAlias: aliases,
@@ -364,7 +361,6 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				backendId,
 				backendGroupId,
 				modelPath: selectedEntry.file.filePath,
-				mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
 				serverName: serverName.trim() || null,
 				params,
 				serverAlias: aliases,
@@ -393,7 +389,6 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 			name: presetName.trim(),
 			backendId: activeBackendId,
 			modelPath: selectedEntry.file.filePath,
-			mmprojPath: selectedEntry.model.mmprojFile?.filePath ?? null,
 			params,
 		});
 		if (result.ok) {
@@ -813,24 +808,30 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 								</Button>
 							</HStack>
 						)} */}
-						<Switch.Root label="Auto-launch at startup" checked={autoLaunch} onCheckedChange={(details) => setAutoLaunch(details.checked)} color={autoLaunch ? '#34d399' : 'rgba(255, 255, 255, 0.4)'}>
+						<Switch.Root label="Auto-launch at startup" checked={autoLaunch} onCheckedChange={(details) => setAutoLaunch(details.checked)} color={autoLaunch ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'}>
 							<Switch.HiddenInput />
-							<Switch.Control />
-							<Switch.Label ml="2" fontSize="13px" color={autoLaunch ? '#34d399' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
+							<Switch.Control css={{ bg: autoLaunch ? '#3b86d6' : 'surface.4' }}>
+								<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+							</Switch.Control>
+							<Switch.Label ml="2" fontSize="13px" color={autoLaunch ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
 								Auto-launch at startup
 							</Switch.Label>
 						</Switch.Root>
-						<Switch.Root label="Auto-load latest checkpoint on start" checked={autoLoadCheckpointOnStart} onCheckedChange={(details) => setAutoLoadCheckpointOnStart(details.checked)} color={autoLoadCheckpointOnStart ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'}>
+						<Switch.Root label="Auto-load latest checkpoint on start" checked={autoLoadCheckpointOnStart} onCheckedChange={(details) => setAutoLoadCheckpointOnStart(details.checked)} color={autoLoadCheckpointOnStart ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'}>
 							<Switch.HiddenInput />
-							<Switch.Control />
-							<Switch.Label ml="2" fontSize="13px" color={autoLoadCheckpointOnStart ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
+							<Switch.Control css={{ bg: autoLoadCheckpointOnStart ? '#3b86d6' : 'surface.4' }}>
+								<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+							</Switch.Control>
+							<Switch.Label ml="2" fontSize="13px" color={autoLoadCheckpointOnStart ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
 								Auto-load latest checkpoint on start
 							</Switch.Label>
 						</Switch.Root>
-						<Switch.Root label="Auto-save checkpoint on stop" checked={autoSaveCheckpointOnStop} onCheckedChange={(details) => setAutoSaveCheckpointOnStop(details.checked)} color={autoSaveCheckpointOnStop ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'}>
+						<Switch.Root label="Auto-save checkpoint on stop" checked={autoSaveCheckpointOnStop} onCheckedChange={(details) => setAutoSaveCheckpointOnStop(details.checked)} color={autoSaveCheckpointOnStop ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'}>
 							<Switch.HiddenInput />
-							<Switch.Control />
-							<Switch.Label ml="2" fontSize="13px" color={autoSaveCheckpointOnStop ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
+							<Switch.Control css={{ bg: autoSaveCheckpointOnStop ? '#3b86d6' : 'surface.4' }}>
+								<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+							</Switch.Control>
+							<Switch.Label ml="2" fontSize="13px" color={autoSaveCheckpointOnStop ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
 								Auto-save all slots on stop
 							</Switch.Label>
 						</Switch.Root>

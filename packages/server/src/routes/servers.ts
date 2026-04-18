@@ -12,6 +12,7 @@ import {
 import { getServerStats } from '../services/statsPoller';
 import { clearStickyRoute, getStickyRoutesResolved } from '../services/modelProxy';
 import { sseManager } from '../services/sseManagerInstance';
+import { getCachedModels } from './models';
 import type {
 	IServer,
 	IServerCreatePayload,
@@ -68,9 +69,11 @@ export async function launchAutoStartServers(): Promise<void> {
 				continue;
 			}
 
+			const model = getCachedModels().find(m => m.primaryFile?.filePath === server.modelPath);
+			const mmprojPath = model?.mmprojFile?.filePath ?? null;
 			const args = await buildServerArgs(
 				server.modelPath,
-				server.mmprojPath,
+				mmprojPath,
 				server.params,
 				backend.defaultArgs,
 			);
@@ -173,9 +176,11 @@ serversRouter.post('/', async (req, res) => {
 	};
 
 	// Build args and spawn
+	const model = getCachedModels().find(m => m.primaryFile?.filePath === payload.modelPath);
+	const mmprojPath = model?.mmprojFile?.filePath ?? null;
 	const args = await buildServerArgs(
 		payload.modelPath,
-		payload.mmprojPath,
+		mmprojPath,
 		params,
 		backend.defaultArgs,
 	);
@@ -270,9 +275,11 @@ serversRouter.post('/:id/restart', async (req, res) => {
 	await killServer(server.id, server.pid);
 
 	// Re-spawn
+	const model = getCachedModels().find(m => m.primaryFile?.filePath === server.modelPath);
+	const mmprojPath = model?.mmprojFile?.filePath ?? null;
 	const args = await buildServerArgs(
 		server.modelPath,
-		server.mmprojPath,
+		mmprojPath,
 		server.params,
 		backend.defaultArgs,
 	);
@@ -305,7 +312,7 @@ serversRouter.put('/:id', async (req, res) => {
 		return;
 	}
 
-	type TUpdatePayload = Partial<Pick<IServer, 'backendId' | 'backendGroupId' | 'modelPath' | 'mmprojPath' | 'serverName' | 'params' | 'serverAlias' | 'autoLaunch' | 'autoSaveCheckpointOnStop' | 'autoLoadCheckpointOnStart'>> & { relaunch?: boolean };
+	type TUpdatePayload = Partial<Pick<IServer, 'backendId' | 'backendGroupId' | 'modelPath' | 'serverName' | 'params' | 'serverAlias' | 'autoLaunch' | 'autoSaveCheckpointOnStop' | 'autoLoadCheckpointOnStart'>> & { relaunch?: boolean };
 	const updatePayload = req.body as TUpdatePayload;
 	const shouldRelaunch = updatePayload.relaunch ?? true;
 
@@ -355,7 +362,6 @@ serversRouter.put('/:id', async (req, res) => {
 	if (updatePayload.backendId !== undefined) server.backendId = updatePayload.backendId;
 	if (updatePayload.backendGroupId !== undefined) server.backendGroupId = updatePayload.backendGroupId;
 	if (updatePayload.modelPath) server.modelPath = updatePayload.modelPath;
-	if (updatePayload.mmprojPath !== undefined) server.mmprojPath = updatePayload.mmprojPath;
 	if (updatePayload.serverName != null) server.serverName = updatePayload.serverName;
 	if (updatePayload.params) {
 		server.params = updatePayload.params;
@@ -392,9 +398,11 @@ serversRouter.put('/:id', async (req, res) => {
 
 	if (shouldRelaunch) {
 		// Re-spawn with new params
+		const model = getCachedModels().find(m => m.primaryFile?.filePath === server.modelPath);
+		const mmprojPath = model?.mmprojFile?.filePath ?? null;
 		const args = await buildServerArgs(
 			server.modelPath,
-			server.mmprojPath,
+			mmprojPath,
 			server.params,
 			backend.defaultArgs,
 		);

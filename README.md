@@ -1,10 +1,10 @@
-# WarpCore
+# warpdrv
 
-Local LLM server manager. The engine room for WarpDrv.
+Local LLM server manager using LLaMa.cpp.
 
 ## What This Is
 
-WarpCore manages llama.cpp server instances across multiple GPU backends. It scans model directories, registers llama.cpp builds, and launches/stops/monitors llama-server processes. It does NOT handle inference-time params (temperature, samplers, etc.) — those come from the chat application connecting to the servers it spawns.
+warpdrv manages llama.cpp server instances across multiple GPU backends. It scans model directories, registers llama.cpp builds, and launches/stops/monitors llama-server processes. It does NOT handle inference-time params (temperature, samplers, etc.) — those come from the chat application connecting to the servers it spawns.
 
 ## Architecture
 

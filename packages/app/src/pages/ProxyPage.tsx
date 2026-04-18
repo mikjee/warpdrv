@@ -288,7 +288,9 @@ export function ProxyPage() {
 									</Box>
 									<Switch.Root checked={proxyAuthEnabled} onCheckedChange={handleProxyAuthToggle}>
 										<Switch.HiddenInput />
-										<Switch.Control />
+										<Switch.Control css={{ bg: proxyAuthEnabled ? '#3b86d6' : 'surface.4' }}>
+											<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+										</Switch.Control>
 									</Switch.Root>
 								</HStack>
 								<HStack justify="space-between" alignItems="center" px="3" py="2" borderRadius="lg" bg="rgba(255,255,255,0.02)">
@@ -298,7 +300,9 @@ export function ProxyPage() {
 									</Box>
 									<Switch.Root checked={apiAuthEnabled} onCheckedChange={handleApiAuthToggle}>
 										<Switch.HiddenInput />
-										<Switch.Control />
+										<Switch.Control css={{ bg: apiAuthEnabled ? '#3b86d6' : 'surface.4' }}>
+											<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+										</Switch.Control>
 									</Switch.Root>
 								</HStack>
 								<HStack justify="space-between" alignItems="center" px="3" py="2" borderRadius="lg" bg="rgba(255,255,255,0.02)">
@@ -308,7 +312,9 @@ export function ProxyPage() {
 									</Box>
 									<Switch.Root checked={authRequireForLocalhost} onCheckedChange={handleAuthRequireForLocalhostToggle}>
 										<Switch.HiddenInput />
-										<Switch.Control />
+										<Switch.Control css={{ bg: authRequireForLocalhost ? '#3b86d6' : 'surface.4' }}>
+											<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+										</Switch.Control>
 									</Switch.Root>
 								</HStack>
 							</VStack>

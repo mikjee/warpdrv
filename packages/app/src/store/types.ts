@@ -71,6 +71,9 @@ export interface AppState {
 	isRunningByThread: Record<TThreadId, boolean>;
 	activeThreadId: TThreadId | null;
 
+	// Inference error tracking
+	inferenceError: { threadId: TThreadId; messageId: TMessageId; error: string } | null;
+
 	// Bridge Actions
 	applyThreadCreated: (thread: IChatThread) => void;
 	applyThreadUpdated: (threadId: TThreadId, updates: IThreadPatch) => void;
@@ -83,6 +86,7 @@ export interface AppState {
 	applyToolCallUpdated: (toolCall: IToolCall) => void;
 	applyInferenceStarted: (threadId: TThreadId, messageId: TMessageId) => void;
 	applyInferenceEnded: (threadId: TThreadId, messageId: TMessageId) => void;
+	applyInferenceError: (threadId: TThreadId, messageId: TMessageId, error: string) => void;
 	seedThreadMessages: (threadId: TThreadId, messages: IChatMessage[]) => void;
 	setThreads: (threads: Record<TThreadId, IChatThread>) => void;
 	setActiveThread: (id: TThreadId | null) => void;

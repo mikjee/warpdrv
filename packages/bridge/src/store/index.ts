@@ -54,6 +54,9 @@ export interface IChatStoreState {
 	// Inference state per thread
 	isRunningByThread: Record<TThreadId, boolean>;
 
+	// Last inference error (cleared after toast is shown)
+	inferenceError: { threadId: TThreadId; messageId: TMessageId; error: string } | null;
+
 	// MCP State
 	mcpServers: Record<string, IMcpServerState>;
 	serverPermissions: IServerPermission[];
@@ -77,6 +80,7 @@ export interface IChatStoreState {
 	applyToolCallUpdated: (toolCall: IToolCall) => void;
 	applyInferenceStarted: (threadId: TThreadId, messageId: TMessageId) => void;
 	applyInferenceEnded: (threadId: TThreadId, messageId: TMessageId) => void;
+	applyInferenceError: (threadId: TThreadId, messageId: TMessageId, error: string) => void;
 	seedThreadMessages: (threadId: TThreadId, messages: IChatMessage[]) => void;
 	setThreads: (threads: Record<TThreadId, IChatThread>) => void;
 	setActiveThread: (id: TThreadId | null) => void;
@@ -112,6 +116,7 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 		headMessageIdByThread: {} as Record<TThreadId, TMessageId>,
 		toolCallsById: {} as Record<TToolCallId, IToolCall>,
 		isRunningByThread: {} as Record<TThreadId, boolean>,
+		inferenceError: null,
 		mcpServers: {} as Record<string, IMcpServerState>,
 		serverPermissions: [] as IServerPermission[],
 		toolPermissions: [] as IToolPermission[],
@@ -321,6 +326,12 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 		applyInferenceEnded: (threadId: TThreadId, _messageId: TMessageId) =>
 			set((draft) => {
 				draft.isRunningByThread[threadId] = false;
+			}),
+
+		applyInferenceError: (threadId: TThreadId, messageId: TMessageId, error: string) =>
+			set((draft) => {
+				draft.isRunningByThread[threadId] = false;
+				draft.inferenceError = { threadId, messageId, error };
 			}),
 
 		// Initial seeding from API fetch

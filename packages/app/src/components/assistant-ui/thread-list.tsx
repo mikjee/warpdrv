@@ -376,6 +376,7 @@ function FolderSection({
 
 		return (
 			<Box
+				w="full"
 				mb="1"
 				onDragOver={handleDragOver}
 				onDragLeave={handleDragLeave}
@@ -610,8 +611,9 @@ export const ThreadList: FC = React.memo(() => {
 	}), []);
 
 	return (
-		<ThreadListPrimitive.Root className="aui-root aui-thread-list-root flex flex-col gap-0">
-			<Box mb="2">
+		<ThreadListPrimitive.Root className="aui-root aui-thread-list-root flex flex-col flex-1 min-h-0">
+			{/* Fixed header */}
+			<Box flexShrink={0} mb="2">
 				<HStack
 					gap="1" px="2" py="1.5"
 					borderRadius="md" borderWidth="1px"
@@ -636,7 +638,7 @@ export const ThreadList: FC = React.memo(() => {
 				</HStack>
 			</Box>
 
-			<HStack gap="1" mb="2" px="1" justify="space-between">
+			<HStack gap="1" mb="2" px="1" justify="space-between" flexShrink={0}>
 				<HStack gap="1">
 					<Box
 						as="button" px="2" py="1" borderRadius="md" fontSize="10px"
@@ -670,54 +672,65 @@ export const ThreadList: FC = React.memo(() => {
 				</HStack>
 			</HStack>
 
-		{threadsAPI.folders.map((f) => (
-			<FolderSection
-				key={f.id}
-				folder={f}
-				threads={threadsByFolderMap[f.id] ?? []}
-				onRename={handleRenameFolder}
-				onDelete={handleDeleteFolder}
-				onDropThread={handleDropThread}
-				onReorderFolder={handleReorderFolders}
-			>
-					<VStack gap="0" align="start">
-				{(threadsByFolderMap[f.id] ?? []).map(thread => (
-						<ManualThreadListItem 
-							key={thread.id}
-							thread={thread}
-							onRename={handleRenameThread}
-							onStartDrag={setDraggingThread}
-							onSelect={handleSelectThread}
-							onDelete={handleDeleteThread}
-						/>
-					))}
-					</VStack>
-				</FolderSection>
-			))}
+			{/* Scrollable thread list */}
+			<Box flex="1" overflowY="auto" css={{ '&::-webkit-scrollbar': { width: '4px' }, '&::-webkit-scrollbar-thumb': { background: 'rgba(255,255,255,0.1)', borderRadius: '2px' } }}>
+				<VStack align="start" gap="0" w="full">
+				{threadsAPI.folders.map((f) => (
+					<FolderSection
+						key={f.id}
+						folder={f}
+						threads={threadsByFolderMap[f.id] ?? []}
+						onRename={handleRenameFolder}
+						onDelete={handleDeleteFolder}
+						onDropThread={handleDropThread}
+						onReorderFolder={handleReorderFolders}
+						w="full"
+					>
+						<VStack gap="0" align="start" w="full">
+							{(threadsByFolderMap[f.id] ?? []).map(thread => (
+								<ManualThreadListItem 
+									key={thread.id}
+									thread={thread}
+									onRename={handleRenameThread}
+									onStartDrag={setDraggingThread}
+									onSelect={handleSelectThread}
+									onDelete={handleDeleteThread}
+									w="full"
+								/>
+							))}
+						</VStack>
+					</FolderSection>
+				))}
 
-			<Box
-				onDragOver={handleRootDragOver as any}
-				onDragLeave={handleRootDragLeave}
-				onDrop={handleRootDrop as any}
-				bg={rootDragOver ? 'rgba(100,150,255,0.05)' : 'transparent'}
-				borderRadius="md"
-				transition="background 0.15s"
-			>
-				<VStack gap="0" align="start">
-					{rootThreads.map(thread => (
-						<ManualThreadListItem 
-							key={thread.id}
-							thread={thread}
-							onRename={handleRenameThread}
-							onStartDrag={setDraggingThread}
-							onSelect={handleSelectThread}
-							onDelete={handleDeleteThread}
-						/>
-					))}
+				<Box
+					onDragOver={handleRootDragOver as any}
+					onDragLeave={handleRootDragLeave}
+					onDrop={handleRootDrop as any}
+					bg={rootDragOver ? 'rgba(100,150,255,0.05)' : 'transparent'}
+					borderRadius="md"
+					transition="background 0.15s"
+					w="full"
+					py="1"
+				>
+					<VStack gap="0" align="start" w="full">
+						{rootThreads.map(thread => (
+							<ManualThreadListItem 
+								key={thread.id}
+								thread={thread}
+								onRename={handleRenameThread}
+								onStartDrag={setDraggingThread}
+								onSelect={handleSelectThread}
+								onDelete={handleDeleteThread}
+								w="full"
+							/>
+						))}
+					</VStack>
+				</Box>
 				</VStack>
 			</Box>
 
-			<Box mt="2" pt="2" borderTopWidth="1px" borderColor="rgba(255,255,255,0.04)">
+			{/* Fixed footer */}
+			<Box flexShrink={0} mt="2" pt="2" borderTopWidth="1px" borderColor="rgba(255,255,255,0.04)">
 				<ThreadListPrimitive.New asChild>
 					<Box
 						as="button"

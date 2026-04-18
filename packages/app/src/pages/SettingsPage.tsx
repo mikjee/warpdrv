@@ -312,10 +312,12 @@ export function SettingsPage() {
 										Use the loaded model to generate a concise title for new conversations. When disabled, titles are derived from your first message.
 									</Text>
 								</Box>
-								<Switch.Root label='Generate titles' checked={!disabledTitleGen} onCheckedChange={(details) => setDisabledTitleGen(!details.checked)} color={!disabledTitleGen ? '#34d399' : 'rgba(255, 255, 255, 0.4)'}>
+								<Switch.Root label='Generate titles' checked={!disabledTitleGen} onCheckedChange={(details) => setDisabledTitleGen(!details.checked)}>
 									<Switch.HiddenInput />
-									<Switch.Control />
-									<Switch.Label ml="2" fontSize="13px" color={!disabledTitleGen ? '#34d399' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
+									<Switch.Control css={{ bg: !disabledTitleGen ? '#3b86d6' : 'surface.4' }}>
+										<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+									</Switch.Control>
+									<Switch.Label ml="2" fontSize="13px" userSelect="none">
 										Generate titles
 									</Switch.Label>
 								</Switch.Root>
@@ -350,10 +352,12 @@ export function SettingsPage() {
 								</Box>
 							</HStack>
 							<HStack gap="3">
-								<Switch.Root label='Start router on App launch' checked={proxyEnabled} onCheckedChange={(details) => setProxyEnabled(details.checked)} color={proxyEnabled ? '#34d399' : 'rgba(255, 255, 255, 0.4)'}>
+								<Switch.Root label='Start router on App launch' checked={proxyEnabled} onCheckedChange={(details) => setProxyEnabled(details.checked)}>
 									<Switch.HiddenInput />
-									<Switch.Control />
-									<Switch.Label ml="2" fontSize="13px" color={proxyEnabled ? '#34d399' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
+									<Switch.Control css={{ bg: proxyEnabled ? '#3b86d6' : 'rgba(255, 255, 255, 0.08)' }}>
+										<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+									</Switch.Control>
+									<Switch.Label ml="2" fontSize="13px" userSelect="none">
 										Start router on App launch
 									</Switch.Label>
 								</Switch.Root>
@@ -379,7 +383,9 @@ export function SettingsPage() {
 								</Box>
 								<Switch.Root checked={autoLaunch ?? false} onCheckedChange={(details) => setAutoLaunch(details.checked)} disabled={autoLaunch === null}>
 									<Switch.HiddenInput />
-									<Switch.Control />
+									<Switch.Control css={{ bg: autoLaunch ? '#3b86d6' : 'rgba(255, 255, 255, 0.08)' }}>
+										<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+									</Switch.Control>
 								</Switch.Root>
 							</HStack>
 							{/* Start minimized */}
@@ -393,7 +399,9 @@ export function SettingsPage() {
 									</Box>
 									<Switch.Root checked={startMinimized} onCheckedChange={(details) => setStartMinimized(details.checked)} disabled={!autoLaunch || autoLaunch === null}>
 										<Switch.HiddenInput />
-										<Switch.Control />
+										<Switch.Control css={{ bg: startMinimized ? '#3b86d6' : 'surface.4' }}>
+											<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+										</Switch.Control>
 									</Switch.Root>
 								</HStack>
 							</Box>

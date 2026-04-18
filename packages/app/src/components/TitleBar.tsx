@@ -155,7 +155,7 @@ export function TitleBar() {
 				letterSpacing="0.02em"
 				pointerEvents="none"
 			>
-				myllama
+				warpdrv
 			</Text>
 
 			{/* Window controls */}

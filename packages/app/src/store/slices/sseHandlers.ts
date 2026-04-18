@@ -18,7 +18,10 @@ export const sseHandlersSlice = (
 		'servers:list': (data) => setState((state) => { state.servers = data; }),
 		'servers:update': (data: Record<TServerId, IServer>) => setState((state) => {
 			for (const [id, server] of Object.entries(data)) {
-				state.servers[id] = server;
+				state.servers[id] = {
+					...server,
+					launchCommand: server.launchCommand ?? state.servers[id]?.launchCommand
+				};
 				// Clear slot state when server stops
 				if (server.status === EServerStatus.STOPPED) {
 					delete state.serverSlots[id];
