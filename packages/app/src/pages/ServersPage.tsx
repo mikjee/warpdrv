@@ -60,10 +60,6 @@ const FIELD_LABELS: Record<TSortField, string> = {
 	backend: 'Backend',
 };
 
-function toggleSortOrder(order: TSortOrder): TSortOrder {
-	return order === 'asc' ? 'desc' : 'asc';
-}
-
 export function ServersPage() {
 	const serversRecord = useStore((s) => s.servers);
 	const serverStats = useStore((s) => s.serverStats);
@@ -409,32 +405,20 @@ export function ServersPage() {
 									</Combobox.Root>
 								);
 							})()}
-							<HStack gap="0.5" flexShrink={0}>
-								<Button
-									size="sm"
-									variant="ghost"
-									p="1" minW="auto"
-									color={sortOrder === 'asc' ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'}
-									bg={sortOrder === 'asc' ? 'rgba(51, 129, 255, 0.08)' : 'transparent'}
-									_hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }}
-									borderRadius="md"
-									onClick={() => setSortOrder(toggleSortOrder(sortOrder))}
-								>
-									<ArrowUpAZ size={14} />
-								</Button>
-								<Button
-									size="sm"
-									variant="ghost"
-									p="1" minW="auto"
-									color={sortOrder === 'desc' ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'}
-									bg={sortOrder === 'desc' ? 'rgba(51, 129, 255, 0.08)' : 'transparent'}
-									_hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }}
-									borderRadius="md"
-									onClick={() => setSortOrder(toggleSortOrder(sortOrder))}
-								>
-									<ArrowDownZA size={14} />
-								</Button>
-							</HStack>
+							<Button
+								size="sm"
+								variant="outline"
+								bg="rgba(255, 255, 255, 0.03)"
+								borderColor="rgba(255, 255, 255, 0.08)"
+								color="rgba(255, 255, 255, 0.5)"
+								p="1" minW="auto"
+								borderRadius="md"
+								_hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
+								title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+								onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+							>
+								{sortOrder === 'asc' ? <ArrowUpAZ size={14} /> : <ArrowDownZA size={14} />}
+							</Button>
 						</HStack>
 
 						{/* Running Only Toggle */}

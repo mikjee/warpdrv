@@ -1,17 +1,17 @@
-import { Box, Text, HStack, VStack, Flex, Badge, Button, Spinner, Input, Collapsible, SimpleGrid } from '@chakra-ui/react';
-import { Blocks, Plus, Terminal, CheckCircle, Trash2, Edit, RefreshCw, AlertCircle, Layers, ChevronDown, ChevronRight } from 'lucide-react';
-import { useState, useCallback, useMemo } from 'react';
+import { Box, Text, HStack, VStack, Flex, Badge, Button, Spinner, Input, Collapsible, SimpleGrid, InputGroup, Combobox, createListCollection, Portal } from '@chakra-ui/react';
+import { Blocks, Plus, Terminal, CheckCircle, Trash2, Edit, RefreshCw, AlertCircle, Layers, ChevronDown, ChevronRight, Search, ArrowUpAZ, ArrowDownZA } from 'lucide-react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
 import { useMutation } from '../hooks/useQuery';
 import { useStore } from '../store';
-import { deleteBackend, validateBackend, createBackendGroup, deleteBackendGroup, activateBackendInGroup, restartServer, updateBackendGroup } from '../api/services';
+import { deleteBackend, validateBackend, createBackendGroup, deleteBackendGroup, activateBackendInGroup, restartServer, updateBackendGroup, fetchSettings, updateSettings } from '../api/services';
 import { BackendDialog } from '../components/dialogs/BackendDialog';
 import { BackendGroupDialog } from '../components/dialogs/BackendGroupDialog';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
 import { ActivateBackendDialog } from '../components/dialogs/ActivateBackendDialog';
 import { DeviceCard } from '../components/DeviceCard';
-import type { IBackend, IBackendGroup, IServer, IDevice } from '@warpcore/shared';
+import type { IBackend, IBackendGroup, IServer, IDevice, TBackendSortField } from '@warpcore/shared';
 import { EValidationStatus, EServerStatus } from '@warpcore/shared';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -19,6 +19,12 @@ const STATUS_COLORS: Record<string, string> = {
 	[EValidationStatus.INVALID]: '#fb7185',
 	[EValidationStatus.IDLE]: 'rgba(255, 255, 255, 0.3)',
 	[EValidationStatus.CHECKING]: '#fbbf24',
+};
+
+const FIELD_LABELS: Record<TBackendSortField, string> = {
+	name: 'Name',
+	createdAt: 'Creation date',
+	updatedAt: 'Update date',
 };
 
 export function BackendsPage() {
@@ -39,6 +45,29 @@ export function BackendsPage() {
 	const [groupsExpanded, setGroupsExpanded] = useState(true);
 	const [activatingBackend, setActivatingBackend] = useState<{ groupId: string; newBackendId: string } | null>(null);
 	const [expandedBackends, setExpandedBackends] = useState<Record<string, boolean>>({});
+	const [settingsLoaded, setSettingsLoaded] = useState(false);
+
+	// Search and sort
+	const [searchQuery, setSearchQuery] = useState('');
+	const [sortField, setSortField] = useState<TBackendSortField>('name');
+	const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+	// Load persisted sort settings on mount
+	useEffect(() => {
+		fetchSettings().then((result) => {
+			if (result.ok && result.data) {
+				setSortField(result.data.backendsSortField);
+				setSortOrder(result.data.backendsSortOrder);
+			}
+			setSettingsLoaded(true);
+		});
+	}, []);
+
+	// Save sort settings when they change (only after initial load)
+	useEffect(() => {
+		if (!settingsLoaded) return;
+		updateSettings({ backendsSortField: sortField, backendsSortOrder: sortOrder });
+	}, [settingsLoaded, sortField, sortOrder]);
 
 	const serversRecord = useStore((s) => s.servers);
 	const servers = useMemo(() => Object.values(serversRecord), [serversRecord]);
@@ -134,9 +163,77 @@ export function BackendsPage() {
 		await activateBackendInGroup(groupId, backendId);
 	};
 
-	const sortedGroups = useMemo(() => {
-		return [...groups].sort((a, b) => a.name.localeCompare(b.name));
-	}, [groups]);
+	// Fuzzy search matching against multiple fields
+	function matchesSearch(backend: IBackend, query: string): boolean {
+		if (!query.trim()) return true;
+		const q = query.toLowerCase();
+		const searchableParts = [
+			backend.name,
+			backend.path,
+			backend.description ?? '',
+			...backend.detectedDevices.map(d => d.name),
+			...backend.detectedDevices.map(d => d.backendType),
+		];
+		return searchableParts.some(part => part?.toLowerCase().includes(q));
+	}
+
+	function matchesGroupSearch(group: IBackendGroup, query: string): boolean {
+		if (!query.trim()) return true;
+		const q = query.toLowerCase();
+		const memberBackends = group.backendIds.map(id => backends.find(b => b.id === id)).filter((b): b is IBackend => !!b);
+		const searchableParts = [
+			group.name,
+			group.description ?? '',
+			...memberBackends.map(b => b.name),
+		];
+		return searchableParts.some(part => part?.toLowerCase().includes(q));
+	}
+
+	const filteredAndSortedBackends = useMemo(() => {
+		let result = [...backends];
+		if (searchQuery.trim()) {
+			result = result.filter(backend => matchesSearch(backend, searchQuery));
+		}
+		result.sort((a, b) => {
+			let comparison = 0;
+			switch (sortField) {
+				case 'name':
+					comparison = a.name.localeCompare(b.name);
+					break;
+				case 'createdAt':
+					comparison = a.createdAt - b.createdAt;
+					break;
+				case 'updatedAt':
+					comparison = a.updatedAt - b.updatedAt;
+					break;
+			}
+			return sortOrder === 'asc' ? comparison : -comparison;
+		});
+		return result;
+	}, [backends, searchQuery, sortField, sortOrder]);
+
+	const filteredAndSortedGroups = useMemo(() => {
+		let result = [...groups];
+		if (searchQuery.trim()) {
+			result = result.filter(group => matchesGroupSearch(group, searchQuery));
+		}
+		result.sort((a, b) => {
+			let comparison = 0;
+			switch (sortField) {
+				case 'name':
+					comparison = a.name.localeCompare(b.name);
+					break;
+				case 'createdAt':
+					comparison = a.createdAt - b.createdAt;
+					break;
+				case 'updatedAt':
+					comparison = a.updatedAt - b.updatedAt;
+					break;
+			}
+			return sortOrder === 'asc' ? comparison : -comparison;
+		});
+		return result;
+	}, [groups, searchQuery, sortField, sortOrder]);
 
 	const toggleBackend = (id: string) => {
 		setExpandedBackends(prev => ({ ...prev, [id]: !prev[id] }));
@@ -153,6 +250,106 @@ export function BackendsPage() {
 				subtitle="Registered llama.cpp builds"
 				icon={<Blocks size={20} />}
 			/>
+
+			{/* Subheader: Sort + Search */}
+			<Box p="4" borderColor="rgba(255, 255, 255, 0.06)" borderBottomWidth="1px">
+				<Flex justify="space-between" align="center" wrap="wrap" gap="3">
+					{/* Left: Sort controls */}
+					<HStack gap="2">
+						{(() => {
+							const sortCollection = createListCollection({
+								items: (Object.keys(FIELD_LABELS) as TBackendSortField[]).map(f => ({ value: f, label: FIELD_LABELS[f] })),
+								itemToString: (item) => item.label ?? '',
+							});
+							return (
+								<Combobox.Root
+									collection={sortCollection}
+									value={[sortField]}
+									onValueChange={(details) => {
+										const val = details.value?.[0] as TBackendSortField;
+										if (val) setSortField(val);
+									}}
+								>
+									<Combobox.Control>
+										<Combobox.Trigger asChild>
+											<Button
+												variant="outline"
+												size="sm"
+												w="170px"
+												justifyContent="space-between"
+												bg="rgba(255, 255, 255, 0.03)"
+												borderColor="rgba(255, 255, 255, 0.08)"
+												color="rgba(255, 255, 255, 0.7)"
+												fontSize="13px"
+												borderRadius="lg"
+											>
+												{FIELD_LABELS[sortField]}
+												<ChevronDown size={14} />
+											</Button>
+										</Combobox.Trigger>
+									</Combobox.Control>
+									<Portal>
+										<Combobox.Positioner>
+											<Combobox.Content
+												maxH="200px" overflowY="auto"
+												bg="#181818" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
+												borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
+											>
+												{sortCollection.items.map((item) => (
+													<Combobox.Item
+														key={item.value}
+														item={item}
+														px="3" py="2" borderRadius="md" cursor="pointer"
+														_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
+														_highlighted={{ bg: '#181818' }}
+													>
+														<Text fontSize="12px" color="#e4e4e7">{item.label}</Text>
+														<Combobox.ItemIndicator />
+													</Combobox.Item>
+												))}
+											</Combobox.Content>
+										</Combobox.Positioner>
+									</Portal>
+								</Combobox.Root>
+							);
+						})()}
+						<Button
+							size="sm"
+							variant="outline"
+							bg="rgba(255, 255, 255, 0.03)"
+							borderColor="rgba(255, 255, 255, 0.08)"
+							color="rgba(255, 255, 255, 0.5)"
+							p="1" minW="auto"
+							borderRadius="md"
+							_hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
+							title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+							onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+						>
+							{sortOrder === 'asc' ? <ArrowUpAZ size={14} /> : <ArrowDownZA size={14} />}
+						</Button>
+					</HStack>
+
+					{/* Right: Search */}
+					<Box flex="1" maxW="300px">
+						<InputGroup startElement={<Search size={14} color="rgba(255, 255, 255, 0.3)" />}>
+							<Input
+								placeholder="Search backends and groups..."
+								size="sm"
+								bg="rgba(255, 255, 255, 0.03)"
+								borderColor="rgba(255, 255, 255, 0.08)"
+								color="rgba(255, 255, 255, 0.7)"
+								fontSize="13px"
+								borderRadius="lg"
+								_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
+								_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
+								value={searchQuery}
+								onChange={e => setSearchQuery(e.target.value)}
+							/>
+						</InputGroup>
+					</Box>
+				</Flex>
+			</Box>
+
 			<Box p="4">
 				<VStack align="stretch" gap="4">
 				{/* Backends Section */}
@@ -162,7 +359,7 @@ export function BackendsPage() {
 							<Box color="rgba(255,255,255,0.4)">{backendsExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</Box>
 							<Terminal size={16} color="rgba(255, 255, 255, 0.5)" />
 							<Text fontSize="13px" fontWeight="600" color="rgba(255,255,255,0.8)">Backends</Text>
-							<Badge size="sm" px="1.5" borderRadius="full" bg="rgba(255,255,255,0.06)" color="rgba(255,255,255,0.4)" fontSize="10px" fontWeight="600">{backends.length}</Badge>
+							<Badge size="sm" px="1.5" borderRadius="full" bg="rgba(255,255,255,0.06)" color="rgba(255,255,255,0.4)" fontSize="10px" fontWeight="600">{filteredAndSortedBackends.length}</Badge>
 						</HStack>
 						<Button size="xs" variant="ghost" color="rgba(255,255,255,0.5)" _hover={{ bg: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' }} onClick={(e) => { e.stopPropagation(); setShowAddDialog(true); }}>
 							<Plus size={15} />
@@ -171,16 +368,24 @@ export function BackendsPage() {
 					<Collapsible.Root open={backendsExpanded}>
 						<Collapsible.Content>
 							<Box px="4" pb="3">
-							{backends.length === 0 ? (
+							{filteredAndSortedBackends.length === 0 && backends.length === 0 ? (
 							<Flex h="200px" alignItems="center" justifyContent="center">
 								<VStack gap="3" color="rgba(255, 255, 255, 0.2)">
 									<Blocks size={40} />
 									<Text fontSize="14px">No backends registered</Text>
 								</VStack>
 							</Flex>
+						) : filteredAndSortedBackends.length === 0 && searchQuery.trim() ? (
+							<Flex h="200px" alignItems="center" justifyContent="center">
+								<VStack gap="3" color="rgba(255, 255, 255, 0.2)">
+									<Blocks size={40} />
+									<Text fontSize="14px">No matching backends</Text>
+									<Text fontSize="12px" color="rgba(255, 255, 255, 0.15)">Try adjusting your search query</Text>
+								</VStack>
+							</Flex>
 						) : (
 							<VStack align="stretch" gap="2.5">
-								{backends.map(backend => {
+								{filteredAndSortedBackends.map(backend => {
 									const statusColor = STATUS_COLORS[backend.validation] ?? 'rgba(255, 255, 255, 0.3)';
 									const backendDevices = devicesByBackend.get(backend.id) ?? backend.detectedDevices ?? [];
 									const deviceCount = backendDevices.length;
@@ -190,7 +395,7 @@ export function BackendsPage() {
 									const expanded = isBackendExpanded(backend.id);
 
 									return (
-										<Collapsible.Root key={backend.id} open={expanded} onOpenChange={(o) => setExpandedBackends(prev => ({ ...prev, [backend.id]: o }))}>
+										<Collapsible.Root key={backend.id} open={expanded} onOpenChange={(o) => setExpandedBackends(prev => ({ ...prev, [backend.id]: typeof o === 'boolean' ? o : o.open }))}>
 											<Box px="3" py="2" borderRadius="lg" bg="rgba(255, 255, 255, 0.02)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" cursor={hasCollapsibleContent ? 'pointer' : 'default'} _hover={{ borderColor: 'rgba(255, 255, 255, 0.1)' }} onClick={() => hasCollapsibleContent && toggleBackend(backend.id)}>
 												<VStack align="stretch" gap="3">
 													<Flex justify="space-between" align="center">
@@ -269,7 +474,7 @@ export function BackendsPage() {
 							<Box color="rgba(255,255,255,0.4)">{groupsExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</Box>
 							<Layers size={16} color="rgba(255, 255, 255, 0.5)" />
 							<Text fontSize="13px" fontWeight="600" color="rgba(255,255,255,0.8)">Groups</Text>
-							<Badge size="sm" px="1.5" borderRadius="full" bg="rgba(255,255,255,0.06)" color="rgba(255,255,255,0.4)" fontSize="10px" fontWeight="600">{groups.length}</Badge>
+							<Badge size="sm" px="1.5" borderRadius="full" bg="rgba(255,255,255,0.06)" color="rgba(255,255,255,0.4)" fontSize="10px" fontWeight="600">{filteredAndSortedGroups.length}</Badge>
 						</HStack>
 						<Button size="xs" variant="ghost" color="rgba(255,255,255,0.5)" _hover={{ bg: 'rgba(167, 139, 250, 0.15)', color: '#a78bfa' }} onClick={(e) => { e.stopPropagation(); setShowAddGroup(true); }}>
 							<Plus size={15} />
@@ -278,16 +483,24 @@ export function BackendsPage() {
 					<Collapsible.Root open={groupsExpanded}>
 						<Collapsible.Content>
 							<Box px="4" pb="3">
-						{groups.length === 0 ? (
+						{filteredAndSortedGroups.length === 0 && groups.length === 0 ? (
 							<Flex h="200px" alignItems="center" justifyContent="center">
 								<VStack gap="3" color="rgba(255, 255, 255, 0.2)">
 									<Layers size={40} />
 									<Text fontSize="14px">No backend groups</Text>
 								</VStack>
 							</Flex>
+						) : filteredAndSortedGroups.length === 0 && searchQuery.trim() ? (
+							<Flex h="200px" alignItems="center" justifyContent="center">
+								<VStack gap="3" color="rgba(255, 255, 255, 0.2)">
+									<Layers size={40} />
+									<Text fontSize="14px">No matching groups</Text>
+									<Text fontSize="12px" color="rgba(255, 255, 255, 0.15)">Try adjusting your search query</Text>
+								</VStack>
+							</Flex>
 						) : (
 							<Flex gap="2" flexWrap="wrap">
-								{sortedGroups.map(group => {
+								{filteredAndSortedGroups.map(group => {
 									const activeBackend = backends.find(b => b.id === group.activeBackendId);
 									const memberBackends = group.backendIds.map(id => backends.find(b => b.id === id)).filter((b): b is IBackend => !!b);
 

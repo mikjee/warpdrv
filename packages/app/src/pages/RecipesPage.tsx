@@ -1,24 +1,76 @@
-import { Box, Text, HStack, VStack, Flex, Badge, Button } from '@chakra-ui/react';
-import { Play, Plus, Edit, Trash2, ScrollText, Lock, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
-import { useState, useCallback, useMemo } from 'react';
+import { Box, Text, HStack, VStack, Flex, Badge, Button, Input, InputGroup, Combobox, createListCollection, Portal } from '@chakra-ui/react';
+import { Play, Plus, Edit, Trash2, ScrollText, Lock, AlertCircle, CheckCircle, XCircle, Search, ChevronDown, ArrowUpAZ, ArrowDownZA } from 'lucide-react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { useMutation } from '../hooks/useQuery';
 import { useStore } from '../store';
-import { deleteRecipe } from '../api/services';
+import { deleteRecipe, fetchSettings, updateSettings } from '../api/services';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
 import { RecipeEditorDialog } from '../components/recipes/RecipeEditorDialog';
 import { RunRecipeDialog } from '../components/recipes/RunRecipeDialog';
-import { ERecipeRunStatus, type IRecipe } from '@warpcore/shared';
+import { ERecipeRunStatus, type IRecipe, type TRecipeSortField } from '@warpcore/shared';
+
+const RECIPE_FIELD_LABELS: Record<TRecipeSortField, string> = {
+	name: 'Name',
+	createdAt: 'Creation date',
+	updatedAt: 'Update date',
+};
 
 export function RecipesPage() {
 	const recipesRecord = useStore((s) => s.recipes);
 	const activeRun = useStore((s) => s.activeRun);
-	const recipes = useMemo(() => Object.values(recipesRecord).sort((a, b) => a.name.localeCompare(b.name)), [recipesRecord]);
 
 	const [showAddDialog, setShowAddDialog] = useState(false);
 	const [editingRecipe, setEditingRecipe] = useState<IRecipe | null>(null);
 	const [runningRecipe, setRunningRecipe] = useState<IRecipe | null>(null);
 	const [deletingId, setDeletingId] = useState<string | null>(null);
+	const [settingsLoaded, setSettingsLoaded] = useState(false);
+	const [searchQuery, setSearchQuery] = useState('');
+	const [sortField, setSortField] = useState<TRecipeSortField>('name');
+	const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+	useEffect(() => {
+		fetchSettings().then((result) => {
+			if (result.ok && result.data) {
+				setSortField(result.data.recipesSortField);
+				setSortOrder(result.data.recipesSortOrder);
+			}
+			setSettingsLoaded(true);
+		});
+	}, []);
+
+	useEffect(() => {
+		if (!settingsLoaded) return;
+		updateSettings({ recipesSortField: sortField, recipesSortOrder: sortOrder });
+	}, [settingsLoaded, sortField, sortOrder]);
+
+	const recipes = useMemo(() => {
+		let result = Object.values(recipesRecord);
+		const q = searchQuery.toLowerCase().trim();
+		if (q) {
+			result = result.filter(r =>
+				r.name.toLowerCase().includes(q)
+				|| r.description.toLowerCase().includes(q)
+				|| r.source.toLowerCase().includes(q)
+			);
+		}
+		result.sort((a, b) => {
+			let comparison = 0;
+			switch (sortField) {
+				case 'name':
+					comparison = a.name.localeCompare(b.name);
+					break;
+				case 'createdAt':
+					comparison = a.createdAt - b.createdAt;
+					break;
+				case 'updatedAt':
+					comparison = a.updatedAt - b.updatedAt;
+					break;
+			}
+			return sortOrder === 'asc' ? comparison : -comparison;
+		});
+		return result;
+	}, [recipesRecord, searchQuery, sortField, sortOrder]);
 
 	const deleteMut = useMutation<string, null>(useCallback((id: string) => deleteRecipe(id), []));
 
@@ -37,9 +89,106 @@ export function RecipesPage() {
 				subtitle="Automated build pipelines"
 				icon={<ScrollText size={20} />}
 			/>
-			<Box p="4">
-				<VStack align="stretch" gap="4">
-					{/* Active run banner */}
+
+			{/* Subheader: Sort + Search */}
+			<Box p="4" borderColor="rgba(255, 255, 255, 0.06)" borderBottomWidth="1px">
+				<Flex justify="space-between" align="center" wrap="wrap" gap="3">
+					<HStack gap="2">
+								{(() => {
+									const sortCollection = createListCollection({
+										items: (Object.keys(RECIPE_FIELD_LABELS) as TRecipeSortField[]).map(f => ({ value: f, label: RECIPE_FIELD_LABELS[f] })),
+										itemToString: (item) => item.label ?? '',
+									});
+									return (
+										<Combobox.Root
+											collection={sortCollection}
+											value={[sortField]}
+											onValueChange={(details) => {
+												const val = details.value?.[0] as TRecipeSortField;
+												if (val) setSortField(val);
+											}}
+										>
+											<Combobox.Control>
+												<Combobox.Trigger asChild>
+													<Button
+														variant="outline"
+														size="sm"
+														w="170px"
+														justifyContent="space-between"
+														bg="rgba(255, 255, 255, 0.03)"
+														borderColor="rgba(255, 255, 255, 0.08)"
+														color="rgba(255, 255, 255, 0.7)"
+														fontSize="13px"
+														borderRadius="lg"
+													>
+														{RECIPE_FIELD_LABELS[sortField]}
+														<ChevronDown size={14} />
+													</Button>
+												</Combobox.Trigger>
+											</Combobox.Control>
+											<Portal>
+												<Combobox.Positioner>
+													<Combobox.Content
+														maxH="200px" overflowY="auto"
+														bg="#181818" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
+														borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
+													>
+														{sortCollection.items.map((item) => (
+															<Combobox.Item
+																key={item.value}
+																item={item}
+																px="3" py="2" borderRadius="md" cursor="pointer"
+																_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
+																_highlighted={{ bg: '#181818' }}
+															>
+																<Text fontSize="12px" color="#e4e4e7">{item.label}</Text>
+																<Combobox.ItemIndicator />
+															</Combobox.Item>
+														))}
+													</Combobox.Content>
+												</Combobox.Positioner>
+											</Portal>
+										</Combobox.Root>
+									);
+								})()}
+								<Button
+									size="sm"
+									variant="outline"
+									bg="rgba(255, 255, 255, 0.03)"
+									borderColor="rgba(255, 255, 255, 0.08)"
+									color="rgba(255, 255, 255, 0.5)"
+									p="1" minW="auto"
+									borderRadius="md"
+									_hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
+									title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+									onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+								>
+									{sortOrder === 'asc' ? <ArrowUpAZ size={14} /> : <ArrowDownZA size={14} />}
+								</Button>
+							</HStack>
+							<Box flex="1" maxW="300px">
+								<InputGroup startElement={<Search size={14} color="rgba(255, 255, 255, 0.3)" />}>
+									<Input
+										placeholder="Search recipes..."
+										size="sm"
+										bg="rgba(255, 255, 255, 0.03)"
+										borderColor="rgba(255, 255, 255, 0.08)"
+										color="rgba(255, 255, 255, 0.7)"
+										fontSize="13px"
+										borderRadius="lg"
+										_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
+										_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
+										value={searchQuery}
+										onChange={e => setSearchQuery(e.target.value)}
+									/>
+								</InputGroup>
+							</Box>
+						</Flex>
+					</Box>
+
+					<Box p="4">
+						<VStack align="stretch" gap="4">
+							{/* Active run banner */}
 					{isAnyRunActive && activeRunRecipe && (
 						<Flex px="4" py="3" borderRadius="xl" borderWidth="1px" borderColor="rgba(251, 191, 36, 0.25)" bg="rgba(251, 191, 36, 0.05)" align="center" justify="space-between">
 							<HStack gap="3">

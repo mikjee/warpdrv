@@ -446,18 +446,18 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 						</Box>
 					</HStack>
 					<HStack gap="2">
-						{!editMode && (
+						{/* {!editMode && (
 							<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' }} borderRadius="lg" fontSize="12px" onClick={() => setShowPresets(!showPresets)}>
 								<Bookmark size={14} /> Presets
 							</Button>
-						)}
+						)} */}
 						<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.3)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="md" onClick={onClose} minW="8" px="0">
 							<X size={16} />
 						</Button>
 					</HStack>
 				</Flex>
 
-				{/* Preset panel */}
+				{/* Preset panel
 				{showPresets && !editMode && (
 					<Box px="6" py="4" borderBottomWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" bg="rgba(251, 191, 36, 0.02)">
 						{presets.length > 0 ? (
@@ -475,7 +475,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 							<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">No presets saved yet. Configure a launch and save it below.</Text>
 						)}
 					</Box>
-				)}
+				)} */}
 
 				{/* Content */}
 				<Box flex="1" overflowY="auto" p="6">
@@ -805,14 +805,14 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				{/* Footer */}
 				<Flex px="6" py="4" justify="space-between" align="center" borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" bg="rgba(255, 255, 255, 0.01)">
 					<HStack gap="4">
-						{selectedModelPath && (!useBackendGroup ? selectedBackendId : selectedBackendGroupId) && !editMode && (
+						{/* selectedModelPath && (!useBackendGroup ? selectedBackendId : selectedBackendGroupId) && !editMode && (
 							<HStack gap="2">
 								<Input placeholder="Preset name..." size="sm" w="180px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(251, 191, 36, 0.4)', outline: 'none' }} value={presetName} onChange={e => setPresetName(e.target.value)} />
 								<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' }} borderRadius="lg" fontSize="12px" onClick={handleSavePreset} disabled={!presetName.trim()}>
 									<Bookmark size={14} /> Save
 								</Button>
 							</HStack>
-						)}
+						)} */}
 						<Switch.Root label="Auto-launch at startup" checked={autoLaunch} onCheckedChange={(details) => setAutoLaunch(details.checked)} color={autoLaunch ? '#34d399' : 'rgba(255, 255, 255, 0.4)'}>
 							<Switch.HiddenInput />
 							<Switch.Control />
