@@ -70,7 +70,7 @@ authRouter.get('/check', async (req, res) => {
 	const tokenId = req.cookies?.[COOKIE_NAME];
 
 	if (!tokenId) {
-		res.json({ ok: true, data: null, error: null });
+		res.status(401).json({ ok: true, data: null, error: null });
 		return;
 	}
 
@@ -81,7 +81,7 @@ authRouter.get('/check', async (req, res) => {
 	if (!token) {
 		// Cookie exists but token doesn't, clear it
 		res.clearCookie(COOKIE_NAME);
-		res.json({ ok: true, data: null, error: null });
+		res.status(401).json({ ok: true, data: null, error: null });
 		return;
 	}
 

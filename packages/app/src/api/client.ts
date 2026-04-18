@@ -12,6 +12,10 @@ async function request<T>(
 			credentials: 'include',
 			...options,
 		});
+		if (!res.ok) {
+			const json = await res.json().catch(() => ({}));
+			throw new Error(`HTTP ${res.status}: ${json.error ?? res.statusText}`);
+		}
 		const json = await res.json();
 		return json as IApiResponse<T>;
 	} catch (err) {
@@ -29,6 +33,10 @@ async function requestList<T>(
 			credentials: 'include',
 			...options,
 		});
+		if (!res.ok) {
+			const json = await res.json().catch(() => ({}));
+			throw new Error(`HTTP ${res.status}: ${json.error ?? res.statusText}`);
+		}
 		const json = await res.json();
 		return json as IApiListResponse<T>;
 	} catch (err) {
@@ -58,6 +66,10 @@ export async function login(token: string): Promise<IApiResponse<unknown>> {
 			},
 			credentials: 'include',
 		});
+		if (!res.ok) {
+			const json = await res.json().catch(() => ({}));
+			return { ok: false, data: null, error: json.error ?? res.statusText };
+		}
 		const json = await res.json();
 		return json as IApiResponse<unknown>;
 	} catch (err) {
@@ -70,7 +82,14 @@ export async function logout(): Promise<IApiResponse<null>> {
 }
 
 export async function fetchAuthCheck(): Promise<IApiResponse<unknown>> {
-	return api.get<unknown>('/auth/check');
+	try {
+		return await api.get<unknown>('/auth/check');
+	} catch (err) {
+		if (String(err).includes('HTTP 401')) {
+			return { ok: true, data: null, error: null };
+		}
+		return { ok: false, data: null, error: String(err) };
+	}
 }
 
 export async function fetchAuthMe(): Promise<IApiResponse<unknown>> {
