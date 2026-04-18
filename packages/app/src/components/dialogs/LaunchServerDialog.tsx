@@ -423,7 +423,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 	const canLaunch = selectedModelPath && (!useBackendGroup ? selectedBackendId : selectedBackendGroupId) && !launching;
 
 	return (
-		<Box position="fixed" inset="0" zIndex="modal" display="flex" alignItems="center" justifyContent="center">
+		<Box position="fixed" inset="15px" zIndex="modal" display="flex" alignItems="center" justifyContent="center" borderRadius={"12px"} overflow={"hidden"}>
 			<Box position="absolute" inset="0" bg="rgba(0, 0, 0, 0.7)" backdropFilter="blur(8px)" onClick={onClose} />
 			<Box position="relative" w="960px" maxH="90vh" bg="#0f0f12" borderWidth="1px"
 				borderColor="rgba(255, 255, 255, 0.08)" borderRadius="2xl"

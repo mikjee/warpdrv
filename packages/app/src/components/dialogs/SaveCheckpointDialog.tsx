@@ -121,15 +121,16 @@ export function SaveCheckpointDialog({ server, isOpen, onClose }: ISaveCheckpoin
 		<>
 			<Dialog.Root open={isOpen} onOpenChange={(d) => { if (!d.open) onClose(); }}>
 				<Portal>
-					<Dialog.Backdrop />
-					<Dialog.Positioner>
-						<Dialog.Content
-							maxW="480px"
-							bg="#0f0f12"
-							borderColor="rgba(255, 255, 255, 0.08)"
-							borderRadius="2xl"
-							shadow="0 24px 80px rgba(0, 0, 0, 0.6)"
-						>
+					<Box position="fixed" inset="15px" borderRadius="12px" overflow="hidden" zIndex="modal">
+						<Dialog.Backdrop position="absolute" />
+						<Dialog.Positioner position="absolute">
+							<Dialog.Content
+								maxW="480px"
+								bg="#0f0f12"
+								borderColor="rgba(255, 255, 255, 0.08)"
+								borderRadius="2xl"
+								shadow="0 24px 80px rgba(0, 0, 0, 0.6)"
+							>
 							<Box position="relative">
 								<VStack gap="4" px="6" py="5" align="stretch" style={{ opacity: isSaving ? 0.5 : 1 }}>
 								<HStack gap="2">
@@ -294,7 +295,8 @@ export function SaveCheckpointDialog({ server, isOpen, onClose }: ISaveCheckpoin
 							)}
 						</Box>
 						</Dialog.Content>
-					</Dialog.Positioner>
+						</Dialog.Positioner>
+					</Box>
 				</Portal>
 			</Dialog.Root>
 

@@ -19,15 +19,16 @@ export function ConfirmDialog({ title, message, isOpen, onConfirm, onCancel, isL
 	return (
 		<Dialog.Root open={open} onOpenChange={(details) => setOpen(details.open)}>
 			<Portal>
-				<Dialog.Backdrop />
-				<Dialog.Positioner>
-					<Dialog.Content
-						maxW="420px"
-						bg="#0f0f12"
-						borderColor="rgba(255, 255, 255, 0.08)"
-						borderRadius="2xl"
-						shadow="0 24px 80px rgba(0, 0, 0, 0.6)"
-					>
+				<Box position="fixed" inset="15px" borderRadius="12px" overflow="hidden" zIndex="modal">
+					<Dialog.Backdrop position="absolute" />
+					<Dialog.Positioner position="absolute">
+						<Dialog.Content
+							maxW="420px"
+							bg="#0f0f12"
+							borderColor="rgba(255, 255, 255, 0.08)"
+							borderRadius="2xl"
+							shadow="0 24px 80px rgba(0, 0, 0, 0.6)"
+						>
 						<VStack gap="4" px="6" py="5">
 							<Box w="10" h="10" borderRadius="lg" display="flex" alignItems="center" justifyContent="center" bg="rgba(251, 113, 133, 0.12)">
 								<AlertTriangle size={20} color="#fb7185" />
@@ -75,8 +76,9 @@ export function ConfirmDialog({ title, message, isOpen, onConfirm, onCancel, isL
 							</HStack>
 						</VStack>
 					</Dialog.Content>
-				</Dialog.Positioner>
+					</Dialog.Positioner>
+				</Box>
 			</Portal>
 		</Dialog.Root>
-	);
+		);
 }

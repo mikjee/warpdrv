@@ -38,7 +38,7 @@ export function ServerLogs({ serverId, serverName, onClose }: IServerLogsProps) 
 	};
 
 	return (
-		<Box position="fixed" bottom="0" right="0" w="700px" h="400px" bg="#0c0c0f"
+		<Box position="fixed" bottom="20px" right="20px" w="700px" h="400px" bg="#0c0c0f"
 			borderWidth="1px" borderColor="rgba(255, 255, 255, 0.08)" borderTopLeftRadius="xl"
 			shadow="0 -8px 40px rgba(0, 0, 0, 0.5)" zIndex="popover"
 			display="flex" flexDirection="column" overflow="hidden"

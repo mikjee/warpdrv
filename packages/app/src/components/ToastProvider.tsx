@@ -55,8 +55,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 			{/* Toast container */}
 			<Flex
 				position="fixed"
-				bottom="6"
-				right="6"
+				bottom="21px"
+				right="21px"
 				direction="column"
 				gap="2"
 				zIndex="toast"

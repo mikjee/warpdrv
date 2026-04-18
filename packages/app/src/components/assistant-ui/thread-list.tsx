@@ -265,7 +265,7 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect, onDelet
 						</Text>
 						<HStack gap="2" mt="0.5">
 							<Text fontSize="10px" color="rgba(255,255,255,0.25)" fontFamily="mono">
-								{(thread.totalTokens ?? 0) > 0 ? `${((thread.totalTokens ?? 0) / 1000).toFixed(1)}k tok` : (thread.messageCount ?? 0) > 0 ? `${thread.messageCount ?? 0} msg` : 'empty'}
+								{(() => { const total = (thread.totalPromptTokens ?? 0) + (thread.totalCompletionTokens ?? 0); return total > 0 ? `${(total / 1000).toFixed(1)}k tok` : (thread.messageCount ?? 0) > 0 ? `${thread.messageCount ?? 0} msg` : 'empty'; })()}
 							</Text>
 							<Text fontSize="10px" color="rgba(255,255,255,0.2)">
 								{timeAgo(thread.updatedAt)}
@@ -487,7 +487,7 @@ export const ThreadList: FC = React.memo(() => {
 		if (sortField === 'updatedAt') cmp = a.updatedAt - b.updatedAt;
 		else if (sortField === 'createdAt') cmp = a.createdAt - b.createdAt;
 		else if (sortField === 'title') cmp = a.title.localeCompare(b.title);
-		else if (sortField === 'messageCount') cmp = (a.totalTokens ?? 0) - (b.totalTokens ?? 0);
+		else if (sortField === 'messageCount') cmp = ((a.totalPromptTokens ?? 0) + (a.totalCompletionTokens ?? 0)) - ((b.totalPromptTokens ?? 0) + (b.totalCompletionTokens ?? 0));
 		return sortDir === 'desc' ? -cmp : cmp;
 	}), [filteredThreads, sortField, sortDir]);
 

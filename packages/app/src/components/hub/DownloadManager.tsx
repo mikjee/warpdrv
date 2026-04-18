@@ -78,7 +78,7 @@ export function DownloadManager({ onClose }: IDownloadManagerProps) {
 
 	return (
 		<Box
-			position="fixed" bottom="0" right="0" w="600px" h="420px"
+			position="fixed" bottom="20px" right="20px"  w="600px" h="420px"
 			bg="#0c0c0f" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.08)"
 			borderTopLeftRadius="xl" shadow="0 -8px 40px rgba(0, 0, 0, 0.5)"
 			zIndex="popover" display="flex" flexDirection="column" overflow="hidden"

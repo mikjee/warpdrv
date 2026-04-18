@@ -802,10 +802,10 @@ export class Orchestrator {
 			...(p.cachePrompt ? { cache_prompt: true } : {}),
 			...(p.responseFormat && p.responseFormat !== 'text' ? { response_format: { type: p.responseFormat } } : {}),
 			...(p.reasoningFormat && p.reasoningFormat !== 'none' ? { reasoning_format: p.reasoningFormat } : {}),
-			...(p.enableThinking || (p.reasoningEffort && p.reasoningEffort !== 'none')
+			...(p.enableThinking !== undefined || p.reasoningEffort !== undefined
 				? { chat_template_kwargs: {
-					...(p.enableThinking ? { enable_thinking: true } : {}),
-					...(p.reasoningEffort && p.reasoningEffort !== 'none' ? { reasoning_effort: p.reasoningEffort } : {}),
+					...(p.enableThinking !== undefined ? { enable_thinking: p.enableThinking } : {}),
+					...(p.reasoningEffort !== undefined ? { reasoning_effort: p.reasoningEffort } : {}),
 				} }
 				: {}),
 		};
