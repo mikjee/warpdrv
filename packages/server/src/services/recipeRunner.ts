@@ -194,7 +194,6 @@ function runStep(
 				cwd: expandHome(cwd) ?? process.cwd(),
 				env,
 				stdio: ['ignore', 'pipe', 'pipe'],
-				detached: true,
 			});
 		}
 		catch (err) {
@@ -235,7 +234,6 @@ function runStep(
 				kind: ERecipeStreamKind.STDERR,
 				data: `[runner] failed to spawn: ${err.message}\n`,
 			});
-			resolve({ exitCode: 1, cancelled: false });
 		});
 
 		proc.on('exit', (code, signal) => {

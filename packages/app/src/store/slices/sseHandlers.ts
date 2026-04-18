@@ -122,7 +122,6 @@ export const sseHandlersSlice = (
 		'recipes:init': (data: IRecipesInitPayload) => setState((state) => {
 			state.recipes = data.recipes;
 			state.activeRun = data.activeRun;
-			state.stepOutputs = {};
 		}),
 		'recipes:update': (data: IRecipe) => setState((state) => {
 			state.recipes[data.id] = data;
@@ -160,7 +159,6 @@ export const sseHandlersSlice = (
 			if (!state.activeRun || state.activeRun.runId !== data.runId) return;
 			state.activeRun.status = data.status;
 			state.activeRun.finishedAt = data.finishedAt;
-			state.activeRun = null;
 		}),
 	},
 });
