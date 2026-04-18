@@ -240,18 +240,22 @@ const Composer: FC = () => {
 };
 
 const ReasoningEffortToggle: FC = () => {
-  const { reasoningEffort, onReasoningEffortChange } = useContext(ChatConfigContext);
+  const { reasoningEffort, onReasoningEffortChange, enableThinking, onEnableThinkingChange } = useContext(ChatConfigContext);
   const levels: EReasoningEffort[] = [EReasoningEffort.NONE, EReasoningEffort.LOW, EReasoningEffort.MEDIUM, EReasoningEffort.HIGH];
-  const idx = levels.indexOf(reasoningEffort);
-  const next = () => onReasoningEffortChange(levels[(idx + 1) % levels.length]!);
-  const label = reasoningEffort === EReasoningEffort.NONE ? 'off' : reasoningEffort;
-  const color = reasoningEffort === EReasoningEffort.NONE
-    ? 'text-muted-foreground/40'
-    : reasoningEffort === EReasoningEffort.LOW
+  const next = () => {
+    const idx = levels.indexOf(reasoningEffort);
+    const nextLevel = levels[(idx + 1) % levels.length]!;
+    onReasoningEffortChange(nextLevel);
+  };
+  const isOn = enableThinking && reasoningEffort !== EReasoningEffort.NONE;
+  const label = isOn ? reasoningEffort : 'off';
+  const color = isOn
+    ? reasoningEffort === EReasoningEffort.LOW
       ? 'text-blue-400'
       : reasoningEffort === EReasoningEffort.MEDIUM
         ? 'text-amber-400'
-        : 'text-red-400';
+        : 'text-red-400'
+    : 'text-muted-foreground/40';
   return (
     <button
       type="button"
@@ -259,7 +263,7 @@ const ReasoningEffortToggle: FC = () => {
       className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors hover:bg-accent ${color}`}
       title={`Reasoning effort: ${label} (click to cycle)`}
     >
-      <BrainCircuitIcon className="size-3.5" />
+      <BrainCircuitIcon className={`size-3.5 ${isOn ? '' : 'opacity-40'}`} />
       <span className="font-medium">{label}</span>
     </button>
   );

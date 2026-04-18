@@ -47,6 +47,7 @@ export function useDerivedMsgsForUI(
 	const lastThreadIdRef = useRef<typeof currentThreadId | null>(null);
 	const lastIsRunningRef = useRef<boolean>(false);
 	const mapIdToIndexRef = useRef<Record<TMessageId, number>>({});
+	const headMessageIdRef = useRef<TMessageId | null>(null);
 
 const convertMessage = useCallback((msg: any) => {
 		
@@ -165,7 +166,10 @@ const convertMessage = useCallback((msg: any) => {
 	const sortedMsgs = useMemo(() => {
 
 		// reset all on thread change
-		if (lastThreadIdRef.current !== currentThreadId) {
+		if (
+			lastThreadIdRef.current !== currentThreadId 
+			// || headMessageIdRef.current !== headMessageId
+		) {
 			derivedMsgsRef.current = {};
 			convertedMsgsRef.current = {};
 			toolCallsByIdRef.current = null;
@@ -240,17 +244,18 @@ const convertMessage = useCallback((msg: any) => {
 		
 		// done
 		return sortedMessages;
-	}, [msgs, convertMessage, toolCallsById, currentThreadId, isRunning]);
+	}, [msgs, convertMessage, toolCallsById, currentThreadId, isRunning, headMessageId]);
 
 	// Update thread ref
 	lastThreadIdRef.current = currentThreadId;
+	headMessageIdRef.current = headMessageId;
 	
 	return useMemo(() => {
-	return {
-		messages: sortedMsgs,
-		headId: headMessageId,
-	};
-}, [sortedMsgs, headMessageId, isRunning]);
+		return {
+			messages: sortedMsgs,
+			headId: headMessageId,
+		};
+	}, [sortedMsgs, headMessageId, isRunning]);
 }
 
 // Build message chain from a starting point to root (for backend API calls)

@@ -60,11 +60,15 @@ const attachmentAdapter = {
 interface IChatConfig {
 	reasoningEffort: EReasoningEffort;
 	onReasoningEffortChange: (v: EReasoningEffort) => void;
+	enableThinking: boolean;
+	onEnableThinkingChange: (v: boolean) => void;
 	contextSize: number;
 }
 export const ChatConfigContext = createContext<IChatConfig>({
 	reasoningEffort: EReasoningEffort.NONE,
 	onReasoningEffortChange: () => {},
+	enableThinking: false,
+	onEnableThinkingChange: () => {},
 	contextSize: 0,
 });
 // ============================================================
@@ -216,11 +220,14 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	}
 
 	const chatConfigValue = useMemo(() => {
+		const setBoth = (updates: { reasoningEffort: EReasoningEffort; enableThinking: boolean }) => {
+			setCurrentInferenceParams({ ...currentInferenceParams, ...updates });
+		};
 		return {
 			reasoningEffort: currentInferenceParams.reasoningEffort,
-			onReasoningEffortChange: (v: EReasoningEffort) => {
-				setCurrentInferenceParams({ ...currentInferenceParams, reasoningEffort: v });
-			},
+			onReasoningEffortChange: (v: EReasoningEffort) => setBoth({ reasoningEffort: v, enableThinking: v !== EReasoningEffort.NONE }),
+			enableThinking: currentInferenceParams.enableThinking,
+			onEnableThinkingChange: (v: boolean) => setBoth({ reasoningEffort: v ? EReasoningEffort.HIGH : EReasoningEffort.NONE, enableThinking: v }),
 			contextSize,
 		};
 	}, [currentInferenceParams, contextSize, setCurrentInferenceParams]);
