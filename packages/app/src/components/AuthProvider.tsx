@@ -1,3 +1,4 @@
+import { Center, Spinner } from '@chakra-ui/react';
 import { useEffect, useState, ReactNode } from 'react';
 import { LoginPage } from '../pages/LoginPage';
 import { fetchAuthCheck } from '../api/services';
@@ -13,6 +14,10 @@ export function AuthProvider({ children }: IAuthProviderProps) {
 	useEffect(() => {
 		async function check() {
 			const result = await fetchAuthCheck();
+			if (!result.ok) {
+				const timer = setTimeout(check, 1000);
+				return;
+			}
 			setIsAuthenticated(result.ok && !!result.data);
 			setIsChecking(false);
 		}
@@ -20,7 +25,11 @@ export function AuthProvider({ children }: IAuthProviderProps) {
 	}, []);
 
 	if (isChecking) {
-		return null;
+		return (
+			<Center h="100vh" w="100vw">
+				<Spinner size="xl" color="brand.500" />
+			</Center>
+		);
 	}
 
 	if (!isAuthenticated) {
