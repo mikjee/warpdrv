@@ -836,6 +836,7 @@ export class Orchestrator {
 		return {
 			...(p.temperature !== undefined ? { temperature: p.temperature } : {}),
 			...(p.topP !== undefined ? { top_p: p.topP } : {}),
+			...(p.topK !== undefined ? { top_k: p.topK } : {}),
 			...(p.maxTokens > 0 ? { max_tokens: p.maxTokens } : {}),
 			...(p.frequencyPenalty ? { frequency_penalty: p.frequencyPenalty } : {}),
 			...(p.presencePenalty ? { presence_penalty: p.presencePenalty } : {}),
@@ -852,6 +853,27 @@ export class Orchestrator {
 					...(p.reasoningEffort !== undefined ? { reasoning_effort: p.reasoningEffort } : {}),
 				} }
 				: {}),
+			...(p.typicalP !== undefined ? { typical_p: p.typicalP } : {}),
+			...(p.ignoreEos !== undefined ? { ignore_eos: p.ignoreEos } : {}),
+			...(p.logitBias && p.logitBias.length ? { logit_bias: p.logitBias } : {}),
+			...(p.dryMultiplier ? { dry_multiplier: p.dryMultiplier } : {}),
+			...(p.dryBase ? { dry_base: p.dryBase } : {}),
+			...(p.dryAllowedLength ? { dry_allowed_length: p.dryAllowedLength } : {}),
+			...(p.dryPenaltyLastN ? { dry_penalty_last_n: p.dryPenaltyLastN } : {}),
+			...(p.topNSigma !== undefined ? { top_n_sigma: p.topNSigma } : {}),
+			...(p.xtcProbability ? { xtc_probability: p.xtcProbability } : {}),
+			...(p.xtcThreshold ? { xtc_threshold: p.xtcThreshold } : {}),
+			...(p.dynatempRange ? { dynatemp_range: p.dynatempRange } : {}),
+			...(p.dynatempExponent ? { dynatemp_exponent: p.dynatempExponent } : {}),
+			...(p.repeatLastN !== undefined ? { repeat_last_n: p.repeatLastN } : {}),
+			...(p.n_probs !== undefined ? { n_probs: p.n_probs } : {}),
+			...(p.samplers && p.samplers.length ? { samplers: p.samplers } : {}),
+			...(p.grammar ? { grammar: p.grammar } : {}),
+			...(p.jsonSchema ? { json_schema: p.jsonSchema } : {}),
+			...(p.adaptiveTarget ? { adaptive_target: p.adaptiveTarget } : {}),
+			...(p.adaptiveDecay ? { adaptive_decay: p.adaptiveDecay } : {}),
+			...(p.extraSamplingParams ? { ...p.extraSamplingParams } : {}),
+			...(p.stopSequences && p.stopSequences.length ? { stop: p.stopSequences } : {}),
 		};
 	}
 

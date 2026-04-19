@@ -13,19 +13,17 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { PageHeader } from '../components/PageHeader';
 import { useStore } from '../store';
 import type { AppState } from '../store/types';
-import { updateThreadConfig, fetchSettings } from '../api/services';
+import { fetchSettings } from '../api/services';
 import type { IServer, IChatPreset, IChatInferenceParams, IThreadConfig } from '@warpcore/shared';
 import { EServerStatus, EReasoningEffort } from '@warpcore/shared';
 import { EChatRole, EMessagePartType, EToolCallStatus, type IChatMessage } from '@warpcore/bridge';
-import { ChatConfigSidebar, DEFAULT_INFERENCE_PARAMS } from '../components/ChatConfigSidebar';
+import { DEFAULT_INFERENCE_PARAMS } from '../components/ChatConfigSidebar';
+// @ts-ignore
 import '../styles/assistant-ui.css';
 import { createContext } from 'react';
-import { ChatToolsSidebar } from '../components/ChatToolsSidebar';
 import { ChatSidebar } from '../components/ChatSidebar';
-import { buildMessageChain, selectToolCallsForThread, useDerivedMsgsForUI } from '@/hooks/useChatSelectors';
+import { buildMessageChain, useDerivedMsgsForUI } from '@/hooks/useChatSelectors';
 import { useThreadConfig } from '@/hooks/useThreadConfig';
-import { ToolCallBlockWrapper } from '@/components/assistant-ui/ToolCallBlockWrapper';
-import { useShallow } from 'zustand/shallow';
 import { convertMessagesToOpenAIFormat } from '@warpcore/bridge';
 import { useToast } from '../components/ToastProvider';
 
@@ -194,15 +192,8 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	}, [inferenceError, toast]);
 
 	// Get current thread state from store
-	const currentThreadId = useStore(s => s.currentThreadId);
-	const currentSystemPrompt = useStore(s => s.currentSystemPrompt);
-	const currentInferenceParams = useStore(s => s.currentInferenceParams as unknown as IChatInferenceParams);
 	const currentServerId = useStore(s => s.currentServerId);
-
-	// Actions
 	const setCurrentThreadId = useStore(s => s.setCurrentThreadId);
-	const setCurrentSystemPrompt = useStore(s => s.setCurrentSystemPrompt);
-	const setCurrentInferenceParams = useStore(s => s.setCurrentInferenceParams);
 
 	// Check if current server is valid (selected AND running)
 	const serversMap = useStore(s => s.servers);
@@ -213,6 +204,9 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	const {
 		handleParamsChange,
 		handleSystemPromptChange,
+		currentThreadId,
+		currentSystemPrompt,
+		currentInferenceParams,
 	} = useThreadConfig(selectedPresetId);
 
 	// Get threads for adapter
@@ -221,26 +215,26 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	function handlePresetSelect(presetId: string | null, preset: IChatPreset | null) {
 		setSelectedPresetId(presetId);
 		if (preset) {
-			setCurrentInferenceParams(preset.params as unknown as Record<string, unknown>);
-			setCurrentSystemPrompt(preset.systemPrompt);
+			handleParamsChange(preset.params as unknown as Record<string, unknown>);
+			handleSystemPromptChange(preset.systemPrompt);
 		} else {
-			setCurrentInferenceParams({ ...DEFAULT_INFERENCE_PARAMS } as unknown as Record<string, unknown>);
-			setCurrentSystemPrompt('');
+			handleParamsChange({ } as unknown as Record<string, unknown>);
+			handleSystemPromptChange('');
 		}
 	}
 
 	const chatConfigValue = useMemo(() => {
 		const setBoth = (updates: { reasoningEffort: EReasoningEffort; enableThinking: boolean }) => {
-			setCurrentInferenceParams({ ...currentInferenceParams, ...updates });
+			handleParamsChange({ ...currentInferenceParams, ...updates });
 		};
 		return {
 			reasoningEffort: currentInferenceParams.reasoningEffort,
 			onReasoningEffortChange: (v: EReasoningEffort) => setBoth({ reasoningEffort: v, enableThinking: v !== EReasoningEffort.NONE }),
 			enableThinking: currentInferenceParams.enableThinking,
-			onEnableThinkingChange: (v: boolean) => setBoth({ reasoningEffort: v ? EReasoningEffort.HIGH : EReasoningEffort.NONE, enableThinking: v }),
+			onEnableThinkingChange: (v: boolean) => setBoth({ reasoningEffort: v ? EReasoningEffort.LOW : EReasoningEffort.NONE, enableThinking: v }),
 			contextSize,
 		};
-	}, [currentInferenceParams, contextSize, setCurrentInferenceParams]);
+	}, [currentInferenceParams, contextSize, handleParamsChange]);
 
 // Get head message ID for backend API calls
 	const headMessageId = useStore((s: AppState) => s.currentThreadId ? s.headMessageIdByThread[s.currentThreadId]! : null);

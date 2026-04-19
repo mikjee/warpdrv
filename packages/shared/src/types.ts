@@ -118,6 +118,7 @@ export interface IModel {
 	primaryFile: IGgufFile | null; // the main model file (auto-detected)
 	mmprojFile: IGgufFile | null; // auto-detected mmproj, null if none
 	totalSizeMb: number; // sum of all shards for primary model
+	recommendedInferenceParams?: Partial<IChatInferenceParams>; // recommended inference params parsed from model README
 }
 // ============================================================
 // Speculative Decoding Params
@@ -215,6 +216,10 @@ export interface IServer {
 	autoLoadCheckpointOnStart?: boolean;
 	// Full command line used to launch the server
 	launchCommand?: string | null;
+	// Inference params sent to llama-server at launch time
+	launchInferenceParams?: Partial<IChatInferenceParams>;
+	// Whether to use recommended inference params from the model
+	useRecommendedInferenceParams?: boolean;
 }
 export interface ISlotStats {
 	id: number;
@@ -238,6 +243,8 @@ export interface IServerCreatePayload {
 	autoLaunch?: boolean; // auto-launch at startup
 	autoSaveCheckpointOnStop?: boolean; // save all slots as bundle on server stop
 	autoLoadCheckpointOnStart?: boolean; // load latest checkpoint after server becomes ready
+	launchInferenceParams?: Partial<IChatInferenceParams>;
+	useRecommendedInferenceParams?: boolean;
 }
 // ============================================================
 // Presets
@@ -287,6 +294,7 @@ export interface ISettings {
 	checkpointsPath?: string; // where to save KV cache checkpoints
 	maxCheckpointDiskGB?: number; // max disk usage cap for checkpoints in GB
 	disabledTitleGen?: boolean; // if true, skip LLM title generation and use message truncation
+	showRawJSONChatConfig?: boolean; // if true, show JSON editor instead of UI controls in chat config
 }
 export const DEFAULT_SETTINGS: ISettings = {
 	modelRoots: [],
@@ -379,7 +387,7 @@ export interface IThreadConfig {
 	threadId: string;
 	presetId: string | null;
 	systemPrompt: string;
-	params: IChatInferenceParams;
+	params: Partial<IChatInferenceParams>;
 }
 
 // ============================================================
@@ -404,6 +412,26 @@ export interface IChatInferenceParams {
 	mirostatTau: number;
 	mirostatEta: number;
 	cachePrompt: boolean;
+	typicalP: number;
+	ignoreEos: boolean;
+	logitBias: number[][];
+	dryMultiplier: number;
+	dryBase: number;
+	dryAllowedLength: number;
+	dryPenaltyLastN: number;
+	topNSigma: number;
+	xtcProbability: number;
+	xtcThreshold: number;
+	dynatempRange: number;
+	dynatempExponent: number;
+	repeatLastN: number;
+	n_probs: number;
+	samplers: string[];
+	grammar: string;
+	jsonSchema: object;
+	adaptiveTarget: number;
+	adaptiveDecay: number;
+	[key: string]: unknown;
 }
 
 export interface IChatPreset {

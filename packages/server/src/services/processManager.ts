@@ -1,8 +1,9 @@
 import { spawn, type ChildProcess } from 'child_process';
 import http from 'http';
 import net from 'net';
-import type { IServer, ILaunchParams } from '@warpcore/shared';
+import type { IServer, ILaunchParams, IChatInferenceParams } from '@warpcore/shared';
 import { EServerStatus, EKvQuantType } from '@warpcore/shared';
+import { INFER_PARAM_TO_API } from '@warpcore/bridge/inferParamNames';
 import { startStatsPolling, stopStatsPolling } from './statsPoller';
 import { bootstrapServer, teardownServer, parseLogLine } from './slotStateTracker';
 import { listCheckpoints, restoreCheckpoint, saveCheckpoint, getCheckpointsDir } from './checkpointService';
@@ -68,6 +69,7 @@ export function buildArgs(
 	params: ILaunchParams,
 	defaultArgs: string[],
 	extraArgs?: Record<string, string>,
+	inferenceParams?: Partial<IChatInferenceParams>,
 ): string[] {
 	const args: string[] = [...defaultArgs];
 	const argsSet = new Set(defaultArgs);
@@ -112,6 +114,21 @@ export function buildArgs(
 		if (params.specDecode.draftMin > 0) args.push('--draft-min', String(params.specDecode.draftMin));
 		if (params.specDecode.draftPMin > 0) args.push('--draft-p-min', String(params.specDecode.draftPMin));
 	}
+	// Inference params defaults
+	if (inferenceParams) {
+		for (const [camelKey, value] of Object.entries(inferenceParams)) {
+			if (value === undefined || value === null) continue;
+			const apiName = INFER_PARAM_TO_API[camelKey] ?? camelKey;
+			const cliFlag = apiName.replace(/_/g, '-');
+			if (Array.isArray(value)) {
+				for (const v of value) args.push(`--${cliFlag}`, String(v));
+			} else if (typeof value === 'object') {
+				args.push(`--${cliFlag}`, JSON.stringify(value));
+			} else {
+				args.push(`--${cliFlag}`, String(value));
+			}
+		}
+	}
 	args.push('--host', '0.0.0.0');
 	args.push('--port', String(params.port));
 	// Injected extra args (e.g., --slot-save-path)
@@ -132,9 +149,10 @@ export async function buildServerArgs(
 	mmprojPath: string | null,
 	params: ILaunchParams,
 	defaultArgs: string[],
+	inferenceParams?: Partial<IChatInferenceParams>,
 ): Promise<string[]> {
 	const checkpointDir = await getCheckpointsDir();
-	return buildArgs(modelPath, mmprojPath, params, defaultArgs, { 'slot-save-path': checkpointDir });
+	return buildArgs(modelPath, mmprojPath, params, defaultArgs, { 'slot-save-path': checkpointDir }, inferenceParams);
 }
 // Spawn a llama-server process
 export function spawnServer(
