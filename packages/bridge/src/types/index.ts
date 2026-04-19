@@ -202,13 +202,14 @@ export interface IMessagePartToolCall extends IMessagePartBase {
 }
 
 export interface IChatMessageStats {
-	promptTokens: number;
-	completionTokens: number;
-	reasoningTokens: number;
-	promptPerSecond: number;
-	predictedPerSecond: number;
-	promptMs: number;
-	predictedMs: number;
+	promptTokens?: number;
+	completionTokens?: number;
+	reasoningTokens?: number;
+	actualTokens?: number;
+	promptPerSecond?: number;
+	predictedPerSecond?: number;
+	promptMs?: number;
+	predictedMs?: number;
 }
 
 // ============================================================

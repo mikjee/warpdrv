@@ -43,6 +43,12 @@ export function SettingsPage() {
 	const [disabledTitleGen, setDisabledTitleGen] = useState(false);
 	const [newRoot, setNewRoot] = useState('');
 	const [saved, setSaved] = useState(false);
+	const [isDirty, setIsDirty] = useState(false);
+
+	const dirtySetter = useCallback(<T>(fn: (val: T) => void, val: T) => {
+		fn(val);
+		setIsDirty(true);
+	}, []);
 
 	const saveMut = useMutation<Partial<ISettings>, ISettings>(
 		useCallback((data: Partial<ISettings>) => updateSettings(data), [])
@@ -84,8 +90,8 @@ export function SettingsPage() {
 	const handleAddRoot = () => {
 		const trimmed = newRoot.trim();
 		if (trimmed && !modelRoots.includes(trimmed)) {
-			setModelRoots([...modelRoots, trimmed]);
-			setNewRoot('');
+			dirtySetter(setModelRoots, [...modelRoots, trimmed]);
+			dirtySetter(setNewRoot, '');
 		}
 	};
 
@@ -95,7 +101,7 @@ export function SettingsPage() {
 				const mod = await import('@tauri-apps/plugin-dialog');
 				const path = await mod.open({ directory: true, multiple: false });
 				if (path && !modelRoots.includes(path)) {
-					setNewRoot(path);
+					dirtySetter(setNewRoot, path);
 				}
 			} catch (err) {
 				console.error('[Settings] Failed to open directory picker:', err);
@@ -104,7 +110,7 @@ export function SettingsPage() {
 			try {
 				const handle = await (window as any).showDirectoryPicker();
 				if (handle) {
-					setNewRoot(handle.name);
+					dirtySetter(setNewRoot, handle.name);
 				}
 			} catch (err: any) {
 				if (err.name !== 'AbortError') {
@@ -119,20 +125,19 @@ export function SettingsPage() {
 	const [deletingRootIndex, setDeletingRootIndex] = useState<number | null>(null);
 
 	const handleRemoveRoot = (idx: number) => {
-		setModelRoots(modelRoots.filter((_, i) => i !== idx));
-		setDeletingRootIndex(null);
+		dirtySetter(setModelRoots, modelRoots.filter((_, i) => i !== idx));
+		dirtySetter(setDeletingRootIndex, null);
 	};
 
 	const confirmDeleteRoot = (idx: number) => {
-		setDeletingRootIndex(idx);
+		dirtySetter(setDeletingRootIndex, idx);
 	};
 
-	const handleSave = async () => {
-		// Auto-add any text in the new root input before saving
+const handleSave = async () => {
 		const pendingRoot = newRoot.trim();
 		if (pendingRoot && !modelRoots.includes(pendingRoot)) {
-			setModelRoots([...modelRoots, pendingRoot]);
-			setNewRoot('');
+			dirtySetter(setModelRoots, [...modelRoots, pendingRoot]);
+			dirtySetter(setNewRoot, '');
 		}
 
 		const result = await saveMut.mutate({
@@ -182,8 +187,8 @@ export function SettingsPage() {
 			}
 		}
 
-		setSaved(true);
-		setTimeout(() => setSaved(false), 2000);
+		setIsDirty(false);
+		toast('success', 'Settings saved');
 		await refetch();
 	};
 
@@ -199,9 +204,9 @@ export function SettingsPage() {
 	}
 
 	return (
-		<Box>
-			<PageHeader title="Settings" subtitle="WarpCore configuration" icon={<Settings size={20} />} />
-			<Box p="4">
+<Box pb="80px">
+				<PageHeader title="Settings" subtitle="WarpCore configuration" icon={<Settings size={20} />} />
+				<Box p="4">
 				<VStack align="stretch" gap="6">
 					{/* Model directories */}
 					<Card>
@@ -247,7 +252,7 @@ export function SettingsPage() {
 										_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
 										_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
 										value={newRoot}
-										onChange={e => setNewRoot(e.target.value)}
+										onChange={e => dirtySetter(setNewRoot, e.target.value)}
 										onKeyDown={e => e.key === 'Enter' && handleAddRoot()}
 									/>
 									<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#a78bfa', bg: 'rgba(167, 139, 250, 0.08)' }} borderRadius="lg" minW="8" px="0" onClick={handleBrowseDirectory} title="Browse directory">
@@ -277,9 +282,9 @@ export function SettingsPage() {
 								<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)">Auto-assigned port range for llama-server instances</Text>
 							</Box>
 							<HStack gap="3">
-								<Input value={portStart} onChange={e => setPortStart(Number(e.target.value))} type="number" size="sm" w="100px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
+								<Input value={portStart} onChange={e => dirtySetter(setPortStart, Number(e.target.value))} type="number" size="sm" w="100px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
 								<Text fontSize="13px" color="rgba(255, 255, 255, 0.25)">to</Text>
-								<Input value={portEnd} onChange={e => setPortEnd(Number(e.target.value))} type="number" size="sm" w="100px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
+								<Input value={portEnd} onChange={e => dirtySetter(setPortEnd, Number(e.target.value))} type="number" size="sm" w="100px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
 							</HStack>
 						</VStack>
 					</Card>
@@ -292,11 +297,11 @@ export function SettingsPage() {
 								<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)">KV cache checkpoint storage. Leave path blank for default.</Text>
 							</Box>
 							<HStack gap="3">
-								<Input value={checkpointsPath} onChange={e => setCheckpointsPath(e.target.value)} size="sm" flex="1" placeholder="~/.config/warpcore/checkpoints/" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
+								<Input value={checkpointsPath} onChange={e => dirtySetter(setCheckpointsPath, e.target.value)} size="sm" flex="1" placeholder="~/.config/warpcore/checkpoints/" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
 							</HStack>
 							<HStack gap="3">
 								<Text fontSize="13px" color="rgba(255, 255, 255, 0.5)">Max disk usage</Text>
-								<Input value={maxCheckpointDiskGB} onChange={e => setMaxCheckpointDiskGB(Number(e.target.value))} type="number" size="sm" w="100px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
+								<Input value={maxCheckpointDiskGB} onChange={e => dirtySetter(setMaxCheckpointDiskGB, Number(e.target.value))} type="number" size="sm" w="100px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
 								<Text fontSize="13px" color="rgba(255, 255, 255, 0.4)">GB</Text>
 							</HStack>
 						</VStack>
@@ -312,7 +317,7 @@ export function SettingsPage() {
 										Use the loaded model to generate a concise title for new conversations. When disabled, titles are derived from your first message.
 									</Text>
 								</Box>
-								<Switch.Root label='Generate titles' checked={!disabledTitleGen} onCheckedChange={(details) => setDisabledTitleGen(!details.checked)}>
+								<Switch.Root label='Generate titles' checked={!disabledTitleGen} onCheckedChange={(details) => dirtySetter(setDisabledTitleGen, !details.checked)}>
 									<Switch.HiddenInput />
 									<Switch.Control css={{ bg: !disabledTitleGen ? '#3b86d6' : 'surface.4' }}>
 										<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
@@ -333,9 +338,9 @@ export function SettingsPage() {
 								<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)">WarpCore API listen address</Text>
 							</Box>
 							<HStack gap="3">
-								<Input value={apiHost} onChange={e => setApiHost(e.target.value)} size="sm" w="140px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
+								<Input value={apiHost} onChange={e => dirtySetter(setApiHost, e.target.value)} size="sm" w="140px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
 								<Text fontSize="13px" color="rgba(255, 255, 255, 0.25)">:</Text>
-								<Input value={apiPort} onChange={e => setApiPort(Number(e.target.value))} type="number" size="sm" w="100px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
+								<Input value={apiPort} onChange={e => dirtySetter(setApiPort, Number(e.target.value))} type="number" size="sm" w="100px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
 							</HStack>
 						</VStack>
 					</Card>
@@ -352,7 +357,7 @@ export function SettingsPage() {
 								</Box>
 							</HStack>
 							<HStack gap="3">
-								<Switch.Root label='Start router on App launch' checked={proxyEnabled} onCheckedChange={(details) => setProxyEnabled(details.checked)}>
+								<Switch.Root label='Start router on App launch' checked={proxyEnabled} onCheckedChange={(details) => dirtySetter(setProxyEnabled, details.checked)}>
 									<Switch.HiddenInput />
 									<Switch.Control css={{ bg: proxyEnabled ? '#3b86d6' : 'rgba(255, 255, 255, 0.08)' }}>
 										<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
@@ -361,7 +366,7 @@ export function SettingsPage() {
 										Start router on App launch
 									</Switch.Label>
 								</Switch.Root>
-								<Input value={proxyPort} onChange={e => setProxyPort(Number(e.target.value))} type="number" size="sm" w="100px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} disabled={!proxyEnabled} />
+								<Input value={proxyPort} onChange={e => dirtySetter(setProxyPort, Number(e.target.value))} type="number" size="sm" w="100px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} disabled={!proxyEnabled} />
 							</HStack>
 						</VStack>
 					</Card>
@@ -381,7 +386,7 @@ export function SettingsPage() {
 										</Text>
 									)}
 								</Box>
-								<Switch.Root checked={autoLaunch ?? false} onCheckedChange={(details) => setAutoLaunch(details.checked)} disabled={autoLaunch === null}>
+								<Switch.Root checked={autoLaunch ?? false} onCheckedChange={(details) => dirtySetter(setAutoLaunch, details.checked)} disabled={autoLaunch === null}>
 									<Switch.HiddenInput />
 									<Switch.Control css={{ bg: autoLaunch ? '#3b86d6' : 'rgba(255, 255, 255, 0.08)' }}>
 										<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
@@ -397,7 +402,7 @@ export function SettingsPage() {
 											Start to tray without showing window (requires Launch on Startup)
 										</Text>
 									</Box>
-									<Switch.Root checked={startMinimized} onCheckedChange={(details) => setStartMinimized(details.checked)} disabled={!autoLaunch || autoLaunch === null}>
+									<Switch.Root checked={startMinimized} onCheckedChange={(details) => dirtySetter(setStartMinimized, details.checked)} disabled={!autoLaunch || autoLaunch === null}>
 										<Switch.HiddenInput />
 										<Switch.Control css={{ bg: startMinimized ? '#3b86d6' : 'surface.4' }}>
 											<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
@@ -408,27 +413,40 @@ export function SettingsPage() {
 						</VStack>
 					</Card>
 				</VStack>
-
-				{/* Save button */}
-				<HStack justify="flex-end" mt="2">
-					<Button
-						size="sm"
-						bg={saved ? 'rgba(52, 211, 153, 0.12)' : 'rgba(52, 211, 153, 0.12)'}
-						color="#34d399"
-						borderWidth="1px"
-						borderColor="rgba(52, 211, 153, 0.25)"
-						_hover={{ bg: 'rgba(52, 211, 153, 0.2)' }}
-						borderRadius="lg"
-						fontSize="13px"
-						fontWeight="500"
-						onClick={handleSave}
-						disabled={saveMut.loading}
-					>
-						{saved ? <Check size={15} /> : saveMut.loading ? <Spinner size="xs" /> : <Save size={15} />}
-						{saved ? 'Saved' : 'Save Changes'}
-					</Button>
-				</HStack>
 			</Box>
+
+			{isDirty && (
+				<Box
+					position="fixed"
+					bottom="0"
+					left="0"
+					right="0"
+					bg="#101010"
+					borderTopWidth="1px"
+					borderColor="rgba(255, 255, 255, 0.08)"
+					p="4"
+					zIndex={100}
+				>
+					<HStack justify="flex-end" gap="4">
+						<Button
+							size="sm"
+							bg="rgba(52, 211, 153, 0.12)"
+							color="#34d399"
+							borderWidth="1px"
+							borderColor="rgba(52, 211, 153, 0.25)"
+							_hover={{ bg: 'rgba(52, 211, 153, 0.2)' }}
+							borderRadius="lg"
+							fontSize="13px"
+							fontWeight="500"
+							onClick={handleSave}
+							disabled={saveMut.loading}
+						>
+							{saveMut.loading ? <Spinner size="xs" /> : <Save size={15} />}
+							{'Save Changes'}
+						</Button>
+					</HStack>
+				</Box>
+			)}
 
 			{deletingRootIndex !== null && (
 				<ConfirmDialog

@@ -270,7 +270,7 @@ export class SqlitePersistence implements IPersistence {
 		this.db!.prepare(`DELETE FROM ${this.t.threads} WHERE id = ?`).run(id);
 	}
 
-	async incrementThreadTokens(id: TThreadId, promptDelta: number, completionDelta: number): Promise<void> {
+	async incrementThreadTokens(id: TThreadId, promptDelta: number = 0, completionDelta: number = 0): Promise<void> {
 		this.db!.prepare(
 			`UPDATE ${this.t.threads} SET totalPromptTokens = totalPromptTokens + ?, totalCompletionTokens = totalCompletionTokens + ?, updatedAt = ? WHERE id = ?`
 		).run(promptDelta, completionDelta, Date.now(), id);

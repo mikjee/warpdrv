@@ -7,6 +7,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { useListQuery, useMutation } from '../hooks/useQuery';
 import { fetchModels, scanModels } from '../api/services';
+import { openExternal } from '../utils/openExternal';
 import type { IModel } from '@warpcore/shared';
 
 // ============================================================
@@ -108,7 +109,7 @@ function RowMenu({ model, onClose }: { model: IModel; onClose: () => void }) {
 				_hover={{ bg: 'rgba(255, 255, 255, 0.04)', color: 'rgba(255, 255, 255, 0.9)' }}
 				transition="all 0.1s ease"
 				onClick={() => {
-					window.open(hfUrl, '_blank', 'noopener,noreferrer');
+					openExternal(hfUrl);
 					onClose();
 				}}
 			>

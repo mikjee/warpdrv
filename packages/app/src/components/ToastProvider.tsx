@@ -40,9 +40,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 	const toast = useCallback((type: TToastType, message: string) => {
 		const id = ++nextId;
 		setToasts(prev => [...prev, { id, type, message }]);
+		const duration = type === 'error' ? 30000 : 4000;
 		setTimeout(() => {
 			setToasts(prev => prev.filter(t => t.id !== id));
-		}, 4000);
+		}, duration);
 	}, []);
 
 	const dismiss = useCallback((id: number) => {

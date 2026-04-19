@@ -167,6 +167,7 @@ function ServerSelector({
 	);
 }
 
+export const BranchTokensContext = React.createContext(0);
 
 // ============================================================
 // ChatInner — main chat layout using bridge store
@@ -249,7 +250,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	// Get messages for UI (all messages, with TOOL messages converted)
 	const threadMessages = useStore(s => s.currentThreadId ? s.messagesByThread[s.currentThreadId] || emptyMsgs : emptyMsgs)!;
 	const isRunning = useStore(s => s.currentThreadId ? s.isRunningByThread[s.currentThreadId] ?? false : false);
-	const msgRepo = useDerivedMsgsForUI(threadMessages, currentThreadId, headMessageId, isRunning);
+	const {msgRepo, branchTokenCount} = useDerivedMsgsForUI(threadMessages, currentThreadId, headMessageId, isRunning);
 	const toolCallsById = useStore(s => s.toolCallsById);
 
 	// Check if thread exists in store (distinguishes new vs existing thread)
@@ -501,7 +502,9 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 							</Flex>
 						</Box>
 						<Box flex="1" overflow="hidden">
-							<Thread isLoading={isLoadingThread} />
+							<BranchTokensContext value={branchTokenCount}>
+								<Thread isLoading={isLoadingThread} />
+							</BranchTokensContext>
 						</Box>
 						{/* New unified sidebar with tabs */}
 					<ChatSidebar

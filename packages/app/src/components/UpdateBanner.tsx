@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Box, Text, HStack, Flex, Button } from '@chakra-ui/react';
 import { ArrowUpCircle, X, ExternalLink } from 'lucide-react';
+import { openExternal } from '../utils/openExternal';
 
 interface IUpdateInfo {
 	currentVersion: string;
@@ -57,7 +58,7 @@ export function UpdateBanner() {
 					bg="rgba(51, 129, 255, 0.12)" color="#3381ff"
 					borderWidth="1px" borderColor="rgba(51, 129, 255, 0.25)"
 					_hover={{ bg: 'rgba(51, 129, 255, 0.2)' }}
-					onClick={() => window.open(update.downloadUrl, '_blank')}
+					onClick={() => openExternal(update.downloadUrl)}
 				>
 					<ExternalLink size={11} /> Download
 				</Button>

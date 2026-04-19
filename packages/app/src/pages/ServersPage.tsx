@@ -171,9 +171,10 @@ export function ServersPage() {
 					comparison = a.serverName.localeCompare(b.serverName);
 					break;
 				case 'recency':
-					const aStarted = a.startedAt ?? 0;
-					const bStarted = b.startedAt ?? 0;
-					comparison = bStarted - aStarted; // newer first by default (desc)
+					// Fabricate startedAt for loading servers (use current time)
+					const aEffective = a.status === EServerStatus.LOADING ? Date.now() : (a.startedAt ?? 0);
+					const bEffective = b.status === EServerStatus.LOADING ? Date.now() : (b.startedAt ?? 0);
+					comparison = bEffective - aEffective; // newer first by default (desc)
 					break;
 				case 'backend': {
 					const backendA = a.backendGroupId ? groupMap.get(a.backendGroupId)?.name ?? 'Unknown' : backendMap.get(a.backendId!)?.name ?? 'Unknown';

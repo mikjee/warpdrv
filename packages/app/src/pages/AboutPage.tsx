@@ -1,4 +1,5 @@
 import { Box, Text, VStack, HStack, Link, Flex } from '@chakra-ui/react';
+import { openExternal } from '../utils/openExternal';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
 import { Github } from 'lucide-react';
@@ -21,9 +22,9 @@ export function AboutPage() {
 								<Text fontSize="13px" color="rgba(255, 255, 255, 0.7)">
 									Slop-coded with <Text as="span" color="#fb7185">❤</Text> by{' '}
 								</Text>
-								<Link href="https://www.github.com/mikjee" color="#3381ff" _hover={{ color: '#5b6af5', textDecoration: 'underline' }}>
-									<Text fontSize="13px" fontWeight="500">@mikjee</Text>
-								</Link>
+						<Link href="https://www.github.com/mikjee" color="#3381ff" _hover={{ color: '#5b6af5', textDecoration: 'underline', cursor: 'pointer' }} onClick={(e) => { e.preventDefault(); openExternal('https://www.github.com/mikjee'); }}>
+								<Text fontSize="13px" fontWeight="500">@mikjee</Text>
+							</Link>
 							</HStack>
 						</VStack>
 					</Card>

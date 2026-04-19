@@ -37,7 +37,10 @@ export function useDerivedMsgsForUI(
 	currentThreadId: string | null,
 	headMessageId: TMessageId | null,
 	isRunning: boolean,
-): ExportedMessageRepository {
+): {
+	msgRepo: ExportedMessageRepository,
+	branchTokenCount: number,
+} {
 	const toolCallsById = useStore(s => s.toolCallsById);
 
 	const derivedMsgsRef = useRef<Record<TMessageId, IChatMessage>>({});
@@ -49,7 +52,7 @@ export function useDerivedMsgsForUI(
 	const mapIdToIndexRef = useRef<Record<TMessageId, number>>({});
 	const headMessageIdRef = useRef<TMessageId | null>(null);
 
-const convertMessage = useCallback((msg: any) => {
+	const convertMessage = useCallback((msg: any) => {
 		
 		// Use toolCallsById from closure (already reactive via useStore)
 		const threadToolCalls = Object.values(toolCallsById).filter((tc: any) => tc.threadId === currentThreadId);
@@ -252,8 +255,23 @@ const convertMessage = useCallback((msg: any) => {
 	
 	return useMemo(() => {
 		return {
-			messages: sortedMsgs,
-			headId: headMessageId,
+			msgRepo: {
+				messages: sortedMsgs,
+				headId: headMessageId,
+			},
+
+			branchTokenCount: (() => {
+				if (!headMessageId) return 0;
+
+				let tokenCount = 0;
+				let msg: IChatMessage | undefined = derivedMsgsRef.current[headMessageId];
+				while (msg) {
+					tokenCount += msg.stats?.actualTokens || 0;
+					msg = msg.parentId ? derivedMsgsRef.current[msg.parentId] : undefined;
+				}
+
+				return tokenCount;
+			})()
 		};
 	}, [sortedMsgs, headMessageId, isRunning]);
 }

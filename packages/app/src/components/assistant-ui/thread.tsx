@@ -37,7 +37,7 @@ import {
   SquareIcon,
 } from "lucide-react";
 import React, { useCallback, useContext, useMemo, useState, type FC } from "react";
-import { ChatConfigContext } from "@/pages/ChatPage";
+import { BranchTokensContext, ChatConfigContext } from "@/pages/ChatPage";
 import { useStore } from "@/store";
 import { useMessageTiming } from "@assistant-ui/react";
 import { BrainCircuitIcon, ClockIcon } from "lucide-react";
@@ -178,23 +178,11 @@ const ThreadSuggestionItem: FC = () => {
 
 const ContextUsageBar: FC = () => {
   const { contextSize } = useContext(ChatConfigContext);
-  const messages = useAuiState((s) => s.thread.messages);
+  const branchTokensCount = useContext(BranchTokensContext);
   const composerText = useAuiState((s) => s.composer.text);
 
-  let baseline = 0;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (msg?.role === 'assistant') {
-      const custom = (msg.metadata as any)?.custom;
-      if (custom?.promptTokens != null) {
-        baseline = (custom.promptTokens ?? 0) + (custom.completionTokens ?? 0);
-        break;
-      }
-    }
-  }
-
   const inputTokens = composerText ? tokenEncoder.encode(composerText).length : 0;
-  const total = baseline + inputTokens;
+  const total = branchTokensCount + inputTokens;
   const ctxLabel = contextSize > 0 ? (contextSize > 1000 ? `${(contextSize / 1000).toFixed(0)}k` : String(contextSize)) : '?';
   const pct = contextSize > 0 ? Math.min((total / contextSize) * 100, 100) : 0;
   const color = pct > 90 ? '#ef4444' : pct > 70 ? '#f59e0b' : 'rgba(255,255,255,0.15)';
@@ -323,10 +311,11 @@ const MessageError: FC = () => {
 };
 
 const MessageStats: FC = () => {
-   const custom = useAuiState((s) => s.message.role === 'assistant' ? (s.message.metadata as any)?.custom : undefined);
+   const custom = useAuiState((s) => (s.message.metadata as any)?.custom);
    if (!custom) return null;
-   const { promptPerSecond, predictedPerSecond, promptTokens, completionTokens, reasoningTokens, promptMs, predictedMs } = custom;
-   if (!promptPerSecond && !predictedPerSecond && !promptTokens) return null;
+
+   const { promptPerSecond, predictedPerSecond, predictedMs, actualTokens } = custom;
+   if (!promptPerSecond && !predictedPerSecond && !actualTokens) return null;
    return (
      <div className="flex items-center gap-3 mr-2 text-muted-foreground/50 text-xs font-mono">
        {promptPerSecond > 0 && (
@@ -335,8 +324,8 @@ const MessageStats: FC = () => {
        {predictedPerSecond > 0 && (
          <span title="Token generation speed">tg {predictedPerSecond.toFixed(1)} t/s</span>
        )}
-      {completionTokens != null && completionTokens > 0 && (
-         <span title="Token count">{completionTokens} tok</span>
+      {actualTokens != null && actualTokens > 0 && (
+         <span title="Token count">{actualTokens} tok</span>
        )}
        {predictedMs > 0 && (
          <span title="Total time">{(predictedMs / 1000).toFixed(1)}s</span>
@@ -484,21 +473,20 @@ const AssistantActionBar: FC = () => {
 const UserMessage: FC = () => {
   return (
     <MessagePrimitive.Root
-      className="aui-user-message-root fade-in slide-in-from-bottom-1 mx-auto grid w-full animate-in auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] content-start gap-y-2 px-2 py-3 duration-150 [&:where(>*)]:col-start-2"
+      className="aui-user-message-root fade-in slide-in-from-bottom-1 mx-auto flex w-full flex-col gap-2 animate-in px-2 py-3 duration-150"
       data-role="user"
     >
       <UserMessageAttachments />
-
-      <div className="aui-user-message-content-wrapper relative col-start-2 min-w-0">
-        <div className="aui-user-message-content wrap-break-word peer rounded-2xl bg-muted px-4 py-2.5 text-foreground text-[14px] empty:hidden">
+      <div className="flex justify-end">
+        <div className="aui-user-message-content wrap-break-word peer rounded-2xl bg-muted px-4 py-2.5 text-foreground text-[14px] empty:hidden max-w-[80%]">
           <MessagePrimitive.Parts />
         </div>
-        <div className="aui-user-action-bar-wrapper absolute top-1/2 left-0 -translate-x-full -translate-y-1/2 pr-2 peer-empty:hidden">
-          <UserActionBar />
-        </div>
       </div>
-
-      <BranchPicker className="aui-user-branch-picker col-span-full col-start-1 row-start-3 -mr-1 justify-end" />
+      <div className="aui-user-message-footer flex min-h-6 items-center justify-end gap-1">
+        <MessageStats />
+        <UserActionBar />
+        <BranchPicker className="aui-user-branch-picker" />
+      </div>
     </MessagePrimitive.Root>
   );
 };
@@ -506,13 +494,11 @@ const UserMessage: FC = () => {
 const UserActionBar: FC = () => {
   return (
     <ActionBarPrimitive.Root
-      hideWhenRunning
-      autohide="not-last"
       className="aui-user-action-bar-root flex flex-col items-end"
     >
       <ActionBarPrimitive.Edit asChild>
         <TooltipIconButton tooltip="Edit" className="aui-user-action-edit p-4">
-          <PencilIcon />
+          <PencilIcon color="rgb(100,100,100)" />
         </TooltipIconButton>
       </ActionBarPrimitive.Edit>
     </ActionBarPrimitive.Root>

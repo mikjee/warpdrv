@@ -8,6 +8,7 @@ import type { IHubModelDetail, IHubFile } from '@warpcore/shared';
 import { Card } from '../Card';
 import { DirPickerPopover } from './DirPickerPopover';
 import { fetchHubModel, startHubDownload } from '../../api/services';
+import { openExternal } from '../../utils/openExternal';
 import { useToast } from '../ToastProvider';
 import Markdown from 'markdown-to-jsx';
 import DOMPurify from 'dompurify';
@@ -457,7 +458,7 @@ export function HubModelDetail({ modelId, modelRoots }: IHubModelDetailProps) {
 										a: {
 											component: ({ children, href, ...props }: any) => {
 												if (!href || !/^https?:\/\//.test(href)) return <span>{children}</span>;
-												return <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>;
+												return <a href={href} rel="noopener noreferrer" onClick={(e: any) => { e.preventDefault(); openExternal(href); }} {...props}>{children}</a>;
 											},
 										},
 										img: {

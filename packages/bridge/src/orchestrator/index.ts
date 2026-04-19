@@ -123,16 +123,22 @@ export class Orchestrator {
 					}
 				}
 				
+				const userActualTokens = content.reduce((acc, p) => {
+					if (p.type === EMessagePartType.TEXT || p.type === EMessagePartType.REASONING) return acc + (p.text ?? '').length;
+					if (p.type === EMessagePartType.ATTACHMENT) return acc + (p.data?.length ?? 0);
+					return acc;
+				}, 0);
 				const userMsg: IChatMessage = {
 					id: userMessageId,
 					parentId: request.parentId ?? null,
 					threadId: request.threadId,
 					role: EChatRole.USER,
 					content,
-					stats: null,
+					stats: { promptTokens: 0, completionTokens: 0, reasoningTokens: 0, actualTokens: Math.ceil(userActualTokens / 4) },
 					createdAt: Date.now(),
 				};
 				await this.persistence.createMessage(userMsg);
+				await this.persistence.incrementThreadTokens(request.threadId, userMsg.stats!.actualTokens ?? 0, 0);
 				this.broadcaster.emit({ type: 'message.created', message: userMsg });
 				parentForAssistant = userMessageId;
 			}
@@ -480,10 +486,12 @@ export class Orchestrator {
 		const finalToolCalls = finalizeToolCalls(toolCallAccumulators);
 
 		if (timings || usage) {
+			const actualTokens = Math.ceil((fullText.length + reasoningText.length) / 4);
 			const stats: IChatMessageStats = {
 				promptTokens: (usage?.prompt_tokens ?? timings?.prompt_n ?? 0),
 				completionTokens: (usage?.completion_tokens ?? timings?.predicted_n ?? 0),
 				reasoningTokens: (usage?.reasoning_tokens ?? 0),
+				actualTokens,
 				promptPerSecond: timings?.prompt_per_second ?? 0,
 				predictedPerSecond: timings?.predicted_per_second ?? 0,
 				promptMs: timings?.prompt_ms ?? 0,
@@ -498,8 +506,8 @@ export class Orchestrator {
 			});
 			await this.persistence.incrementThreadTokens(
 				request.threadId,
-				stats.promptTokens,
-				stats.completionTokens,
+				0,
+				stats.actualTokens ?? 0,
 			);
 		}
 
