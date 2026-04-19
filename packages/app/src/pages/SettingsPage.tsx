@@ -45,7 +45,7 @@ export function SettingsPage() {
 	const [saved, setSaved] = useState(false);
 	const [isDirty, setIsDirty] = useState(false);
 
-	const dirtySetter = useCallback(<T>(fn: (val: T) => void, val: T) => {
+	const dirtySetter = useCallback((fn: (val: any) => void, val: any) => {
 		fn(val);
 		setIsDirty(true);
 	}, []);
