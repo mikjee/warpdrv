@@ -47,9 +47,9 @@ export function useThreadConfig(selectedPresetId: string | null,) {
 		flushChanges,
 	]);
 
-	const handleParamsChange = useCallback((newParams: IChatInferenceParams) => {
+	const handleParamsChange = useCallback((newParams: Partial<IChatInferenceParams>) => {
 		setCurrentInferenceParams(newParams as unknown as Record<string, unknown>);
-		debounceChange(JSON.stringify(newParams));
+		debounceChange(newParams);
 	}, [debounceChange]);
 
 	const handleSystemPromptChange = useCallback((newPrompt: string) => {
@@ -66,7 +66,7 @@ export function useThreadConfig(selectedPresetId: string | null,) {
 
 	const loadConfig = useCallback(async (threadId: string | null) => {
 		const setDefaults = () => {
-			setCurrentInferenceParams({ ...DEFAULT_INFERENCE_PARAMS });
+			setCurrentInferenceParams({ });
 			setCurrentSystemPrompt('');
 		};
 
@@ -98,5 +98,8 @@ export function useThreadConfig(selectedPresetId: string | null,) {
 	return {
 		handleParamsChange,
 		handleSystemPromptChange,
+		currentThreadId,
+		currentSystemPrompt,
+		currentInferenceParams,
 	}
 }

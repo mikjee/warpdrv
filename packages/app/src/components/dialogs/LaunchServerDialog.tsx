@@ -8,13 +8,16 @@ import {
 } from 'lucide-react';
 import {
 	EKvQuantType,
-	type IModel, type IBackend, type IBackendGroup, type ILaunchParams, type IServer,
+	type IModel, type IBackend, type IBackendGroup, type ILaunchParams, type IServer, type IChatInferenceParams,
 	type ISpecDecodeParams,
 	DEFAULT_LAUNCH_PARAMS, DEFAULT_SPEC_DECODE_PARAMS,
 	calculateVramEstimate, kvQuantToNumeric,
 	type IPreset,
 	parseDefaultArgsToParams as sharedParseDefaultArgsToParams,
 } from '@warpcore/shared';
+import { inferParamsToApiJson, inferParamsFromApiJson } from '@warpcore/bridge/inferParamNames';
+import { Textarea } from '@chakra-ui/react';
+import { useJsonValidator } from '@/hooks/useJsonValidator';
 import { Card } from '../Card';
 import { VramBar } from '../VramBar';
 import { LaunchParamsPanel, EParamsMode, ToggleChip, SelectField, NumberField } from '../LaunchParamsPanel';
@@ -156,6 +159,8 @@ interface ILaunchServerDialogProps {
 		autoLaunch?: boolean;
 		autoSaveCheckpointOnStop?: boolean;
 		autoLoadCheckpointOnStart?: boolean;
+		launchInferenceParams?: IChatInferenceParams;
+		useRecommendedInferenceParams?: boolean;
 	};
 }
 
@@ -191,6 +196,10 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 	const [showPresets, setShowPresets] = useState(false);
 	const [presetName, setPresetName] = useState('');
 	const [launching, setLaunching] = useState(false);
+	const [useRecommendedInferParams, setUseRecommendedInferParams] = useState<boolean>(editMode?.useRecommendedInferenceParams ?? true);
+	const [recommendedText, setRecommendedText] = useState('');
+	const [customText, setCustomText] = useState(editMode?.launchInferenceParams ? inferParamsToApiJson(editMode.launchInferenceParams) : '');
+	const { error: customJsonError, validateAndParse: validateCustomJson } = useJsonValidator<Partial<IChatInferenceParams>>();
 
 	// Params
 	const [params, setParams] = useState<ILaunchParams>(editMode?.params ?? { ...DEFAULT_LAUNCH_PARAMS, specDecode: { ...DEFAULT_SPEC_DECODE_PARAMS } });
@@ -263,6 +272,15 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 
 	const selectedDraftEntry = modelEntries.find(e => e.file.filePath === params.specDecode.draftModelPath);
 
+	// Populate recommended params text when model changes
+	useEffect(() => {
+		if (selectedEntry?.model.recommendedInferenceParams) {
+			setRecommendedText(inferParamsToApiJson(selectedEntry.model.recommendedInferenceParams));
+		} else {
+			setRecommendedText('');
+		}
+	}, [selectedEntry?.model.id]);
+
 	// Backend defaults — reset toggle flags to backend defaults when backend changes
 	useEffect(() => {
 		if (selectedBackendId && selectedBackend && !editMode) {
@@ -310,6 +328,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 		const aliases = parseAliases(serverAliasesInput);
 		const backendId = !useBackendGroup ? selectedBackendId ?? undefined : undefined;
 		const backendGroupId = useBackendGroup ? selectedBackendGroupId ?? undefined : undefined;
+	const launchInferenceParams = !useRecommendedInferParams ? inferParamsFromApiJson(customText) as unknown as IChatInferenceParams : undefined;
 		const result = await updateServer(editMode.serverId, {
 			backendId,
 			backendGroupId,
@@ -320,6 +339,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 			autoLaunch,
 			autoSaveCheckpointOnStop,
 			autoLoadCheckpointOnStart,
+			launchInferenceParams,
 		}, false);
 		setLaunching(false);
 		if (result.ok) {
@@ -337,6 +357,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 		const aliases = parseAliases(serverAliasesInput);
 		const backendId = !useBackendGroup ? selectedBackendId ?? undefined : undefined;
 		const backendGroupId = useBackendGroup ? selectedBackendGroupId ?? undefined : undefined;
+		const launchInferenceParams = !useRecommendedInferParams ? inferParamsFromApiJson(customText) as unknown as IChatInferenceParams : undefined;
 		if (editMode) {
 			const result = await updateServer(editMode.serverId, {
 				backendId,
@@ -348,6 +369,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				autoLaunch,
 				autoSaveCheckpointOnStop,
 				autoLoadCheckpointOnStart,
+				launchInferenceParams,
 			}, true);
 			setLaunching(false);
 			if (result.ok) {
@@ -367,6 +389,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				autoLaunch,
 				autoSaveCheckpointOnStop,
 				autoLoadCheckpointOnStart,
+				launchInferenceParams,
 			});
 			setLaunching(false);
 			if (result.ok) {
@@ -523,9 +546,69 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 								<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)" mt="1.5">Comma-separated aliases for proxy routing.</Text>
 							</Box>
 
+							{/* Inference params */}
+							<Box>
+								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">3. Inference Params</Text>
+								<HStack gap="2" mb="2">
+									<Button
+										size="sm"
+										flex="1"
+										variant="outline"
+										borderColor={useRecommendedInferParams ? 'rgba(51, 129, 255, 0.3)' : 'rgba(255, 255, 255, 0.08)'}
+										borderWidth={useRecommendedInferParams ? '2px' : '1px'}
+										color={useRecommendedInferParams ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'}
+										bg={useRecommendedInferParams ? 'rgba(51, 129, 255, 0.05)' : 'transparent'}
+										_hover={{ borderColor: useRecommendedInferParams ? 'rgba(51, 129, 255, 0.5)' : 'rgba(255, 255, 255, 0.15)' }}
+										onClick={() => setUseRecommendedInferParams(true)}
+									>
+										<Text fontSize="13px" fontWeight="500">Use recommended</Text>
+									</Button>
+									<Button
+										size="sm"
+										flex="1"
+										variant="outline"
+										borderColor={!useRecommendedInferParams ? 'rgba(51, 129, 255, 0.3)' : 'rgba(255, 255, 255, 0.08)'}
+										borderWidth={!useRecommendedInferParams ? '2px' : '1px'}
+										color={!useRecommendedInferParams ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'}
+										bg={!useRecommendedInferParams ? 'rgba(51, 129, 255, 0.05)' : 'transparent'}
+										_hover={{ borderColor: !useRecommendedInferParams ? 'rgba(51, 129, 255, 0.5)' : 'rgba(255, 255, 255, 0.15)' }}
+										onClick={() => setUseRecommendedInferParams(false)}
+									>
+										<Text fontSize="13px" fontWeight="500">Use custom</Text>
+									</Button>
+								</HStack>
+								<Textarea
+									value={useRecommendedInferParams ? recommendedText : customText}
+									onChange={(e) => {
+										if (!useRecommendedInferParams) {
+											const result = validateCustomJson(e.target.value);
+											if (result.valid) {
+												setCustomText(e.target.value);
+											}
+										}
+									}}
+									onBlur={(e) => !useRecommendedInferParams && validateCustomJson(e.target.value)}
+									disabled={useRecommendedInferParams}
+									fontFamily="monospace"
+									fontSize="11px"
+									resize="vertical"
+									minH="120px"
+									bg="rgba(255, 255, 255, 0.03)"
+									borderColor={customJsonError ? 'rgba(244, 63, 94, 0.5)' : 'rgba(255, 255, 255, 0.08)'}
+									color="rgba(255, 255, 255, 0.7)"
+									borderRadius="lg"
+									_placeholder={{ color: 'rgba(255, 255, 255, 0.2)', textAlign: 'center' }}
+								/>
+								{customJsonError && (
+									<Text fontSize="10px" color="rgba(244, 63, 94, 0.9)" mt="1" fontFamily="monospace">
+										{customJsonError}
+									</Text>
+								)}
+							</Box>
+
 							{/* Backend picker */}
 							<Box>
-								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">2. Select Backend</Text>
+								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">5. Select Backend</Text>
 								<VStack align="stretch" gap="3">
 									{/* Backend source toggle */}
 									<HStack gap="3" mb="2">

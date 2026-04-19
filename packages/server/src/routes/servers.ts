@@ -76,6 +76,7 @@ export async function launchAutoStartServers(): Promise<void> {
 				mmprojPath,
 				server.params,
 				backend.defaultArgs,
+				server.launchInferenceParams,
 			);
 
 			const pid = spawnServer(
@@ -173,6 +174,8 @@ serversRouter.post('/', async (req, res) => {
 		autoLaunch: payload.autoLaunch ?? false,
 		autoSaveCheckpointOnStop: payload.autoSaveCheckpointOnStop ?? false,
 		autoLoadCheckpointOnStart: payload.autoLoadCheckpointOnStart ?? false,
+		launchInferenceParams: payload.launchInferenceParams,
+		useRecommendedInferenceParams: payload.useRecommendedInferenceParams,
 	};
 
 	// Build args and spawn
@@ -183,6 +186,7 @@ serversRouter.post('/', async (req, res) => {
 		mmprojPath,
 		params,
 		backend.defaultArgs,
+		payload.launchInferenceParams,
 	);
 
 	const pid = spawnServer(
@@ -282,6 +286,7 @@ serversRouter.post('/:id/restart', async (req, res) => {
 		mmprojPath,
 		server.params,
 		backend.defaultArgs,
+		server.launchInferenceParams,
 	);
 
 	const pid = spawnServer(
@@ -312,7 +317,7 @@ serversRouter.put('/:id', async (req, res) => {
 		return;
 	}
 
-	type TUpdatePayload = Partial<Pick<IServer, 'backendId' | 'backendGroupId' | 'modelPath' | 'serverName' | 'params' | 'serverAlias' | 'autoLaunch' | 'autoSaveCheckpointOnStop' | 'autoLoadCheckpointOnStart'>> & { relaunch?: boolean };
+	type TUpdatePayload = Partial<Pick<IServer, 'backendId' | 'backendGroupId' | 'modelPath' | 'serverName' | 'params' | 'serverAlias' | 'autoLaunch' | 'autoSaveCheckpointOnStop' | 'autoLoadCheckpointOnStart' | 'launchInferenceParams' | 'useRecommendedInferenceParams'>> & { relaunch?: boolean };
 	const updatePayload = req.body as TUpdatePayload;
 	const shouldRelaunch = updatePayload.relaunch ?? true;
 
@@ -395,6 +400,12 @@ serversRouter.put('/:id', async (req, res) => {
 	if (updatePayload.autoLoadCheckpointOnStart !== undefined) {
 		server.autoLoadCheckpointOnStart = updatePayload.autoLoadCheckpointOnStart;
 	}
+	if (updatePayload.launchInferenceParams !== undefined) {
+		server.launchInferenceParams = updatePayload.launchInferenceParams;
+	}
+	if (updatePayload.useRecommendedInferenceParams !== undefined) {
+		server.useRecommendedInferenceParams = updatePayload.useRecommendedInferenceParams;
+	}
 
 	if (shouldRelaunch) {
 		// Re-spawn with new params
@@ -405,6 +416,7 @@ serversRouter.put('/:id', async (req, res) => {
 			mmprojPath,
 			server.params,
 			backend.defaultArgs,
+			server.launchInferenceParams,
 		);
 
 		const pid = spawnServer(
