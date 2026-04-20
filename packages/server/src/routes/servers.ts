@@ -13,6 +13,100 @@ import { getServerStats } from '../services/statsPoller';
 import { clearStickyRoute, getStickyRoutesResolved } from '../services/modelProxy';
 import { sseManager } from '../services/sseManagerInstance';
 import { getCachedModels } from './models';
+
+/**
+ * Parse CLI flags into a map, handling quoted values and various formats
+ */
+function parseCliFlags(flags: string): Map<string, string | true> {
+	const result = new Map<string, string | true>();
+	
+	if (!flags?.trim()) return result;
+	
+	// Tokenize respecting quotes
+	const tokens: string[] = [];
+	let current = '';
+	let inQuote = false;
+	let quoteChar = '';
+	
+	for (let i = 0; i < flags.length; i++) {
+		const char = flags[i];
+		
+		if (!inQuote && (char === '"' || char === "'")) {
+			inQuote = true;
+			quoteChar = char;
+		} else if (inQuote && char === quoteChar) {
+			inQuote = false;
+			quoteChar = '';
+		} else if (!inQuote && char === ' ') {
+			if (current) {
+				tokens.push(current);
+				current = '';
+			}
+		} else {
+			current += char;
+		}
+	}
+	if (current) tokens.push(current);
+	
+	// Parse tokens into flags
+	for (let i = 0; i < tokens.length; i++) {
+		const token = tokens[i];
+		if (!token) continue;
+		
+		if (token.startsWith('--')) {
+			// Check for --key=value format
+			const equalsIndex = token.indexOf('=');
+			if (equalsIndex !== -1) {
+				const key = token.substring(0, equalsIndex);
+				const value = token.substring(equalsIndex + 1);
+				result.set(key, value);
+			} else {
+				// Check if next token is a value (not another flag)
+				const nextToken = tokens[i + 1];
+				if (nextToken && typeof nextToken === 'string' && !nextToken.startsWith('--')) {
+					result.set(token, nextToken);
+					i++; // Skip the value token
+				} else {
+					// Boolean flag
+					result.set(token, true);
+				}
+			}
+		}
+	}
+	
+	return result;
+}
+
+/**
+ * Merge CLI flags with override flags taking precedence
+ */
+function mergeCliFlags(baseFlags: string, overrideFlags: string): string {
+	const merged = parseCliFlags(baseFlags);
+	const overrides = parseCliFlags(overrideFlags);
+	
+	// Apply overrides
+	overrides.forEach((value, key) => {
+		merged.set(key, value);
+	});
+	
+	// Reconstruct CLI string
+	const parts: string[] = [];
+	merged.forEach((value, key) => {
+		if (value === true) {
+			parts.push(key); // Boolean flag
+		} else {
+			// Check if value needs quoting (contains spaces or is JSON)
+			const needsQuoting = value.includes(' ') || value.startsWith('{') || value.startsWith('[');
+			if (needsQuoting) {
+				parts.push(key, `"${value}"`);
+			} else {
+				parts.push(key, value);
+			}
+		}
+	});
+	
+	return parts.join(' ');
+}
 import type {
 	IServer,
 	IServerCreatePayload,
@@ -71,12 +165,18 @@ export async function launchAutoStartServers(): Promise<void> {
 
 			const model = getCachedModels().find(m => m.primaryFile?.filePath === server.modelPath);
 			const mmprojPath = model?.mmprojFile?.filePath && server.useMultiModal ? model.mmprojFile.filePath : null;
+			
+			// Append recommended inference params to extraArgs if enabled
+			const launchParams = { ...server.params };
+			if (server.useRecommendedInferenceParams && model?.recommendedInferenceParams) {
+				launchParams.extraArgs = mergeCliFlags(model.recommendedInferenceParams, server.params.extraArgs);
+			}
+			
 			const args = await buildServerArgs(
 				server.modelPath,
 				mmprojPath,
-				server.params,
+				launchParams,
 				backend.defaultArgs,
-				server.launchInferenceParams,
 			);
 
 			const pid = spawnServer(
@@ -173,7 +273,6 @@ serversRouter.post('/', async (req, res) => {
 		autoLaunch: payload.autoLaunch ?? false,
 		autoSaveCheckpointOnStop: payload.autoSaveCheckpointOnStop ?? false,
 		autoLoadCheckpointOnStart: payload.autoLoadCheckpointOnStart ?? false,
-		launchInferenceParams: payload.launchInferenceParams,
 		useRecommendedInferenceParams: payload.useRecommendedInferenceParams,
 		useMultiModal: payload.useMultiModal ?? false,
 	};
@@ -181,12 +280,18 @@ serversRouter.post('/', async (req, res) => {
 	// Build args and spawn
 	const model = getCachedModels().find(m => m.primaryFile?.filePath === payload.modelPath);
 	const mmprojPath = model?.mmprojFile?.filePath && payload.useMultiModal ? model.mmprojFile.filePath : null;
+	
+	// Append recommended inference params to extraArgs if enabled
+	const launchParams = { ...params };
+	if (payload.useRecommendedInferenceParams && model?.recommendedInferenceParams) {
+		launchParams.extraArgs = mergeCliFlags(model.recommendedInferenceParams, params.extraArgs);
+	}
+	
 	const args = await buildServerArgs(
 		payload.modelPath,
 		mmprojPath,
-		params,
+		launchParams,
 		backend.defaultArgs,
-		payload.launchInferenceParams,
 	);
 
 	const pid = spawnServer(
@@ -286,7 +391,6 @@ serversRouter.post('/:id/restart', async (req, res) => {
 		mmprojPath,
 		server.params,
 		backend.defaultArgs,
-		server.launchInferenceParams,
 	);
 
 	const pid = spawnServer(
@@ -317,7 +421,7 @@ serversRouter.put('/:id', async (req, res) => {
 		return;
 	}
 
-	type TUpdatePayload = Partial<Pick<IServer, 'backendId' | 'backendGroupId' | 'modelPath' | 'serverName' | 'params' | 'serverAlias' | 'autoLaunch' | 'autoSaveCheckpointOnStop' | 'autoLoadCheckpointOnStart' | 'launchInferenceParams' | 'useRecommendedInferenceParams' | 'useMultiModal'>> & { relaunch?: boolean };
+	type TUpdatePayload = Partial<Pick<IServer, 'backendId' | 'backendGroupId' | 'modelPath' | 'serverName' | 'params' | 'serverAlias' | 'autoLaunch' | 'autoSaveCheckpointOnStop' | 'autoLoadCheckpointOnStart' | 'useRecommendedInferenceParams' | 'useMultiModal'>> & { relaunch?: boolean };
 	const updatePayload = req.body as TUpdatePayload;
 	const shouldRelaunch = updatePayload.relaunch ?? true;
 
@@ -400,9 +504,6 @@ serversRouter.put('/:id', async (req, res) => {
 	if (updatePayload.autoLoadCheckpointOnStart !== undefined) {
 		server.autoLoadCheckpointOnStart = updatePayload.autoLoadCheckpointOnStart;
 	}
-	if (updatePayload.launchInferenceParams !== undefined) {
-		server.launchInferenceParams = updatePayload.launchInferenceParams;
-	}
 	if (updatePayload.useRecommendedInferenceParams !== undefined) {
 		server.useRecommendedInferenceParams = updatePayload.useRecommendedInferenceParams;
 	}
@@ -414,12 +515,18 @@ serversRouter.put('/:id', async (req, res) => {
 		// Re-spawn with new params
 		const model = getCachedModels().find(m => m.primaryFile?.filePath === server.modelPath);
 		const mmprojPath = model?.mmprojFile?.filePath && server.useMultiModal ? model.mmprojFile.filePath : null;
+		
+		// Append recommended inference params to extraArgs if enabled
+		const launchParams = { ...server.params };
+		if (server.useRecommendedInferenceParams && model?.recommendedInferenceParams) {
+			launchParams.extraArgs = mergeCliFlags(model.recommendedInferenceParams, server.params.extraArgs);
+		}
+		
 		const args = await buildServerArgs(
 			server.modelPath,
 			mmprojPath,
-			server.params,
+			launchParams,
 			backend.defaultArgs,
-			server.launchInferenceParams,
 		);
 
 		const pid = spawnServer(

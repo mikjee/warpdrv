@@ -114,21 +114,6 @@ export function buildArgs(
 		if (params.specDecode.draftMin > 0) args.push('--draft-min', String(params.specDecode.draftMin));
 		if (params.specDecode.draftPMin > 0) args.push('--draft-p-min', String(params.specDecode.draftPMin));
 	}
-	// Inference params defaults
-	if (inferenceParams) {
-		for (const [camelKey, value] of Object.entries(inferenceParams)) {
-			if (value === undefined || value === null) continue;
-			const apiName = INFER_PARAM_TO_API[camelKey] ?? camelKey;
-			const cliFlag = apiName.replace(/_/g, '-');
-			if (Array.isArray(value)) {
-				for (const v of value) args.push(`--${cliFlag}`, String(v));
-			} else if (typeof value === 'object') {
-				args.push(`--${cliFlag}`, JSON.stringify(value));
-			} else {
-				args.push(`--${cliFlag}`, String(value));
-			}
-		}
-	}
 	args.push('--host', '0.0.0.0');
 	args.push('--port', String(params.port));
 	// Injected extra args (e.g., --slot-save-path)
@@ -149,10 +134,9 @@ export async function buildServerArgs(
 	mmprojPath: string | null,
 	params: ILaunchParams,
 	defaultArgs: string[],
-	inferenceParams?: Partial<IChatInferenceParams>,
 ): Promise<string[]> {
 	const checkpointDir = await getCheckpointsDir();
-	return buildArgs(modelPath, mmprojPath, params, defaultArgs, { 'slot-save-path': checkpointDir }, inferenceParams);
+	return buildArgs(modelPath, mmprojPath, params, defaultArgs, { 'slot-save-path': checkpointDir });
 }
 // Spawn a llama-server process
 export function spawnServer(

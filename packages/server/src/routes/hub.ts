@@ -18,6 +18,7 @@ import {
 	mapFilesToHubFiles,
 	processGgufFiles,
 } from '../services/hubParser';
+import { fetchAndParseModelRecommendations } from '../services/modelInferenceParser';
 
 const SETTINGS_KEY = 'settings:general';
 const HF_API = 'https://huggingface.co/api';
@@ -118,7 +119,9 @@ hubRouter.get('/model/:author/:name', async (req, res) => {
 		try {
 			const readmeRes = await fetch(`https://huggingface.co/${modelId}/resolve/main/README.md`);
 			if (readmeRes.ok) readme = await readmeRes.text();
-		} catch {}
+		} catch {
+			console.warn("Could not load README for Model", modelId)
+		}
 
 		const detail = {
 			id: modelId,
@@ -219,4 +222,17 @@ hubRouter.post('/downloads/:id/cancel', async (req, res) => {
 hubRouter.delete('/downloads/history', async (_req, res) => {
 	await clearDownloadHistory();
 	res.json({ ok: true, data: null, error: null });
+});
+
+// GET /api/hub/model/:author/:name/recommended-params
+hubRouter.get('/model/:author/:name/recommended-params', async (req, res) => {
+	const { author, name } = req.params;
+	const hfUrl = `https://huggingface.co/${author}/${name}`;
+
+	try {
+		const params = await fetchAndParseModelRecommendations(hfUrl);
+		res.json({ ok: true, data: params, error: null });
+	} catch (err) {
+		res.json({ ok: false, data: null, error: String(err) });
+	}
 });

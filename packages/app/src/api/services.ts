@@ -130,6 +130,10 @@ export async function fetchScanStatus() {
 	return api.get<{ modelCount: number; lastScanAt: number }>('/models/scan-status');
 }
 
+export async function updateModel(id: string, data: { recommendedInferenceParams?: string }) {
+	return api.put<IModel>(`/models/${id}`, data);
+}
+
 // ============================================================
 // Servers
 // ============================================================
@@ -154,7 +158,7 @@ export async function restartServer(id: string) {
 	return api.post<IServer>(`/servers/${id}/restart`);
 }
 
-export async function updateServer(id: string, data: Partial<Pick<IServer, 'backendId' | 'backendGroupId' | 'modelPath' | 'serverName' | 'params' | 'serverAlias' | 'autoLaunch' | 'launchInferenceParams' | 'useRecommendedInferenceParams' | 'autoSaveCheckpointOnStop' | 'autoLoadCheckpointOnStart' | 'useMultiModal'>>, relaunch = true) {
+export async function updateServer(id: string, data: Partial<Pick<IServer, 'backendId' | 'backendGroupId' | 'modelPath' | 'serverName' | 'params' | 'serverAlias' | 'autoLaunch' | 'useRecommendedInferenceParams' | 'autoSaveCheckpointOnStop' | 'autoLoadCheckpointOnStart' | 'useMultiModal'>>, relaunch = true) {
 	return api.put<IServer>(`/servers/${id}`, { ...data, relaunch });
 }
 

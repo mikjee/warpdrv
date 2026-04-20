@@ -130,6 +130,7 @@ async function scanModelDirGroupedByParentModel(
 		// Find cached model for this directory
 		const cachedModel = cachedModels.find(m => m.dirPath === dirPath);
 		const cachedFilesByPath = new Map(cachedModel?.files.map(f => [f.filePath, f]) ?? []);
+		const cachedRecommendedParams = cachedModel?.recommendedInferenceParams ?? undefined;
 
 		const files: IGgufFile[] = [];
 		let parsedCount = 0;
@@ -228,6 +229,7 @@ async function scanModelDirGroupedByParentModel(
 				primaryFile,
 				mmprojFile,
 				totalSizeMb,
+				recommendedInferenceParams: cachedRecommendedParams,
 			};
 			models.push(model);
 		}

@@ -1,29 +1,25 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
 	Box, Text, HStack, VStack, Flex, Input, Button, Badge, Spinner, Portal, Combobox, createListCollection, Switch,
 } from '@chakra-ui/react';
 import {
 	Play, X, ChevronDown, RefreshCw, Zap, Cpu,
 	Layers, Server, Package, Bookmark, Sparkles,
+	Pencil, Check,
 } from 'lucide-react';
 import {
 	EKvQuantType,
 	type IModel, type IBackend, type IBackendGroup, type ILaunchParams, type IServer, type IChatInferenceParams,
 	type ISpecDecodeParams,
 	DEFAULT_LAUNCH_PARAMS, DEFAULT_SPEC_DECODE_PARAMS,
-	calculateVramEstimate, kvQuantToNumeric,
-	type IPreset,
 	parseDefaultArgsToParams as sharedParseDefaultArgsToParams,
 } from '@warpcore/shared';
-import { inferParamsToApiJson, inferParamsFromApiJson } from '@warpcore/bridge/inferParamNames';
+
 import { Textarea } from '@chakra-ui/react';
-import { useJsonValidator } from '@/hooks/useJsonValidator';
 import { Card } from '../Card';
-import { VramBar } from '../VramBar';
 import { LaunchParamsPanel, EParamsMode, ToggleChip, SelectField, NumberField } from '../LaunchParamsPanel';
 import { useListQuery } from '../../hooks/useQuery';
-import { fetchModels, launchServer, createPreset, updateServer, fetchStickyRoutes, clearStickyRoute, fetchPresets } from '../../api/services';
-import type { IStickyRouteInfo } from '../../api/services';
+import { fetchModels, launchServer, updateServer, updateModel } from '../../api/services';
 import { useToast } from '../ToastProvider';
 import { useStore } from '../../store';
 
@@ -53,12 +49,12 @@ type TModelEntry = {
 	searchText: string;
 };
 
-function ModelCombobox({ entries, selectedPath, onSelect, placeholder }: {
+const ModelCombobox = React.memo(({ entries, selectedPath, onSelect, placeholder }: {
 	entries: TModelEntry[];
 	selectedPath: string | null;
 	onSelect: (path: string) => void;
 	placeholder?: string;
-}) {
+}) => {
 	const [inputValue, setInputValue] = useState('');
 	const filteredItems = useMemo(() => {
 		if (!inputValue) return entries;
@@ -144,7 +140,7 @@ function ModelCombobox({ entries, selectedPath, onSelect, placeholder }: {
 			</Portal>
 		</Combobox.Root>
 	);
-}
+});
 
 interface ILaunchServerDialogProps {
 	onClose: () => void;
@@ -159,13 +155,12 @@ interface ILaunchServerDialogProps {
 		autoLaunch?: boolean;
 		autoSaveCheckpointOnStop?: boolean;
 		autoLoadCheckpointOnStart?: boolean;
-		launchInferenceParams?: IChatInferenceParams;
 		useRecommendedInferenceParams?: boolean;
 		useMultiModal?: boolean;
 	};
 }
 
-export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogProps) {
+export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServerDialogProps) => {
 	const { toast } = useToast();
 
 	// Get backends and groups from Zustand store
@@ -173,13 +168,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 	const backendGroupsRecord = useStore((s) => s.backendGroups);
 
 	// Fetch real data
-	const modelsFetcher = useCallback(() => fetchModels(), []);
-	const presetsFetcher = useCallback(() => fetchPresets(), []);
-	const stickyRoutesFetcher = useCallback(() => fetchStickyRoutes(), []);
-
-	const { data: models } = useListQuery<IModel>(modelsFetcher, { pollInterval: 0 });
-	const { data: presets } = useListQuery<IPreset>(presetsFetcher, { pollInterval: 0 });
-	const { data: stickyRoutes } = useListQuery<IStickyRouteInfo>(stickyRoutesFetcher, { pollInterval: 0 });
+	const { data: models } = useListQuery<IModel>(fetchModels, { pollInterval: 0 });
 
 	const backends = useMemo(() => Object.values(backendsRecord), [backendsRecord]);
 	const groups = useMemo(() => Object.values(backendGroupsRecord), [backendGroupsRecord]);
@@ -195,13 +184,11 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 	const [autoSaveCheckpointOnStop, setAutoSaveCheckpointOnStop] = useState<boolean>(editMode?.autoSaveCheckpointOnStop ?? false);
 	const [autoLoadCheckpointOnStart, setAutoLoadCheckpointOnStart] = useState<boolean>(editMode?.autoLoadCheckpointOnStart ?? false);
 	const [useMultiModal, setUseMultiModal] = useState<boolean>(editMode?.useMultiModal ?? false);
-	const [showPresets, setShowPresets] = useState(false);
-	const [presetName, setPresetName] = useState('');
 	const [launching, setLaunching] = useState(false);
 	const [useRecommendedInferParams, setUseRecommendedInferParams] = useState<boolean>(editMode?.useRecommendedInferenceParams ?? true);
 	const [recommendedText, setRecommendedText] = useState('');
-	const [customText, setCustomText] = useState(editMode?.launchInferenceParams ? inferParamsToApiJson(editMode.launchInferenceParams) : '');
-	const { error: customJsonError, validateAndParse: validateCustomJson } = useJsonValidator<Partial<IChatInferenceParams>>();
+	const [isEditingRecommended, setIsEditingRecommended] = useState(false);
+	const originalTextRef = useRef('');
 
 	// Params
 	const [params, setParams] = useState<ILaunchParams>(editMode?.params ?? { ...DEFAULT_LAUNCH_PARAMS, specDecode: { ...DEFAULT_SPEC_DECODE_PARAMS } });
@@ -257,7 +244,11 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 		);
 	}, [models]);
 
-	const selectedEntry = modelEntries.find(e => e.file.filePath === selectedModelPath);
+	const selectedEntry = useMemo(() => modelEntries.find(e => e.file.filePath === selectedModelPath), [
+		modelEntries,
+		selectedModelPath
+	]);
+	
 	const selectedBackend = useBackendGroup && selectedBackendGroupId
 		? backends.find(b => b.id === groups.find(g => g.id === selectedBackendGroupId)?.activeBackendId)
 		: backends.find(b => b.id === selectedBackendId);
@@ -280,12 +271,11 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 
 	// Populate recommended params text when model changes
 	useEffect(() => {
-		if (selectedEntry?.model.recommendedInferenceParams) {
-			setRecommendedText(inferParamsToApiJson(selectedEntry.model.recommendedInferenceParams));
-		} else {
-			setRecommendedText('');
-		}
-	}, [selectedEntry?.model.id]);
+		const text = selectedEntry?.model.recommendedInferenceParams ?? '';
+		setRecommendedText(text);
+		originalTextRef.current = text;
+		setIsEditingRecommended(false);
+	}, [selectedEntry]);
 
 	// Backend defaults — reset toggle flags to backend defaults when backend changes
 	useEffect(() => {
@@ -327,14 +317,30 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 		return input.split(',').map(a => a.trim()).filter(a => a.length > 0);
 	};
 
+	// Save recommended params to model
+	const handleSaveRecommendedParams = async () => {
+		if (!selectedEntry) return;
+		const newRecommendedParams = useRecommendedInferParams ? recommendedText.trim() : undefined;
+		if (newRecommendedParams !== selectedEntry.model.recommendedInferenceParams) {
+			const result = await updateModel(selectedEntry.model.id, { recommendedInferenceParams: newRecommendedParams || undefined });
+			if (result.ok) {
+				toast('success', 'Recommended params saved to model');
+			} else {
+				toast('error', result.error ?? 'Failed to save recommended params');
+			}
+		}
+	};
+
 	// Save without relaunch (edit mode)
 	const handleSaveWithoutRelaunch = async () => {
 		if (!selectedEntry || !editMode || (!selectedBackendId && !selectedBackendGroupId)) return;
 		setLaunching(true);
+
+		await handleSaveRecommendedParams();
+
 		const aliases = parseAliases(serverAliasesInput);
 		const backendId = !useBackendGroup ? selectedBackendId ?? undefined : undefined;
 		const backendGroupId = useBackendGroup ? selectedBackendGroupId ?? undefined : undefined;
-	const launchInferenceParams = !useRecommendedInferParams ? inferParamsFromApiJson(customText) as unknown as IChatInferenceParams : undefined;
 		const result = await updateServer(editMode.serverId, {
 			backendId,
 			backendGroupId,
@@ -345,7 +351,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 			autoLaunch,
 			autoSaveCheckpointOnStop,
 			autoLoadCheckpointOnStart,
-			launchInferenceParams,
+			useRecommendedInferenceParams: useRecommendedInferParams,
 			useMultiModal,
 		}, false);
 		setLaunching(false);
@@ -361,10 +367,12 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 	const handleLaunch = async () => {
 		if (!selectedEntry || (!useBackendGroup ? !selectedBackendId : !selectedBackendGroupId)) return;
 		setLaunching(true);
+
+		await handleSaveRecommendedParams();
+
 		const aliases = parseAliases(serverAliasesInput);
 		const backendId = !useBackendGroup ? selectedBackendId ?? undefined : undefined;
 		const backendGroupId = useBackendGroup ? selectedBackendGroupId ?? undefined : undefined;
-		const launchInferenceParams = !useRecommendedInferParams ? inferParamsFromApiJson(customText) as unknown as IChatInferenceParams : undefined;
 		if (editMode) {
 			const result = await updateServer(editMode.serverId, {
 				backendId,
@@ -376,7 +384,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				autoLaunch,
 				autoSaveCheckpointOnStop,
 				autoLoadCheckpointOnStart,
-				launchInferenceParams,
+				useRecommendedInferenceParams: useRecommendedInferParams,
 				useMultiModal,
 			}, true);
 			setLaunching(false);
@@ -397,7 +405,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				autoLaunch,
 				autoSaveCheckpointOnStop,
 				autoLoadCheckpointOnStart,
-				launchInferenceParams,
+				useRecommendedInferenceParams: useRecommendedInferParams,
 				useMultiModal,
 			});
 			setLaunching(false);
@@ -408,43 +416,6 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				toast('error', result.error ?? 'Failed to launch server');
 			}
 		}
-	};
-
-	// Save preset
-	const handleSavePreset = async () => {
-		if (!presetName.trim() || !selectedEntry || (!useBackendGroup ? !selectedBackendId : !selectedBackendGroupId)) return;
-		const activeBackendId = useBackendGroup && selectedBackendGroupId
-			? groups.find(g => g.id === selectedBackendGroupId)?.activeBackendId ?? null
-			: selectedBackendId;
-		if (!activeBackendId) return;
-		const result = await createPreset({
-			name: presetName.trim(),
-			backendId: activeBackendId,
-			modelPath: selectedEntry.file.filePath,
-			params,
-		});
-		if (result.ok) {
-			toast('success', `Preset "${presetName}" saved`);
-			setPresetName('');
-			setShowPresets(false);
-		} else {
-			toast('error', result.error ?? 'Failed to save preset');
-		}
-	};
-
-	// Load preset
-	const handleLoadPreset = (preset: IPreset) => {
-		setSelectedModelPath(preset.modelPath);
-		setSelectedBackendId(preset.backendId);
-		// Ensure specDecode exists for older presets
-		const loadedParams = {
-			...DEFAULT_LAUNCH_PARAMS,
-			...preset.params,
-			specDecode: { ...DEFAULT_SPEC_DECODE_PARAMS, ...preset.params.specDecode },
-		};
-		setParams(loadedParams);
-		setShowPresets(false);
-		toast('info', `Loaded preset "${preset.name}"`);
 	};
 
 	const canLaunch = selectedModelPath && (!useBackendGroup ? selectedBackendId : selectedBackendGroupId) && !launching;
@@ -473,36 +444,11 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 						</Box>
 					</HStack>
 					<HStack gap="2">
-						{/* {!editMode && (
-							<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' }} borderRadius="lg" fontSize="12px" onClick={() => setShowPresets(!showPresets)}>
-								<Bookmark size={14} /> Presets
-							</Button>
-						)} */}
 						<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.3)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="md" onClick={onClose} minW="8" px="0">
 							<X size={16} />
 						</Button>
 					</HStack>
 				</Flex>
-
-				{/* Preset panel
-				{showPresets && !editMode && (
-					<Box px="6" py="4" borderBottomWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" bg="rgba(251, 191, 36, 0.02)">
-						{presets.length > 0 ? (
-							<VStack align="stretch" gap="2">
-								<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">Load a preset</Text>
-								{presets.map((p: IPreset) => (
-									<HStack key={p.id} px="3" py="2" borderRadius="md" cursor="pointer" bg="rgba(255, 255, 255, 0.02)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" _hover={{ borderColor: 'rgba(255, 255, 255, 0.12)' }} onClick={() => handleLoadPreset(p)}>
-										<Bookmark size={12} color="#fbbf24" />
-										<Text fontSize="12px" color="#e4e4e7" flex="1">{p.name}</Text>
-										<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)" fontFamily='"Geist Mono", monospace'>ctx {(p.params.contextSize / 1024).toFixed(0)}k</Text>
-									</HStack>
-								))}
-							</VStack>
-						) : (
-							<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">No presets saved yet. Configure a launch and save it below.</Text>
-						)}
-					</Box>
-				)} */}
 
 				{/* Content */}
 				<Box flex="1" overflowY="auto" p="6">
@@ -558,61 +504,81 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 							{/* Inference params */}
 							<Box>
 								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">3. Inference Params</Text>
-								<HStack gap="2" mb="2">
-									<Button
-										size="sm"
-										flex="1"
-										variant="outline"
-										borderColor={useRecommendedInferParams ? 'rgba(51, 129, 255, 0.3)' : 'rgba(255, 255, 255, 0.08)'}
-										borderWidth={useRecommendedInferParams ? '2px' : '1px'}
-										color={useRecommendedInferParams ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'}
-										bg={useRecommendedInferParams ? 'rgba(51, 129, 255, 0.05)' : 'transparent'}
-										_hover={{ borderColor: useRecommendedInferParams ? 'rgba(51, 129, 255, 0.5)' : 'rgba(255, 255, 255, 0.15)' }}
-										onClick={() => setUseRecommendedInferParams(true)}
-									>
-										<Text fontSize="13px" fontWeight="500">Use recommended</Text>
-									</Button>
-									<Button
-										size="sm"
-										flex="1"
-										variant="outline"
-										borderColor={!useRecommendedInferParams ? 'rgba(51, 129, 255, 0.3)' : 'rgba(255, 255, 255, 0.08)'}
-										borderWidth={!useRecommendedInferParams ? '2px' : '1px'}
-										color={!useRecommendedInferParams ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'}
-										bg={!useRecommendedInferParams ? 'rgba(51, 129, 255, 0.05)' : 'transparent'}
-										_hover={{ borderColor: !useRecommendedInferParams ? 'rgba(51, 129, 255, 0.5)' : 'rgba(255, 255, 255, 0.15)' }}
-										onClick={() => setUseRecommendedInferParams(false)}
-									>
-										<Text fontSize="13px" fontWeight="500">Use custom</Text>
-									</Button>
-								</HStack>
-								<Textarea
-									value={useRecommendedInferParams ? recommendedText : customText}
-									onChange={(e) => {
-										if (!useRecommendedInferParams) {
-											const result = validateCustomJson(e.target.value);
-											if (result.valid) {
-												setCustomText(e.target.value);
-											}
-										}
-									}}
-									onBlur={(e) => !useRecommendedInferParams && validateCustomJson(e.target.value)}
-									disabled={useRecommendedInferParams}
-									fontFamily="monospace"
-									fontSize="11px"
-									resize="vertical"
-									minH="120px"
-									bg="rgba(255, 255, 255, 0.03)"
-									borderColor={customJsonError ? 'rgba(244, 63, 94, 0.5)' : 'rgba(255, 255, 255, 0.08)'}
-									color="rgba(255, 255, 255, 0.7)"
-									borderRadius="lg"
-									_placeholder={{ color: 'rgba(255, 255, 255, 0.2)', textAlign: 'center' }}
-								/>
-								{customJsonError && (
-									<Text fontSize="10px" color="rgba(244, 63, 94, 0.9)" mt="1" fontFamily="monospace">
-										{customJsonError}
-									</Text>
-								)}
+								<Card>
+									<VStack align="stretch" gap="3">
+										<HStack justify="space-between" align="center">
+											<VStack align="start" gap="0.5">
+												<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em">Recommended Params</Text>
+												<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)">Use model's recommended inference settings</Text>
+											</VStack>
+											<Switch.Root label="Use recommended params" checked={useRecommendedInferParams} onCheckedChange={(details) => setUseRecommendedInferParams(details.checked)} color={useRecommendedInferParams ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'}>
+												<Switch.HiddenInput />
+												<Switch.Control css={{ bg: useRecommendedInferParams ? '#3b86d6' : 'surface.4' }}>
+													<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+												</Switch.Control>
+											</Switch.Root>
+										</HStack>
+										{useRecommendedInferParams && (
+											<Box position="relative">
+												<Textarea
+													value={recommendedText}
+													variant={"subtle"}
+													bg="rgb(30,30,30)"
+													outline={"none"}
+													onChange={(e) => setRecommendedText(e.target.value)}
+													readOnly={!isEditingRecommended}
+													opacity={isEditingRecommended ? 1 : 0.5}
+													fontFamily="monospace"
+													fontSize="12px"
+													resize="vertical"
+													minH="100px"
+													borderRadius="lg"
+													placeholder="No recommended params available for this model"
+												/>
+												<HStack position="absolute" bottom="2" right="2" gap="2">
+													{isEditingRecommended && (
+														<Button
+															size="xs"
+															variant="ghost"
+															color="rgba(255, 255, 255, 0.6)"
+															_hover={{ color: '#f43f5e', bg: 'rgba(244, 63, 94, 0.1)' }}
+															borderRadius="md"
+															fontSize="10px"
+															onClick={() => {
+																setRecommendedText(originalTextRef.current);
+																setIsEditingRecommended(false);
+															}}
+														>
+															Cancel
+														</Button>
+													)}
+													<Button
+														size="xs"
+														variant="outline"
+														borderColor="rgba(255, 255, 255, 0.2)"
+														color="rgba(255, 255, 255, 0.6)"
+														_hover={{ borderColor: '#3b86d6', color: '#3b86d6', bg: 'rgba(51, 129, 255, 0.05)' }}
+														borderRadius="md"
+														fontSize="10px"
+														gap="1"
+														onClick={() => {
+															if (isEditingRecommended) {
+																handleSaveRecommendedParams();
+																setIsEditingRecommended(false);
+															} else {
+																originalTextRef.current = recommendedText;
+																setIsEditingRecommended(true);
+															}
+														}}
+													>
+														{isEditingRecommended ? <Check size={10} /> : <Pencil size={10} />}
+														{isEditingRecommended ? 'Save' : 'Edit'}
+													</Button>
+												</HStack>
+											</Box>
+										)}
+									</VStack>
+								</Card>
 							</Box>
 
 							{/* Backend picker */}
@@ -895,14 +861,6 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				{/* Footer */}
 				<Flex px="6" py="4" justify="space-between" align="center" borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" bg="rgba(255, 255, 255, 0.01)">
 					<HStack gap="4">
-						{/* selectedModelPath && (!useBackendGroup ? selectedBackendId : selectedBackendGroupId) && !editMode && (
-							<HStack gap="2">
-								<Input placeholder="Preset name..." size="sm" w="180px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(251, 191, 36, 0.4)', outline: 'none' }} value={presetName} onChange={e => setPresetName(e.target.value)} />
-								<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' }} borderRadius="lg" fontSize="12px" onClick={handleSavePreset} disabled={!presetName.trim()}>
-									<Bookmark size={14} /> Save
-								</Button>
-							</HStack>
-						)} */}
 						<Switch.Root label="Auto-launch at startup" checked={autoLaunch} onCheckedChange={(details) => setAutoLaunch(details.checked)} color={autoLaunch ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'}>
 							<Switch.HiddenInput />
 							<Switch.Control css={{ bg: autoLaunch ? '#3b86d6' : 'surface.4' }}>
@@ -968,4 +926,4 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 			</Box>
 		</Box>
 	);
-}
+});

@@ -1,6 +1,6 @@
 import { api } from './client';
 import type {
-	IHubModel, IHubModelDetail, IDownload, IDownloadRequestPayload,
+	IHubModel, IHubModelDetail, IDownload, IDownloadRequestPayload, IChatInferenceParams,
 } from '@warpcore/shared';
 
 export async function searchHub(q: string, sortField: string, sortOrder: string, paramsMin: number, paramsMax: number) {
@@ -37,4 +37,8 @@ export async function cancelHubDownload(id: string) {
 
 export async function clearDownloadHistory() {
 	return api.del<null>('/hub/downloads/history');
+}
+
+export async function fetchRecommendedParams(author: string, name: string) {
+	return api.get<Partial<IChatInferenceParams> | null>(`/hub/model/${author}/${name}/recommended-params`);
 }

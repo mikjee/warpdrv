@@ -269,21 +269,8 @@ export function ChatConfigContentPanel({
 	}, [currentServer, models]);
 
 	const displayParams = useMemo((): IChatInferenceParams => {
-		let base: IChatInferenceParams;
-		if (currentServer) {
-			if (currentServer.useRecommendedInferenceParams === true && currentModel?.recommendedInferenceParams) {
-				base = { ...DEFAULT_INFERENCE_PARAMS, ...currentModel.recommendedInferenceParams };
-			} else if (currentServer.launchInferenceParams) {
-				base = { ...DEFAULT_INFERENCE_PARAMS, ...currentServer.launchInferenceParams };
-			} else {
-				base = { ...DEFAULT_INFERENCE_PARAMS };
-			}
-		} else {
-			base = { ...DEFAULT_INFERENCE_PARAMS };
-		}
-		
-		return { ...base, ...params };
-	}, [params, currentServer, currentModel]);
+		return { ...DEFAULT_INFERENCE_PARAMS, ...params };
+	}, [params]);
 
 	const { error: jsonError, validateAndParse, clearError } = useJsonValidator<Partial<IChatInferenceParams>>();
 

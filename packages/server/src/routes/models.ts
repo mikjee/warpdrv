@@ -78,3 +78,33 @@ modelsRouter.get('/scan-status', (_req, res) => {
 export function getCachedModels(): IModel[] {
 	return cachedModels;
 }
+
+// PUT /api/models/:id - update model metadata (e.g., recommendedInferenceParams)
+modelsRouter.put('/:id', async (req, res) => {
+	const modelId = req.params.id;
+	const updateData = req.body as { recommendedInferenceParams?: string };
+
+	const modelIndex = cachedModels.findIndex(m => m.id === modelId);
+	if (modelIndex === -1) {
+		res.status(404).json({ ok: false, data: null, error: 'Model not found' });
+		return;
+	}
+
+	const model = cachedModels[modelIndex];
+	const updatedModel = { ...model } as IModel;
+
+	if (updateData.recommendedInferenceParams !== undefined) {
+		updatedModel.recommendedInferenceParams = updateData.recommendedInferenceParams;
+	}
+
+	cachedModels[modelIndex] = updatedModel;
+
+	// Save updated cache
+	try {
+		await store.put(MODELS_KEY, cachedModels);
+		res.json({ ok: true, data: updatedModel, error: null });
+	} catch (err) {
+		console.error('[models] Failed to save updated model:', err);
+		res.json({ ok: false, data: null, error: String(err) });
+	}
+});
