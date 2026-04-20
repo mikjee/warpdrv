@@ -77,6 +77,7 @@ export const Thread: FC<{ isLoading?: boolean }> = React.memo(({ isLoading = fal
     >
       <ThreadPrimitive.Viewport
         turnAnchor="bottom"
+        autoScroll={false}
         className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-6 pt-4"
         style={{ overflowAnchor: "none" }}
       >
