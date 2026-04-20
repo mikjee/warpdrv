@@ -6,7 +6,8 @@ import {
 import { LuSaveOff } from "react-icons/lu";
 import { GoEyeClosed } from "react-icons/go";
 import { FaBrain, FaBookOpen, FaRegEye } from 'react-icons/fa6';
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import { useDependantState } from '../hooks/useDependantState';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
 import { StatusBadge } from '../components/StatusBadge';
@@ -14,9 +15,9 @@ import { VramBar } from '../components/VramBar';
 import { LaunchServerDialog } from '../components/dialogs/LaunchServerDialog';
 import { ServerLogs } from '../components/dialogs/ServerLogs';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
-import { useListQuery, useMutation } from '../hooks/useQuery';
+import { useMutation } from '../hooks/useQuery';
 import { useStore } from '../store';
-import { fetchModels, stopServer, restartServer, removeServer, updateServer, fetchSettings, updateSettings, clearStickyRoute } from '../api/services';
+import { stopServer, restartServer, removeServer, updateServer, updateSettings, clearStickyRoute } from '../api/services';
 import type { IServer, IServerStats, IBackend, IBackendGroup, IModel, TSortField, TSortOrder } from '@warpcore/shared';
 import { SlotPill } from '../components/SlotPill';
 import { SaveCheckpointDialog } from '../components/dialogs/SaveCheckpointDialog';
@@ -70,42 +71,25 @@ export function ServersPage() {
 
 	const backendsRecord = useStore((s) => s.backends);
 	const backendGroupsRecord = useStore((s) => s.backendGroups);
-	const { data: models, refetch: refetchModels } = useListQuery<IModel>(useCallback(() => fetchModels(), []), { pollInterval: 0 });
+	const modelsRecord = useStore((s) => s.models);
 
 	const backends = useMemo(() => Object.values(backendsRecord), [backendsRecord]);
 	const groups = useMemo(() => Object.values(backendGroupsRecord), [backendGroupsRecord]);
+	const models = useMemo(() => Object.values(modelsRecord), [modelsRecord]);
 
 	// Filter and sort state
 	const [searchQuery, setSearchQuery] = useState('');
-	const [sortField, setSortField] = useState<TSortField>('name');
-	const [sortOrder, setSortOrder] = useState<TSortOrder>('asc');
 	const [runningOnly, setRunningOnly] = useState(false);
-	const [settingsLoaded, setSettingsLoaded] = useState(false);
+	const settings = useStore(s => s.settings);
+	const [sortField, setSortField] = useDependantState(settings.serversSortField);
+	const [sortOrder, setSortOrder] = useDependantState(settings.serversSortOrder);
 
-	// Load persisted sort settings on mount
-	useEffect(() => {
-		fetchSettings().then((result) => {
-			if (result.ok && result.data) {
-				setSortField(result.data.serversSortField);
-				setSortOrder(result.data.serversSortOrder);
-			}
-			setSettingsLoaded(true);
-		});
+	// Save sort settings when they change
+	const handleSortChange = useCallback((field: TSortField, order: TSortOrder) => {
+		setSortField(field);
+		setSortOrder(order);
+		updateSettings({ serversSortField: field, serversSortOrder: order });
 	}, []);
-
-	// Ensure models are loaded when servers arrive via SSE (fixes "not found" errors)
-	useEffect(() => {
-		const serverIds = Object.keys(serversRecord);
-		if (serverIds.length > 0 && models.length === 0) {
-			refetchModels();
-		}
-	}, [serversRecord, models.length]);
-
-	// Save sort settings when they change (only after initial load)
-	useEffect(() => {
-		if (!settingsLoaded) return;
-		updateSettings({ serversSortField: sortField, serversSortOrder: sortOrder });
-	}, [settingsLoaded, sortField, sortOrder]);
 
 	// Build lookup maps (memoized to ensure re-renders when data changes)
 	const backendMap = useMemo(() => new Map(backends.map(b => [b.id, b])), [backends]);
@@ -362,7 +346,7 @@ export function ServersPage() {
 										value={[sortField]}
 										onValueChange={(details) => {
 											const val = details.value?.[0] as TSortField;
-											if (val) setSortField(val);
+											if (val) handleSortChange(val, sortOrder);
 										}}
 									>
 										<Combobox.Control>
@@ -418,7 +402,7 @@ export function ServersPage() {
 								borderRadius="md"
 								_hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
 								title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
-								onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+								onClick={() => handleSortChange(sortField, sortOrder === 'asc' ? 'desc' : 'asc')}
 							>
 								{sortOrder === 'asc' ? <ArrowUpAZ size={14} /> : <ArrowDownZA size={14} />}
 							</Button>

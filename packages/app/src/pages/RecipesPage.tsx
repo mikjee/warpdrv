@@ -1,10 +1,11 @@
 import { Box, Text, HStack, VStack, Flex, Badge, Button, Input, InputGroup, Combobox, createListCollection, Portal } from '@chakra-ui/react';
 import { Play, Plus, Edit, Trash2, ScrollText, Lock, AlertCircle, CheckCircle, XCircle, Search, ChevronDown, ArrowUpAZ, ArrowDownZA } from 'lucide-react';
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import { useDependantState } from '../hooks/useDependantState';
 import { PageHeader } from '../components/PageHeader';
 import { useMutation } from '../hooks/useQuery';
 import { useStore } from '../store';
-import { deleteRecipe, fetchSettings, updateSettings } from '../api/services';
+import { deleteRecipe, updateSettings } from '../api/services';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
 import { RecipeEditorDialog } from '../components/recipes/RecipeEditorDialog';
 import { RunRecipeDialog } from '../components/recipes/RunRecipeDialog';
@@ -24,25 +25,17 @@ export function RecipesPage() {
 	const [editingRecipe, setEditingRecipe] = useState<IRecipe | null>(null);
 	const [runningRecipe, setRunningRecipe] = useState<IRecipe | null>(null);
 	const [deletingId, setDeletingId] = useState<string | null>(null);
-	const [settingsLoaded, setSettingsLoaded] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
-	const [sortField, setSortField] = useState<TRecipeSortField>('name');
-	const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+	const settings = useStore(s => s.settings);
+	const [sortField, setSortField] = useDependantState(settings.recipesSortField);
+	const [sortOrder, setSortOrder] = useDependantState(settings.recipesSortOrder);
 
-	useEffect(() => {
-		fetchSettings().then((result) => {
-			if (result.ok && result.data) {
-				setSortField(result.data.recipesSortField);
-				setSortOrder(result.data.recipesSortOrder);
-			}
-			setSettingsLoaded(true);
-		});
+	// Save sort settings when they change
+	const handleSortChange = useCallback((field: TRecipeSortField, order: 'asc' | 'desc') => {
+		setSortField(field);
+		setSortOrder(order);
+		updateSettings({ recipesSortField: field, recipesSortOrder: order });
 	}, []);
-
-	useEffect(() => {
-		if (!settingsLoaded) return;
-		updateSettings({ recipesSortField: sortField, recipesSortOrder: sortOrder });
-	}, [settingsLoaded, sortField, sortOrder]);
 
 	const recipes = useMemo(() => {
 		let result = Object.values(recipesRecord);
@@ -105,8 +98,8 @@ export function RecipesPage() {
 											value={[sortField]}
 											onValueChange={(details) => {
 												const val = details.value?.[0] as TRecipeSortField;
-												if (val) setSortField(val);
-											}}
+if (val) handleSortChange(val, sortOrder);
+												}}
 										>
 											<Combobox.Control>
 												<Combobox.Trigger asChild>
@@ -161,7 +154,7 @@ export function RecipesPage() {
 									borderRadius="md"
 									_hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
 									title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
-									onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+									onClick={() => handleSortChange(sortField, sortOrder === 'asc' ? 'desc' : 'asc')}
 								>
 									{sortOrder === 'asc' ? <ArrowUpAZ size={14} /> : <ArrowDownZA size={14} />}
 								</Button>

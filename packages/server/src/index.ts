@@ -5,7 +5,7 @@ import { store } from './util/store';
 import { settingsRouter } from './routes/settings';
 import { backendsRouter } from './routes/backends';
 import { backendGroupsRouter } from './routes/backendGroups';
-import { modelsRouter, loadCachedModels } from './routes/models';
+import { modelsRouter, loadCachedModels, getCachedModels } from './routes/models';
 import { serversRouter, reconcileServers, launchAutoStartServers } from './routes/servers';
 import { presetsRouter } from './routes/presets';
 import { hubRouter } from './routes/hub';
@@ -268,6 +268,17 @@ async function main() {
 				acc[g.id] = g;
 				return acc;
 			}, {} as Record<TBackendGroupId, IBackendGroup>);
+		});
+
+		// Models
+		sseManager.onConnect('models:init', async () => {
+			return getCachedModels();
+		});
+
+		// Settings
+		sseManager.onConnect('settings:init', async () => {
+			const settings = await store.get<ISettings>(SETTINGS_KEY);
+			return settings;
 		});
 
 	}

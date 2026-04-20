@@ -13,9 +13,9 @@ import { PageHeader } from '../components/PageHeader';
 import { HubModelCard } from '../components/hub/HubModelCard';
 import { HubModelDetail } from '../components/hub/HubModelDetail';
 import { DownloadManager } from '../components/hub/DownloadManager';
-import { useQuery } from '../hooks/useQuery';
+
 import { useStore } from '../store';
-import { fetchSettings, searchHub } from '../api/services';
+import { searchHub } from '../api/services';
 import { EDownloadStatus } from '@warpcore/shared';
 import { useToast } from '../components/ToastProvider';
 
@@ -43,9 +43,7 @@ const PARAM_STEPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 17, 20, 24, 27, 30, 
 export function HubPage() {
 	const { toast } = useToast();
 	const navigate = useNavigate();
-
-	const settingsFetcher = useCallback(() => fetchSettings(), []);
-	const { data: settings, loading: settingsLoading } = useQuery<ISettings>(settingsFetcher);
+	const settings = useStore(s => s.settings);
 
 	// Use downloads from SSE
 	const downloads = Object.values(useStore((s: any) => s.downloads)) as IDownload[];
@@ -53,7 +51,7 @@ export function HubPage() {
 		d.status === EDownloadStatus.DOWNLOADING || d.status === EDownloadStatus.PAUSED
 	).length;
 
-	const hasModelDirs = (settings?.modelRoots?.length ?? 0) > 0;
+	const hasModelDirs = settings.modelRoots.length > 0;
 
 	// Search state
 	const [query, setQuery] = useState('');
@@ -116,7 +114,7 @@ export function HubPage() {
 	};
 
 	// Guard — no model dirs
-	if (!settingsLoading && !hasModelDirs) {
+	if (!hasModelDirs) {
 		return (
 			<Box>
 				<PageHeader title="Hub" subtitle="Browse and download models from HuggingFace" icon={<Globe size={20} />} />

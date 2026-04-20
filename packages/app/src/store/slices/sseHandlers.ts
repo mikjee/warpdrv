@@ -1,5 +1,5 @@
 import type { AppState, ImmerSet, ImmerGet } from '../types';
-import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, IRecipesInitPayload, IRunsStepStartedPayload, IRunsStepOutputPayload, IRunsStepFinishedPayload, IRunsFinishedPayload, ERecipeStreamKind, ISseSlotStatePayload, ISseServerSlotsSnapshotPayload, IServerSlotsState, ISseCheckpointPayload, ISseCheckpointDeletedPayload, ICheckpoint, TCheckpointId } from '@warpcore/shared';
+import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, IRecipesInitPayload, IRunsStepStartedPayload, IRunsStepOutputPayload, IRunsStepFinishedPayload, IRunsFinishedPayload, ERecipeStreamKind, ISseSlotStatePayload, ISseServerSlotsSnapshotPayload, IServerSlotsState, ISseCheckpointPayload, ISseCheckpointDeletedPayload, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings } from '@warpcore/shared';
 import { ERecipeStepStatus, EServerStatus } from '@warpcore/shared';
 
 interface SSEHandlersSlice {
@@ -116,6 +116,23 @@ export const sseHandlersSlice = (
 		'backend-groups:init': (data: Record<TBackendGroupId, IBackendGroup>) => setState((state) => { state.backendGroups = data; }),
 		'backend-groups:update': (data: IBackendGroup) => setState((state) => { state.backendGroups[data.id] = data; }),
 		'backend-groups:delete': (data: IBackendGroup) => setState((state) => { delete state.backendGroups[data.id]; }),
+
+		// Models
+		'models:init': (data: IModel[]) => setState((state) => {
+			state.models = {};
+			for (const m of data) state.models[m.id] = m;
+		}),
+		'models:update': (data: IModel[]) => setState((state) => {
+			for (const m of data) state.models[m.id] = m;
+		}),
+
+		// Settings
+		'settings:init': (data: ISettings) => setState((state) => {
+			state.settings = data;
+		}),
+		'settings:update': (data: Partial<ISettings>) => setState((state) => {
+			state.settings = { ...state.settings, ...data };
+		}),
 
 		// MCP
 		'mcp:init': (data) => setState((state) => { state.mcpServers = data; }),

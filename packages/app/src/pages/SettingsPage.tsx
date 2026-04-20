@@ -1,13 +1,15 @@
 import { Box, Text, HStack, VStack, Flex, Input, Button, Spinner, Switch } from '@chakra-ui/react';
 import { Settings, FolderOpen, Plus, Trash2, Save, Check, FolderInput } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
+import { useDependantState } from '../hooks/useDependantState';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
-import { useQuery, useMutation } from '../hooks/useQuery';
+import { useMutation } from '../hooks/useQuery';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
-import { fetchSettings, updateSettings, startProxy, stopProxy } from '../api/services';
+import { updateSettings, startProxy, stopProxy } from '../api/services';
 import type { ISettings } from '@warpcore/shared';
 import { useToast } from '../components/ToastProvider';
+import { useStore } from '../store';
 
 // Feature detection: try to import Tauri's autostart plugin.
 // Returns the API functions if running in Tauri, null otherwise.
@@ -26,21 +28,20 @@ async function getAutostartApi(): Promise<{ isEnabled: () => Promise<boolean>; e
 
 export function SettingsPage() {
 	const { toast } = useToast();
-	const fetcher = useCallback(() => fetchSettings(), []);
-	const { data: settings, loading, refetch } = useQuery<ISettings>(fetcher, { pollInterval: 0 });
+	const settings = useStore(s => s.settings);
 
-	const [modelRoots, setModelRoots] = useState<string[]>([]);
-	const [portStart, setPortStart] = useState(8085);
-	const [portEnd, setPortEnd] = useState(8099);
-	const [apiHost, setApiHost] = useState('0.0.0.0');
-	const [apiPort, setApiPort] = useState(4400);
-	const [proxyEnabled, setProxyEnabled] = useState(false);
-	const [proxyPort, setProxyPort] = useState(1234);
-	const [autoLaunch, setAutoLaunch] = useState<boolean | null>(null); // null = loading/not desktop, true/false = OS autostart status
-	const [startMinimized, setStartMinimized] = useState(false);
-	const [checkpointsPath, setCheckpointsPath] = useState('');
-	const [maxCheckpointDiskGB, setMaxCheckpointDiskGB] = useState(50);
-	const [disabledTitleGen, setDisabledTitleGen] = useState(false);
+	const [modelRoots, setModelRoots] = useDependantState(settings.modelRoots);
+	const [portStart, setPortStart] = useDependantState(settings.portRangeStart);
+	const [portEnd, setPortEnd] = useDependantState(settings.portRangeEnd);
+	const [apiHost, setApiHost] = useDependantState(settings.apiHost);
+	const [apiPort, setApiPort] = useDependantState(settings.apiPort);
+	const [proxyEnabled, setProxyEnabled] = useDependantState(settings.proxyEnabled);
+	const [proxyPort, setProxyPort] = useDependantState(settings.proxyPort);
+	const [autoLaunch, setAutoLaunch] = useState<boolean | null>(null);
+	const [startMinimized, setStartMinimized] = useDependantState(settings.startMinimized);
+	const [checkpointsPath, setCheckpointsPath] = useDependantState(settings.checkpointsPath);
+	const [maxCheckpointDiskGB, setMaxCheckpointDiskGB] = useDependantState(settings.maxCheckpointDiskGB);
+	const [disabledTitleGen, setDisabledTitleGen] = useDependantState(settings.disabledTitleGen);
 	const [newRoot, setNewRoot] = useState('');
 	const [saved, setSaved] = useState(false);
 	const [isDirty, setIsDirty] = useState(false);
@@ -53,23 +54,6 @@ export function SettingsPage() {
 	const saveMut = useMutation<Partial<ISettings>, ISettings>(
 		useCallback((data: Partial<ISettings>) => updateSettings(data), [])
 	);
-
-	// Sync local state from fetched settings (exclude autoLaunch - it comes from OS)
-	useEffect(() => {
-		if (settings) {
-			setModelRoots(settings.modelRoots);
-			setPortStart(settings.portRangeStart);
-			setPortEnd(settings.portRangeEnd);
-			setApiHost(settings.apiHost);
-			setApiPort(settings.apiPort);
-			setProxyEnabled(settings.proxyEnabled ?? false);
-			setProxyPort(settings.proxyPort ?? 1234);
-			setStartMinimized(settings.startMinimized ?? false);
-			setCheckpointsPath(settings.checkpointsPath ?? '');
-			setMaxCheckpointDiskGB(settings.maxCheckpointDiskGB ?? 50);
-			setDisabledTitleGen(settings.disabledTitleGen ?? false);
-		}
-	}, [settings]);
 
 	// Check actual OS autostart status (desktop app only) - this is the source of truth
 	useEffect(() => {
@@ -189,19 +173,7 @@ const handleSave = async () => {
 
 		setIsDirty(false);
 		toast('success', 'Settings saved');
-		await refetch();
 	};
-
-	if (loading && !settings) {
-		return (
-			<Box>
-				<PageHeader title="Settings" subtitle="WarpCore configuration" icon={<Settings size={20} />} />
-				<Flex h="200px" alignItems="center" justifyContent="center">
-					<Spinner size="lg" color="rgba(255, 255, 255, 0.2)" />
-				</Flex>
-			</Box>
-		);
-	}
 
 	return (
 <Box pb="80px">

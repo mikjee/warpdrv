@@ -5,8 +5,9 @@ import {
 } from 'lucide-react';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { PageHeader } from '../components/PageHeader';
-import { useListQuery, useMutation } from '../hooks/useQuery';
-import { fetchModels, scanModels } from '../api/services';
+import { useMutation } from '../hooks/useQuery';
+import { useStore } from '../store';
+import { scanModels } from '../api/services';
 import { openExternal } from '../utils/openExternal';
 import type { IModel } from '@warpcore/shared';
 
@@ -191,8 +192,8 @@ function SortHeader({
 // ============================================================
 
 export function ModelsPage() {
-	const fetcher = useCallback(() => fetchModels(), []);
-	const { data: models, loading, refetch } = useListQuery<IModel>(fetcher, { pollInterval: 0 });
+	const modelsRecord = useStore(s => s.models);
+	const models = useMemo(() => Object.values(modelsRecord), [modelsRecord]);
 	const scanMut = useMutation<void, IModel[]>(
 		useCallback(() => scanModels() as Promise<any>, [])
 	);
@@ -206,12 +207,7 @@ export function ModelsPage() {
 	}, []);
 
 	const handleScan = async () => {
-		const result = await scanMut.mutate(undefined as any);
-		if (result !== null) {
-			await refetch();
-		} else if (scanMut.error) {
-			console.error('Scan failed:', scanMut.error);
-		}
+		await scanMut.mutate(undefined as any);
 	};
 
 	const filtered = useMemo(() => {
@@ -317,15 +313,8 @@ export function ModelsPage() {
 					<Box w={cols.actions} />
 				</Flex>
 
-				{/* Loading state */}
-				{loading && models.length === 0 && (
-					<Flex h="200px" alignItems="center" justifyContent="center">
-						<Spinner size="md" color="rgba(255, 255, 255, 0.2)" />
-					</Flex>
-				)}
-
 				{/* Empty state */}
-				{!loading && models.length === 0 && (
+				{models.length === 0 && (
 					<Flex h="200px" alignItems="center" justifyContent="center">
 						<Text fontSize="13px" color="rgba(255, 255, 255, 0.25)">
 							No models found. Configure a directory in Settings, then scan.
@@ -334,7 +323,7 @@ export function ModelsPage() {
 				)}
 
 				{/* No results */}
-				{!loading && models.length > 0 && filtered.length === 0 && (
+				{models.length > 0 && filtered.length === 0 && (
 					<Flex h="200px" alignItems="center" justifyContent="center">
 						<Text fontSize="13px" color="rgba(255, 255, 255, 0.25)">
 							No models match "{search}"

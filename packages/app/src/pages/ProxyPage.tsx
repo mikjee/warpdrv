@@ -1,12 +1,13 @@
 import { Box, Text, HStack, VStack, Flex, Button, Spinner, Badge, Switch } from '@chakra-ui/react';
 import { Globe, Trash2, Server, ArrowRight, Play, Square, Shield } from 'lucide-react';
 import { useState, useCallback, useEffect } from 'react';
+import { useDependantState } from '../hooks/useDependantState';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
-import { useQuery, useMutation } from '../hooks/useQuery';
+import { useMutation } from '../hooks/useQuery';
 import { useStore } from '../store';
-import { clearStickyRoute, clearAllStickyRoutes, startProxy, stopProxy, fetchSettings, updateSettings } from '../api/services';
+import { clearStickyRoute, clearAllStickyRoutes, startProxy, stopProxy, updateSettings } from '../api/services';
 import type { IProxyStatus, IStickyRouteInfo } from '../api/services';
 import type { ISettings } from '@warpcore/shared';
 import { useToast } from '../components/ToastProvider';
@@ -85,13 +86,11 @@ export function ProxyPage() {
 	const proxyRoutes = useStore((s) => s.proxyRoutes);
 
 	const [clearingAll, setClearingAll] = useState(false);
-	const [proxyAuthEnabled, setProxyAuthEnabled] = useState(false);
-	const [apiAuthEnabled, setApiAuthEnabled] = useState(false);
-	const [authRequireForLocalhost, setAuthRequireForLocalhost] = useState(false);
 	const [restartConfirm, setRestartConfirm] = useState(false);
-
-	const fetcher = useCallback(() => fetchSettings(), []);
-	const { data: settings } = useQuery<ISettings>(fetcher, { pollInterval: 0 });
+	const settings = useStore(s => s.settings);
+	const [proxyAuthEnabled, setProxyAuthEnabled] = useDependantState(settings.proxyAuthEnabled);
+	const [apiAuthEnabled, setApiAuthEnabled] = useDependantState(settings.apiAuthEnabled);
+	const [authRequireForLocalhost, setAuthRequireForLocalhost] = useDependantState(settings.authRequireForLocalhost);
 
 	const clearAllMut = useMutation<void, null>(useCallback(() => clearAllStickyRoutes(), []));
 	const clearOneMut = useMutation<string, { cleared: boolean }>(useCallback((alias) => clearStickyRoute(alias), []));
@@ -100,15 +99,6 @@ export function ProxyPage() {
 	const saveSettingsMut = useMutation<Partial<ISettings>, ISettings>(
 		useCallback((data: Partial<ISettings>) => updateSettings(data), [])
 	);
-
-	// Sync settings from API
-	useEffect(() => {
-		if (settings) {
-			setProxyAuthEnabled(settings.proxyAuthEnabled ?? false);
-			setApiAuthEnabled(settings.apiAuthEnabled ?? false);
-			setAuthRequireForLocalhost(settings.authRequireForLocalhost ?? false);
-		}
-	}, [settings]);
 
 	const handleClearAll = async () => {
 		await clearAllMut.mutate();

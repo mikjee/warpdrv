@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { store } from '../util/store';
+import { sseManager } from '../services/sseManagerInstance';
 import type { ISettings } from '@warpcore/shared';
 import { DEFAULT_SETTINGS } from '@warpcore/shared';
 
@@ -18,6 +19,9 @@ settingsRouter.put('/', async (req, res) => {
 	const current = await store.get<ISettings>(SETTINGS_KEY) ?? DEFAULT_SETTINGS;
 	const updated: ISettings = { ...current, ...req.body };
 	await store.put(SETTINGS_KEY, updated);
+
+	// Emit partial update
+	sseManager.emit('settings:update', req.body);
 
 	res.json({ ok: true, data: updated, error: null });
 });

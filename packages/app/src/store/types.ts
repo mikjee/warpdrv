@@ -1,4 +1,4 @@
-import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, TStepId, IServerSlotsState, ICheckpoint, TCheckpointId } from '@warpcore/shared';
+import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, TStepId, IServerSlotsState, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings } from '@warpcore/shared';
 import type { IProxyStatus, IStickyRouteInfo } from '@/api/services';
 export { type ImmerSet, type ImmerGet } from '@warpcore/bridge';
 import type {
@@ -41,6 +41,12 @@ export interface AppState {
 
 	// Backend Groups (Phase 1)
 	backendGroups: Record<TBackendGroupId, IBackendGroup>;
+
+	// Models
+	models: Record<TModelId, IModel>;
+
+	// Settings
+	settings: ISettings;
 
 	// Proxy (Phase 1)
 	proxyStatus: IProxyStatus | null;

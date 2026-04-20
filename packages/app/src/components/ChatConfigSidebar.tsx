@@ -7,9 +7,7 @@ import {
 	createChatPreset,
 	updateChatPreset as updateChatPresetApi,
 	deleteChatPreset,
-	fetchSettings,
 	updateSettings,
-	fetchModels,
 } from '../api/services';
 import type { IChatPreset, IChatInferenceParams, ISettings, IModel } from '@warpcore/shared';
 import { EResponseFormat, EReasoningFormat, EReasoningEffort } from '@warpcore/shared';
@@ -239,29 +237,17 @@ export function ChatConfigContentPanel({
 	const [advancedOpen, setAdvancedOpen] = useState(false);
 	const [savePresetName, setSavePresetName] = useState('');
 	const [showSaveInput, setShowSaveInput] = useState(false);
-	const [settings, setSettingsState] = useState<ISettings | null>(null);
+	const settings = useStore(s => s.settings);
 	const currentServer = useStore(s => s.currentServerId ? s.servers[s.currentServerId] : null);
 
-	const showRawJSON = settings?.showRawJSONChatConfig ?? false;
-
-	const loadSettings = useCallback(async () => {
-		const res = await fetchSettings();
-		if (res.ok && res.data) {
-			setSettingsState(res.data);
-		}
-	}, []);
-
-	useEffect(() => { loadSettings(); }, [loadSettings]);
+	const showRawJSON = settings.showRawJSONChatConfig ?? false;
 
 	const setSettings = useCallback((partial: Partial<ISettings>) => {
-		updateSettings(partial).then(r => {
-			if (r.ok && r.data) {
-				setSettingsState(r.data);
-			}
-		});
+		updateSettings(partial);
 	}, []);
 
-	const { data: models } = useListQuery<IModel>(fetchModels, { pollInterval: 0 });
+	const modelsRecord = useStore(s => s.models);
+	const models = useMemo(() => Object.values(modelsRecord), [modelsRecord]);
 
 	const currentModel = useMemo(() => {
 		if (!currentServer || !models) return null;

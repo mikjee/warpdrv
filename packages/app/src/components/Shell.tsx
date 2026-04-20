@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { useDependantState } from '../hooks/useDependantState';
 import { Box, Flex, Text, VStack, HStack } from '@chakra-ui/react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
@@ -18,7 +19,8 @@ import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff } from 'react-icons/vsc';
 import { UpdateBanner } from './UpdateBanner';
 import { TitleBar } from './TitleBar';
 import { useSummary } from '../hooks/useSummary';
-import { fetchSettings, updateSettings } from '../api/services';
+import { updateSettings } from '../api/services';
+import { useStore } from '../store';
 import type { ReactNode, ComponentType } from 'react';
 import type { ISummaryData } from '../api/summary-services';
 import { Plug } from 'lucide-react';
@@ -248,28 +250,19 @@ function SidebarLink({
 }
 
 export function Shell() {
-	const [collapsed, setCollapsed] = useState<boolean | null>(null);
 	const { data: summary } = useSummary();
 	const location = useLocation();
 	const currentPath = location.pathname;
+	const settings = useStore(s => s.settings);
+	const [collapsed, setCollapsed] = useDependantState(settings.sidebarCollapsed);
 
-	// Load sidebar collapsed state from settings on mount
-	useEffect(() => {
-		fetchSettings().then(response => {
-			setCollapsed(response.data.sidebarCollapsed ?? false);
-		}).catch(() => {
-			setCollapsed(false);
-		});
+	// Save sidebar collapsed state when it changes
+	const handleCollapseChange = useCallback((newCollapsed: boolean) => {
+		setCollapsed(newCollapsed);
+		updateSettings({ sidebarCollapsed: newCollapsed }).catch(() => {});
 	}, []);
 
-	// Save sidebar collapsed state to settings when it changes (only after initial load)
-	useEffect(() => {
-		if (collapsed !== null) {
-			updateSettings({ sidebarCollapsed: collapsed }).catch(() => {});
-		}
-	}, [collapsed]);
-
-	const isCollapsed = collapsed ?? false;
+	const isCollapsed = collapsed;
 
 	// Render pages based on closeOnSwitch config
 	const renderPages = () => {
@@ -331,7 +324,7 @@ export function Shell() {
 							color="rgba(255, 255, 255, 0.4)"
 							_hover={{ color: 'rgba(255, 255, 255, 0.8)', bg: 'rgba(255, 255, 255, 0.04)' }}
 							transition="all 0.15s ease"
-							onClick={() => setCollapsed(prev => !prev)}
+							onClick={() => handleCollapseChange(!collapsed)}
 							flexShrink={0}
 							position={"relative"}
 							top="1px"

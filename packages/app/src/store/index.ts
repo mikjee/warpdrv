@@ -8,6 +8,8 @@ import { serversSlice } from './slices/servers';
 import { downloadsSlice } from './slices/downloads';
 import { devicesSlice } from './slices/devices';
 import { backendsSlice } from './slices/backends';
+import { modelsSlice } from './slices/models';
+import { settingsSlice } from './slices/settings';
 import { proxySlice } from './slices/proxy';
 import { recipesSlice } from './slices/recipes';
 import { checkpointsSlice } from './slices/checkpoints';
@@ -15,14 +17,16 @@ import { createChatStoreSlice } from '@warpcore/bridge/client';
 
 export const useStore = create<AppState>()(
 	subscribeWithSelector(
-		immer((set: ImmerSet<AppState>, get: ImmerGet<AppState>): AppState => {
+immer((set: ImmerSet<AppState>, get: ImmerGet<AppState>): AppState => {
 			const sseConnection = sseConnectionSlice(set, get);
 				const servers = serversSlice(set, get);
 				const downloads = downloadsSlice(set, get);
 				const devices = devicesSlice(set, get);
 				const backends = backendsSlice(set, get);
-const proxy = proxySlice(set, get);
-const recipes = recipesSlice(set, get);
+				const models = modelsSlice(set, get);
+				const settings = settingsSlice(set, get);
+ const proxy = proxySlice(set, get);
+ const recipes = recipesSlice(set, get);
 		const checkpoints = checkpointsSlice(set, get);
 		const sseHandlers = sseHandlersSlice(set, get);
 				const bridge = createChatStoreSlice(set, get);
@@ -37,10 +41,12 @@ serverStats: servers.serverStats!,
 				serverLogs: servers.serverLogs!,
 				serverSlots: servers.serverSlots!,
 					downloads: downloads.downloads!,
-					devices: devices.devices!,
+devices: devices.devices!,
 					backends: backends.backends!,
 					backendGroups: backends.backendGroups!,
-proxyStatus: proxy.proxyStatus!,
+					models: models.models!,
+					settings: settings.settings!,
+ proxyStatus: proxy.proxyStatus!,
 				proxyRoutes: proxy.proxyRoutes!,
 recipes: recipes.recipes!,
 			activeRun: recipes.activeRun!,

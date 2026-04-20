@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useDependantState } from '../hooks/useDependantState';
 import { Box, Flex, Text, HStack } from '@chakra-ui/react';
 import { MessageSquare, ChevronDown } from 'lucide-react';
 import {
@@ -13,7 +14,6 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { PageHeader } from '../components/PageHeader';
 import { useStore } from '../store';
 import type { AppState } from '../store/types';
-import { fetchSettings } from '../api/services';
 import type { IServer, IChatPreset, IChatInferenceParams, IThreadConfig } from '@warpcore/shared';
 import { EServerStatus, EReasoningEffort } from '@warpcore/shared';
 import { EChatRole, EMessagePartType, EToolCallStatus, type IChatMessage } from '@warpcore/bridge';
@@ -175,13 +175,8 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	// Removed: const [configOpen, setConfigOpen] = useState(false);
 	// Removed: const [toolsOpen, setToolsOpen] = useState(false);
 	const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
-	const [generateTitle, setGenerateTitle] = useState(true);
-
-	useEffect(() => {
-		fetchSettings().then(r => {
-			if (r.ok && r.data) setGenerateTitle(r.data.disabledTitleGen !== true);
-		});
-	}, []);
+	const settings = useStore(s => s.settings);
+	const [generateTitle, setGenerateTitle] = useDependantState(!settings.disabledTitleGen);
 
 	const { toast } = useToast();
 	const inferenceError = useStore(s => s.inferenceError);

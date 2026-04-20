@@ -1,11 +1,12 @@
 import { Box, Text, HStack, VStack, Flex, Badge, Button, Spinner, Input, Collapsible, SimpleGrid, InputGroup, Combobox, createListCollection, Portal } from '@chakra-ui/react';
 import { Blocks, Plus, Terminal, CheckCircle, Trash2, Edit, RefreshCw, AlertCircle, Layers, ChevronDown, ChevronRight, Search, ArrowUpAZ, ArrowDownZA } from 'lucide-react';
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import { useDependantState } from '../hooks/useDependantState';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
 import { useMutation } from '../hooks/useQuery';
 import { useStore } from '../store';
-import { deleteBackend, validateBackend, createBackendGroup, deleteBackendGroup, activateBackendInGroup, restartServer, updateBackendGroup, fetchSettings, updateSettings } from '../api/services';
+import { deleteBackend, validateBackend, createBackendGroup, deleteBackendGroup, activateBackendInGroup, restartServer, updateBackendGroup, updateSettings } from '../api/services';
 import { BackendDialog } from '../components/dialogs/BackendDialog';
 import { BackendGroupDialog } from '../components/dialogs/BackendGroupDialog';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
@@ -45,29 +46,19 @@ export function BackendsPage() {
 	const [groupsExpanded, setGroupsExpanded] = useState(true);
 	const [activatingBackend, setActivatingBackend] = useState<{ groupId: string; newBackendId: string } | null>(null);
 	const [expandedBackends, setExpandedBackends] = useState<Record<string, boolean>>({});
-	const [settingsLoaded, setSettingsLoaded] = useState(false);
 
 	// Search and sort
 	const [searchQuery, setSearchQuery] = useState('');
-	const [sortField, setSortField] = useState<TBackendSortField>('name');
-	const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+	const settings = useStore(s => s.settings);
+	const [sortField, setSortField] = useDependantState(settings.backendsSortField);
+	const [sortOrder, setSortOrder] = useDependantState(settings.backendsSortOrder);
 
-	// Load persisted sort settings on mount
-	useEffect(() => {
-		fetchSettings().then((result) => {
-			if (result.ok && result.data) {
-				setSortField(result.data.backendsSortField);
-				setSortOrder(result.data.backendsSortOrder);
-			}
-			setSettingsLoaded(true);
-		});
+	// Save sort settings when they change
+	const handleSortChange = useCallback((field: TBackendSortField, order: 'asc' | 'desc') => {
+		setSortField(field);
+		setSortOrder(order);
+		updateSettings({ backendsSortField: field, backendsSortOrder: order });
 	}, []);
-
-	// Save sort settings when they change (only after initial load)
-	useEffect(() => {
-		if (!settingsLoaded) return;
-		updateSettings({ backendsSortField: sortField, backendsSortOrder: sortOrder });
-	}, [settingsLoaded, sortField, sortOrder]);
 
 	const serversRecord = useStore((s) => s.servers);
 	const servers = useMemo(() => Object.values(serversRecord), [serversRecord]);
@@ -267,8 +258,8 @@ export function BackendsPage() {
 									value={[sortField]}
 									onValueChange={(details) => {
 										const val = details.value?.[0] as TBackendSortField;
-										if (val) setSortField(val);
-									}}
+if (val) handleSortChange(val, sortOrder);
+										}}
 								>
 									<Combobox.Control>
 										<Combobox.Trigger asChild>
@@ -323,7 +314,7 @@ export function BackendsPage() {
 							borderRadius="md"
 							_hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
 							title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
-							onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+							onClick={() => handleSortChange(sortField, sortOrder === 'asc' ? 'desc' : 'asc')}
 						>
 							{sortOrder === 'asc' ? <ArrowUpAZ size={14} /> : <ArrowDownZA size={14} />}
 						</Button>

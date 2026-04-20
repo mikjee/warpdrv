@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { store } from '../util/store';
 import { scanAllModelRoots } from '../services/modelScanner';
+import { sseManager } from '../services/sseManagerInstance';
 import type { ISettings, IModel } from '@warpcore/shared';
 import { DEFAULT_SETTINGS } from '@warpcore/shared';
 
@@ -59,6 +60,8 @@ modelsRouter.post('/scan', async (_req, res) => {
 	const changeMsg = changed > 0 ? ` (+${changed})` : changed < 0 ? ` (${changed})` : '';
 	console.log(`[models] Scan complete: ${cachedModels.length} models${changeMsg}`);
 
+	sseManager.emit('models:init', cachedModels);
+
 	res.json({ ok: true, data: cachedModels, total: cachedModels.length, error: null });
 });
 
@@ -102,6 +105,7 @@ modelsRouter.put('/:id', async (req, res) => {
 	// Save updated cache
 	try {
 		await store.put(MODELS_KEY, cachedModels);
+		sseManager.emit('models:update', [updatedModel]);
 		res.json({ ok: true, data: updatedModel, error: null });
 	} catch (err) {
 		console.error('[models] Failed to save updated model:', err);

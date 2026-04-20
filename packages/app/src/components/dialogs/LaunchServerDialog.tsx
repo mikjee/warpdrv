@@ -18,8 +18,7 @@ import {
 import { Textarea } from '@chakra-ui/react';
 import { Card } from '../Card';
 import { LaunchParamsPanel, EParamsMode, ToggleChip, SelectField, NumberField } from '../LaunchParamsPanel';
-import { useListQuery } from '../../hooks/useQuery';
-import { fetchModels, launchServer, updateServer, updateModel } from '../../api/services';
+import { launchServer, updateServer, updateModel } from '../../api/services';
 import { useToast } from '../ToastProvider';
 import { useStore } from '../../store';
 
@@ -166,12 +165,11 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 	// Get backends and groups from Zustand store
 	const backendsRecord = useStore((s) => s.backends);
 	const backendGroupsRecord = useStore((s) => s.backendGroups);
-
-	// Fetch real data
-	const { data: models } = useListQuery<IModel>(fetchModels, { pollInterval: 0 });
+	const modelsRecord = useStore((s) => s.models);
 
 	const backends = useMemo(() => Object.values(backendsRecord), [backendsRecord]);
 	const groups = useMemo(() => Object.values(backendGroupsRecord), [backendGroupsRecord]);
+	const models = useMemo(() => Object.values(modelsRecord), [modelsRecord]);
 
 	// Selection state
 	const [selectedModelPath, setSelectedModelPath] = useState<string | null>(editMode?.modelPath ?? null);
