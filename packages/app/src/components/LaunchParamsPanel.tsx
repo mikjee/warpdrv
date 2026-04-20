@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import {
 	Box, Text, HStack, VStack, Flex, Input, Button, Slider, Portal,
+	Switch,
 } from '@chakra-ui/react';
 import { ChevronDown, ChevronRight, Check } from 'lucide-react';
 import { EKvQuantType } from '@warpcore/shared';
@@ -209,6 +210,8 @@ interface ILaunchParamsPanelProps {
 	directIo: boolean;
 	noWarmup: boolean;
 	jinja: boolean;
+	useMultiModal: boolean;
+	hasMmproj: boolean;
 	kvQuantK: EKvQuantType;
 	kvQuantV: EKvQuantType;
 	chatTemplate: string;
@@ -230,6 +233,7 @@ export function LaunchParamsPanel({
 	gpuLayers, contextSize, batchSize, ubatchSize,
 	threads, threadsBatch,
 	flashAttn, mlock, mmap, directIo, noWarmup, jinja,
+	useMultiModal, hasMmproj,
 	kvQuantK, kvQuantV, chatTemplate, extraArgs,
 	parallelSlots,
 	modelNLayers, modelContextLength,
@@ -321,6 +325,24 @@ export function LaunchParamsPanel({
 					</HStack>
 				</VStack>
 			</Card>
+
+			{/* Multi-modal toggle */}
+			{isTarget && (
+				<Card>
+					<HStack justify="space-between" align="center">
+						<VStack align="start" gap="0.5">
+							<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em">Multi-modal</Text>
+							<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)">Enable mmproj for vision models</Text>
+						</VStack>
+						<Switch.Root label="Use multi-modal (mmproj)" checked={useMultiModal} onCheckedChange={(details) => onParamChange('useMultiModal', details.checked)} disabled={!hasMmproj} color={useMultiModal ? '#a78bfa' : 'rgba(255, 255, 255, 0.4)'}>
+							<Switch.HiddenInput />
+							<Switch.Control css={{ bg: useMultiModal ? '#a78bfa' : 'surface.4' }}>
+								<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+							</Switch.Control>
+						</Switch.Root>
+					</HStack>
+				</Card>
+			)}
 
 			{/* KV quant */}
 			<Card>

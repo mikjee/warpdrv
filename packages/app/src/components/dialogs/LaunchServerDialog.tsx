@@ -161,6 +161,7 @@ interface ILaunchServerDialogProps {
 		autoLoadCheckpointOnStart?: boolean;
 		launchInferenceParams?: IChatInferenceParams;
 		useRecommendedInferenceParams?: boolean;
+		useMultiModal?: boolean;
 	};
 }
 
@@ -193,6 +194,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 	const [autoLaunch, setAutoLaunch] = useState<boolean>(editMode?.autoLaunch ?? false);
 	const [autoSaveCheckpointOnStop, setAutoSaveCheckpointOnStop] = useState<boolean>(editMode?.autoSaveCheckpointOnStop ?? false);
 	const [autoLoadCheckpointOnStart, setAutoLoadCheckpointOnStart] = useState<boolean>(editMode?.autoLoadCheckpointOnStart ?? false);
+	const [useMultiModal, setUseMultiModal] = useState<boolean>(editMode?.useMultiModal ?? false);
 	const [showPresets, setShowPresets] = useState(false);
 	const [presetName, setPresetName] = useState('');
 	const [launching, setLaunching] = useState(false);
@@ -217,7 +219,11 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 
 	// Generic param change handler for LaunchParamsPanel
 	const handleTargetParamChange = (key: string, value: number | string | boolean) => {
-		updateParam(key as keyof ILaunchParams, value as ILaunchParams[keyof ILaunchParams]);
+		if (key === 'useMultiModal') {
+			setUseMultiModal(value as boolean);
+		} else {
+			updateParam(key as keyof ILaunchParams, value as ILaunchParams[keyof ILaunchParams]);
+		}
 	};
 
 	// Draft param change handler — maps to specDecode sub-fields
@@ -340,6 +346,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 			autoSaveCheckpointOnStop,
 			autoLoadCheckpointOnStart,
 			launchInferenceParams,
+			useMultiModal,
 		}, false);
 		setLaunching(false);
 		if (result.ok) {
@@ -370,6 +377,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				autoSaveCheckpointOnStop,
 				autoLoadCheckpointOnStart,
 				launchInferenceParams,
+				useMultiModal,
 			}, true);
 			setLaunching(false);
 			if (result.ok) {
@@ -390,6 +398,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 				autoSaveCheckpointOnStop,
 				autoLoadCheckpointOnStart,
 				launchInferenceParams,
+				useMultiModal,
 			});
 			setLaunching(false);
 			if (result.ok) {
@@ -849,7 +858,7 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 						</VStack>
 
 						{/* Right — Target Params Panel */}
-						<Box gap="5" flex="1" minW="0">
+						<VStack gap="5" flex="1" minW="0" align="stretch">
 							<LaunchParamsPanel
 								mode={EParamsMode.TARGET}
 								gpuLayers={params.gpuLayers}
@@ -864,6 +873,8 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 								directIo={params.directIo}
 								noWarmup={params.noWarmup}
 								jinja={params.jinja}
+								useMultiModal={useMultiModal}
+								hasMmproj={!!selectedEntry?.model.mmprojFile}
 								kvQuantK={params.kvQuantK}
 								kvQuantV={params.kvQuantV}
 								chatTemplate={params.chatTemplate}
@@ -876,7 +887,8 @@ export function LaunchServerDialog({ onClose, editMode }: ILaunchServerDialogPro
 								selectedDevice={params.device}
 								onParamChange={handleTargetParamChange}
 							/>
-						</Box>
+
+						</VStack>
 					</Flex>
 				</Box>
 

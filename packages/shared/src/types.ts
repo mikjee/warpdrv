@@ -220,6 +220,8 @@ export interface IServer {
 	launchInferenceParams?: Partial<IChatInferenceParams>;
 	// Whether to use recommended inference params from the model
 	useRecommendedInferenceParams?: boolean;
+	// Whether to use multi-modal mode (mmproj) if available
+	useMultiModal?: boolean;
 }
 export interface ISlotStats {
 	id: number;
@@ -245,6 +247,7 @@ export interface IServerCreatePayload {
 	autoLoadCheckpointOnStart?: boolean; // load latest checkpoint after server becomes ready
 	launchInferenceParams?: Partial<IChatInferenceParams>;
 	useRecommendedInferenceParams?: boolean;
+	useMultiModal?: boolean; // use mmproj if available
 }
 // ============================================================
 // Presets

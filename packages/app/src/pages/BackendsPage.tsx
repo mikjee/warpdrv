@@ -417,7 +417,7 @@ export function BackendsPage() {
 																		<Badge size="sm" px="1.5" py="0.5" borderRadius="full" bg="rgba(167, 139, 250, 0.15)" color="#a78bfa" fontSize="10px" fontWeight="600">{totalServerCount} Server(s)</Badge>
 																	)}
 																	{runningServerCount > 0 && (
-																		<Badge size="sm" px="1.5" py="0.5" borderRadius="full" bg="rgba(52, 211, 153, 0.15)" color="#34d399" fontSize="10px" fontWeight="600">{runningServerCount} Running</Badge>
+																		<Badge size="sm" px="1.5" py="0.5" borderRadius="full" bg="rgba(52, 211, 153, 0.15)" color="#34d399" border="1px solid #34d399" fontSize="10px" fontWeight="600">{runningServerCount} Running</Badge>
 																	)}
 																</HStack>
 																<Text fontSize="12px" color="rgba(255, 255, 255, 0.35)" fontFamily='"Geist Mono", monospace' lineClamp={1}>{backend.path}</Text>
@@ -516,11 +516,7 @@ export function BackendsPage() {
 															)}
 														</HStack>
 														<HStack gap="2">
-															<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)">Active:</Text>
 															<HStack gap="1">
-																<Flex w="6" h="6" borderRadius="md" bg="#a78bfa" alignItems="center" justifyContent="center">
-																	<Terminal size={10} color="white" />
-																</Flex>
 																<Text fontSize="12px" fontWeight="500" color="#a78bfa">{activeBackend?.name || 'Unknown'}</Text>
 															</HStack>
 														</HStack>
@@ -552,7 +548,6 @@ export function BackendsPage() {
 																			{isActive && (
 																				<HStack gap="1">
 																					<Text fontSize="10px" color="#a78bfa" fontWeight="500">ACTIVE</Text>
-																					<Flex w="2" h="2" borderRadius="full" bg="#a78bfa" shadow="0 0 6px #a78bfa" />
 																				</HStack>
 																			)}
 																		</HStack>

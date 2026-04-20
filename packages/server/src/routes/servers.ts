@@ -70,7 +70,7 @@ export async function launchAutoStartServers(): Promise<void> {
 			}
 
 			const model = getCachedModels().find(m => m.primaryFile?.filePath === server.modelPath);
-			const mmprojPath = model?.mmprojFile?.filePath ?? null;
+			const mmprojPath = model?.mmprojFile?.filePath && server.useMultiModal ? model.mmprojFile.filePath : null;
 			const args = await buildServerArgs(
 				server.modelPath,
 				mmprojPath,
@@ -161,7 +161,6 @@ serversRouter.post('/', async (req, res) => {
 		backendId: payload.backendId,
 		backendGroupId: payload.backendGroupId,
 		modelPath: payload.modelPath,
-		mmprojPath: payload.mmprojPath,
 		serverName,
 		serverAlias: payload.serverAlias ?? [],
 		params,
@@ -176,11 +175,12 @@ serversRouter.post('/', async (req, res) => {
 		autoLoadCheckpointOnStart: payload.autoLoadCheckpointOnStart ?? false,
 		launchInferenceParams: payload.launchInferenceParams,
 		useRecommendedInferenceParams: payload.useRecommendedInferenceParams,
+		useMultiModal: payload.useMultiModal ?? false,
 	};
 
 	// Build args and spawn
 	const model = getCachedModels().find(m => m.primaryFile?.filePath === payload.modelPath);
-	const mmprojPath = model?.mmprojFile?.filePath ?? null;
+	const mmprojPath = model?.mmprojFile?.filePath && payload.useMultiModal ? model.mmprojFile.filePath : null;
 	const args = await buildServerArgs(
 		payload.modelPath,
 		mmprojPath,
@@ -280,7 +280,7 @@ serversRouter.post('/:id/restart', async (req, res) => {
 
 	// Re-spawn
 	const model = getCachedModels().find(m => m.primaryFile?.filePath === server.modelPath);
-	const mmprojPath = model?.mmprojFile?.filePath ?? null;
+	const mmprojPath = model?.mmprojFile?.filePath && server.useMultiModal ? model.mmprojFile.filePath : null;
 	const args = await buildServerArgs(
 		server.modelPath,
 		mmprojPath,
@@ -317,7 +317,7 @@ serversRouter.put('/:id', async (req, res) => {
 		return;
 	}
 
-	type TUpdatePayload = Partial<Pick<IServer, 'backendId' | 'backendGroupId' | 'modelPath' | 'serverName' | 'params' | 'serverAlias' | 'autoLaunch' | 'autoSaveCheckpointOnStop' | 'autoLoadCheckpointOnStart' | 'launchInferenceParams' | 'useRecommendedInferenceParams'>> & { relaunch?: boolean };
+	type TUpdatePayload = Partial<Pick<IServer, 'backendId' | 'backendGroupId' | 'modelPath' | 'serverName' | 'params' | 'serverAlias' | 'autoLaunch' | 'autoSaveCheckpointOnStop' | 'autoLoadCheckpointOnStart' | 'launchInferenceParams' | 'useRecommendedInferenceParams' | 'useMultiModal'>> & { relaunch?: boolean };
 	const updatePayload = req.body as TUpdatePayload;
 	const shouldRelaunch = updatePayload.relaunch ?? true;
 
@@ -406,11 +406,14 @@ serversRouter.put('/:id', async (req, res) => {
 	if (updatePayload.useRecommendedInferenceParams !== undefined) {
 		server.useRecommendedInferenceParams = updatePayload.useRecommendedInferenceParams;
 	}
+	if (updatePayload.useMultiModal !== undefined) {
+		server.useMultiModal = updatePayload.useMultiModal;
+	}
 
 	if (shouldRelaunch) {
 		// Re-spawn with new params
 		const model = getCachedModels().find(m => m.primaryFile?.filePath === server.modelPath);
-		const mmprojPath = model?.mmprojFile?.filePath ?? null;
+		const mmprojPath = model?.mmprojFile?.filePath && server.useMultiModal ? model.mmprojFile.filePath : null;
 		const args = await buildServerArgs(
 			server.modelPath,
 			mmprojPath,

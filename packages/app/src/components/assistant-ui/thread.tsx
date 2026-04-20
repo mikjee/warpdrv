@@ -76,7 +76,7 @@ export const Thread: FC<{ isLoading?: boolean }> = React.memo(({ isLoading = fal
       }}
     >
       <ThreadPrimitive.Viewport
-        turnAnchor="top"
+        turnAnchor="bottom"
         className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-6 pt-4"
         style={{ overflowAnchor: "none" }}
       >
@@ -230,7 +230,7 @@ const Composer: FC = () => {
 
 const ReasoningEffortToggle: FC = () => {
   const { reasoningEffort, onReasoningEffortChange, enableThinking, onEnableThinkingChange } = useContext(ChatConfigContext);
-  const levels: EReasoningEffort[] = [EReasoningEffort.NONE, EReasoningEffort.LOW, EReasoningEffort.MEDIUM, EReasoningEffort.HIGH];
+  const levels: EReasoningEffort[] = [EReasoningEffort.LOW, EReasoningEffort.MEDIUM, EReasoningEffort.HIGH, EReasoningEffort.NONE];
   const next = () => {
     const idx = levels.indexOf(reasoningEffort);
     const nextLevel = levels[(idx + 1) % levels.length]!;

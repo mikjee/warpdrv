@@ -1,9 +1,10 @@
 import { Box, Text, HStack, VStack, Flex, Button, Spinner, Badge, Input, Switch, InputGroup, Combobox, createListCollection, Portal, Popover, HoverCard, Icon } from '@chakra-ui/react';
 import {
 	Play, Square, RotateCcw, Server, Clock, Trash2, X, Plus,
-	Activity, Gauge, Cpu, Blocks, Terminal, Edit, Search, ChevronDown, ArrowUpAZ, ArrowDownZA, Sparkles, Save, Zap,
-	ScanEye
+	Activity, Gauge, Cpu, Blocks, Terminal, Edit, Search, ChevronDown, ArrowUpAZ, ArrowDownZA, Sparkles, Save, Zap
 } from 'lucide-react';
+import { LuSaveOff } from "react-icons/lu";
+import { GoEyeClosed } from "react-icons/go";
 import { FaBrain, FaBookOpen, FaRegEye } from 'react-icons/fa6';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { PageHeader } from '../components/PageHeader';
@@ -622,8 +623,14 @@ export function ServersPage() {
 																<>
 																	<HStack gap="1">
 																		<StatPill icon={<FaBrain size={12} />} label="Model" value={model?.name ?? "Model Not Found!"} />
-																		{model?.mmprojFile && (
+																		{model?.mmprojFile && server.useMultiModal && (
 																			<Icon color="#ecbf42" boxSize="14px" ml="1" mr="1"><FaRegEye /></Icon>
+																		)}
+																		{model?.mmprojFile && !server.useMultiModal && (
+																			<Icon color="#ec4242" boxSize="14px" ml="1" mr="1"><GoEyeClosed /></Icon>
+																		)}
+																		{model?.mmprojFile && server.useMultiModal && (
+																			<Icon color="#ec4242" boxSize="14px" ml="1" mr="1"><LuSaveOff /></Icon>
 																		)}
 																		{model?.primaryFile?.metadata?.quantType && (
 																			<Badge
@@ -656,11 +663,11 @@ export function ServersPage() {
 
 											<HStack gap="1" my="auto" pl="3">
 												{/* Load checkpoint */}
-												<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }} borderRadius="md" onClick={() => setLoadCheckpointServerId(server.id)}>
+												{(!modelByPath.get(server.modelPath)?.mmprojFile || !server.useMultiModal) && <Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }} borderRadius="md" onClick={() => setLoadCheckpointServerId(server.id)}>
 													<Zap size={14} />
-												</Button>
+												</Button>}
 												{/* Save checkpoint (running only) */}
-												{isRunning && (
+												{isRunning && (!modelByPath.get(server.modelPath)?.mmprojFile || !server.useMultiModal) && (
 													<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }} borderRadius="md" onClick={() => setSaveCheckpointServerId(server.id)}>
 														<Save size={14} />
 													</Button>
@@ -704,33 +711,6 @@ export function ServersPage() {
 												)}
 											</HStack>
 										</Flex>
-
-										{/* Stats */}
-										{/* {(() => {
-											const stats = serverStats[server.id] || null;
-											if (!stats || (stats.slots ?? []).length === 0) return null;
-											return (
-												<HStack gap="2" flexWrap="wrap">
-													<StatPill icon={<Activity size={12} />} label="Slots" value={`${stats.slotsProcessing}/${stats.slotsProcessing + stats.slotsIdle}`} />
-													{(stats.slots ?? []).map(slot => {
-														const isPrompt = slot.state === 'processing' && slot.tokensGenerated === 0;
-														const isGen = slot.state === 'processing' && slot.tokensGenerated > 0;
-														const color = isPrompt ? '#fbbf24' : isGen ? '#3381ff' : 'rgba(255, 255, 255, 0.25)';
-														const label = isPrompt ? 'prompt' : isGen ? `gen ${slot.tokensGenerated}` : 'idle';
-														return (
-															<Badge key={slot.id} px="2" py="0.5" borderRadius="md" fontSize="10px" fontFamily='"Geist Mono", monospace'
-																bg={`color-mix(in srgb, ${color} 10%, transparent)`}
-																color={color}
-																borderWidth="1px"
-																borderColor={`color-mix(in srgb, ${color} 20%, transparent)`}
-															>
-																S{slot.id}: {label}
-															</Badge>
-														);
-													})}
-												</HStack>
-											);
-										})()} */}
 										{(() => {
 											const slotsState = serverSlots[server.id] ?? null;
 											if (!slotsState || slotsState.slots.length === 0) return null;
@@ -776,6 +756,7 @@ export function ServersPage() {
 						autoLaunch: editingServer.autoLaunch ?? false,
 						autoSaveCheckpointOnStop: editingServer.autoSaveCheckpointOnStop ?? false,
 						autoLoadCheckpointOnStart: editingServer.autoLoadCheckpointOnStart ?? false,
+						useMultiModal: editingServer.useMultiModal ?? false,
 					}}
 				/>
 			)}
