@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useDependantState } from '../hooks/useDependantState';
 import { Box, Flex, Text, VStack, HStack } from '@chakra-ui/react';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -199,7 +199,7 @@ function SidebarLink({
 			<Box
 				w="100%"
 				h="1px"
-				bg="rgba(255, 255, 255, 0.06)"
+				bg="rgba(255, 255, 255, 0.1)"
 				my="2"
 			/>
 		);
@@ -218,13 +218,13 @@ function SidebarLink({
 				borderRadius="lg"
 				cursor="pointer"
 				transition="all 0.15s ease"
-				bg={isActive ? 'rgba(255, 255, 255, 0.04)' : 'transparent'}
+				bg={isActive ? 'rgba(255, 255, 255, 0.065)' : 'transparent'}
 				color={isActive ? '#ccc' : 'rgba(255, 255, 255, 0.5)'}
 				borderWidth="1px"
-				borderColor={isActive ? 'rgba(90, 90, 90, 0.2)' : 'transparent'}
+				borderColor={isActive ? 'rgba(90, 90, 90, 0.4)' : 'transparent'}
 				justifyContent={collapsed ? 'center' : 'flex-start'}
 				_hover={{
-					bg: 'rgba(255, 255, 255, 0.04)',
+					bg: 'rgba(255, 255, 255, 0.08)',
 					color: 'rgba(255, 255, 255, 0.8)',
 				}}
 			>
@@ -249,7 +249,7 @@ function SidebarLink({
 	);
 }
 
-export function Shell() {
+export const Shell = React.memo(() => {
 	const { data: summary } = useSummary();
 	const location = useLocation();
 	const currentPath = location.pathname;
@@ -293,17 +293,19 @@ export function Shell() {
 			<Flex flex="1" overflow="hidden">
 				{/* Sidebar */}
 				<Flex
-					bg={"#0e0e0e"}
+					bg={"#050505"}
 					direction="column"
 					w={isCollapsed ? '60px' : '220px'}
 					minW={isCollapsed ? '60px' : '220px'}
-					borderRightWidth="1px"
-					borderColor="rgba(255, 255, 255, 0.06)"
+					//borderRightWidth="1px"
+					// borderColor="rgba(255, 255, 255, 0.06)"
 					px={isCollapsed ? '2' : '4'}
 					pt={'3'}
 					pb={("0")}
 					gap="0"
 					transition="all 0.2s ease"
+					zIndex={100}
+					boxShadow={"0px 0px 10px rgba(0,0,0,1)"}
 				>
 					{/* Collapse toggle + logo text */}
 					<HStack
@@ -322,7 +324,7 @@ export function Shell() {
 							borderRadius="md"
 							cursor="pointer"
 							color="rgba(255, 255, 255, 0.4)"
-							_hover={{ color: 'rgba(255, 255, 255, 0.8)', bg: 'rgba(255, 255, 255, 0.04)' }}
+							_hover={{ color: 'rgba(255, 255, 255, 0.8)', bg: 'rgba(255, 255, 255, 0.08)' }}
 							transition="all 0.15s ease"
 							onClick={() => handleCollapseChange(!collapsed)}
 							flexShrink={0}
@@ -366,7 +368,7 @@ export function Shell() {
 								gradientTo="orange.500"
 								bgClip="text"
 							>
-								warpcore &gt;&gt;
+								warpdrv &gt;&gt;
 							</Text>
 						</Box>
 					</HStack> */}
@@ -374,7 +376,7 @@ export function Shell() {
 					{/* Nav */}
 					<VStack gap="1" align="stretch" flex="1">
 						{NAV_ITEMS.map(item => (
-							<SidebarLink key={item.path} item={item} collapsed={isCollapsed} summary={summary} />
+							<SidebarLink key={item.path} item={item} collapsed={!!isCollapsed} summary={summary} />
 						))}
 					</VStack>
 
@@ -382,7 +384,7 @@ export function Shell() {
 					<Box px={isCollapsed ? '0' : '2'} py="2">
 						<VStack gap="1" align="stretch">
 							{NAV_ITEMS_BOTTOM.map(item => (
-								<SidebarLink key={item.path} item={item} collapsed={isCollapsed} summary={summary} />
+								<SidebarLink key={item.path} item={item} collapsed={!!isCollapsed} summary={summary} />
 							))}
 						</VStack>
 					</Box>
@@ -396,4 +398,4 @@ export function Shell() {
 			</Flex>
 		</Flex>
 	);
-}
+});

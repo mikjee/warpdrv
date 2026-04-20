@@ -20,7 +20,7 @@ export function PageHeader({ title, subtitle, icon, actions }: IPageHeaderProps)
 			py="4"
 			borderBottomWidth="1px"
 			borderColor="rgba(255, 255, 255, 0.06)"
-			bg="#0e0e0e"
+			bg="#0c0c0c"
 		>
 			<HStack gap="4">
 				{icon && (

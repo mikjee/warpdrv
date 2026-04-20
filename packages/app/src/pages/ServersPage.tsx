@@ -6,7 +6,7 @@ import {
 import { LuSaveOff } from "react-icons/lu";
 import { GoEyeClosed } from "react-icons/go";
 import { FaBrain, FaBookOpen, FaRegEye } from 'react-icons/fa6';
-import { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useDependantState } from '../hooks/useDependantState';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/Card';
@@ -63,9 +63,8 @@ const FIELD_LABELS: Record<TSortField, string> = {
 	backend: 'Backend',
 };
 
-export function ServersPage() {
+export const ServersPage = React.memo(() => {
 	const serversRecord = useStore((s) => s.servers);
-	const serverStats = useStore((s) => s.serverStats);
 	const serverSlots = useStore((s) => s.serverSlots);
 	const servers = useMemo(() => Object.values(serversRecord), [serversRecord]);
 
@@ -174,22 +173,6 @@ export function ServersPage() {
 
 		return result;
 	}, [servers, searchQuery, sortField, sortOrder, runningOnly, backendMap]);
-
-	// Get backend type from detected devices or group
-	function getBackendType(server: IServer): string {
-		if (server.backendGroupId) {
-			const group = groupMap.get(server.backendGroupId);
-			if (!group) return 'Unknown';
-			const activeBackend = backendMap.get(group.activeBackendId);
-			if (!activeBackend || activeBackend.detectedDevices.length === 0) return 'Unknown';
-			const types = new Set(activeBackend.detectedDevices.map(d => d.backendType));
-			return Array.from(types).join(' + ');
-		}
-		const backend = backendMap.get(server.backendId || '');
-		if (!backend || backend.detectedDevices.length === 0) return 'Unknown';
-		const types = new Set(backend.detectedDevices.map(d => d.backendType));
-		return Array.from(types).join(' + ');
-	}
 
 	// Get device display as "name (id)" format
 	function getDeviceName(server: IServer): string {
@@ -595,7 +578,6 @@ export function ServersPage() {
 															const group = groupMap.get(server.backendGroupId || '');
 															const model = modelByPath.get(server.modelPath);
 															const draftModel = server.params.specDecode?.draftModelPath ? modelByPath.get(server.params.specDecode.draftModelPath) : null;
-															const backendType = getBackendType(server);
 															const deviceName = getDeviceName(server);
 															const modelMaxCtx = getModelMaxContext(server);
 															const configuredCtx = server.params.contextSize;
@@ -782,4 +764,4 @@ export function ServersPage() {
 			)}
 		</Box>
 	);
-}
+});

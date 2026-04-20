@@ -115,19 +115,21 @@ export function TitleBar() {
 		getCurrentWindow().toggleMaximize();
 	}, []);
 
-	if (!isTauri) return null;
 
 	const handleMinimize = async () => {
+		if (!isTauri) return null;
 		const { getCurrentWindow } = await import('@tauri-apps/api/window');
 		getCurrentWindow().minimize();
 	};
 
 	const handleMaximize = async () => {
+		if (!isTauri) return null;
 		const { getCurrentWindow } = await import('@tauri-apps/api/window');
 		getCurrentWindow().toggleMaximize();
 	};
 
 	const handleClose = async () => {
+		if (!isTauri) return null;
 		const { getCurrentWindow } = await import('@tauri-apps/api/window');
 		getCurrentWindow().hide();
 	};
@@ -137,7 +139,7 @@ export function TitleBar() {
 			h="36px"
 			minH="36px"
 			w="100%"
-			bg="#0e0e0e"
+			bg="#050505"
 			align="center"
 			justify="space-between"
 			borderBottomWidth="1px"
@@ -145,12 +147,13 @@ export function TitleBar() {
 			onMouseDown={handleMouseDown}
 			onDoubleClick={handleDoubleClick}
 			style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+			boxShadow={"0px 0px 10px rgba(0,0,0,1)"}
 		>
 			{/* Title */}
 			<Text
 				fontSize="12px"
 				fontWeight="500"
-				color="rgba(255, 255, 255, 0.5)"
+				color="rgba(255, 255, 255, 0.75)"
 				pl="16px"
 				letterSpacing="0.02em"
 				pointerEvents="none"

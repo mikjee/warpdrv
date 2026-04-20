@@ -6,6 +6,7 @@ import { Slider } from '@chakra-ui/react';
 import {
 	Globe, Search, ChevronDown, Package, AlertCircle, Settings,
 	ArrowUpDown, Download, ArrowUpAZ, ArrowDownAZ,
+	ArrowDownZA,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { ISettings, IHubModel, IDownload } from '@warpcore/shared';
