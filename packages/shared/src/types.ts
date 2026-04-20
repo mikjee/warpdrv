@@ -118,7 +118,8 @@ export interface IModel {
 	primaryFile: IGgufFile | null; // the main model file (auto-detected)
 	mmprojFile: IGgufFile | null; // auto-detected mmproj, null if none
 	totalSizeMb: number; // sum of all shards for primary model
-	recommendedInferenceParams?: Partial<IChatInferenceParams>; // recommended inference params parsed from model README
+	hfUrl?: string; // optional HuggingFace URL (for downloaded models)
+	recommendedInferenceParams?: string; // CLI flags format: "--temperature 0.7 --top-p 0.9"
 }
 // ============================================================
 // Speculative Decoding Params
@@ -216,8 +217,6 @@ export interface IServer {
 	autoLoadCheckpointOnStart?: boolean;
 	// Full command line used to launch the server
 	launchCommand?: string | null;
-	// Inference params sent to llama-server at launch time
-	launchInferenceParams?: Partial<IChatInferenceParams>;
 	// Whether to use recommended inference params from the model
 	useRecommendedInferenceParams?: boolean;
 	// Whether to use multi-modal mode (mmproj) if available
@@ -245,7 +244,6 @@ export interface IServerCreatePayload {
 	autoLaunch?: boolean; // auto-launch at startup
 	autoSaveCheckpointOnStop?: boolean; // save all slots as bundle on server stop
 	autoLoadCheckpointOnStart?: boolean; // load latest checkpoint after server becomes ready
-	launchInferenceParams?: Partial<IChatInferenceParams>;
 	useRecommendedInferenceParams?: boolean;
 	useMultiModal?: boolean; // use mmproj if available
 }
