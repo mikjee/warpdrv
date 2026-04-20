@@ -85,9 +85,14 @@ export function HubPage() {
 		setSortField(newField);
 		if (searchExecuted && query.trim()) {
 			setSearching(true);
-			const result = await searchHub(query.trim(), newField, sortOrder, PARAM_STEPS[paramsRange[0]] || 0, PARAM_STEPS[paramsRange[1]] || 1000);
+			const apiOrder = (newField === EHubSortField.DOWNLOADS || newField === EHubSortField.LIKES)
+				? 'desc'
+				: sortOrder;
+			const result = await searchHub(query.trim(), newField, apiOrder, PARAM_STEPS[paramsRange[0]] || 0, PARAM_STEPS[paramsRange[1]] || 1000);
 			if (result.ok) {
-				setResults(result.data);
+				const needsReverse = sortOrder === 'asc'
+					&& (newField === EHubSortField.DOWNLOADS || newField === EHubSortField.LIKES);
+				setResults(needsReverse ? [...result.data].reverse() : result.data);
 			} else {
 				toast('error', result.error ?? 'Search failed');
 			}
@@ -99,15 +104,16 @@ export function HubPage() {
 		const newOrder: ESortOrder = sortOrder === ESortOrder.DESC ? ESortOrder.ASC : ESortOrder.DESC;
 		setSortOrder(newOrder);
 
-		// For downloads/likes, we can reverse locally without re-fetching (HF API doesn't support asc)
-		if ((sortField === EHubSortField.DOWNLOADS || sortField === EHubSortField.LIKES) && searchExecuted && results.length > 0) {
-			setResults([...results].reverse());
-		} else if (searchExecuted && query.trim()) {
-			// For other fields, re-fetch with new order
+		if (searchExecuted && query.trim()) {
 			setSearching(true);
-			const result = await searchHub(query.trim(), sortField, newOrder, PARAM_STEPS[paramsRange[0]] || 0, PARAM_STEPS[paramsRange[1]] || 1000);
+			const apiOrder = (sortField === EHubSortField.DOWNLOADS || sortField === EHubSortField.LIKES)
+				? 'desc'
+				: newOrder;
+			const result = await searchHub(query.trim(), sortField, apiOrder, PARAM_STEPS[paramsRange[0]] || 0, PARAM_STEPS[paramsRange[1]] || 1000);
 			if (result.ok) {
-				setResults(result.data);
+				const needsReverse = newOrder === 'asc'
+					&& (sortField === EHubSortField.DOWNLOADS || sortField === EHubSortField.LIKES);
+				setResults(needsReverse ? [...result.data].reverse() : result.data);
 			} else {
 				toast('error', result.error ?? 'Search failed');
 			}
@@ -279,7 +285,7 @@ export function HubPage() {
 											fontSize="11px" borderRadius="lg" _hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
 											onClick={handleSortOrderToggle} px="1.5" py="1" h="auto" title={sortOrder === ESortOrder.DESC ? 'Descending' : 'Ascending'}
 										>
-											{sortOrder === ESortOrder.DESC ? <ArrowDownAZ size={12} /> : <ArrowUpAZ size={12} />}
+											{sortOrder === ESortOrder.DESC ? <ArrowDownZA size={12} /> : <ArrowUpAZ size={12} />}
 										</Button>
 									</HStack>
 								</Flex>
