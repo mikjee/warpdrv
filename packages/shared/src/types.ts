@@ -270,6 +270,7 @@ export interface IPresetCreatePayload {
 export type TSortField = 'name' | 'recency' | 'backend';
 export type TBackendSortField = 'name' | 'createdAt' | 'updatedAt';
 export type TRecipeSortField = 'name' | 'createdAt' | 'updatedAt';
+export type TCheckpointSortField = 'recency' | 'size' | 'name' | 'slot';
 export type TSortOrder = 'asc' | 'desc';
 export interface ISettings {
 	modelRoots: string[];
@@ -288,6 +289,8 @@ export interface ISettings {
 	backendsSortOrder: TSortOrder;
 	recipesSortField: TRecipeSortField;
 	recipesSortOrder: TSortOrder;
+	checkpointsSortField: TCheckpointSortField;
+	checkpointsSortOrder: TSortOrder;
 	startMinimized?: boolean; // only effective when auto-launch at startup is enabled
 	sidebarCollapsed?: boolean; // sidebar collapsed state
 	windowWidth?: number; // desktop window width (desktop only)
@@ -314,6 +317,8 @@ export const DEFAULT_SETTINGS: ISettings = {
 	backendsSortOrder: 'asc',
 	recipesSortField: 'name',
 	recipesSortOrder: 'asc',
+	checkpointsSortField: 'recency',
+	checkpointsSortOrder: 'desc',
 	startMinimized: false,
 	sidebarCollapsed: false,
 	windowWidth: 1100,
