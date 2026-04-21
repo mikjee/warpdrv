@@ -64,9 +64,9 @@ export interface IChatStoreState {
 
 	// Current chat state (for active thread context)
 	currentThreadId: TThreadId | null;
-	currentServerId: string | null;
 	currentSystemPrompt: string;
 	currentInferenceParams: Record<string, unknown>;
+	tempThreadServerId: string | null;
 
 	// Actions
 	applyThreadCreated: (thread: IChatThread) => void;
@@ -88,9 +88,9 @@ export interface IChatStoreState {
 
 	// Current chat state actions
 	setCurrentThreadId: (id: TThreadId | null) => void;
-	setCurrentServerId: (id: string | null) => void;
 	setCurrentSystemPrompt: (prompt: string) => void;
 	setCurrentInferenceParams: (params: Record<string, unknown>) => void;
+	setTempThreadServerId: (id: string | null) => void;
 
 	// MCP Actions
 	setMcpServers: (servers: Record<string, IMcpServerState>) => void;
@@ -121,9 +121,9 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 		serverPermissions: [] as IServerPermission[],
 		toolPermissions: [] as IToolPermission[],
 		currentThreadId: null as TThreadId | null,
-		currentServerId: null as string | null,
 		currentSystemPrompt: '',
 		currentInferenceParams: {} as Record<string, unknown>,
+		tempThreadServerId: null,
 	};
 
 	return {
@@ -383,11 +383,6 @@ setActiveThread: (id: TThreadId | null) =>
 				draft.currentThreadId = id;
 			}),
 
-		setCurrentServerId: (id: string | null) =>
-			set((draft) => {
-				draft.currentServerId = id;
-			}),
-
 		setCurrentSystemPrompt: (prompt: string) =>
 			set((draft) => {
 				draft.currentSystemPrompt = prompt;
@@ -396,6 +391,11 @@ setActiveThread: (id: TThreadId | null) =>
 		setCurrentInferenceParams: (params: Record<string, unknown>) =>
 			set((draft) => {
 				draft.currentInferenceParams = params;
+			}),
+
+		setTempThreadServerId: (id: string | null) =>
+			set((draft) => {
+				draft.tempThreadServerId = id;
 			}),
 
 		// MCP Actions

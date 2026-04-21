@@ -72,7 +72,9 @@ export class Orchestrator {
 		try {
 			// Auto-create thread if needed
 			let thread = await this.persistence.getThread(request.threadId);
+			let isNewThread: boolean = false;
 			if (!thread) {
+				isNewThread = true;
 				const now = Date.now();
 				let title = 'New Chat';
 				if (request.userMessage) {
@@ -188,7 +190,7 @@ export class Orchestrator {
 			);
 
 			// Fire title generation after response completes (fire-and-forget)
-			if (request.userMessage && request.generateTitle !== false) {
+			if (request.userMessage && !!request.generateTitle && isNewThread) {
 				this.generateTitle(inferenceUrl, request.userMessage.content)
 					.then(title => {
 						this.persistence.updateThread(request.threadId, { title });

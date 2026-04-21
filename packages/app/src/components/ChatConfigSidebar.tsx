@@ -238,7 +238,6 @@ export function ChatConfigContentPanel({
 	const [savePresetName, setSavePresetName] = useState('');
 	const [showSaveInput, setShowSaveInput] = useState(false);
 	const settings = useStore(s => s.settings);
-	const currentServer = useStore(s => s.currentServerId ? s.servers[s.currentServerId] : null);
 
 	const showRawJSON = settings.showRawJSONChatConfig ?? false;
 
@@ -248,11 +247,6 @@ export function ChatConfigContentPanel({
 
 	const modelsRecord = useStore(s => s.models);
 	const models = useMemo(() => Object.values(modelsRecord), [modelsRecord]);
-
-	const currentModel = useMemo(() => {
-		if (!currentServer || !models) return null;
-		return models.find(m => m.primaryFile?.filePath === currentServer.modelPath) || null;
-	}, [currentServer, models]);
 
 	const displayParams = useMemo((): IChatInferenceParams => {
 		return { ...DEFAULT_INFERENCE_PARAMS, ...params };
