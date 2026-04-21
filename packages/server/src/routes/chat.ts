@@ -76,14 +76,16 @@ chatRouter.put('/threads/:id', async (req, res) => {
 		}
 		const body = req.body as Partial<IChatThreadCreatePayload>;
 		const meta = JSON.parse(thread.meta || '{}');
+		const strMeta = JSON.stringify({
+			serverId: body.serverId ?? meta.serverId,
+			tags: body.tags ?? meta.tags,
+		});
+
 		await persistence.updateThread(req.params.id, {
 			title: body.title ?? thread.title,
 			folderId: body.folderId ?? thread.folderId,
 			systemPrompt: body.systemPrompt ?? thread.systemPrompt,
-			meta: JSON.stringify({
-				serverId: body.serverId ?? meta.serverId,
-				tags: body.tags ?? meta.tags,
-			}),
+			meta: strMeta,
 		});
 
 		// Emit SSE event for all clients
@@ -93,6 +95,7 @@ chatRouter.put('/threads/:id', async (req, res) => {
 			updates: {
 				title: body.title ?? undefined,
 				folderId: body.folderId ?? undefined,
+				meta: strMeta,
 			},
 		});
 

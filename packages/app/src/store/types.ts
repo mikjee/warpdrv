@@ -100,13 +100,13 @@ export interface AppState {
 
 	// Current chat state
 	currentThreadId: TThreadId | null;
-	currentServerId: string | null;
 	currentSystemPrompt: string;
 	currentInferenceParams: Record<string, unknown>;
 	setCurrentThreadId: (id: TThreadId | null) => void;
-	setCurrentServerId: (id: string | null) => void;
 	setCurrentSystemPrompt: (prompt: string) => void;
 	setCurrentInferenceParams: (params: Record<string, unknown>) => void;
+	tempThreadServerId: string | null;
+	setTempThreadServerId: (id: string | null) => void;
 
 	// Recipes
 	recipes: Record<TRecipeId, IRecipe>;

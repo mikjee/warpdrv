@@ -25,6 +25,7 @@ import {
 import {
   ArrowDownIcon,
   ArrowUpIcon,
+  BrainCircuit,
   CheckIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
@@ -34,15 +35,18 @@ import {
   MoreHorizontalIcon,
   PencilIcon,
   RefreshCwIcon,
+  SendHorizonal,
   SquareIcon,
 } from "lucide-react";
 import React, { useCallback, useContext, useMemo, useState, type FC } from "react";
 import { BranchTokensContext, ChatConfigContext } from "@/pages/ChatPage";
 import { useStore } from "@/store";
+import { ThreadServerSelector } from "@/components/ServerSelector";
 import { useMessageTiming } from "@assistant-ui/react";
 import { BrainCircuitIcon, ClockIcon } from "lucide-react";
-import { EReasoningEffort, EServerStatus } from "@warpcore/shared";
+import { EReasoningEffort, EServerStatus, TServerId } from "@warpcore/shared";
 import { encodingForModel } from 'js-tiktoken';
+import { IconButton } from '@chakra-ui/react';
 
 const tokenEncoder = encodingForModel('gpt-4o');
 
@@ -58,11 +62,16 @@ export const ServerStatusContext = React.createContext<IServerStatusContext>({
 	isValidServer: false,
 });
 
-export const Thread: FC<{ isLoading?: boolean }> = React.memo(({ isLoading = false }) => {
+export const Thread: FC<{ 
+  isLoading?: boolean, 
+  currentServerId: TServerId | null
+}> = React.memo(({ isLoading = false, currentServerId }) => {
   const ThreadMsgFn = useCallback(() => <ThreadMessage />, []);
-  const currentServerId = useStore(s => s.currentServerId);
   const serversMap = useStore(s => s.servers);
-  const currentServer = currentServerId ? serversMap[currentServerId] || null : null;
+  const currentServer = useMemo(() => currentServerId ? serversMap[currentServerId] || null : null, [
+    currentServerId,
+    serversMap
+  ]);
   const currentServerStatus = currentServer?.status || null;
   const isValidServer = !!currentServerId && currentServer?.status === EServerStatus.RUNNING;
   return (
@@ -201,8 +210,16 @@ const ContextUsageBar: FC = () => {
 };
 
 const Composer: FC = () => {
+  const { isValidServer } = useContext(ServerStatusContext);
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    if (!isValidServer) {
+      e.preventDefault();
+    }
+  };
+  
   return (
-    <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
+    <ComposerPrimitive.Root onSubmit={handleSubmit} className="aui-composer-root relative flex w-full flex-col">
       <ComposerPrimitive.AttachmentDropzone asChild>
         <div
           data-slot="composer-shell"
@@ -241,26 +258,35 @@ const ReasoningEffortToggle: FC = () => {
   const label = isOn ? reasoningEffort : 'off';
   const color = isOn
     ? reasoningEffort === EReasoningEffort.LOW
-      ? 'text-blue-400'
+      ? '#1badd9'
       : reasoningEffort === EReasoningEffort.MEDIUM
-        ? 'text-amber-400'
-        : 'text-red-400'
-    : 'text-muted-foreground/40';
+        ? '#da980a'
+        : '#f83737'
+    : 'grey';
   return (
-    <button
-      type="button"
+    <IconButton
+      variant="outline"
+      size="md"
+      px="3"
+      ml="1"
+      borderRadius={"lg"}
+      borderWidth="1px"
+      borderColor="rgba(255,255,255,0.08)"
+      _hover={{ bg: 'rgba(255,255,255,0.05)' }}
+      color={color}
       onClick={next}
-      className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors hover:bg-accent ${color}`}
+      className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors hover:bg-accent`}
       title={`Reasoning effort: ${label} (click to cycle)`}
     >
-      <BrainCircuitIcon className={`size-3.5 ${isOn ? '' : 'opacity-40'}`} />
-      <span className="font-medium">{label}</span>
-    </button>
+      <BrainCircuit className={`${isOn ? '' : 'opacity-40'}`} />
+      <span style={{ textTransform: "capitalize", fontSize: "12px" }}>{label}</span>
+    </IconButton>
   );
 };
 
 const ComposerAction: FC = () => {
   const { isValidServer } = useContext(ServerStatusContext);
+  const currentThreadId = useStore(s => s.currentThreadId);
 
   return (
     <div className="aui-composer-action-wrapper relative flex items-center justify-between">
@@ -268,35 +294,36 @@ const ComposerAction: FC = () => {
         <ComposerAddAttachment />
         <ReasoningEffortToggle />
       </div>
-      <AuiIf condition={(s) => !s.thread.isRunning}>
-        <ComposerPrimitive.Send asChild>
-          <TooltipIconButton
-            disabled={!isValidServer}
-            tooltip={!isValidServer ? "Select and start a model first" : "Send message"}
-            side="bottom"
-            type="button"
-            variant="default"
-            size="icon"
-            className={`${!isValidServer ? 'opacity-50 cursor-not-allowed' : ''} aui-composer-send size-8 rounded-full`}
-            aria-label={!isValidServer ? "Send message - model not selected" : "Send message"}
-          >
-            <ArrowUpIcon className="aui-composer-send-icon size-4" />
-          </TooltipIconButton>
-        </ComposerPrimitive.Send>
-      </AuiIf>
-      <AuiIf condition={(s) => s.thread.isRunning}>
-        <ComposerPrimitive.Cancel asChild>
-          <Button
-            type="button"
-            variant="default"
-            size="icon"
-            className="aui-composer-cancel size-8 rounded-full"
-            aria-label="Stop generating"
-          >
-            <SquareIcon className="aui-composer-cancel-icon size-3 fill-current" />
-          </Button>
-        </ComposerPrimitive.Cancel>
-      </AuiIf>
+      <div className="flex items-center gap-2">
+        <ThreadServerSelector threadId={currentThreadId} />
+        <AuiIf condition={(s) => !s.thread.isRunning}>
+          <ComposerPrimitive.Send asChild>
+            <TooltipIconButton
+              disabled={!isValidServer}
+              tooltip={!isValidServer ? "Select and start a model first" : "Send message"}
+              side="bottom"
+              type="button"
+              variant="outline"
+              className={`${!isValidServer ? 'opacity-50 cursor-not-allowed' : ''} aui-composer-send size-9`}
+              aria-label={!isValidServer ? "Send message - model not selected" : "Send message"}
+            >
+              <SendHorizonal className="aui-composer-send-icon size-4" />
+            </TooltipIconButton>
+          </ComposerPrimitive.Send>
+        </AuiIf>
+        <AuiIf condition={(s) => s.thread.isRunning}>
+          <ComposerPrimitive.Cancel asChild>
+            <Button
+              type="button"
+              variant="outline"
+              className="aui-composer-cancel size-9"
+              aria-label="Stop generating"
+            >
+              <SquareIcon className="aui-composer-cancel-icon size-4 fill-current" />
+            </Button>
+          </ComposerPrimitive.Cancel>
+        </AuiIf>
+      </div>
     </div>
   );
 };

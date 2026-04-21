@@ -21,6 +21,13 @@ export function App() {
 		(window as any).getStoreState = () => useStore.getState();
 	}, []);
 
+	// disable rightclick
+	useEffect(() => {
+		const handler = (e: MouseEvent) => e.preventDefault();
+		document.addEventListener('contextmenu', handler);
+		return () => document.removeEventListener('contextmenu', handler);
+	}, []);
+
 	return (
 		<Routes>
 			<Route element={<Shell />}>

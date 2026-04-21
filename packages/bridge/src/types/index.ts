@@ -297,6 +297,7 @@ export interface ICompletionRequest {
 	messages: Array<{ role: string; content: string }>;
 	systemPrompt?: string;
 	inferenceParams: Record<string, unknown>;
+	presetId?: string | null;
 	tools?: IOpenAITool[];
 	attachments?: IMessagePartAttachment[];
 	generateTitle?: boolean;

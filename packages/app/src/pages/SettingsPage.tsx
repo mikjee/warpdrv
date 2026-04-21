@@ -41,7 +41,7 @@ export function SettingsPage() {
 	const [startMinimized, setStartMinimized] = useDependantState(settings.startMinimized);
 	const [checkpointsPath, setCheckpointsPath] = useDependantState(settings.checkpointsPath);
 	const [maxCheckpointDiskGB, setMaxCheckpointDiskGB] = useDependantState(settings.maxCheckpointDiskGB);
-	const [disabledTitleGen, setDisabledTitleGen] = useDependantState(settings.disabledTitleGen);
+	const [disableTitleGen, setDisableTitleGen] = useDependantState(settings.disableTitleGen);
 	const [newRoot, setNewRoot] = useState('');
 	const [saved, setSaved] = useState(false);
 	const [isDirty, setIsDirty] = useState(false);
@@ -135,7 +135,7 @@ const handleSave = async () => {
 				startMinimized,
 			checkpointsPath,
 			maxCheckpointDiskGB,
-			disabledTitleGen,
+			disableTitleGen,
 		});
 
 		if (saveMut.error) {
@@ -289,9 +289,9 @@ const handleSave = async () => {
 										Use the loaded model to generate a concise title for new conversations. When disabled, titles are derived from your first message.
 									</Text>
 								</Box>
-								<Switch.Root label='Generate titles' checked={!disabledTitleGen} onCheckedChange={(details) => dirtySetter(setDisabledTitleGen, !details.checked)}>
+								<Switch.Root label='Generate titles' checked={!disableTitleGen} onCheckedChange={(details) => dirtySetter(setDisableTitleGen, !details.checked)}>
 									<Switch.HiddenInput />
-									<Switch.Control css={{ bg: !disabledTitleGen ? '#3b86d6' : 'surface.4' }}>
+									<Switch.Control css={{ bg: !disableTitleGen ? '#3b86d6' : 'surface.4' }}>
 										<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
 									</Switch.Control>
 									<Switch.Label ml="2" fontSize="13px" userSelect="none">

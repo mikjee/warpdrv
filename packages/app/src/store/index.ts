@@ -17,7 +17,7 @@ import { createChatStoreSlice } from '@warpcore/bridge/client';
 
 export const useStore = create<AppState>()(
 	subscribeWithSelector(
-immer((set: ImmerSet<AppState>, get: ImmerGet<AppState>): AppState => {
+		immer((set: ImmerSet<AppState>, get: ImmerGet<AppState>): AppState => {
 			const sseConnection = sseConnectionSlice(set, get);
 				const servers = serversSlice(set, get);
 				const downloads = downloadsSlice(set, get);
@@ -25,10 +25,10 @@ immer((set: ImmerSet<AppState>, get: ImmerGet<AppState>): AppState => {
 				const backends = backendsSlice(set, get);
 				const models = modelsSlice(set, get);
 				const settings = settingsSlice(set, get);
- const proxy = proxySlice(set, get);
- const recipes = recipesSlice(set, get);
-		const checkpoints = checkpointsSlice(set, get);
-		const sseHandlers = sseHandlersSlice(set, get);
+				const proxy = proxySlice(set, get);
+				const recipes = recipesSlice(set, get);
+				const checkpoints = checkpointsSlice(set, get);
+				const sseHandlers = sseHandlersSlice(set, get);
 				const bridge = createChatStoreSlice(set, get);
 
 				return {
@@ -37,22 +37,22 @@ immer((set: ImmerSet<AppState>, get: ImmerGet<AppState>): AppState => {
 					setSseConnected: sseConnection.setSseConnected!,
 					testData: sseConnection.testData!,
 					servers: servers.servers!,
-serverStats: servers.serverStats!,
-				serverLogs: servers.serverLogs!,
-				serverSlots: servers.serverSlots!,
+					serverStats: servers.serverStats!,
+					serverLogs: servers.serverLogs!,
+					serverSlots: servers.serverSlots!,
 					downloads: downloads.downloads!,
-devices: devices.devices!,
+					devices: devices.devices!,
 					backends: backends.backends!,
 					backendGroups: backends.backendGroups!,
 					models: models.models!,
 					settings: settings.settings!,
- proxyStatus: proxy.proxyStatus!,
-				proxyRoutes: proxy.proxyRoutes!,
-recipes: recipes.recipes!,
-			activeRun: recipes.activeRun!,
-			stepOutputs: recipes.stepOutputs!,
-			checkpoints: checkpoints.checkpoints!,
-				SSEHandlers: sseHandlers.SSEHandlers!,
+ 					proxyStatus: proxy.proxyStatus!,
+					proxyRoutes: proxy.proxyRoutes!,
+					recipes: recipes.recipes!,
+					activeRun: recipes.activeRun!,
+					stepOutputs: recipes.stepOutputs!,
+					checkpoints: checkpoints.checkpoints!,
+					SSEHandlers: sseHandlers.SSEHandlers!,
 
 					// Bridge Chat State
 					threads: bridge.threads,
@@ -94,13 +94,13 @@ recipes: recipes.recipes!,
 
 					// Current chat state
 					currentThreadId: bridge.currentThreadId,
-					currentServerId: bridge.currentServerId,
 					currentSystemPrompt: bridge.currentSystemPrompt,
 					currentInferenceParams: bridge.currentInferenceParams,
 					setCurrentThreadId: bridge.setCurrentThreadId,
-					setCurrentServerId: bridge.setCurrentServerId,
 					setCurrentSystemPrompt: bridge.setCurrentSystemPrompt,
 					setCurrentInferenceParams: bridge.setCurrentInferenceParams,
+					tempThreadServerId: bridge.tempThreadServerId,
+					setTempThreadServerId: bridge.setTempThreadServerId,
 				};
 		}),
 	),

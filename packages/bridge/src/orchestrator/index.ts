@@ -72,7 +72,9 @@ export class Orchestrator {
 		try {
 			// Auto-create thread if needed
 			let thread = await this.persistence.getThread(request.threadId);
+			let isNewThread: boolean = false;
 			if (!thread) {
+				isNewThread = true;
 				const now = Date.now();
 				let title = 'New Chat';
 				if (request.userMessage) {
@@ -83,13 +85,19 @@ export class Orchestrator {
 					title,
 					folderId: null,
 					systemPrompt: '',
-					meta: '{}',
+					meta: JSON.stringify({ serverId: request.serverId ?? null, tags: [] }),
 					totalPromptTokens: 0,
 					totalCompletionTokens: 0,
 					createdAt: now,
 					updatedAt: now,
 				};
 				await this.persistence.createThread(thread);
+				await this.persistence.setThreadConfig({
+					threadId: request.threadId,
+					presetId: request.presetId ?? null,
+					systemPrompt: request.systemPrompt ?? '',
+					params: JSON.stringify(request.inferenceParams ?? {}),
+				});
 				this.broadcaster.emit({ type: 'thread.created', thread });
 			}
 
@@ -188,7 +196,7 @@ export class Orchestrator {
 			);
 
 			// Fire title generation after response completes (fire-and-forget)
-			if (request.userMessage && request.generateTitle !== false) {
+			if (request.userMessage && !!request.generateTitle && isNewThread) {
 				this.generateTitle(inferenceUrl, request.userMessage.content)
 					.then(title => {
 						this.persistence.updateThread(request.threadId, { title });

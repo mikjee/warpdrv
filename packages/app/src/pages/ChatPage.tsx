@@ -26,6 +26,7 @@ import { buildMessageChain, useDerivedMsgsForUI } from '@/hooks/useChatSelectors
 import { useThreadConfig } from '@/hooks/useThreadConfig';
 import { convertMessagesToOpenAIFormat } from '@warpcore/bridge';
 import { useToast } from '../components/ToastProvider';
+import { parseThreadMeta } from '@/components/ServerSelector';
 
 const getFileDataURL = (file: File): Promise<string> =>
 	new Promise((resolve, reject) => {
@@ -171,12 +172,9 @@ export const BranchTokensContext = React.createContext(0);
 // ChatInner — main chat layout using bridge store
 // ============================================================
 const emptyMsgs = {};
-const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
-	// Removed: const [configOpen, setConfigOpen] = useState(false);
-	// Removed: const [toolsOpen, setToolsOpen] = useState(false);
+const ChatInner = React.memo(() => {
 	const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
-	const settings = useStore(s => s.settings);
-	const [generateTitle, setGenerateTitle] = useDependantState(!settings.disabledTitleGen);
+	const generateTitle = useStore(s => !s.settings.disableTitleGen);
 
 	const { toast } = useToast();
 	const inferenceError = useStore(s => s.inferenceError);
@@ -188,13 +186,28 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	}, [inferenceError, toast]);
 
 	// Get current thread state from store
-	const currentServerId = useStore(s => s.currentServerId);
+	const tempThreadServerId = useStore(s => s.tempThreadServerId);
 	const setCurrentThreadId = useStore(s => s.setCurrentThreadId);
+	const thread = useStore(s => s.currentThreadId ? s.threads[s.currentThreadId] : undefined);
+	const threadServerId = useMemo(() => 
+		thread?.meta ? parseThreadMeta(thread.meta).serverId : null, 
+		[thread]
+	);
+
+	const currentServerId = useMemo(() => threadServerId ?? tempThreadServerId, [
+		threadServerId,
+		tempThreadServerId,
+	]);
 
 	// Check if current server is valid (selected AND running)
 	const serversMap = useStore(s => s.servers);
-	const currentServer = serversMap[currentServerId || ''] || null;
+	const currentServer = useMemo(() => currentServerId ? serversMap[currentServerId] : null, [
+		currentServerId, 
+		serversMap
+	]);
 	const isValidServer = currentServerId && currentServer?.status === EServerStatus.RUNNING;
+
+	const contextSize = useMemo(() => currentServer?.params?.contextSize ?? 0, [currentServer]);
 
 	// Load config when thread changes
 	const {
@@ -363,6 +376,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 			messages: openAIMessages,
 			systemPrompt: currentSystemPrompt,
 			inferenceParams: currentInferenceParams,
+			presetId: selectedPresetId,
 			generateTitle,
 		};
 		
@@ -375,7 +389,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(body),
 		});
-	}, [currentThreadId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, toolCallsById, currentServerId]);
+	}, [currentThreadId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, toolCallsById, currentServerId, isValidServer]);
 
 	const onReload = useCallback(async (parentId: string | null) => {
 		if (!isValidServer || !parentId) return;
@@ -401,10 +415,11 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 				messages: openAIMessages,
 				systemPrompt: currentSystemPrompt,
 				inferenceParams: currentInferenceParams,
+				presetId: selectedPresetId,
 				generateTitle,
 			}),
 		});
-	}, [currentThreadId, currentSystemPrompt, currentInferenceParams, toolCallsById, currentServerId]);
+	}, [currentThreadId, currentSystemPrompt, currentInferenceParams, toolCallsById, currentServerId, isValidServer]);
 
 	const onCancel = useCallback(async () => {
 		if (currentThreadId && isValidServer) {
@@ -492,7 +507,7 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 						</Box>
 						<Box flex="1" overflow="hidden">
 							<BranchTokensContext value={branchTokenCount}>
-								<Thread isLoading={isLoadingThread} />
+								<Thread isLoading={isLoadingThread} currentServerId={currentServerId} />
 							</BranchTokensContext>
 						</Box>
 						{/* New unified sidebar with tabs */}
@@ -511,37 +526,16 @@ const ChatInner = React.memo(({ contextSize }: { contextSize: number }) => {
 	);
 });
 export const ChatPage = React.memo(() => {
-	const serversMap = useStore(s => s.servers);
-	const serversArray = useMemo(() => Object.values(serversMap), [serversMap]);
-	const currentServerId = useStore(s => s.currentServerId);
-	const setCurrentServerId = useStore(s => s.setCurrentServerId);
-	const selected = serversArray.find((s: IServer) => s.id === currentServerId);
-	
-	// Auto-select first running server if none selected
-	useEffect(() => {
-		if (!currentServerId) {
-			const runningServers = Object.values(serversMap).filter(s => s.status === EServerStatus.RUNNING);
-			if (runningServers.length > 0) {
-				const firstRunning = runningServers[0];
-				if (firstRunning) {
-					setCurrentServerId(firstRunning.id);
-				}
-			}
-		}
-	}, [serversMap, currentServerId, setCurrentServerId]);
 	
 	return (
 		<Flex direction="column" h="100%" overflow="hidden">
 			<PageHeader
 				title="Chat"
 				icon={<MessageSquare size={20} />}
-				actions={
-					<ServerSelector servers={serversArray} selectedId={currentServerId} onSelect={setCurrentServerId} />
-				}
 			/>
 			<Flex flex="1" overflow="hidden">
 				<Flex flex="1" overflow="hidden">
-					<ChatInner contextSize={selected?.params?.contextSize ?? 0} />
+					<ChatInner />
 				</Flex>			
 			</Flex>
 		</Flex>

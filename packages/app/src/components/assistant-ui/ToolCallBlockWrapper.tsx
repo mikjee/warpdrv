@@ -2,6 +2,8 @@ import { ToolCallBlock } from '@/components/ToolCallBlock';
 import { useStore } from '@/store';
 import { EToolCallStatus, convertMessagesToOpenAIFormat } from '@warpcore/bridge';
 import { buildMessageChain } from '@/hooks/useChatSelectors';
+import { useContext } from 'react';
+import { ServerStatusContext } from '@/components/assistant-ui/thread';
 
 interface IToolCallBlockWrapperProps {
 	toolCallId: string;
@@ -14,7 +16,7 @@ interface IToolCallBlockWrapperProps {
 
 export function ToolCallBlockWrapper({ toolCallId, toolName, serverName, args, result, status }: IToolCallBlockWrapperProps) {
 	const currentThreadId = useStore(s => s.currentThreadId);
-	const currentServerId = useStore(s => s.currentServerId);
+	const { currentServerId } = useContext(ServerStatusContext);
 	const currentSystemPrompt = useStore(s => s.currentSystemPrompt);
 	const currentInferenceParams = useStore(s => s.currentInferenceParams);
 	const toolCall = useStore(s => s.toolCallsById[toolCallId]);
