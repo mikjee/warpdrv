@@ -91,7 +91,7 @@ function ServerSelector({
 	const [open, setOpen] = useState(false);
 	const selected = servers.find((s) => s.id === selectedId);
 	return (
-		<Box position="relative" style={{ left: "calc(400px - 50vw)" }}>
+		<Box>
 			<HStack
 				gap="2"
 				px="3"
@@ -105,7 +105,7 @@ function ServerSelector({
 				onClick={() => setOpen(!open)}
 				fontSize="13px"
 				color="rgba(255,255,255,0.7)"
-				minW="500px"
+				minW="300px"
 			>
 				{selected ? (
 					<>
@@ -534,7 +534,6 @@ export const ChatPage = React.memo(() => {
 		<Flex direction="column" h="100%" overflow="hidden">
 			<PageHeader
 				title="Chat"
-				subtitle="Talk to your models"
 				icon={<MessageSquare size={20} />}
 				actions={
 					<ServerSelector servers={serversArray} selectedId={currentServerId} onSelect={setCurrentServerId} />

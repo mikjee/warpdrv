@@ -156,7 +156,7 @@ export function PageHeader({ title, subtitle, icon, actions, actionsRight }: IPa
 			align="center"
 			px="4"
 			py="2"
-			borderWidth="1px"
+			borderBottomWidth="1px"
 			borderColor="rgba(255, 255, 255, 0.06)"
 			bg="#0c0c0c"
 			onMouseDown={handleMouseDown}
@@ -186,11 +186,11 @@ export function PageHeader({ title, subtitle, icon, actions, actionsRight }: IPa
 					<Text fontSize="14px" fontWeight="500" letterSpacing="-0.02em" color="#7d7d7d">
 						{title}
 					</Text>
-					{/* {subtitle && (
-						<Text fontSize="11px" color="rgba(255, 255, 255, 0.4)">
+					{subtitle && (
+						<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">
 							{subtitle}
 						</Text>
-					)} */}
+					)}
 				</Box>
 				{actions && <HStack gap="2" pl="5" borderLeft={"1px solid rgb(30,30,30)"} >{actions}</HStack>}
 			</HStack>

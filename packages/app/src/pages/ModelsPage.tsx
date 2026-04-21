@@ -239,58 +239,58 @@ export function ModelsPage() {
 
 	return (
 		<Box>
-			<PageHeader
+<PageHeader
 				title="Models"
-				subtitle={`${models.length} models found`}
+				subtitle={`${models.length} LLMs`}
 				icon={<FolderOpen size={20} />}
 				actions={
-					<HStack gap="2">
-						<Box position="relative">
-							<Search
-								size={14}
-								style={{
-									position: 'absolute',
-									left: '10px',
-									top: '50%',
-									transform: 'translateY(-50%)',
-									color: 'rgba(255, 255, 255, 0.25)',
-									pointerEvents: 'none',
-								}}
-							/>
-							<Input
-								placeholder="Search models..."
-								value={search}
-								onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-								size="sm"
-								pl="8"
-								w="220px"
-								bg="rgba(255, 255, 255, 0.03)"
-								borderColor="rgba(255, 255, 255, 0.08)"
-								borderRadius="lg"
-								fontSize="13px"
-								color="#e4e4e7"
-								_placeholder={{ color: 'rgba(255, 255, 255, 0.25)' }}
-								_hover={{ borderColor: 'rgba(255, 255, 255, 0.12)' }}
-								_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', boxShadow: 'none' }}
-							/>
-						</Box>
-						<Button
-							size="sm"
-							bg="rgba(51, 129, 255, 0.12)"
-							color="#3381ff"
-							borderWidth="1px"
-							borderColor="rgba(51, 129, 255, 0.25)"
-							_hover={{ bg: 'rgba(51, 129, 255, 0.2)' }}
+					<Box position="relative">
+						<Search
+							size={14}
+							style={{
+								position: 'absolute',
+								left: '10px',
+								top: '50%',
+								transform: 'translateY(-50%)',
+								color: 'rgba(255, 255, 255, 0.25)',
+								pointerEvents: 'none',
+							}}
+						/>
+						<Input
+							placeholder="Search models..."
+							value={search}
+							onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+							size="xs"
+							pl="8"
+							w="220px"
+							bg="rgba(255, 255, 255, 0.03)"
+							borderColor="rgba(255, 255, 255, 0.08)"
 							borderRadius="lg"
 							fontSize="13px"
-							fontWeight="500"
-							onClick={handleScan}
-							disabled={scanMut.loading}
-						>
-							{scanMut.loading ? <Spinner size="xs" /> : <Search size={15} />}
-							Re-Scan Folders
-						</Button>
-					</HStack>
+							color="#e4e4e7"
+							_placeholder={{ color: 'rgba(255, 255, 255, 0.25)' }}
+							_hover={{ borderColor: 'rgba(255, 255, 255, 0.12)' }}
+							_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', boxShadow: 'none' }}
+						/>
+					</Box>
+				}
+				actionsRight={
+					<Button
+						size="sm"
+						bg="rgba(51, 129, 255, 0.12)"
+						color="#3381ff"
+						borderWidth="1px"
+						borderColor="rgba(51, 129, 255, 0.25)"
+						_hover={{ bg: 'rgba(51, 129, 255, 0.2)' }}
+						borderRadius="lg"
+						fontSize="13px"
+						fontWeight="500"
+						onClick={handleScan}
+						disabled={scanMut.loading}
+					>
+						{scanMut.loading ? <Spinner size="xs" /> : <Search size={15} />}
+						Re-Scan Folders
+					</Button>
 				}
 			/>
 

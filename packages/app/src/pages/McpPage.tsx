@@ -609,7 +609,7 @@ export function McpPage() {
 		<Flex direction="column" h="100%" overflow="hidden">
 			<PageHeader
 				title="MCP"
-				subtitle="Model Context Protocol servers and tools"
+				subtitle={`${Object.entries(serverEntries).length} Servers`}
 				icon={<Plug size={20} />}
 				actions={
 					<HStack gap="2">

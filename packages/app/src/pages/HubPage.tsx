@@ -148,10 +148,58 @@ export function HubPage() {
 	return (
 		<Box>
 			<PageHeader
-				title="Hub"
-				subtitle="Browse and download models from HuggingFace"
+				title="HuggingFace"
 				icon={<Globe size={20} />}
 				actions={
+					<HStack gap="2">
+						<Box position="relative">
+							<Input
+								placeholder="Search models or users..."
+								size="xs" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)"
+								color="rgba(255, 255, 255, 0.7)" fontSize="13px" borderRadius="lg" pl="9"
+								_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
+								_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
+								value={query} onChange={e => setQuery(e.target.value)}
+								onKeyDown={e => e.key === 'Enter' && handleSearch()}
+								w="200px"
+							/>
+							<Box position="absolute" left="3" top="50%" transform="translateY(-50%)" color="rgba(255, 255, 255, 0.25)">
+								<Search size={14} />
+							</Box>
+						</Box>
+						<HStack gap="2" alignItems="center">
+							<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">Params</Text>
+							<Slider.Root
+								w="150px"
+								size="sm"
+								colorPalette="blue"
+								value={paramsRange}
+								min={0}
+								max={PARAM_STEPS.length - 1}
+								minStepsBetweenThumbs={1}
+								onValueChange={(details) => setParamsRange(details.value as [number, number])}
+							>
+								<Slider.Control>
+									<Slider.Track>
+										<Slider.Range />
+									</Slider.Track>
+									<Slider.Thumbs />
+								</Slider.Control>
+							</Slider.Root>
+							<Text fontSize="10px" color="rgba(255, 255, 255, 0.5)">{PARAM_STEPS[paramsRange[0]]}B - {PARAM_STEPS[paramsRange[1]]}B</Text>
+						</HStack>
+						<Button
+							size="xs" bgGradient="to-r" gradientFrom="#3381ff" gradientTo="#5b6af5"
+							color="white" _hover={{ opacity: 0.9 }}
+							borderRadius="lg" fontSize="13px" fontWeight="600"
+							onClick={handleSearch} disabled={!query.trim() || searching} px="5"
+						>
+							{searching ? <Spinner size="xs" /> : <Search size={14} />}
+							Search
+						</Button>
+					</HStack>
+				}
+				actionsRight={
 					<Button
 						size="sm" variant="outline"
 						bg={activeDownloadCount > 0 ? 'rgba(51, 129, 255, 0.08)' : 'rgba(255, 255, 255, 0.03)'}
@@ -171,61 +219,6 @@ export function HubPage() {
 					</Button>
 				}
 			/>
-
-			{/* Search bar */}
-			<Flex
-				p="4" gap="3" align="center" flexWrap="wrap"
-			>
-				<HStack flex="1" minW="280px" gap="2">
-					<Box position="relative">
-						<Input
-							placeholder="Search models or users..."
-							size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)"
-							color="rgba(255, 255, 255, 0.7)" fontSize="13px" borderRadius="lg" pl="9"
-							_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
-							_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
-							value={query} onChange={e => setQuery(e.target.value)}
-							onKeyDown={e => e.key === 'Enter' && handleSearch()}
-							maxW={"300px"}
-						/>
-						<Box position="absolute" left="3" top="50%" transform="translateY(-50%)" color="rgba(255, 255, 255, 0.25)">
-							<Search size={14} />
-						</Box>
-					</Box>
-					<Button
-						size="sm" bgGradient="to-r" gradientFrom="#3381ff" gradientTo="#5b6af5"
-						color="white" _hover={{ opacity: 0.9 }}
-						borderRadius="lg" fontSize="13px" fontWeight="600"
-						onClick={handleSearch} disabled={!query.trim() || searching} px="5"
-					>
-						{searching ? <Spinner size="xs" /> : <Search size={14} />}
-						Search
-					</Button>
-				</HStack>
-
-				{/* Param range */}
-				<HStack gap="2" alignItems="center">
-					<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">Params</Text>
-					<Slider.Root
-						w="150px"
-						size="sm"
-						colorPalette="blue"
-						value={paramsRange}
-						min={0}
-						max={PARAM_STEPS.length - 1}
-						minStepsBetweenThumbs={1}
-						onValueChange={(details) => setParamsRange(details.value as [number, number])}
-					>
-						<Slider.Control>
-							<Slider.Track>
-								<Slider.Range />
-							</Slider.Track>
-							<Slider.Thumbs />
-						</Slider.Control>
-					</Slider.Root>
-					<Text fontSize="10px" color="rgba(255, 255, 255, 0.5)">{PARAM_STEPS[paramsRange[0]]}B - {PARAM_STEPS[paramsRange[1]]}B</Text>
-				</HStack>
-			</Flex>
 
 			{/* Results + Detail */}
 			<Flex h="calc(100vh - 153px)" borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" overflow="hidden">

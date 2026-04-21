@@ -220,89 +220,14 @@ export function CheckpointsPage() {
 	return (
 		<Box>
 			<PageHeader
-				title="Checkpoints"
-				subtitle="Saved KV cache states"
+				title="KV Cache"
+				subtitle={`${ grouped.bundles.length | grouped.standalone.length } Checkpoints`}
 				icon={<Database size={20} />}
-			/>
-			<Box p="4">
-				<Flex mb="4" gap="3">
-					<HStack gap="1.5">
-						{(() => {
-							const sortCollection = createListCollection({
-								items: (Object.keys(FIELD_LABELS) as TCheckpointSortField[]).map(f => ({ value: f, label: FIELD_LABELS[f] })),
-								itemToString: (item) => item.label,
-							});
-							return (
-								<Combobox.Root
-									collection={sortCollection}
-									value={[sortField]}
-									onValueChange={(details) => {
-										const val = details.value?.[0] as TCheckpointSortField;
-										if (val) handleSortChange(val, sortOrder);
-									}}
-								>
-									<Combobox.Control>
-										<Combobox.Trigger asChild>
-											<Button
-												variant="outline"
-												size="sm"
-												w="150px"
-												justifyContent="space-between"
-												bg="rgba(255, 255, 255, 0.03)"
-												borderColor="rgba(255, 255, 255, 0.08)"
-												color="rgba(255, 255, 255, 0.7)"
-												fontSize="13px"
-												borderRadius="lg"
-											>
-												{FIELD_LABELS[sortField]}
-												<ChevronDown size={14} />
-											</Button>
-										</Combobox.Trigger>
-									</Combobox.Control>
-									<Portal>
-										<Combobox.Positioner>
-											<Combobox.Content
-												maxH="200px" overflowY="auto"
-												bg="#181818" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
-												borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
-											>
-												{sortCollection.items.map((item) => (
-													<Combobox.Item
-														key={item.value}
-														item={item}
-														px="3" py="2" borderRadius="md" cursor="pointer"
-														_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
-														_highlighted={{ bg: '#181818' }}
-													>
-														<Text fontSize="12px" color="#e4e4e7">{item.label}</Text>
-														<Combobox.ItemIndicator />
-													</Combobox.Item>
-												))}
-											</Combobox.Content>
-										</Combobox.Positioner>
-									</Portal>
-								</Combobox.Root>
-							);
-						})()}
-						<Button
-							size="sm"
-							variant="outline"
-							bg="rgba(255, 255, 255, 0.03)"
-							borderColor="rgba(255, 255, 255, 0.08)"
-							color="rgba(255, 255, 255, 0.5)"
-							p="1" minW="auto"
-							borderRadius="md"
-							_hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
-							title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
-							onClick={() => handleSortChange(sortField, sortOrder === 'asc' ? 'desc' : 'asc')}
-						>
-							{sortOrder === 'asc' ? <ArrowUpAZ size={14} /> : <ArrowDownZA size={14} />}
-						</Button>
-					</HStack>
-					<Box flex="1" maxW="300px">
-						<InputGroup startElement={<Search size={14} color="rgba(255, 255, 255, 0.3)" />}>
+				actions={
+					<HStack gap="2">
+						<InputGroup startElement={<Search size={14} color="rgba(255, 255, 255, 0.3)" />} w="200px">
 							<Input
-								size="sm"
+								size="xs"
 								value={search}
 								onChange={(e) => setSearch(e.target.value)}
 								placeholder="Search checkpoints..."
@@ -315,8 +240,82 @@ export function CheckpointsPage() {
 								_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
 							/>
 						</InputGroup>
-					</Box>
-				</Flex>
+						<HStack gap="1.5">
+							{(() => {
+								const sortCollection = createListCollection({
+									items: (Object.keys(FIELD_LABELS) as TCheckpointSortField[]).map(f => ({ value: f, label: FIELD_LABELS[f] })),
+									itemToString: (item) => item.label,
+								});
+								return (
+									<Combobox.Root
+										collection={sortCollection}
+										value={[sortField]}
+										onValueChange={(details) => {
+											const val = details.value?.[0] as TCheckpointSortField;
+											if (val) handleSortChange(val, sortOrder);
+										}}
+									>
+										<Combobox.Control>
+											<Combobox.Trigger asChild>
+												<Button
+													variant="outline"
+													size="xs"
+													w="150px"
+													justifyContent="space-between"
+													bg="rgba(255, 255, 255, 0.03)"
+													borderColor="rgba(255, 255, 255, 0.08)"
+													color="rgba(255, 255, 255, 0.7)"
+													fontSize="13px"
+													borderRadius="lg"
+												>
+													{FIELD_LABELS[sortField]}
+													<ChevronDown size={14} />
+												</Button>
+											</Combobox.Trigger>
+										</Combobox.Control>
+										<Portal>
+											<Combobox.Positioner>
+												<Combobox.Content
+													maxH="200px" overflowY="auto"
+													bg="#181818" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
+													borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
+												>
+													{sortCollection.items.map((item) => (
+														<Combobox.Item
+															key={item.value}
+															item={item}
+															px="3" py="2" borderRadius="md" cursor="pointer"
+															_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
+															_highlighted={{ bg: '#181818' }}
+														>
+															<Text fontSize="12px" color="#e4e4e7">{item.label}</Text>
+															<Combobox.ItemIndicator />
+														</Combobox.Item>
+													))}
+												</Combobox.Content>
+											</Combobox.Positioner>
+										</Portal>
+									</Combobox.Root>
+								);
+							})()}
+							<Button
+								size="xs"
+								variant="outline"
+								bg="rgba(255, 255, 255, 0.03)"
+								borderColor="rgba(255, 255, 255, 0.08)"
+								color="rgba(255, 255, 255, 0.5)"
+								borderRadius="md"
+								_hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
+								title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+								onClick={() => handleSortChange(sortField, sortOrder === 'asc' ? 'desc' : 'asc')}
+							>
+								{sortOrder === 'asc' ? <ArrowUpAZ size={14} /> : <ArrowDownZA size={14} />}
+							</Button>
+						</HStack>
+					</HStack>
+				}
+			/>
+			<Box p="4">
 
 				<VStack
 					gap="1"

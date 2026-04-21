@@ -237,95 +237,15 @@ export function BackendsPage() {
 	return (
 		<Box>
 			<PageHeader
-				title="Backends"
-				subtitle="Registered llama.cpp builds"
+				title="Llama.cpp"
+				subtitle={` ${backends.length} Builds, ${groups.length} Groups`}
 				icon={<Blocks size={20} />}
-			/>
-
-			{/* Subheader: Sort + Search */}
-			<Box p="4" borderColor="rgba(255, 255, 255, 0.06)" borderBottomWidth="1px">
-				<Flex justify="space-between" align="center" wrap="wrap" gap="3">
-					{/* Left: Sort controls */}
+				actions={
 					<HStack gap="2">
-						{(() => {
-							const sortCollection = createListCollection({
-								items: (Object.keys(FIELD_LABELS) as TBackendSortField[]).map(f => ({ value: f, label: FIELD_LABELS[f] })),
-								itemToString: (item) => item.label ?? '',
-							});
-							return (
-								<Combobox.Root
-									collection={sortCollection}
-									value={[sortField]}
-									onValueChange={(details) => {
-										const val = details.value?.[0] as TBackendSortField;
-if (val) handleSortChange(val, sortOrder);
-										}}
-								>
-									<Combobox.Control>
-										<Combobox.Trigger asChild>
-											<Button
-												variant="outline"
-												size="sm"
-												w="170px"
-												justifyContent="space-between"
-												bg="rgba(255, 255, 255, 0.03)"
-												borderColor="rgba(255, 255, 255, 0.08)"
-												color="rgba(255, 255, 255, 0.7)"
-												fontSize="13px"
-												borderRadius="lg"
-											>
-												{FIELD_LABELS[sortField]}
-												<ChevronDown size={14} />
-											</Button>
-										</Combobox.Trigger>
-									</Combobox.Control>
-									<Portal>
-										<Combobox.Positioner>
-											<Combobox.Content
-												maxH="200px" overflowY="auto"
-												bg="#181818" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
-												borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
-											>
-												{sortCollection.items.map((item) => (
-													<Combobox.Item
-														key={item.value}
-														item={item}
-														px="3" py="2" borderRadius="md" cursor="pointer"
-														_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
-														_highlighted={{ bg: '#181818' }}
-													>
-														<Text fontSize="12px" color="#e4e4e7">{item.label}</Text>
-														<Combobox.ItemIndicator />
-													</Combobox.Item>
-												))}
-											</Combobox.Content>
-										</Combobox.Positioner>
-									</Portal>
-								</Combobox.Root>
-							);
-						})()}
-						<Button
-							size="sm"
-							variant="outline"
-							bg="rgba(255, 255, 255, 0.03)"
-							borderColor="rgba(255, 255, 255, 0.08)"
-							color="rgba(255, 255, 255, 0.5)"
-							p="1" minW="auto"
-							borderRadius="md"
-							_hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
-							title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
-							onClick={() => handleSortChange(sortField, sortOrder === 'asc' ? 'desc' : 'asc')}
-						>
-							{sortOrder === 'asc' ? <ArrowUpAZ size={14} /> : <ArrowDownZA size={14} />}
-						</Button>
-					</HStack>
-
-					{/* Right: Search */}
-					<Box flex="1" maxW="300px">
-						<InputGroup startElement={<Search size={14} color="rgba(255, 255, 255, 0.3)" />}>
+						<InputGroup startElement={<Search size={14} color="rgba(255, 255, 255, 0.3)" />} w="220px">
 							<Input
-								placeholder="Search backends and groups..."
-								size="sm"
+								placeholder="Search backends and groups"
+								size="xs"
 								bg="rgba(255, 255, 255, 0.03)"
 								borderColor="rgba(255, 255, 255, 0.08)"
 								color="rgba(255, 255, 255, 0.7)"
@@ -337,9 +257,82 @@ if (val) handleSortChange(val, sortOrder);
 								onChange={e => setSearchQuery(e.target.value)}
 							/>
 						</InputGroup>
-					</Box>
-				</Flex>
-			</Box>
+						<HStack gap="1.5">
+							{(() => {
+								const sortCollection = createListCollection({
+									items: (Object.keys(FIELD_LABELS) as TBackendSortField[]).map(f => ({ value: f, label: FIELD_LABELS[f] })),
+									itemToString: (item) => item.label ?? '',
+								});
+								return (
+									<Combobox.Root
+										collection={sortCollection}
+										value={[sortField]}
+										onValueChange={(details) => {
+											const val = details.value?.[0] as TBackendSortField;
+											if (val) handleSortChange(val, sortOrder);
+										}}
+									>
+										<Combobox.Control>
+											<Combobox.Trigger asChild>
+												<Button
+													variant="outline"
+													size="xs"
+													w="170px"
+													justifyContent="space-between"
+													bg="rgba(255, 255, 255, 0.03)"
+													borderColor="rgba(255, 255, 255, 0.08)"
+													color="rgba(255, 255, 255, 0.7)"
+													fontSize="13px"
+													borderRadius="lg"
+												>
+													{FIELD_LABELS[sortField]}
+													<ChevronDown size={14} />
+												</Button>
+											</Combobox.Trigger>
+										</Combobox.Control>
+										<Portal>
+											<Combobox.Positioner>
+												<Combobox.Content
+													maxH="200px" overflowY="auto"
+													bg="#181818" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
+													borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
+												>
+													{sortCollection.items.map((item) => (
+														<Combobox.Item
+															key={item.value}
+															item={item}
+															px="3" py="2" borderRadius="md" cursor="pointer"
+															_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
+															_highlighted={{ bg: '#181818' }}
+														>
+															<Text fontSize="12px" color="#e4e4e7">{item.label}</Text>
+															<Combobox.ItemIndicator />
+														</Combobox.Item>
+													))}
+												</Combobox.Content>
+											</Combobox.Positioner>
+										</Portal>
+									</Combobox.Root>
+								);
+							})()}
+							<Button
+								size="xs"
+								variant="outline"
+								bg="rgba(255, 255, 255, 0.03)"
+								borderColor="rgba(255, 255, 255, 0.08)"
+								color="rgba(255, 255, 255, 0.5)"
+								p="1" minW="auto"
+								borderRadius="md"
+								_hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
+								title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+								onClick={() => handleSortChange(sortField, sortOrder === 'asc' ? 'desc' : 'asc')}
+							>
+								{sortOrder === 'asc' ? <ArrowUpAZ size={14} /> : <ArrowDownZA size={14} />}
+							</Button>
+						</HStack>
+					</HStack>
+				}
+			/>
 
 			<Box p="4">
 				<VStack align="stretch" gap="4">
