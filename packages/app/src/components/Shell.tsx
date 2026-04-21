@@ -34,6 +34,7 @@ import { ChatPage } from '../pages/ChatPage';
 import { McpPage } from '../pages/McpPage';
 import { RecipesPage } from '../pages/RecipesPage';
 import { CheckpointsPage } from '../pages/CheckpointsPage';
+import { useTauriWindow } from '@/hooks/useTauriWindow';
 
 // Page lifecycle config: closeOnSwitch=false means page persists (hidden but not unmounted)
 type TPageConfig = {
@@ -209,6 +210,7 @@ function SidebarLink({
 	return (
 		<NavLink to={item.path!} style={{ textDecoration: 'none', width: '100%' }}>
 			<HStack
+				className='no-drag'
 				gap={collapsed ? '0' : '3'}
 				px={collapsed ? '0' : '3'}
 				py="2.5"
@@ -255,6 +257,13 @@ export const Shell = React.memo(() => {
 
 	const isCollapsed = collapsed;
 
+	const {
+		installHook,
+		handleDoubleClick,
+	} = useTauriWindow();
+
+	installHook();
+
 	// Render pages based on closeOnSwitch config
 	const renderPages = () => {
 		return Object.entries(PAGE_REGISTRY).map(([path, config]) => {
@@ -296,6 +305,9 @@ export const Shell = React.memo(() => {
 					transition="all 0.2s ease"
 					zIndex={100}
 					boxShadow={"0px 0px 10px rgba(0,0,0,1)"}
+
+					className='drag'
+					onDoubleClick={handleDoubleClick}
 				>
 					{/* Logo */}
 					<HStack
