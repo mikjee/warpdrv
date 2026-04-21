@@ -95,6 +95,7 @@ export function buildArgs(
 	if (params.directIo && !argsSet.has('-dio')) args.push('-dio');
 	if (params.noWarmup && !argsSet.has('--no-warmup')) args.push('--no-warmup');
 	if (params.jinja && !argsSet.has('--jinja')) args.push('--jinja');
+	if (params.swaFull && !argsSet.has('--swa-full')) args.push('--swa-full');
 	if (params.kvQuantK !== EKvQuantType.F16) args.push('--cache-type-k', params.kvQuantK);
 	if (params.kvQuantV !== EKvQuantType.F16) args.push('--cache-type-v', params.kvQuantV);
 	if (params.chatTemplate) args.push('--chat-template', params.chatTemplate);

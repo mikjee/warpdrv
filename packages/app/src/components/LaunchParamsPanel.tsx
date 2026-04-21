@@ -210,6 +210,7 @@ interface ILaunchParamsPanelProps {
 	directIo: boolean;
 	noWarmup: boolean;
 	jinja: boolean;
+	swaFull: boolean;
 	useMultiModal: boolean;
 	hasMmproj: boolean;
 	kvQuantK: EKvQuantType;
@@ -232,7 +233,7 @@ export function LaunchParamsPanel({
 	mode,
 	gpuLayers, contextSize, batchSize, ubatchSize,
 	threads, threadsBatch,
-	flashAttn, mlock, mmap, directIo, noWarmup, jinja,
+	flashAttn, mlock, mmap, directIo, noWarmup, jinja, swaFull,
 	useMultiModal, hasMmproj,
 	kvQuantK, kvQuantV, chatTemplate, extraArgs,
 	parallelSlots,
@@ -320,7 +321,10 @@ export function LaunchParamsPanel({
 						<ToggleChip label="Direct I/O" active={directIo} onClick={() => onParamChange('directIo', !directIo)} />
 						<ToggleChip label="No Warmup" active={noWarmup} onClick={() => onParamChange('noWarmup', !noWarmup)} />
 						{isTarget && (
-							<ToggleChip label="Jinja" active={jinja} onClick={() => onParamChange('jinja', !jinja)} />
+							<>
+								<ToggleChip label="Jinja" active={jinja} onClick={() => onParamChange('jinja', !jinja)} />
+								<ToggleChip label="SWA Full" active={swaFull} onClick={() => onParamChange('swaFull', !swaFull)} />
+							</>
 						)}
 					</HStack>
 				</VStack>

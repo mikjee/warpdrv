@@ -287,6 +287,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 				directIo: defaultsFromBackend.directIo ?? false,
 				noWarmup: defaultsFromBackend.noWarmup ?? false,
 				jinja: defaultsFromBackend.jinja ?? false,
+				swaFull: defaultsFromBackend.swaFull ?? false,
 			}));
 		}
 	}, [selectedBackendId, selectedBackend, editMode]);
@@ -837,6 +838,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 								directIo={params.directIo}
 								noWarmup={params.noWarmup}
 								jinja={params.jinja}
+								swaFull={params.swaFull}
 								useMultiModal={useMultiModal}
 								hasMmproj={!!selectedEntry?.model.mmprojFile}
 								kvQuantK={params.kvQuantK}

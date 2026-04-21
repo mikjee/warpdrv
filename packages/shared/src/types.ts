@@ -160,6 +160,7 @@ export interface ILaunchParams {
 	directIo: boolean;
 	noWarmup: boolean;
 	jinja: boolean;
+	swaFull: boolean;
 	kvQuantK: EKvQuantType;
 	kvQuantV: EKvQuantType;
 	chatTemplate: string; // empty = auto-detect from model
@@ -183,6 +184,7 @@ export const DEFAULT_LAUNCH_PARAMS: ILaunchParams = {
 	directIo: false,
 	noWarmup: false,
 	jinja: true,
+	swaFull: false,
 	kvQuantK: EKvQuantType.F16,
 	kvQuantV: EKvQuantType.F16,
 	chatTemplate: '',
@@ -302,7 +304,7 @@ export interface ISettings {
 }
 export const DEFAULT_SETTINGS: ISettings = {
 	modelRoots: [],
-	portRangeStart: 8085,
+	portRangeStart: 8010,
 	portRangeEnd: 8099,
 	apiHost: '0.0.0.0',
 	apiPort: 4400,

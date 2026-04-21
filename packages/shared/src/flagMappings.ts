@@ -17,6 +17,7 @@ export const TOGGLE_FLAG_MAPPINGS: IFlagMapping[] = [
 	{ field: 'directIo', flag: '-dio' },
 	{ field: 'noWarmup', flag: '--no-warmup' },
 	{ field: 'jinja', flag: '--jinja' },
+	{ field: 'swaFull', flag: '--swa-full' },
 	{ field: 'mmap', flag: '--no-mmap', negated: true }, // --no-mmap DISABLES mmap, so absence means enabled by default
 ];
 
@@ -52,6 +53,7 @@ function getToggleLabel(mapping: IFlagMapping): string {
 		directIo: 'Direct I/O',
 		noWarmup: 'Skip warmup',
 		jinja: 'Jinja templates',
+		swaFull: 'SWA Full',
 	};
 	return labelMap[mapping.field] ?? mapping.field;
 }
