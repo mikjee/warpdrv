@@ -286,37 +286,25 @@ export const ServersPage = React.memo(() => {
 		<Box>
 			<PageHeader
 				title="Servers"
-				subtitle={`${servers.filter(s => s.status === EServerStatus.RUNNING).length} running`}
+				subtitle={`${servers.filter(s => s.status === EServerStatus.RUNNING).length} / ${servers.length} Running`}
 				icon={<Server size={20} />}
 				actions={
-					<Button
-						size="sm"
-						bgGradient="to-r"
-						gradientFrom="#3381ff"
-						gradientTo="#5b6af5"
-						color="white"
-						_hover={{ opacity: 0.9, transform: 'translateY(-1px)', shadow: '0 4px 20px rgba(51, 129, 255, 0.3)' }}
-						borderRadius="lg"
-						fontSize="13px"
-						fontWeight="600"
-						transition="all 0.2s ease"
-						onClick={() => setShowLaunch(true)}
-						display={"flex"}
-						flexDirection={"row"}
-						alignItems={"center"}
-						justifyContent={"center"}
-					>
-						<Play size={15} />
-						Launch Server
-					</Button>
-				}
-			/>
-
-			{/* Subheader: Search, Sort, Running Only */}
-			<Box p="4" borderColor="rgba(255, 255, 255, 0.06)" borderBottomWidth={"1px"}>
-				<Flex justify="space-between" align="center">
-					<Flex gap="4" align="center" flexWrap="wrap">
-						{/* Sort Field Dropdown + Order Buttons */}
+					<HStack gap="2">
+						<InputGroup startElement={<Search size={14} color="rgba(255, 255, 255, 0.3)" />} w="200px">
+							<Input
+								placeholder="Search servers..."
+								size="xs"
+								bg="rgba(255, 255, 255, 0.03)"
+								borderColor="rgba(255, 255, 255, 0.08)"
+								color="rgba(255, 255, 255, 0.7)"
+								fontSize="13px"
+								borderRadius="lg"
+								_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
+								_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
+								value={searchQuery}
+								onChange={e => setSearchQuery(e.target.value)}
+							/>
+						</InputGroup>
 						<HStack gap="1.5">
 							{(() => {
 								const sortCollection = createListCollection({
@@ -336,7 +324,7 @@ export const ServersPage = React.memo(() => {
 											<Combobox.Trigger asChild>
 												<Button
 													variant="outline"
-													size="sm"
+													size="xs"
 													w="150px"
 													justifyContent="space-between"
 													bg="rgba(255, 255, 255, 0.03)"
@@ -376,12 +364,11 @@ export const ServersPage = React.memo(() => {
 								);
 							})()}
 							<Button
-								size="sm"
+								size="xs"
 								variant="outline"
 								bg="rgba(255, 255, 255, 0.03)"
 								borderColor="rgba(255, 255, 255, 0.08)"
 								color="rgba(255, 255, 255, 0.5)"
-								p="1" minW="auto"
 								borderRadius="md"
 								_hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
 								title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
@@ -390,8 +377,6 @@ export const ServersPage = React.memo(() => {
 								{sortOrder === 'asc' ? <ArrowUpAZ size={14} /> : <ArrowDownZA size={14} />}
 							</Button>
 						</HStack>
-
-						{/* Running Only Toggle */}
 						<Switch.Root label="Show only running servers" checked={runningOnly} onCheckedChange={(details) => setRunningOnly(details.checked)} color={runningOnly ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'}>
 							<Switch.HiddenInput />
 							<Switch.Control css={{ bg: runningOnly ? '#3b86d6' : 'surface.4' }}>
@@ -401,35 +386,31 @@ export const ServersPage = React.memo(() => {
 								Running only
 							</Switch.Label>
 						</Switch.Root>
-					</Flex>
-
-					<Flex gap="4" align="center" flexWrap="wrap">
-						{/* Results count */}
-						<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)" fontFamily='"Geist Mono", monospace'>
-							{filteredServers.length} {filteredServers.length === 1 ? 'server' : 'servers'}
-						</Text>
-
-						{/* Search Input */}
-						<Box flex="1" minW="200px" maxW="300px">
-							<InputGroup startElement={<Search size={14} color="rgba(255, 255, 255, 0.3)" />}>
-								<Input
-									placeholder="Search servers..."
-									size="sm"
-									bg="rgba(255, 255, 255, 0.03)"
-									borderColor="rgba(255, 255, 255, 0.08)"
-									color="rgba(255, 255, 255, 0.7)"
-									fontSize="13px"
-									borderRadius="lg"
-									_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
-									_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
-									value={searchQuery}
-									onChange={e => setSearchQuery(e.target.value)}
-								/>
-							</InputGroup>
-						</Box>
-					</Flex>
-				</Flex>
-			</Box>
+					</HStack>
+				}
+				actionsRight={
+					<Button
+						size="sm"
+						bgGradient="to-r"
+						gradientFrom="#3381ff"
+						gradientTo="#5b6af5"
+						color="white"
+						_hover={{ opacity: 0.9, transform: 'translateY(-1px)', shadow: '0 4px 20px rgba(51, 129, 255, 0.3)' }}
+						borderRadius="lg"
+						fontSize="13px"
+						fontWeight="600"
+						transition="all 0.2s ease"
+						onClick={() => setShowLaunch(true)}
+						display={"flex"}
+						flexDirection={"row"}
+						alignItems={"center"}
+						justifyContent={"center"}
+					>
+						<Play size={15} />
+						Launch Server
+					</Button>
+				}
+			/>
 
 			<Box p="4">
 				{filteredServers.length === 0 ? (

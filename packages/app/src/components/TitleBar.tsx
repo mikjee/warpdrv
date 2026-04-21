@@ -134,6 +134,8 @@ export function TitleBar() {
 		getCurrentWindow().hide();
 	};
 
+	return null;
+
 	return (
 		<Flex
 			h="36px"

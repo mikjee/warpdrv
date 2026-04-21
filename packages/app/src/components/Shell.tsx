@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import { useDependantState } from '../hooks/useDependantState';
-import { Box, Flex, Text, VStack, HStack } from '@chakra-ui/react';
+import { Box, Flex, Text, VStack, HStack, Image } from '@chakra-ui/react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
 	Cpu,
@@ -15,11 +15,9 @@ import {
 } from 'lucide-react';
 import { BsRouter } from 'react-icons/bs';
 import { MessageSquare, Save } from 'lucide-react';
-import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff } from 'react-icons/vsc';
 import { UpdateBanner } from './UpdateBanner';
 import { TitleBar } from './TitleBar';
 import { useSummary } from '../hooks/useSummary';
-import { updateSettings } from '../api/services';
 import { useStore } from '../store';
 import type { ReactNode, ComponentType } from 'react';
 import type { ISummaryData } from '../api/summary-services';
@@ -254,13 +252,7 @@ export const Shell = React.memo(() => {
 	const location = useLocation();
 	const currentPath = location.pathname;
 	const settings = useStore(s => s.settings);
-	const [collapsed, setCollapsed] = useDependantState(settings.sidebarCollapsed);
-
-	// Save sidebar collapsed state when it changes
-	const handleCollapseChange = useCallback((newCollapsed: boolean) => {
-		setCollapsed(newCollapsed);
-		updateSettings({ sidebarCollapsed: newCollapsed }).catch(() => {});
-	}, []);
+	const [collapsed] = useDependantState(settings.sidebarCollapsed);
 
 	const isCollapsed = collapsed;
 
@@ -297,7 +289,7 @@ export const Shell = React.memo(() => {
 					direction="column"
 					w={isCollapsed ? '60px' : '220px'}
 					minW={isCollapsed ? '60px' : '220px'}
-					//borderRightWidth="1px"
+					// borderRightWidth="1px"
 					// borderColor="rgba(255, 255, 255, 0.06)"
 					px={isCollapsed ? '2' : '4'}
 					pt={'3'}
@@ -307,71 +299,17 @@ export const Shell = React.memo(() => {
 					zIndex={100}
 					boxShadow={"0px 0px 10px rgba(0,0,0,1)"}
 				>
-					{/* Collapse toggle + logo text */}
+					{/* Logo */}
 					<HStack
-						gap="3"
 						px={isCollapsed ? '0' : '2'}
-						py="3"
+						py="2"
 						mb="4"
-						justifyContent={isCollapsed ? 'center' : 'flex-start'}
+						justifyContent="center"
 					>
-						<Flex
-							as="button"
-							w="8"
-							h="8"
-							alignItems="center"
-							justifyContent="center"
-							borderRadius="md"
-							cursor="pointer"
-							color="rgba(255, 255, 255, 0.4)"
-							_hover={{ color: 'rgba(255, 255, 255, 0.8)', bg: 'rgba(255, 255, 255, 0.08)' }}
-							transition="all 0.15s ease"
-							onClick={() => handleCollapseChange(!collapsed)}
-							flexShrink={0}
-							position={"relative"}
-							top="1px"
-						>
-							{isCollapsed
-								? <VscLayoutSidebarLeftOff size={18} />
-								: <VscLayoutSidebarLeft size={18} />
-							}
+						<Flex w="32px" h="32px" borderRadius="md" overflow="hidden" flexShrink={0} alignItems="center" justifyContent="center">
+							<Image src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
 						</Flex>
-						{/* {!collapsed && (
-							<Text
-								fontSize="16px"
-								fontWeight="700"
-								letterSpacing="-0.02em"
-								lineHeight="1.1"
-								bgGradient="to-r"
-								gradientFrom="#9c9c9c"
-								gradientTo="gray.900"
-								bgClip="text"
-							>
-								warpcore &gt;&gt;
-							</Text>
-						)} */}
 					</HStack>
-
-					{/* Logo - commented out, replaced by collapse toggle above */}
-					{/* <HStack gap="3" px="3" py="5" mb="5">
-						<Flex w="12" h="12" borderRadius="lg" overflow="hidden" mr="3">
-							<img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-						</Flex>
-						<Box>
-							<Text
-								fontSize="16px"
-								fontWeight="700"
-								letterSpacing="-0.02em"
-								lineHeight="1.1"
-								bgGradient="to-r"
-								gradientFrom="#e4e4e7"
-								gradientTo="orange.500"
-								bgClip="text"
-							>
-								warpdrv &gt;&gt;
-							</Text>
-						</Box>
-					</HStack> */}
 
 					{/* Nav */}
 					<VStack gap="1" align="stretch" flex="1">
