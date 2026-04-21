@@ -455,7 +455,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 						<VStack align="stretch" gap="5" flex="1" minW="0">
 							{/* Model picker */}
 							<Box>
-								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">1. Select Model</Text>
+								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Select Model</Text>
 								{models.length === 0 ? (
 									<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No models scanned. Go to Settings and scan.</Text>
 								) : (
@@ -581,7 +581,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 
 							{/* Backend picker */}
 							<Box>
-								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">5. Select Backend</Text>
+								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Select Backend</Text>
 								<VStack align="stretch" gap="3">
 									{/* Backend source toggle */}
 									<HStack gap="3" mb="2">
@@ -697,7 +697,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 
 							{/* Port */}
 							<Box>
-								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">3. Port</Text>
+								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Port</Text>
 								<HStack gap="1.5">
 									<Input type="number" value={params.port} onChange={e => updateParam('port', Number(e.target.value))} size="sm"
 										bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"

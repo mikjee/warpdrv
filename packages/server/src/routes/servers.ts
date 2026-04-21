@@ -172,6 +172,15 @@ export async function launchAutoStartServers(): Promise<void> {
 				launchParams.extraArgs = mergeCliFlags(model.recommendedInferenceParams, server.params.extraArgs);
 			}
 			
+			// Auto-assign port if params.port is 0
+			if (launchParams.port === 0) {
+				server.port = await findAvailablePort();
+				launchParams.port = server.port;
+			} else {
+				// User-assigned port: track it
+				usedPorts.add(server.port);
+			}
+			
 			const args = await buildServerArgs(
 				server.modelPath,
 				mmprojPath,
@@ -245,12 +254,16 @@ serversRouter.post('/', async (req, res) => {
 		return;
 	}
 
-	// Assign port
-	const port = payload.params.port > 0
+	// Assign port for server.port, but keep params.port as-is (0 = auto-assign on every launch)
+	const serverPort = payload.params.port > 0
 		? payload.params.port
 		: await findAvailablePort();
 
-	const params = { ...payload.params, port };
+	// Track user-assigned port (auto-assigned is already tracked by findAvailablePort)
+	if (payload.params.port > 0) {
+		usedPorts.add(serverPort);
+	}
+
 	const id = crypto.randomBytes(6).toString('hex');
 
 	// Generate server name from model filename if not provided
@@ -263,8 +276,8 @@ serversRouter.post('/', async (req, res) => {
 		modelPath: payload.modelPath,
 		serverName,
 		serverAlias: payload.serverAlias ?? [],
-		params,
-		port,
+		params: payload.params,
+		port: serverPort,
 		pid: undefined,
 		status: EServerStatus.STOPPED,
 		startedAt: null,
@@ -282,9 +295,14 @@ serversRouter.post('/', async (req, res) => {
 	const mmprojPath = model?.mmprojFile?.filePath && payload.useMultiModal ? model.mmprojFile.filePath : null;
 	
 	// Append recommended inference params to extraArgs if enabled
-	const launchParams = { ...params };
+	const launchParams = { ...server.params };
 	if (payload.useRecommendedInferenceParams && model?.recommendedInferenceParams) {
-		launchParams.extraArgs = mergeCliFlags(model.recommendedInferenceParams, params.extraArgs);
+		launchParams.extraArgs = mergeCliFlags(model.recommendedInferenceParams, server.params.extraArgs);
+	}
+	
+	// Override port if auto-assign (0)
+	if (launchParams.port === 0) {
+		launchParams.port = server.port;
 	}
 	
 	const args = await buildServerArgs(
@@ -380,16 +398,33 @@ serversRouter.post('/:id/restart', async (req, res) => {
 		}
 	}
 
+	if (!backend) {
+		res.status(400).json({ ok: false, data: null, error: 'Backend not found' });
+		return;
+	}
+
 	// Kill existing and wait for termination
 	await killServer(server.id, server.pid);
+	usedPorts.delete(server.port);
 
 	// Re-spawn
 	const model = getCachedModels().find(m => m.primaryFile?.filePath === server.modelPath);
 	const mmprojPath = model?.mmprojFile?.filePath && server.useMultiModal ? model.mmprojFile.filePath : null;
+	
+	// Create launch params and auto-assign port if needed
+	const launchParams = { ...server.params };
+	if (launchParams.port === 0) {
+		server.port = await findAvailablePort();
+		launchParams.port = server.port;
+	} else {
+		// User-assigned port: track it
+		usedPorts.add(server.port);
+	}
+	
 	const args = await buildServerArgs(
 		server.modelPath,
 		mmprojPath,
-		server.params,
+		launchParams,
 		backend.defaultArgs,
 	);
 
@@ -474,10 +509,11 @@ serversRouter.put('/:id', async (req, res) => {
 	if (updatePayload.serverName != null) server.serverName = updatePayload.serverName;
 	if (updatePayload.params) {
 		server.params = updatePayload.params;
-		// Sync server.port with params.port if a specific port was configured
+		// Only update server.port if user explicitly set a non-zero port
 		if (updatePayload.params.port > 0) {
 			server.port = updatePayload.params.port;
 		}
+		// If port is 0, server.port stays as-is until relaunch
 	}
 	if (updatePayload.serverAlias !== undefined) {
 		// Check for removed aliases and clear sticky routes for this server
@@ -520,6 +556,15 @@ serversRouter.put('/:id', async (req, res) => {
 		const launchParams = { ...server.params };
 		if (server.useRecommendedInferenceParams && model?.recommendedInferenceParams) {
 			launchParams.extraArgs = mergeCliFlags(model.recommendedInferenceParams, server.params.extraArgs);
+		}
+		
+		// Auto-assign port if params.port is 0
+		if (launchParams.port === 0) {
+			server.port = await findAvailablePort();
+			launchParams.port = server.port;
+		} else {
+			// User-assigned port: track it
+			usedPorts.add(server.port);
 		}
 		
 		const args = await buildServerArgs(
