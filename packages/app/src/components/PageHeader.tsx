@@ -164,7 +164,7 @@ export function PageHeader({ title, subtitle, icon, actions, actionsRight }: IPa
 			style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
 			boxShadow={"0px 0px 20px black"}
 		>
-			<HStack gap="4">
+			<HStack gap="4" ml="2">
 				<Flex
 					as="button"
 					w="8"
@@ -178,24 +178,25 @@ export function PageHeader({ title, subtitle, icon, actions, actionsRight }: IPa
 					transition="all 0.15s ease"
 					onClick={() => handleCollapseChange(!collapsed)}
 					flexShrink={0}
+					ml="-2"
 				>
 					{collapsed ? <VscLayoutSidebarLeftOff size={18} /> : <VscLayoutSidebarLeft size={18} />}
 				</Flex>
-				<Box mr="1" pr="5" borderRight={"1px solid rgb(30,30,30)"}>
-					<Text fontSize="16px" fontWeight="500" letterSpacing="-0.02em" color="#afafaf">
+				<Box mr="1" ml="-1">
+					<Text fontSize="14px" fontWeight="500" letterSpacing="-0.02em" color="#7d7d7d">
 						{title}
 					</Text>
-					{subtitle && (
-						<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)">
+					{/* {subtitle && (
+						<Text fontSize="11px" color="rgba(255, 255, 255, 0.4)">
 							{subtitle}
 						</Text>
-					)}
+					)} */}
 				</Box>
-				{actions && <HStack gap="2">{actions}</HStack>}
+				{actions && <HStack gap="2" pl="5" borderLeft={"1px solid rgb(30,30,30)"} >{actions}</HStack>}
 			</HStack>
 			<HStack gap="4" alignItems="center">
 				{actionsRight && <HStack gap="2">{actionsRight}</HStack>}
-				{isTauri && <HStack gap="0" mr="-2" borderLeft={"1px solid rgb(30,30,30)"} ml="1" pl="1">
+				{isTauri && <HStack gap="0" mr="-2" borderLeft={"1px solid rgb(30,30,30)"} ml="2" pl="2">
 					<WindowButton onClick={handleMinimize}>
 						<Minus size={14} />
 					</WindowButton>
