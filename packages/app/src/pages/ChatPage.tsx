@@ -376,6 +376,7 @@ const ChatInner = React.memo(() => {
 			messages: openAIMessages,
 			systemPrompt: currentSystemPrompt,
 			inferenceParams: currentInferenceParams,
+			presetId: selectedPresetId,
 			generateTitle,
 		};
 		
@@ -388,7 +389,7 @@ const ChatInner = React.memo(() => {
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(body),
 		});
-	}, [currentThreadId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, toolCallsById, currentServerId]);
+	}, [currentThreadId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, toolCallsById, currentServerId, isValidServer]);
 
 	const onReload = useCallback(async (parentId: string | null) => {
 		if (!isValidServer || !parentId) return;
@@ -414,10 +415,11 @@ const ChatInner = React.memo(() => {
 				messages: openAIMessages,
 				systemPrompt: currentSystemPrompt,
 				inferenceParams: currentInferenceParams,
+				presetId: selectedPresetId,
 				generateTitle,
 			}),
 		});
-	}, [currentThreadId, currentSystemPrompt, currentInferenceParams, toolCallsById, currentServerId]);
+	}, [currentThreadId, currentSystemPrompt, currentInferenceParams, toolCallsById, currentServerId, isValidServer]);
 
 	const onCancel = useCallback(async () => {
 		if (currentThreadId && isValidServer) {

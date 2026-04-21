@@ -85,13 +85,19 @@ export class Orchestrator {
 					title,
 					folderId: null,
 					systemPrompt: '',
-					meta: '{}',
+					meta: JSON.stringify({ serverId: request.serverId ?? null, tags: [] }),
 					totalPromptTokens: 0,
 					totalCompletionTokens: 0,
 					createdAt: now,
 					updatedAt: now,
 				};
 				await this.persistence.createThread(thread);
+				await this.persistence.setThreadConfig({
+					threadId: request.threadId,
+					presetId: request.presetId ?? null,
+					systemPrompt: request.systemPrompt ?? '',
+					params: JSON.stringify(request.inferenceParams ?? {}),
+				});
 				this.broadcaster.emit({ type: 'thread.created', thread });
 			}
 

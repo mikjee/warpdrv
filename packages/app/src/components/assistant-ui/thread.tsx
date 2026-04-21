@@ -210,8 +210,16 @@ const ContextUsageBar: FC = () => {
 };
 
 const Composer: FC = () => {
+  const { isValidServer } = useContext(ServerStatusContext);
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    if (!isValidServer) {
+      e.preventDefault();
+    }
+  };
+  
   return (
-    <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
+    <ComposerPrimitive.Root onSubmit={handleSubmit} className="aui-composer-root relative flex w-full flex-col">
       <ComposerPrimitive.AttachmentDropzone asChild>
         <div
           data-slot="composer-shell"

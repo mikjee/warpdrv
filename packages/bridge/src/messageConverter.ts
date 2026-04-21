@@ -25,12 +25,23 @@ export function convertMessagesToOpenAIFormat(
 	toolCallsById: Record<string, IToolCall>,
 ): TOpenAIMessage[] {
 	const result: TOpenAIMessage[] = [];
+	let prevRole: EChatRole | null = null;
 
-	for (const msg of messages) {
+	for (let msgIndex = 0; msgIndex < messages.length; msgIndex++) {
+		const msg = messages[msgIndex]!;
+
 		switch (msg.role) {
 			case EChatRole.USER: {
 				const textParts = msg.content.filter(p => p.type === EMessagePartType.TEXT);
 				const attachmentParts = msg.content.filter(p => p.type === EMessagePartType.ATTACHMENT);
+				
+				// TODO:
+				// const append = (content: string | Array<any>) => {
+				// 	const prevMsg = messages[msgIndex - 1]!;
+				// 	if (typeof prevMsg.content === "string" && typeof content === "string") {
+
+				// 	}
+				// }
 				
 				if (attachmentParts.length === 0) {
 					const content = textParts.map(p => p.text || '').join('');
@@ -109,6 +120,7 @@ export function convertMessagesToOpenAIFormat(
 			default:
 				break;
 		}
+		prevRole = msg.role;
 	}
 
 	return result;
