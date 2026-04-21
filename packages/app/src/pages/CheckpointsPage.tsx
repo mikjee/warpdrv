@@ -1,15 +1,22 @@
-import { Box, Text, HStack, VStack, Flex, Input, Button } from '@chakra-ui/react';
-import { Database, Trash2, Edit, ChevronDown, ChevronRight, Search } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { Box, Text, HStack, VStack, Flex, Input, Button, InputGroup, Combobox, createListCollection, Portal } from '@chakra-ui/react';
+import { Database, Trash2, Edit, ChevronDown, ChevronRight, Search, ArrowUpAZ, ArrowDownZA } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { useDependantState } from '../hooks/useDependantState';
 import { PageHeader } from '../components/PageHeader';
+import { updateSettings } from '../api/services';
 
 import { useStore } from '../store';
 import { deleteCheckpoint, updateCheckpoint } from '../api/services';
 import { ConfirmDialog } from '../components/dialogs/ConfirmDialog';
 import { useToast } from '../components/ToastProvider';
-import type { ICheckpoint, TCheckpointId } from '@warpcore/shared';
+import type { ICheckpoint, TCheckpointId, TCheckpointSortField, TSortOrder } from '@warpcore/shared';
 
-type TSortOrder = 'NEWEST' | 'OLDEST' | 'LARGEST' | 'NAME';
+const FIELD_LABELS: Record<TCheckpointSortField, string> = {
+	recency: 'Recently Saved',
+	size: 'Size',
+	name: 'Name',
+	slot: 'Slot',
+};
 
 function formatBytes(n: number): string {
 	if (n >= 1024 * 1024 * 1024) return `${(n / (1024 * 1024 * 1024)).toFixed(1)} GB`;
@@ -33,7 +40,9 @@ export function CheckpointsPage() {
 	const checkpointsRecord = useStore((s) => s.checkpoints);
 
 	const [search, setSearch] = useState<string>('');
-	const [sortOrder, setSortOrder] = useState<TSortOrder>('NEWEST');
+	const settings = useStore(s => s.settings);
+	const [sortField, setSortField] = useDependantState(settings.checkpointsSortField);
+	const [sortOrder, setSortOrder] = useDependantState(settings.checkpointsSortOrder);
 	const [expandedBundles, setExpandedBundles] = useState<Record<string, boolean>>({});
 	const [deletingCheckpointId, setDeletingCheckpointId] = useState<TCheckpointId | null>(null);
 	const [deletingBundleId, setDeletingBundleId] = useState<string | null>(null);
@@ -68,22 +77,39 @@ export function CheckpointsPage() {
 			name: items[0]?.name ?? bundleId,
 		}));
 
-		const sortFn = (aCreatedAt: number, bCreatedAt: number, aSize: number, bSize: number, aName: string, bName: string) => {
-			if (sortOrder === 'NEWEST') return bCreatedAt - aCreatedAt;
-			if (sortOrder === 'OLDEST') return aCreatedAt - bCreatedAt;
-			if (sortOrder === 'LARGEST') return bSize - aSize;
-			return aName.localeCompare(bName);
+		const fieldSorters: Record<TCheckpointSortField, (a: ICheckpoint, b: ICheckpoint) => number> = {
+			recency: (a, b) => sortOrder === 'asc' ? a.createdAt - b.createdAt : b.createdAt - a.createdAt,
+			size: (a, b) => sortOrder === 'asc' ? a.sizeBytes - b.sizeBytes : b.sizeBytes - a.sizeBytes,
+			name: (a, b) => sortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name),
+			slot: (a, b) => sortOrder === 'asc' ? a.slotIndex - b.slotIndex : b.slotIndex - a.slotIndex,
 		};
 
-		bundles.sort((a, b) => sortFn(a.createdAt, b.createdAt, a.totalSize, b.totalSize, a.name, b.name));
-		standalone.sort((a, b) => sortFn(a.createdAt, b.createdAt, a.sizeBytes, b.sizeBytes, a.name, b.name));
+		const slotFn = (a: ICheckpoint, b: ICheckpoint) => {
+			if (sortField === 'slot') return fieldSorters.slot(a, b);
+			if (a.slotIndex !== b.slotIndex) return a.slotIndex - b.slotIndex;
+			return fieldSorters.recency(a, b);
+		};
+
+		bundles.sort((a, b) => {
+			if (sortField === 'recency') return sortOrder === 'asc' ? a.createdAt - b.createdAt : b.createdAt - a.createdAt;
+			if (sortField === 'size') return sortOrder === 'asc' ? a.totalSize - b.totalSize : b.totalSize - a.totalSize;
+			if (sortField === 'name') return sortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+			return sortOrder === 'asc' ? a.items[0].slotIndex - b.items[0].slotIndex : b.items[0].slotIndex - a.items[0].slotIndex;
+		});
+		standalone.sort((a, b) => slotFn(a, b));
 
 		return { bundles, standalone };
-	}, [filtered, sortOrder]);
+	}, [filtered, sortField, sortOrder]);
 
 	const totalDiskUsage = useMemo(() => {
 		return all.reduce((s, c) => s + c.sizeBytes, 0);
 	}, [all]);
+
+	const handleSortChange = useCallback((field: TCheckpointSortField, order: TSortOrder) => {
+		setSortField(field);
+		setSortOrder(order);
+		updateSettings({ checkpointsSortField: field, checkpointsSortOrder: order });
+	}, []);
 
 	function toggleBundle(bundleId: string) {
 		setExpandedBundles(prev => ({ ...prev, [bundleId]: !prev[bundleId] }));
@@ -124,18 +150,6 @@ export function CheckpointsPage() {
 		setRenamingId(null);
 		setRenameValue('');
 	}
-
-	const sortButtonStyle = (active: boolean) => ({
-		size: 'xs' as const,
-		bg: active ? 'rgba(51, 129, 255, 0.12)' : 'transparent',
-		color: active ? '#3381ff' : 'rgba(255, 255, 255, 0.5)',
-		borderWidth: '1px',
-		borderColor: active ? 'rgba(51, 129, 255, 0.25)' : 'rgba(255, 255, 255, 0.08)',
-		_hover: { bg: active ? 'rgba(51, 129, 255, 0.18)' : 'rgba(255, 255, 255, 0.04)' },
-		borderRadius: 'md',
-		fontSize: '11px',
-		fontWeight: '500',
-	});
 
 	function CheckpointActions({ cp }: { cp: ICheckpoint }) {
 		return (
@@ -211,29 +225,98 @@ export function CheckpointsPage() {
 				icon={<Database size={20} />}
 			/>
 			<Box p="4">
-				<HStack gap="3" mb="4">
-					<HStack gap="2" flex="1" px="3" py="2" borderRadius="lg" bg="rgba(255, 255, 255, 0.03)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.08)">
-						<Search size={14} color="rgba(255, 255, 255, 0.4)" />
-						<Input
-							size="xs"
-							value={search}
-							onChange={(e) => setSearch(e.target.value)}
-							placeholder="Search checkpoints..."
-							bg="transparent"
-							border="none"
-							color="#e4e4e7"
-							fontSize="13px"
-							_placeholder={{ color: 'rgba(255, 255, 255, 0.3)' }}
-							px="0"
-						/>
+				<Flex mb="4" gap="3">
+					<HStack gap="1.5">
+						{(() => {
+							const sortCollection = createListCollection({
+								items: (Object.keys(FIELD_LABELS) as TCheckpointSortField[]).map(f => ({ value: f, label: FIELD_LABELS[f] })),
+								itemToString: (item) => item.label,
+							});
+							return (
+								<Combobox.Root
+									collection={sortCollection}
+									value={[sortField]}
+									onValueChange={(details) => {
+										const val = details.value?.[0] as TCheckpointSortField;
+										if (val) handleSortChange(val, sortOrder);
+									}}
+								>
+									<Combobox.Control>
+										<Combobox.Trigger asChild>
+											<Button
+												variant="outline"
+												size="sm"
+												w="150px"
+												justifyContent="space-between"
+												bg="rgba(255, 255, 255, 0.03)"
+												borderColor="rgba(255, 255, 255, 0.08)"
+												color="rgba(255, 255, 255, 0.7)"
+												fontSize="13px"
+												borderRadius="lg"
+											>
+												{FIELD_LABELS[sortField]}
+												<ChevronDown size={14} />
+											</Button>
+										</Combobox.Trigger>
+									</Combobox.Control>
+									<Portal>
+										<Combobox.Positioner>
+											<Combobox.Content
+												maxH="200px" overflowY="auto"
+												bg="#181818" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
+												borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
+											>
+												{sortCollection.items.map((item) => (
+													<Combobox.Item
+														key={item.value}
+														item={item}
+														px="3" py="2" borderRadius="md" cursor="pointer"
+														_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
+														_highlighted={{ bg: '#181818' }}
+													>
+														<Text fontSize="12px" color="#e4e4e7">{item.label}</Text>
+														<Combobox.ItemIndicator />
+													</Combobox.Item>
+												))}
+											</Combobox.Content>
+										</Combobox.Positioner>
+									</Portal>
+								</Combobox.Root>
+							);
+						})()}
+						<Button
+							size="sm"
+							variant="outline"
+							bg="rgba(255, 255, 255, 0.03)"
+							borderColor="rgba(255, 255, 255, 0.08)"
+							color="rgba(255, 255, 255, 0.5)"
+							p="1" minW="auto"
+							borderRadius="md"
+							_hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
+							title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+							onClick={() => handleSortChange(sortField, sortOrder === 'asc' ? 'desc' : 'asc')}
+						>
+							{sortOrder === 'asc' ? <ArrowUpAZ size={14} /> : <ArrowDownZA size={14} />}
+						</Button>
 					</HStack>
-					<HStack gap="1">
-						<Button {...sortButtonStyle(sortOrder === 'NEWEST')} onClick={() => setSortOrder('NEWEST')}>Newest</Button>
-						<Button {...sortButtonStyle(sortOrder === 'OLDEST')} onClick={() => setSortOrder('OLDEST')}>Oldest</Button>
-						<Button {...sortButtonStyle(sortOrder === 'LARGEST')} onClick={() => setSortOrder('LARGEST')}>Largest</Button>
-						<Button {...sortButtonStyle(sortOrder === 'NAME')} onClick={() => setSortOrder('NAME')}>Name</Button>
-					</HStack>
-				</HStack>
+					<Box flex="1" maxW="300px">
+						<InputGroup startElement={<Search size={14} color="rgba(255, 255, 255, 0.3)" />}>
+							<Input
+								size="sm"
+								value={search}
+								onChange={(e) => setSearch(e.target.value)}
+								placeholder="Search checkpoints..."
+								bg="rgba(255, 255, 255, 0.03)"
+								borderColor="rgba(255, 255, 255, 0.08)"
+								color="rgba(255, 255, 255, 0.7)"
+								fontSize="13px"
+								borderRadius="lg"
+								_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
+								_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
+							/>
+						</InputGroup>
+					</Box>
+				</Flex>
 
 				<VStack
 					gap="1"
