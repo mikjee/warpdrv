@@ -16,7 +16,6 @@ import {
 import { BsRouter } from 'react-icons/bs';
 import { MessageSquare, Save } from 'lucide-react';
 import { UpdateBanner } from './UpdateBanner';
-import { TitleBar } from './TitleBar';
 import { useSummary } from '../hooks/useSummary';
 import { useStore } from '../store';
 import type { ReactNode, ComponentType } from 'react';
@@ -281,7 +280,6 @@ export const Shell = React.memo(() => {
 
 	return (
 		<Flex direction="column" h="100%" overflow="hidden">
-			<TitleBar />
 			<Flex flex="1" overflow="hidden">
 				{/* Sidebar */}
 				<Flex
