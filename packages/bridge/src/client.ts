@@ -16,9 +16,6 @@ export { validateToolArgs, cleanSchema } from './validation';
 // Permissions (universal)
 export { PermissionManager } from './permissions';
 
-// Transport (universal)
-export { FetchTransport, type IFetchTransportConfig } from './transport/fetch';
-
 // Store (universal)
 export { createChatStoreSlice, type IChatStoreState, type ImmerSet, type ImmerGet } from './store';
 

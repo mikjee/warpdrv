@@ -381,6 +381,7 @@ setActiveThread: (id: TThreadId | null) =>
 		setCurrentThreadId: (id: TThreadId | null) =>
 			set((draft) => {
 				draft.currentThreadId = id;
+				draft.tempThreadServerId = null;
 			}),
 
 		setCurrentSystemPrompt: (prompt: string) =>

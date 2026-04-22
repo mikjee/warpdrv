@@ -502,7 +502,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 
 							{/* Inference params */}
 							<Box>
-								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">3. Inference Params</Text>
+								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Inference Params</Text>
 								<Card>
 									<VStack align="stretch" gap="3">
 										<HStack justify="space-between" align="center">

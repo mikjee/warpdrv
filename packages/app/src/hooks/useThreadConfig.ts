@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useStore } from '../store';
 import { DEFAULT_INFERENCE_PARAMS } from '@/components/ChatConfigSidebar';
-import { IChatInferenceParams, IThreadConfig } from '@warpcore/shared';
+import { EReasoningEffort, IChatInferenceParams, IThreadConfig } from '@warpcore/shared';
 import { fetchThreadConfig, updateThreadConfig } from '@/api';
 
 export function useThreadConfig(selectedPresetId: string | null,) {
@@ -66,7 +66,9 @@ export function useThreadConfig(selectedPresetId: string | null,) {
 
 	const loadConfig = useCallback(async (threadId: string | null) => {
 		const setDefaults = () => {
-			setCurrentInferenceParams({ });
+			setCurrentInferenceParams({
+				reasoningEffort: EReasoningEffort.NONE, enableThinking: false
+			 });
 			setCurrentSystemPrompt('');
 		};
 

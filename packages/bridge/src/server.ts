@@ -26,9 +26,6 @@ export { Orchestrator, type IOrchestratorConfig } from './orchestrator';
 // Persistence (Node only)
 export { SqlitePersistence } from './persistence/betterSqlite';
 
-// Transport (universal)
-export { FetchTransport, type IFetchTransportConfig } from './transport/fetch';
-
 // Store (universal)
 export { createChatStoreSlice, type IChatStoreState, type ImmerSet, type ImmerGet } from './store';
 

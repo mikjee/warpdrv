@@ -20,12 +20,30 @@ export type TOpenAIMessage = {
 	tool_call_id?: string;
 };
 
+export function mergeConsecutiveMessages(messages: IChatMessage[]): IChatMessage[] {
+	const result: IChatMessage[] = []
+	
+	for (let i = 0; i < messages.length; i++) {
+		const msg = messages[i]!
+		const last = result[result.length - 1]
+		
+		if (last && last.role === msg.role && msg.role !== EChatRole.TOOL) {
+			last.content = [...last.content, ...msg.content]
+		} else {
+			result.push({ ...msg, content: [...msg.content] })
+		}
+	}
+	
+	return result
+}
+
 export function convertMessagesToOpenAIFormat(
 	messages: IChatMessage[],
 	toolCallsById: Record<string, IToolCall>,
 ): TOpenAIMessage[] {
 	const result: TOpenAIMessage[] = [];
-	let prevRole: EChatRole | null = null;
+
+	messages = mergeConsecutiveMessages(messages);
 
 	for (let msgIndex = 0; msgIndex < messages.length; msgIndex++) {
 		const msg = messages[msgIndex]!;
@@ -34,14 +52,6 @@ export function convertMessagesToOpenAIFormat(
 			case EChatRole.USER: {
 				const textParts = msg.content.filter(p => p.type === EMessagePartType.TEXT);
 				const attachmentParts = msg.content.filter(p => p.type === EMessagePartType.ATTACHMENT);
-				
-				// TODO:
-				// const append = (content: string | Array<any>) => {
-				// 	const prevMsg = messages[msgIndex - 1]!;
-				// 	if (typeof prevMsg.content === "string" && typeof content === "string") {
-
-				// 	}
-				// }
 				
 				if (attachmentParts.length === 0) {
 					const content = textParts.map(p => p.text || '').join('');
@@ -120,7 +130,6 @@ export function convertMessagesToOpenAIFormat(
 			default:
 				break;
 		}
-		prevRole = msg.role;
 	}
 
 	return result;

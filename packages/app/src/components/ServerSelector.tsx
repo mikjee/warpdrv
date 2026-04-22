@@ -30,24 +30,34 @@ export const ThreadServerSelector = React.memo(({
 	const [open, setOpen] = useState(false);
 	const thread = useStore(s => s.currentThreadId ? s.threads[s.currentThreadId] : undefined);
 	const serversMap = useStore(s => s.servers);
-	const servers = useMemo(() => Object.values(serversMap), [serversMap]);
+	const servers = useMemo(() => Object.values(serversMap).sort((a,b) => {
+		const isARunning = a.status === EServerStatus.RUNNING;
+		const isBRunning = b.status === EServerStatus.RUNNING;
+		if (isARunning && !isBRunning) return -1;
+		else if (!isARunning && isBRunning) return 1;
+		else return 0;
+
+	}), [serversMap]);
+	const tempThreadServerId = useStore(s => s.tempThreadServerId);
 	const setTempThreadServerId = useStore(s => s.setTempThreadServerId);
 
-	const threadServerId = useMemo(() => 
+	const assignedServerId = useMemo(() => 
 		thread?.meta ? parseThreadMeta(thread.meta).serverId : null, 
 		[thread]
 	);
 
-	const [derivedServerId, setDerivedServerId] = useDependantState(threadServerId);
+	const threadServerId = useMemo(() => assignedServerId ?? tempThreadServerId, [
+		tempThreadServerId,
+		assignedServerId,
+	]);
 
-	const displayServer = useMemo(() => derivedServerId ? serversMap[derivedServerId] : null, [
-		derivedServerId,
+	const displayServer = useMemo(() => threadServerId ? serversMap[threadServerId] : null, [
+		threadServerId,
 		serversMap
 	]);
 
 	const handleSelect = useCallback(async (serverId: string) => {
 		setOpen(false);
-		setDerivedServerId(serverId);
 		setTempThreadServerId(serverId);
 		if (threadId) await updateThread(threadId, { serverId });
 	}, [threadId]);
@@ -110,7 +120,7 @@ export const ThreadServerSelector = React.memo(({
 							px="3"
 							py="2"
 							cursor="pointer"
-							bg={threadServerId === s.id ? 'rgba(255,255,255,0.06)' : 'transparent'}
+							bg={assignedServerId === s.id ? 'rgba(255,255,255,0.06)' : 'transparent'}
 							_hover={{ bg: 'rgba(255,255,255,0.04)' }}
 							onClick={() => handleSelect(s.id)}
 							fontSize="12px"

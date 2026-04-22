@@ -662,7 +662,7 @@ export const ServersPage = React.memo(() => {
 											const slotsState = serverSlots[server.id] ?? null;
 											if (!slotsState || slotsState.slots.length === 0) return null;
 											return (
-												<HStack gap="2" flexWrap="wrap">
+												<HStack gap="2" flexWrap="wrap" style={{ marginLeft: "50px" }}>
 													{slotsState.slots.map(slot => (
 														<SlotPill
 															key={slot.slotId}
