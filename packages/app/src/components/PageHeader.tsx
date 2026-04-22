@@ -34,6 +34,7 @@ function WindowButton({ onClick, children, isClose }: {
 			color="rgba(255, 255, 255, 0.5)"
 			border="none"
 			outline="none"
+			borderRadius={"md"}
 			_hover={{
 				bg: isClose ? 'rgba(255, 60, 60, 0.3)' : 'rgba(255, 255, 255, 0.08)',
 				color: isClose ? '#ff6b6b' : 'rgba(255, 255, 255, 0.9)',

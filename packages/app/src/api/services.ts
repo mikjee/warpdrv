@@ -299,6 +299,10 @@ export async function replaceMessageParts(messageId: string, parts: any[]) {
 	return api.put<null>(`/chat/messages/${messageId}`, { parts });
 }
 
+export async function deleteMessage(messageId: string) {
+	return api.del<null>(`/chat/messages/${messageId}`);
+}
+
 // Folder reordering
 export async function reorderFolders(updates: Array<{ id: string; sortOrder: number }>) {
 	return api.put<null>('/chat/folders/reorder', { updates });

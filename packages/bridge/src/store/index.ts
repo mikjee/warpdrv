@@ -214,6 +214,43 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 
 		applyMessageDeleted: (messageId: TMessageId, threadId: TThreadId) =>
 			set((draft) => {
+				const msg = draft.messagesByThread[threadId]?.[messageId];
+				if (!msg) return;
+				
+				// Handle head shift if deleted message is the head
+				if (draft.headMessageIdByThread[threadId] === messageId) {
+					const threadMessages = draft.messagesByThread[threadId] ?? {};
+					const parentId = msg.parentId;
+					
+					// Find most recent sibling
+					let newHead: TMessageId | null = null;
+					let newestCreatedAt = -1;
+					
+					for (const sibling of Object.values(threadMessages)) {
+						if (sibling.id !== messageId && sibling.parentId === parentId) {
+							if (sibling.createdAt > newestCreatedAt) {
+								newestCreatedAt = sibling.createdAt;
+								newHead = sibling.id;
+							}
+						}
+					}
+					
+					// Fallback to parent if no siblings
+					if (newHead === null) {
+						newHead = parentId;
+					}
+					
+					draft.headMessageIdByThread[threadId] = newHead;
+				}
+				
+				const grandParentId = msg.parentId;
+				
+				for (const child of Object.values(draft.messagesByThread[threadId] ?? {})) {
+					if (child.parentId === messageId) {
+						child.parentId = grandParentId as TMessageId | null;
+					}
+				}
+				
 				delete draft.messagesByThread[threadId]?.[messageId];
 			}),
 

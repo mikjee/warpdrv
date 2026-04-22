@@ -325,7 +325,17 @@ export class SqlitePersistence implements IPersistence {
 	}
 
 	async deleteMessage(id: TMessageId): Promise<void> {
-		this.db!.prepare(`DELETE FROM ${this.t.messages} WHERE id = ?`).run(id);
+		const msg = this.db!.prepare(`SELECT parentId FROM ${this.t.messages} WHERE id = ?`).get(id) as { parentId?: string | null } | undefined;
+		if (!msg) return;
+		
+		if (!msg.parentId) {
+			throw new Error('Cannot delete root message');
+		}
+		
+		this.db!.transaction((() => {
+			this.db!.prepare(`UPDATE ${this.t.messages} SET parentId = ? WHERE parentId = ?`).run(msg.parentId, id);
+			this.db!.prepare(`DELETE FROM ${this.t.messages} WHERE id = ?`).run(id);
+		}) as any)();
 	}
 
 	async getMessages(threadId: TThreadId): Promise<IChatMessage[]> {

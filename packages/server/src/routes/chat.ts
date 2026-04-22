@@ -393,6 +393,33 @@ chatRouter.put('/messages/:id', async (req, res) => {
 	}
 });
 
+// DELETE /api/chat/messages/:id — delete a message
+chatRouter.delete('/messages/:id', async (req, res) => {
+	try {
+		const messageId = req.params.id;
+		const msg = await persistence.getMessage(messageId);
+		if (!msg) {
+			res.status(404).json({ ok: false, data: null, error: 'Message not found' });
+			return;
+		}
+		const threadId = msg.threadId;
+		
+		// Delete the message from database
+		await persistence.deleteMessage(messageId);
+		
+		// Emit SSE event for all clients
+		broadcaster.emit({
+			type: 'message.deleted',
+			messageId,
+			threadId,
+		});
+		
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
 // PUT /api/chat/folders/reorder — batch update folder sort orders
 chatRouter.put('/folders/reorder', async (req, res) => {
 	try {
