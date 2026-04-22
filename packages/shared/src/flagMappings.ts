@@ -10,7 +10,7 @@ export interface IFlagMapping {
 	valueFlag?: boolean; // If true, this flag takes a numeric value (e.g., '-ngl 999')
 }
 
-// Toggle flags that appear in BackendDialog COMMON_FLAGS and LaunchParamsPanel
+// Toggle flags that appear in BackendDialog COMMON_FLAGS
 export const TOGGLE_FLAG_MAPPINGS: IFlagMapping[] = [
 	{ field: 'flashAttn', flag: '-fa' },
 	{ field: 'mlock', flag: '--mlock' },

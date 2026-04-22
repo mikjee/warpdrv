@@ -187,7 +187,7 @@ export function SaveCheckpointDialog({ server, isOpen, onClose }: ISaveCheckpoin
 								)}
 
 								{/* Slot selection */}
-								<VStack gap="1.5" align="stretch">
+								<VStack gap="1.5" align="stretch" style={{ display: "none" }}>
 									<Text fontSize="11px" color="rgba(255, 255, 255, 0.5)">Select slots</Text>
 									<HStack gap="2">
 										<Button {...tabButtonStyle(slotMode === 'ALL')} onClick={() => setSlotMode('ALL')}>All</Button>
