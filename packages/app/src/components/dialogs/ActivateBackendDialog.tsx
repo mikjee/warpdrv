@@ -13,7 +13,7 @@ interface IActivateBackendDialogProps {
 	group: IBackendGroup;
 	newBackendId: string;
 	newBackend: IBackend;
-	currentBackend: IBackend;
+	currentBackend?: IBackend;
 	affectedServers: IServer[];
 	onSwitchOnly?: () => Promise<void>;
 	onSwitchAndRestart?: () => Promise<void>;
@@ -166,7 +166,7 @@ const handleSwitchAndRestart = async () => {
 									Switch Active Backend?
 								</Dialog.Title>
 								<Text fontSize="13px" color="rgba(255, 255, 255, 0.5)" textAlign="center">
-									Changing from <Text as="span" color="#e4e4e7" fontWeight="500">{currentBackend.name}</Text> to <Text as="span" color="#e4e4e7" fontWeight="500">{newBackend.name}</Text>
+									Changing from <Text as="span" color="#e4e4e7" fontWeight="500">{currentBackend?.name ?? '(deleted)'}</Text> to <Text as="span" color="#e4e4e7" fontWeight="500">{newBackend.name}</Text>
 								</Text>
 							</VStack>
 

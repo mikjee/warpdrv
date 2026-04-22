@@ -626,7 +626,7 @@ export function BackendsPage() {
 					group={groups.find(g => g.id === activatingBackend.groupId)!}
 					newBackendId={activatingBackend.newBackendId}
 					newBackend={backends.find(b => b.id === activatingBackend.newBackendId)!}
-					currentBackend={backends.find(b => b.id === groups?.find(g => g.id === activatingBackend.groupId)?.activeBackendId)!}
+					currentBackend={backends.find(b => b.id === groups?.find(g => g.id === activatingBackend.groupId)?.activeBackendId)}
 					affectedServers={servers.filter(s =>
 						s.backendGroupId === activatingBackend.groupId &&
 						s.status === EServerStatus.RUNNING

@@ -258,7 +258,7 @@ export function BackendGroupDialog({ onClose, editData, backends, servers }: IBa
 						}}
 						newBackendId={activeBackendId}
 						newBackend={backends.find(b => b.id === activeBackendId)!}
-						currentBackend={backends.find(b => b.id === originalActiveBackendId)!}
+						currentBackend={backends.find(b => b.id === originalActiveBackendId)}
 						affectedServers={capturedAffectedServers}
 						onSwitchOnly={handleCompleteSave}
 						onSwitchAndRestart={handleCompleteSaveWithRestart}
