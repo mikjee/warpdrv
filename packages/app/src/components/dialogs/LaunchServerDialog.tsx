@@ -4,7 +4,7 @@ import {
 } from '@chakra-ui/react';
 import {
 	Play, X, ChevronDown, RefreshCw, Zap, Cpu,
-	Layers, Server, Package, Bookmark, Sparkles,
+	Layers, Server, Package, Bookmark, Sparkles, Eye,
 	Pencil, Check, ChevronRight
 } from 'lucide-react';
 import {
@@ -320,6 +320,204 @@ const ModelCombobox = React.memo(({ entries, selectedPath, onSelect, placeholder
 	);
 });
 
+type TBackendEntry = {
+	id: string;
+	name: string;
+	primaryDevice: { name: string; vramFreeMb: number; vramTotalMb: number } | null;
+};
+
+const BackendCombobox = React.memo(({ entries, selectedId, onSelect, placeholder }: {
+	entries: TBackendEntry[];
+	selectedId: string | null;
+	onSelect: (id: string) => void;
+	placeholder?: string;
+}) => {
+	const [inputValue, setInputValue] = useState('');
+	const filteredItems = useMemo(() => {
+		if (!inputValue) return entries;
+		const terms = inputValue.toLowerCase().split(/\s+/).filter(Boolean);
+		return entries.filter(e => terms.every(term => `${e.name} ${e.primaryDevice?.name ?? ''}`.toLowerCase().includes(term)));
+	}, [entries, inputValue]);
+	const collection = useMemo(() =>
+		createListCollection({
+			items: filteredItems.map(e => ({
+				label: e.name,
+				value: e.id,
+				entry: e,
+			})),
+			itemToString: (item) => item.label,
+			itemToValue: (item) => item.value,
+		}),
+	[filteredItems]);
+	return (
+		<Combobox.Root
+			collection={collection}
+			onValueChange={(details) => {
+				const val = details.value?.[0];
+				if (val) onSelect(val);
+			}}
+			onInputValueChange={(details) => setInputValue(details.inputValue)}
+			value={selectedId ? [selectedId] : []}
+			openOnClick
+		>
+			<Combobox.Control>
+				<Combobox.Input
+					placeholder={placeholder ?? 'Search backends...'}
+					bg="rgba(255, 255, 255, 0.03)"
+					borderColor="rgba(255, 255, 255, 0.08)"
+					color="rgba(255, 255, 255, 0.7)"
+					fontSize="13px"
+					borderRadius="lg"
+					_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
+					_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
+				/>
+				<Combobox.IndicatorGroup>
+					<Combobox.ClearTrigger />
+					<Combobox.Trigger />
+				</Combobox.IndicatorGroup>
+			</Combobox.Control>
+			<Portal>
+				<Combobox.Positioner>
+					<Combobox.Content
+						maxH="280px" overflowY="auto"
+						bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
+						borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
+					>
+						<Combobox.Empty>
+							<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)" py="4" textAlign="center">No matches</Text>
+						</Combobox.Empty>
+						{collection.items.map((item) => {
+							const entry = (item as { entry: TBackendEntry }).entry;
+							return (
+								<Combobox.Item
+									key={item.value}
+									item={item}
+									px="3" py="2" borderRadius="md" cursor="pointer"
+									_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
+									_highlighted={{ bg: 'rgba(51, 129, 255, 0.08)' }}
+								>
+									<HStack gap="3" w="100%">
+										<Box flex="1" minW="0">
+											<Text fontSize="12px" fontWeight="500" color="#e4e4e7" lineClamp={1}>{entry.name}</Text>
+											<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)">{entry.primaryDevice?.name ?? 'No devices detected'}</Text>
+										</Box>
+										{entry.primaryDevice && (
+											<Text fontSize="11px" color="rgba(255, 255, 255, 0.5)" fontFamily='"Geist Mono", monospace' flexShrink={0}>
+												{(entry.primaryDevice.vramFreeMb > 0 ? entry.primaryDevice.vramFreeMb : entry.primaryDevice.vramTotalMb) / 1024 | 0} GB
+											</Text>
+										)}
+										<Combobox.ItemIndicator />
+									</HStack>
+								</Combobox.Item>
+							);
+						})}
+					</Combobox.Content>
+				</Combobox.Positioner>
+			</Portal>
+		</Combobox.Root>
+	);
+});
+
+type TGroupEntry = {
+	id: string;
+	name: string;
+	backendCount: number;
+	description: string;
+	activeBackendName: string;
+};
+
+const GroupCombobox = React.memo(({ entries, selectedId, onSelect, placeholder }: {
+	entries: TGroupEntry[];
+	selectedId: string | null;
+	onSelect: (id: string) => void;
+	placeholder?: string;
+}) => {
+	const [inputValue, setInputValue] = useState('');
+	const filteredItems = useMemo(() => {
+		if (!inputValue) return entries;
+		const terms = inputValue.toLowerCase().split(/\s+/).filter(Boolean);
+		return entries.filter(e => terms.every(term => `${e.name} ${e.description} ${e.activeBackendName}`.toLowerCase().includes(term)));
+	}, [entries, inputValue]);
+	const collection = useMemo(() =>
+		createListCollection({
+			items: filteredItems.map(e => ({
+				label: e.name,
+				value: e.id,
+				entry: e,
+			})),
+			itemToString: (item) => item.label,
+			itemToValue: (item) => item.value,
+		}),
+	[filteredItems]);
+	return (
+		<Combobox.Root
+			collection={collection}
+			onValueChange={(details) => {
+				const val = details.value?.[0];
+				if (val) onSelect(val);
+			}}
+			onInputValueChange={(details) => setInputValue(details.inputValue)}
+			value={selectedId ? [selectedId] : []}
+			openOnClick
+		>
+			<Combobox.Control>
+				<Combobox.Input
+					placeholder={placeholder ?? 'Search groups...'}
+					bg="rgba(255, 255, 255, 0.03)"
+					borderColor="rgba(255, 255, 255, 0.08)"
+					color="rgba(255, 255, 255, 0.7)"
+					fontSize="13px"
+					borderRadius="lg"
+					_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
+					_focus={{ borderColor: 'rgba(167, 139, 250, 0.4)', outline: 'none' }}
+				/>
+				<Combobox.IndicatorGroup>
+					<Combobox.ClearTrigger />
+					<Combobox.Trigger />
+				</Combobox.IndicatorGroup>
+			</Combobox.Control>
+			<Portal>
+				<Combobox.Positioner>
+					<Combobox.Content
+						maxH="280px" overflowY="auto"
+						bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
+						borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
+					>
+						<Combobox.Empty>
+							<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)" py="4" textAlign="center">No matches</Text>
+						</Combobox.Empty>
+						{collection.items.map((item) => {
+							const entry = (item as { entry: TGroupEntry }).entry;
+							return (
+								<Combobox.Item
+									key={item.value}
+									item={item}
+									px="3" py="2" borderRadius="md" cursor="pointer"
+									_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
+									_highlighted={{ bg: 'rgba(167, 139, 250, 0.08)' }}
+								>
+									<HStack gap="3" w="100%">
+										<Box flex="1" minW="0">
+											<Text fontSize="12px" fontWeight="500" color="#e4e4e7" lineClamp={1}>{entry.name}</Text>
+											<HStack gap="2" mt="0.5">
+												<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)">{entry.backendCount} backends</Text>
+												{entry.description && <Text fontSize="10px" color="rgba(255, 255, 255, 0.25)">|</Text>}
+												{entry.description && <Text fontSize="10px" color="rgba(255, 255, 255, 0.25)">{entry.description}</Text>}
+											</HStack>
+											<Text fontSize="10px" color="rgba(167, 139, 250, 0.6)" mt="0.5">Active: {entry.activeBackendName}</Text>
+										</Box>
+										<Combobox.ItemIndicator />
+									</HStack>
+								</Combobox.Item>
+							);
+						})}
+					</Combobox.Content>
+				</Combobox.Positioner>
+			</Portal>
+		</Combobox.Root>
+	);
+});
+
 interface ILaunchServerDialogProps {
 	onClose: () => void;
 	editMode?: {
@@ -426,6 +624,26 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 		selectedModelPath
 	]);
 	
+	const backendEntries = useMemo((): TBackendEntry[] =>
+		backends.map(b => ({
+			id: b.id,
+			name: b.name,
+			primaryDevice: b.detectedDevices[0] ?? null,
+		})),
+	[backends]
+	);
+
+	const groupEntries = useMemo((): TGroupEntry[] =>
+		groups.map(g => ({
+			id: g.id,
+			name: g.name,
+			backendCount: g.backendIds.length,
+			description: g.description ?? '',
+			activeBackendName: backends.find(b => b.id === g.activeBackendId)?.name ?? 'Unknown',
+		})),
+	[groups, backends]
+	);
+
 	const selectedBackend = useBackendGroup && selectedBackendGroupId
 		? backends.find(b => b.id === groups.find(g => g.id === selectedBackendGroupId)?.activeBackendId)
 		: backends.find(b => b.id === selectedBackendId);
@@ -662,45 +880,38 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 								)}
 							</Box>
 
-							{/* Server name */}
-							<Box>
-								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Server Name <Text as="span" color="rgba(255, 255, 255, 0.25)" fontWeight="400">(optional)</Text></Text>
-								<Input value={serverName} onChange={e => setServerName(e.target.value)}
-									placeholder={selectedEntry?.file.fileName.replace('.gguf', '') ?? 'Leave empty for auto-generated name'}
-									bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
-									fontSize="13px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
-									_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
-								/>
-							</Box>
-
-							{/* Port */}
-							<Box>
-								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Server Port</Text>
-								<HStack gap="1.5">
-									<Input type="number" value={params.port} onChange={e => updateParam('port', Number(e.target.value))} size="sm"
+							{/* Server name + Port + Aliases */}
+							<Card>
+								<VStack align="stretch" gap="4">
+									<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">Server Name <Text as="span" color="rgba(255, 255, 255, 0.25)" fontWeight="400">(optional)</Text></Text>
+									<Input value={serverName} onChange={e => setServerName(e.target.value)}
+										placeholder={selectedEntry?.file.fileName.replace('.gguf', '') ?? 'Leave empty for auto-generated name'}
 										bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
-										fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
-										_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} min={0} max={65535}
+										fontSize="13px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
+										_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
 									/>
-									<Text fontSize="11px" color="rgba(255, 255, 255, 0.25)" flexShrink={0}>0 = auto</Text>
-								</HStack>
-							</Box>
-
-							{/* Server aliases */}
-							<Box>
-								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Proxy Aliases <Text as="span" color="rgba(255, 255, 255, 0.25)" fontWeight="400">(optional)</Text></Text>
-								<Input value={serverAliasesInput} onChange={e => setServerAliasesInput(e.target.value)}
-									placeholder="alias1, alias2, alias3"
-									bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
-									fontSize="13px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
-									_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
-								/>
-								<Text fontSize="11px" color="rgba(255, 255, 255, 0.25)" mt="1.5">Comma-separated aliases for proxy routing.</Text>
-							</Box>
+									<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">Server Port</Text>
+									<HStack gap="1.5">
+										<Input type="number" value={params.port} onChange={e => updateParam('port', Number(e.target.value))} size="sm"
+											bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
+											fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
+											_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} min={0} max={65535}
+										/>
+										<Text fontSize="11px" color="rgba(255, 255, 255, 0.25)" flexShrink={0}>0 = auto</Text>
+									</HStack>
+									<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">Proxy Aliases <Text as="span" color="rgba(255, 255, 255, 0.25)" fontWeight="400">(optional)</Text></Text>
+									<Input value={serverAliasesInput} onChange={e => setServerAliasesInput(e.target.value)}
+										placeholder="alias1, alias2, alias3"
+										bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
+										fontSize="13px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
+										_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
+									/>
+									<Text fontSize="11px" color="rgba(255, 255, 255, 0.25)">Comma-separated aliases for proxy routing.</Text>
+								</VStack>
+							</Card>
 
 							{/* Backend picker */}
-							<Box>
-								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Backend</Text>
+							<Card>
 								<VStack align="stretch" gap="3">
 									{/* Backend source toggle */}
 									<HStack gap="3" mb="2">
@@ -717,7 +928,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 												_hover={{ borderColor: useBackendGroup ? 'rgba(255, 255, 255, 0.15)' : 'rgba(167, 139, 250, 0.5)' }}
 												onClick={() => setUseBackendGroup(false)}
 											>
-												<Text fontSize="13px" fontWeight="500">Direct</Text>
+												<Text fontSize="13px" fontWeight="500">Backend</Text>
 											</Button>
 											<Button
 												size="sm"
@@ -736,143 +947,177 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 										</HStack>
 									</HStack>
 
-									{useBackendGroup ? (
-										<Box>
-											{backends.length === 0 && (
-												<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No backends registered. Go to Backends page.</Text>
-											)}
-											{groups.length === 0 && (
-												<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No backend groups. Create one in Backends page.</Text>
-											)}
-											{backends.length > 0 && groups.length > 0 && (
-												<VStack align="stretch" gap="2">
-													{groups.map((group: IBackendGroup) => {
-														const isSelected = selectedBackendGroupId === group.id;
-														const activeBackend = backends.find(b => b.id === group.activeBackendId);
-														return (
-															<HStack key={group.id} gap="3" px="4" py="3" borderRadius="lg" cursor="pointer"
-																bg={isSelected ? 'rgba(167, 139, 250, 0.08)' : 'rgba(255, 255, 255, 0.02)'}
-																borderWidth="1px" borderColor={isSelected ? 'rgba(167, 139, 250, 0.25)' : 'rgba(255, 255, 255, 0.06)'}
-																_hover={{ borderColor: isSelected ? 'rgba(167, 139, 250, 0.3)' : 'rgba(255, 255, 255, 0.1)' }}
-																onClick={() => { setSelectedBackendGroupId(group.id); setSelectedBackendId(null); }} transition="all 0.15s ease"
-															>
-																<Flex w="8" h="8" borderRadius="md" alignItems="center" justifyContent="center" bg={isSelected ? 'rgba(167, 139, 250, 0.12)' : 'rgba(255, 255, 255, 0.04)'} flexShrink={0}>
-																	<Layers size={16} color={isSelected ? '#a78bfa' : 'rgba(255, 255, 255, 0.35)'} />
-																</Flex>
-																<Box flex="1" minW="0">
-																	<HStack justify="space-between" mb="0.5">
-																		<Text fontSize="13px" fontWeight="500" color={isSelected ? '#e4e4e7' : 'rgba(255, 255, 255, 0.6)'}>{group.name}</Text>
-																	</HStack>
-																	<HStack gap="2">
-																		<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">{group.backendIds.length} backends</Text>
-																		{group.description && <Text fontSize="10px" color="rgba(255, 255, 255, 0.25)">|</Text>}
-																		{group.description && <Text fontSize="10px" color="rgba(255, 255, 255, 0.25)">{group.description}</Text>}
-																	</HStack>
-																	<HStack gap="2" mt="1">
-																		<Text fontSize="11px" color="rgba(255, 255, 255, 0.4)">Active:</Text>
-																		<Text fontSize="11px" fontWeight="500" color="#a78bfa">{activeBackend?.name ?? 'Unknown'}</Text>
-																	</HStack>
-																</Box>
-															</HStack>
-														);
-													})}
-												</VStack>
-											)}
-										</Box>
-									) : (
-										<Box>
-											{backends.length === 0 && (
-												<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No backends registered. Go to Backends page.</Text>
-											)}
-											{backends.map((backend: IBackend) => {
-												const isSelected = selectedBackendId === backend.id;
-												const primaryDevice = backend.detectedDevices[0];
-												return (
-													<HStack key={backend.id} gap="3" px="4" py="3" borderRadius="lg" cursor="pointer"
-														bg={isSelected ? 'rgba(51, 129, 255, 0.08)' : 'rgba(255, 255, 255, 0.02)'}
-														borderWidth="1px" borderColor={isSelected ? 'rgba(51, 129, 255, 0.25)' : 'rgba(255, 255, 255, 0.06)'}
-														_hover={{ borderColor: isSelected ? 'rgba(51, 129, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)' }}
-														onClick={() => { setSelectedBackendId(backend.id); setSelectedBackendGroupId(null); }} transition="all 0.15s ease"
-													>
-														<Flex w="8" h="8" borderRadius="md" alignItems="center" justifyContent="center" bg={isSelected ? 'rgba(51, 129, 255, 0.12)' : 'rgba(255, 255, 255, 0.04)'} flexShrink={0}>
-															<Server size={16} color={isSelected ? '#3381ff' : 'rgba(255, 255, 255, 0.35)'} />
-														</Flex>
-														<Box flex="1" minW="0">
-															<Text fontSize="13px" fontWeight="500" color={isSelected ? '#e4e4e7' : 'rgba(255, 255, 255, 0.6)'}>{backend.name}</Text>
-															<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)" lineClamp={1}>{primaryDevice?.name ?? 'No devices detected'}</Text>
-														</Box>
-														{primaryDevice && (
-															<Box textAlign="right" flexShrink={0}>
-																<Text fontSize="11px" fontFamily='"Geist Mono", monospace' color="rgba(255, 255, 255, 0.5)">{(primaryDevice.vramFreeMb > 0 ? primaryDevice.vramFreeMb : primaryDevice.vramTotalMb) / 1024 | 0} GB</Text>
-															</Box>
-														)}
+									{backends.length === 0 && (
+										<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No backends registered. Go to Backends page.</Text>
+									)}
+									{useBackendGroup && groups.length === 0 && (
+										<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No backend groups. Create one in Backends page.</Text>
+									)}
+									{backends.length > 0 && (
+										useBackendGroup ? (
+											<Box>
+												<GroupCombobox
+													entries={groupEntries}
+													selectedId={selectedBackendGroupId}
+													onSelect={(id) => { setSelectedBackendGroupId(id); setSelectedBackendId(null); }}
+												/>
+												{selectedBackendGroupId && (
+													<HStack mt="2" gap="4" px="3" py="2" bg="rgba(167, 139, 250, 0.04)" borderRadius="lg" borderWidth="1px" borderColor="rgba(167, 139, 250, 0.1)">
+														<HStack gap="1.5"><Layers size={12} color="rgba(167, 139, 250, 0.5)" /><Text fontSize="11px" color="rgba(167, 139, 250, 0.7)">Active: {selectedBackend?.name ?? 'Unknown'}</Text></HStack>
+														<HStack gap="1.5"><Server size={12} color="rgba(255, 255, 255, 0.35)" /><Text fontSize="11px" color="rgba(255, 255, 255, 0.5)">{groups.find(g => g.id === selectedBackendGroupId)?.backendIds.length} backends</Text></HStack>
 													</HStack>
-												);
-											})}
-										</Box>
+												)}
+											</Box>
+										) : (
+											<BackendCombobox
+												entries={backendEntries}
+												selectedId={selectedBackendId}
+												onSelect={(id) => { setSelectedBackendId(id); setSelectedBackendGroupId(null); }}
+											/>
+										)
 									)}
 								</VStack>
-							</Box>
+							</Card>
 
-							{/* Device selection — only if devices available */}
+							{/* Device + GPU Layers — only if devices available */}
 							{deviceOptions.length > 0 && (
 								<Card>
-									<SelectField
-										label="Device"
-										value={params.device}
-										options={deviceOptions}
-										onChange={v => handleTargetParamChange('device', v)}
-										mono
-										optionLabels={deviceIdToName}
-									/>
+									<VStack align="stretch" gap="4">
+										<SelectField
+											label="Device"
+											value={params.device}
+											options={deviceOptions}
+											onChange={v => handleTargetParamChange('device', v)}
+											mono
+											optionLabels={deviceIdToName}
+										/>
+										{params.gpuLayers ? (
+											<SliderNumberField
+												label="GPU Layers"
+												value={params.gpuLayers}
+												onChange={v => handleTargetParamChange('gpuLayers', v)}
+												min={0} max={maxLayers}
+												suffix={`/ ${maxLayers} layers`}
+											/>
+										) : (
+											<NumberField label="GPU Layers" value={params.gpuLayers} onChange={v => handleTargetParamChange('gpuLayers', v)} min={0} max={999} />
+										)}
+									</VStack>
 								</Card>
 							)}
 
-							{/* GPU Layers + Context — sliders when model is selected */}
-							<Card>
-								<VStack align="stretch" gap="4">
-									{params.gpuLayers ? (
-										<SliderNumberField
-											label="GPU Layers"
-											value={params.gpuLayers}
-											onChange={v => handleTargetParamChange('gpuLayers', v)}
-											min={0} max={maxLayers}
-											suffix={`/ ${maxLayers} layers`}
-										/>
-									) : (
-										<NumberField label="GPU Layers" value={params.gpuLayers} onChange={v => handleTargetParamChange('gpuLayers', v)} min={0} max={999} />
-									)}
-									{modelContextLength ? (
-										<SliderNumberField
-											label="Context Size"
-											value={params.contextSize}
-											onChange={v => handleTargetParamChange('contextSize', v)}
-											min={0} max={maxContext}
-											suffix={params.contextSize === 0 ? '0 = auto' : `/ ${(maxContext / 1024).toFixed(0)}k max`}
-											logarithmic
-										/>
-									) : (
-										<NumberField label="Context Size" value={params.contextSize} onChange={v => handleTargetParamChange('contextSize', v)} min={0} step={1024} suffix="0 = auto" />
-									)}
-								</VStack>
-							</Card>
+							{/* Speculative Decoding Section */}
+							<Card
+								bg={params.specDecode.enabled ? 'rgba(167, 139, 250, 0.03)' : undefined}
+								borderColor={params.specDecode.enabled ? 'rgba(167, 139, 250, 0.12)' : undefined}
+							>
+								<HStack justify="space-between" align="center">
+										<HStack gap="3">
+											<Flex w="6" h="6" borderRadius="md" alignItems="center" justifyContent="center"
+												bg={params.specDecode.enabled ? 'rgba(167, 139, 250, 0.15)' : 'rgba(255, 255, 255, 0.04)'}
+											>
+												<Sparkles size={14} color={params.specDecode.enabled ? '#a78bfa' : 'rgba(255, 255, 255, 0.3)'} />
+											</Flex>
+											<VStack align="start" gap="0.5">
+												<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em">Speculative Decoding</Text>
+												<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)">Use a smaller model as the draft driver</Text>
+											</VStack>
+										</HStack>
+										<Switch.Root label="Enable speculative decoding" checked={params.specDecode.enabled} onCheckedChange={(details) => updateSpecParam('enabled', details.checked)} color={params.specDecode.enabled ? '#a78bfa' : 'rgba(255, 255, 255, 0.4)'}>
+											<Switch.HiddenInput />
+											<Switch.Control css={{ bg: params.specDecode.enabled ? '#a78bfa' : 'surface.4' }}>
+												<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+											</Switch.Control>
+										</Switch.Root>
+									</HStack>
 
-							{/* KV quant */}
-							<Card>
-								<VStack align="stretch" gap="3">
-									<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">KV Cache Quantization</Text>
-									<Flex gap="4">
-										<SelectField label="K Type" value={params.kvQuantK} options={KV_QUANT_OPTIONS} onChange={v => handleTargetParamChange('kvQuantK', v)} mono />
-										<SelectField label="V Type" value={params.kvQuantV} options={KV_QUANT_OPTIONS} onChange={v => handleTargetParamChange('kvQuantV', v)} mono />
-									</Flex>
-								</VStack>
-							</Card>
+								{params.specDecode.enabled && (
+									<VStack align="stretch" gap="4" mt="4">
+											{/* Draft model picker */}
+											<Box>
+												<Text fontSize="11px" color="rgba(167, 139, 250, 0.7)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Draft Model</Text>
+												{!targetArchitecture ? (
+													<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">Select a target model first to see compatible draft models.</Text>
+												) : draftModelEntries.length === 0 ? (
+													<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">
+														No compatible draft models found. Draft models must share the same architecture ({targetArchitecture}).
+													</Text>
+												) : (
+													<ModelCombobox
+														entries={draftModelEntries}
+														selectedPath={params.specDecode.draftModelPath || null}
+														onSelect={(path) => updateSpecParam('draftModelPath', path)}
+														placeholder="Search compatible draft models..."
+													/>
+												)}
+												{selectedDraftEntry?.file.metadata && (
+													<HStack mt="2" gap="4" px="3" py="2" bg="rgba(167, 139, 250, 0.04)" borderRadius="lg" borderWidth="1px" borderColor="rgba(167, 139, 250, 0.1)">
+														<HStack gap="1.5"><Layers size={12} color="rgba(167, 139, 250, 0.5)" /><Text fontSize="11px" color="rgba(167, 139, 250, 0.7)">{selectedDraftEntry.file.metadata.nLayers} layers</Text></HStack>
+														<HStack gap="1.5"><Cpu size={12} color="rgba(167, 139, 250, 0.5)" /><Text fontSize="11px" color="rgba(167, 139, 250, 0.7)">{selectedDraftEntry.file.metadata.paramCount}</Text></HStack>
+														<Text fontSize="11px" color="rgba(167, 139, 250, 0.5)" fontFamily='"Geist Mono", monospace'>{formatSize(selectedDraftEntry.model.totalSizeMb)}</Text>
+													</HStack>
+												)}
+											</Box>
 
-							{/* Parallel slots — target only */}
-							<Card>
-								<NumberField label="Parallel Slots" value={params.parallelSlots} onChange={v => handleTargetParamChange('parallelSlots', v)} min={0} suffix="0 = server default" />
-							</Card>
+											{/* Draft device */}
+											{deviceOptions.length > 0 && (
+												<Box>
+													<SelectField
+														label="Draft Device"
+														value={params.specDecode.draftDevice}
+														options={['', ...deviceOptions]}
+														onChange={v => updateSpecParam('draftDevice', v)}
+														mono
+														optionLabels={{
+															'': 'Same as target',
+															...deviceIdToName,
+														}}
+													/>
+													<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)" mt="1">Leave empty to use target device.</Text>
+												</Box>
+											)}
 
+											{/* Draft GPU layers + context */}
+											<Flex gap="4">
+												{draftMeta ? (
+													<Box flex="1">
+														<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">
+															GPU Layers <Text as="span" color="rgba(255, 255, 255, 0.2)">/ {draftMeta.nLayers}</Text>
+														</Text>
+														<Input type="number" value={params.specDecode.draftGpuLayers} onChange={e => updateSpecParam('draftGpuLayers', Number(e.target.value))} size="sm"
+															bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
+															fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
+															_focus={{ borderColor: 'rgba(167, 139, 250, 0.4)', outline: 'none' }} min={0} max={draftMeta.nLayers}
+														/>
+													</Box>
+												) : (
+													<NumberField label="GPU Layers" value={params.specDecode.draftGpuLayers} onChange={v => updateSpecParam('draftGpuLayers', v)} min={0} max={999} />
+												)}
+												<NumberField label="Context Size" value={params.specDecode.draftContextSize} onChange={v => updateSpecParam('draftContextSize', v)} min={0} step={1024} suffix="0 = auto" />
+											</Flex>
+
+											{/* Spec decode tuning params */}
+											<Box>
+												<Text fontSize="11px" color="rgba(167, 139, 250, 0.7)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Drafting Parameters</Text>
+												<Flex gap="4">
+													<NumberField label="Draft Max" value={params.specDecode.draftMax} onChange={v => updateSpecParam('draftMax', v)} min={1} max={128} />
+													<NumberField label="Draft Min" value={params.specDecode.draftMin} onChange={v => updateSpecParam('draftMin', v)} min={0} max={64} />
+													<Box flex="1">
+														<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Accept Threshold</Text>
+														<Input type="number" value={params.specDecode.draftPMin}
+															onChange={e => updateSpecParam('draftPMin', Number(e.target.value))} size="sm"
+															bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
+															fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
+															_focus={{ borderColor: 'rgba(167, 139, 250, 0.4)', outline: 'none' }}
+															min={0} max={1} step={0.05}
+														/>
+														<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)" mt="1">0.0 - 1.0</Text>
+													</Box>
+												</Flex>
+											</Box>
+									</VStack>
+								)}
+							</Card>
 
 						</VStack>
 
@@ -880,130 +1125,54 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 						<VStack gap="5" flex="1" minW="0" align="stretch">
 							<VStack align="stretch" gap="4">
 
-								{/* Speculative Decoding Section */}
-								<Box>
-									<Flex align="center" gap="3" mb="3">
-										<Flex w="6" h="6" borderRadius="md" alignItems="center" justifyContent="center"
-											bg={params.specDecode.enabled ? 'rgba(167, 139, 250, 0.15)' : 'rgba(255, 255, 255, 0.04)'}
-										>
-											<Sparkles size={14} color={params.specDecode.enabled ? '#a78bfa' : 'rgba(255, 255, 255, 0.3)'} />
-										</Flex>
-										<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" flex="1">Speculative Decoding</Text>
-										<ToggleChip
-											label={params.specDecode.enabled ? 'Enabled' : 'Disabled'}
-											active={params.specDecode.enabled}
-											onClick={() => updateSpecParam('enabled', !params.specDecode.enabled)}
-										/>
-									</Flex>
-
-									{params.specDecode.enabled && (
-										<Box
-											p="4" borderRadius="xl"
-											bg="rgba(167, 139, 250, 0.03)"
-											borderWidth="1px" borderColor="rgba(167, 139, 250, 0.12)"
-										>
-											<VStack align="stretch" gap="4">
-												{/* Draft model picker */}
-												<Box>
-													<Text fontSize="11px" color="rgba(167, 139, 250, 0.7)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Draft Model</Text>
-													{!targetArchitecture ? (
-														<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">Select a target model first to see compatible draft models.</Text>
-													) : draftModelEntries.length === 0 ? (
-														<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">
-															No compatible draft models found. Draft models must share the same architecture ({targetArchitecture}).
-														</Text>
-													) : (
-														<ModelCombobox
-															entries={draftModelEntries}
-															selectedPath={params.specDecode.draftModelPath || null}
-															onSelect={(path) => updateSpecParam('draftModelPath', path)}
-															placeholder="Search compatible draft models..."
-														/>
-													)}
-													{selectedDraftEntry?.file.metadata && (
-														<HStack mt="2" gap="4" px="3" py="2" bg="rgba(167, 139, 250, 0.04)" borderRadius="lg" borderWidth="1px" borderColor="rgba(167, 139, 250, 0.1)">
-															<HStack gap="1.5"><Layers size={12} color="rgba(167, 139, 250, 0.5)" /><Text fontSize="11px" color="rgba(167, 139, 250, 0.7)">{selectedDraftEntry.file.metadata.nLayers} layers</Text></HStack>
-															<HStack gap="1.5"><Cpu size={12} color="rgba(167, 139, 250, 0.5)" /><Text fontSize="11px" color="rgba(167, 139, 250, 0.7)">{selectedDraftEntry.file.metadata.paramCount}</Text></HStack>
-															<Text fontSize="11px" color="rgba(167, 139, 250, 0.5)" fontFamily='"Geist Mono", monospace'>{formatSize(selectedDraftEntry.model.totalSizeMb)}</Text>
-														</HStack>
-													)}
-												</Box>
-
-												{/* Draft device */}
-												{deviceOptions.length > 0 && (
-													<Box>
-														<SelectField
-															label="Draft Device"
-															value={params.specDecode.draftDevice}
-															options={['', ...deviceOptions]}
-															onChange={v => updateSpecParam('draftDevice', v)}
-															mono
-															optionLabels={{
-																'': 'Same as target',
-																...deviceIdToName,
-															}}
-														/>
-														<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)" mt="1">Leave empty to use target device.</Text>
-													</Box>
-												)}
-
-												{/* Draft GPU layers + context */}
-												<Flex gap="4">
-													{draftMeta ? (
-														<Box flex="1">
-															<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">
-																GPU Layers <Text as="span" color="rgba(255, 255, 255, 0.2)">/ {draftMeta.nLayers}</Text>
-															</Text>
-															<Input type="number" value={params.specDecode.draftGpuLayers} onChange={e => updateSpecParam('draftGpuLayers', Number(e.target.value))} size="sm"
-																bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
-																fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
-																_focus={{ borderColor: 'rgba(167, 139, 250, 0.4)', outline: 'none' }} min={0} max={draftMeta.nLayers}
-															/>
-														</Box>
-													) : (
-														<NumberField label="GPU Layers" value={params.specDecode.draftGpuLayers} onChange={v => updateSpecParam('draftGpuLayers', v)} min={0} max={999} />
-													)}
-													<NumberField label="Context Size" value={params.specDecode.draftContextSize} onChange={v => updateSpecParam('draftContextSize', v)} min={0} step={1024} suffix="0 = auto" />
-												</Flex>
-
-												{/* Spec decode tuning params */}
-												<Box>
-													<Text fontSize="11px" color="rgba(167, 139, 250, 0.7)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Drafting Parameters</Text>
-													<Flex gap="4">
-														<NumberField label="Draft Max" value={params.specDecode.draftMax} onChange={v => updateSpecParam('draftMax', v)} min={1} max={128} />
-														<NumberField label="Draft Min" value={params.specDecode.draftMin} onChange={v => updateSpecParam('draftMin', v)} min={0} max={64} />
-														<Box flex="1">
-															<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Accept Threshold</Text>
-															<Input type="number" value={params.specDecode.draftPMin}
-																onChange={e => updateSpecParam('draftPMin', Number(e.target.value))} size="sm"
-																bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
-																fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
-																_focus={{ borderColor: 'rgba(167, 139, 250, 0.4)', outline: 'none' }}
-																min={0} max={1} step={0.05}
-															/>
-															<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)" mt="1">0.0 - 1.0</Text>
-														</Box>
-													</Flex>
-												</Box>
-											</VStack>
-										</Box>
-									)}
-								</Box>
-
 								{/* Multi-modal toggle */}
-								<Card>
+								<Card
+									bg={useMultiModal ? 'rgba(251, 191, 36, 0.03)' : undefined}
+									borderColor={useMultiModal ? 'rgba(251, 191, 36, 0.12)' : undefined}
+								>
 									<HStack justify="space-between" align="center">
-										<VStack align="start" gap="0.5">
-											<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em">Multi-modal</Text>
-											<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)">Enable mmproj for vision models</Text>
-										</VStack>
-										<Switch.Root label="Use multi-modal (mmproj)" checked={useMultiModal} onCheckedChange={(details) => handleTargetParamChange('useMultiModal', details.checked)} disabled={!selectedEntry?.model.mmprojFile} color={useMultiModal ? '#a78bfa' : 'rgba(255, 255, 255, 0.4)'}>
+										<HStack gap="3">
+											<Flex w="6" h="6" borderRadius="md" alignItems="center" justifyContent="center"
+												bg={useMultiModal ? 'rgba(251, 191, 36, 0.15)' : 'rgba(255, 255, 255, 0.04)'}
+											>
+												<Eye size={14} color={useMultiModal ? '#fbbf24' : 'rgba(255, 255, 255, 0.3)'} />
+											</Flex>
+											<VStack align="start" gap="0.5">
+												<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em">Multi-modal</Text>
+												<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)">Enable mmproj for vision models</Text>
+											</VStack>
+										</HStack>
+										<Switch.Root label="Use multi-modal (mmproj)" checked={useMultiModal} onCheckedChange={(details) => handleTargetParamChange('useMultiModal', details.checked)} disabled={!selectedEntry?.model.mmprojFile} color={useMultiModal ? '#fbbf24' : 'rgba(255, 255, 255, 0.4)'}>
 											<Switch.HiddenInput />
-											<Switch.Control css={{ bg: useMultiModal ? '#a78bfa' : 'surface.4' }}>
+											<Switch.Control css={{ bg: useMultiModal ? '#fbbf24' : 'surface.4' }}>
 												<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
 											</Switch.Control>
 										</Switch.Root>
 									</HStack>
+								</Card>
+
+								{/* Context Size + KV Quant + Parallel Slots */}
+								<Card>
+									<VStack align="stretch" gap="4">
+										{modelContextLength ? (
+											<SliderNumberField
+												label="Context Size"
+												value={params.contextSize}
+												onChange={v => handleTargetParamChange('contextSize', v)}
+												min={0} max={maxContext}
+												suffix={params.contextSize === 0 ? '0 = auto' : `/ ${(maxContext / 1024).toFixed(0)}k max`}
+												logarithmic
+											/>
+										) : (
+											<NumberField label="Context Size" value={params.contextSize} onChange={v => handleTargetParamChange('contextSize', v)} min={0} step={1024} suffix="0 = auto" />
+										)}
+										<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">KV Cache Quantization</Text>
+										<Flex gap="4">
+											<SelectField label="K Type" value={params.kvQuantK} options={KV_QUANT_OPTIONS} onChange={v => handleTargetParamChange('kvQuantK', v)} mono />
+											<SelectField label="V Type" value={params.kvQuantV} options={KV_QUANT_OPTIONS} onChange={v => handleTargetParamChange('kvQuantV', v)} mono />
+										</Flex>
+										<NumberField label="Parallel Slots" value={params.parallelSlots} onChange={v => handleTargetParamChange('parallelSlots', v)} min={0} suffix="0 = server default" />
+									</VStack>
 								</Card>
 
 								{/* Toggle options */}
@@ -1136,6 +1305,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 										</Card>
 									)}
 								</Box>
+
 							</VStack>
 
 						</VStack>
