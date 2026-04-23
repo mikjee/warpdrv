@@ -208,7 +208,13 @@ export class Orchestrator {
 			}
 		} catch (err) {
 			const errorMsg = err instanceof Error ? err.message : String(err);
-			if (!abortSignal.aborted) {
+			if (abortSignal.aborted) {
+				this.broadcaster.emit({
+					type: 'inference.ended',
+					threadId: request.threadId,
+					messageId: request.parentId ?? crypto.randomUUID(),
+				});
+			} else {
 				console.error('[Orchestrator] handleCompletion error:', errorMsg);
 				this.broadcaster.emit({
 					type: 'inference.error',
