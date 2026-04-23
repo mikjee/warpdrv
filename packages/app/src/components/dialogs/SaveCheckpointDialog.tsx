@@ -121,7 +121,7 @@ export function SaveCheckpointDialog({ server, isOpen, onClose }: ISaveCheckpoin
 		<>
 			<Dialog.Root open={isOpen} onOpenChange={(d) => { if (!d.open) onClose(); }}>
 				<Portal>
-					<Box position="fixed" inset="15px" borderRadius="12px" overflow="hidden" zIndex="modal">
+					<Box position="fixed" inset="6px" borderRadius="12px" overflow="hidden" zIndex="modal">
 						<Dialog.Backdrop position="absolute" />
 						<Dialog.Positioner position="absolute">
 							<Dialog.Content

@@ -151,11 +151,11 @@ export function HubPage() {
 				title="HuggingFace"
 				icon={<Globe size={20} />}
 				actions={
-					<HStack gap="2">
+					<HStack gap="3">
 						<Box position="relative">
 							<Input
 								placeholder="Search models or users..."
-								size="xs" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)"
+								size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)"
 								color="rgba(255, 255, 255, 0.7)" fontSize="13px" borderRadius="lg" pl="9"
 								_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
 								_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
@@ -167,7 +167,7 @@ export function HubPage() {
 								<Search size={14} />
 							</Box>
 						</Box>
-						<HStack gap="2" alignItems="center">
+						<HStack gap="3" alignItems="center">
 							<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">Params</Text>
 							<Slider.Root
 								w="150px"
@@ -189,7 +189,7 @@ export function HubPage() {
 							<Text fontSize="10px" color="rgba(255, 255, 255, 0.5)">{PARAM_STEPS[paramsRange[0]]}B - {PARAM_STEPS[paramsRange[1]]}B</Text>
 						</HStack>
 						<Button
-							size="xs" bgGradient="to-r" gradientFrom="#3381ff" gradientTo="#5b6af5"
+							size="sm" bgGradient="to-r" gradientFrom="#3381ff" gradientTo="#5b6af5"
 							color="white" _hover={{ opacity: 0.9 }}
 							borderRadius="lg" fontSize="13px" fontWeight="600"
 							onClick={handleSearch} disabled={!query.trim() || searching} px="5"
@@ -221,7 +221,7 @@ export function HubPage() {
 			/>
 
 			{/* Results + Detail */}
-			<Flex h="calc(100vh - 153px)" borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" overflow="hidden">
+			<Flex h="calc(100vh - 75px)" borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" overflow="hidden">
 				<Box w="400px" minW="400px" borderRightWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" display="flex" flexDirection="column">
 					{!searchExecuted ? (
 						<Flex flex="1" alignItems="center" justifyContent="center">

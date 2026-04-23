@@ -87,7 +87,7 @@ export function RunRecipeDialog({ recipe, onClose }: IRunRecipeDialogProps) {
 	const canRun = parseResult.error === null && !starting && !isRunning && !isOtherRunActive;
 
 	return (
-		<Box position="fixed" inset="15px" bg="rgba(0, 0, 0, 0.6)" zIndex="modal" display="flex" alignItems="center" justifyContent="center" borderRadius="12px" overflow="hidden" onClick={onClose}>
+		<Box position="fixed" inset="6px" bg="rgba(0, 0, 0, 0.6)" zIndex="modal" display="flex" alignItems="center" justifyContent="center" borderRadius="12px" overflow="hidden" onClick={onClose}>
 			<Box w="900px" maxW="95vw" h="80vh" bg="#0e0e0e" borderRadius="xl" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.08)" shadow="0 20px 80px rgba(0, 0, 0, 0.6)" display="flex" flexDirection="column" overflow="hidden" onClick={(e) => e.stopPropagation()}>
 				{/* Header */}
 				<Flex px="5" py="3" justify="space-between" align="center" borderBottomWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" flexShrink={0}>

@@ -224,10 +224,10 @@ export function CheckpointsPage() {
 				subtitle={`${ grouped.bundles.length | grouped.standalone.length } Checkpoints`}
 				icon={<Database size={20} />}
 				actions={
-					<HStack gap="2">
+					<HStack gap="3">
 						<InputGroup startElement={<Search size={14} color="rgba(255, 255, 255, 0.3)" />} w="200px">
 							<Input
-								size="xs"
+								size="sm"
 								value={search}
 								onChange={(e) => setSearch(e.target.value)}
 								placeholder="Search checkpoints..."
@@ -240,7 +240,7 @@ export function CheckpointsPage() {
 								_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
 							/>
 						</InputGroup>
-						<HStack gap="1.5">
+						<HStack gap="3">
 							{(() => {
 								const sortCollection = createListCollection({
 									items: (Object.keys(FIELD_LABELS) as TCheckpointSortField[]).map(f => ({ value: f, label: FIELD_LABELS[f] })),
@@ -259,7 +259,7 @@ export function CheckpointsPage() {
 											<Combobox.Trigger asChild>
 												<Button
 													variant="outline"
-													size="xs"
+													size="sm"
 													w="150px"
 													justifyContent="space-between"
 													bg="rgba(255, 255, 255, 0.03)"
@@ -299,7 +299,7 @@ export function CheckpointsPage() {
 								);
 							})()}
 							<Button
-								size="xs"
+								size="sm"
 								variant="outline"
 								bg="rgba(255, 255, 255, 0.03)"
 								borderColor="rgba(255, 255, 255, 0.08)"

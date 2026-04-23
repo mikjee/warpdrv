@@ -75,18 +75,19 @@ export function PageHeader({ title, subtitle, icon, actions, actionsRight }: IPa
 		<Flex
 			position={"sticky"}
 			top="0"
+			left="-5px"
 			zIndex={"99"}
 			justify="space-between"
 			align="center"
 			px="4"
 			py="3"
-			borderBottomWidth="1px"
-			borderColor="rgba(255, 255, 255, 0.06)"
-			// bg="#0c0c0c"
+			// borderBottomWidth="1px"
+			// borderColor="rgba(255, 255, 255, 0.06)"
+			bg="#050505"
 			className='drag'
 			onDoubleClick={handleDoubleClick}
 			style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
-			// boxShadow={"0px 0px 20px black"}
+			boxShadow={"0px 0px 10px #050505"}
 		>
 			<HStack gap="4" ml="2">
 				<Flex

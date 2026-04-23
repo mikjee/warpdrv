@@ -82,11 +82,11 @@ export function RecipesPage() {
 				subtitle={`${recipes.length} Pipelines`}
 				icon={<ScrollText size={20} />}
 				actions={
-					<HStack gap="2">
+					<HStack gap="3">
 						<InputGroup startElement={<Search size={14} color="rgba(255, 255, 255, 0.3)" />} w="200px">
 							<Input
 								placeholder="Search recipes..."
-								size="xs"
+								size="sm"
 								bg="rgba(255, 255, 255, 0.03)"
 								borderColor="rgba(255, 255, 255, 0.08)"
 								color="rgba(255, 255, 255, 0.7)"
@@ -98,7 +98,7 @@ export function RecipesPage() {
 								onChange={e => setSearchQuery(e.target.value)}
 							/>
 						</InputGroup>
-						<HStack gap="1.5">
+						<HStack gap="3">
 							{(() => {
 								const sortCollection = createListCollection({
 									items: (Object.keys(RECIPE_FIELD_LABELS) as TRecipeSortField[]).map(f => ({ value: f, label: RECIPE_FIELD_LABELS[f] })),
@@ -117,7 +117,7 @@ export function RecipesPage() {
 											<Combobox.Trigger asChild>
 												<Button
 													variant="outline"
-													size="xs"
+													size="sm"
 													w="170px"
 													justifyContent="space-between"
 													bg="rgba(255, 255, 255, 0.03)"
@@ -157,7 +157,7 @@ export function RecipesPage() {
 								);
 							})()}
 							<Button
-								size="xs"
+								size="sm"
 								variant="outline"
 								bg="rgba(255, 255, 255, 0.03)"
 								borderColor="rgba(255, 255, 255, 0.08)"
@@ -215,7 +215,7 @@ export function RecipesPage() {
 									</VStack>
 								</Flex>
 							) : (
-								<VStack align="stretch" gap="2.5">
+								<VStack align="stretch" gap="3">
 									{recipes.map(recipe => (
 										<RecipeRow
 											key={recipe.id}
@@ -270,7 +270,7 @@ function RecipeRow({ recipe, onRun, onEdit, onDelete }: IRecipeRowProps) {
 					</Flex>
 					<Box flex="1">
 						<HStack gap="2" align="center">
-							<Text fontSize="15px" fontWeight="600" color="#e4e4e7">{recipe.name}</Text>
+							<Text fontSize="14px" fontWeight="600" color="#cfcfcf">{recipe.name}</Text>
 							{recipe.isBuiltIn && (
 								<Badge size="sm" px="1.5" py="0.5" borderRadius="full" bg="rgba(167, 139, 250, 0.15)" color="#a78bfa" fontSize="10px" fontWeight="600">
 									<HStack gap="1"><Lock size={9} /><Text>Built-in</Text></HStack>

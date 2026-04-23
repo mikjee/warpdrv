@@ -146,7 +146,7 @@ const handleSwitchAndRestart = async () => {
 	return (
 		<Dialog.Root open={open} onOpenChange={(details) => { if (!isSwitching && !isRestarting) setOpen(details.open); }}>
 			<Portal>
-				<Box position="fixed" inset="15px" borderRadius="12px" overflow="hidden" zIndex="modal">
+				<Box position="fixed" inset="6px" borderRadius="12px" overflow="hidden" zIndex="modal">
 					<Dialog.Backdrop position="absolute" />
 					<Dialog.Positioner position="absolute">
 						<Dialog.Content

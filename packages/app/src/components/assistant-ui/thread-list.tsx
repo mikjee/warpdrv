@@ -45,7 +45,8 @@ export function useThreadsAndFolders() {
 	}));
 	const setCurrentThreadId = useStore(s => s.setCurrentThreadId);
 	const setThreads = useStore(s => s.setThreads);
-	const [folders, setFolders] = useState<IChatFolder[]>([]);
+	const folders = useStore(s => s.folders);
+	const setFolders = useStore(s => s.setFolders);
 
 	// Initial load
 	useEffect(() => {
@@ -97,17 +98,17 @@ export function useThreadsAndFolders() {
 
 	const addFolder = useCallback(async (name: string) => {
 		const res = await createFolder(name);
-		if (res.ok) setFolders(prev => [...prev, res.data]);
-	}, []);
+		if (res.ok) setFolders([...folders, res.data]);
+	}, [folders]);
 
 	const patchFolder = useCallback(async (id: string, patch: Partial<IChatFolder>) => {
 		await updateFolder(id, patch);
-		setFolders(prev => prev.map(f => f.id === id ? { ...f, ...patch } : f));
-	}, []);
+		setFolders(folders.map(f => f.id === id ? { ...f, ...patch } : f));
+	}, [folders]);
 
 	const removeFolder = useCallback(async (id: string) => {
 		await deleteFolder(id);
-		setFolders(prev => prev.filter(f => f.id !== id));
+		setFolders(folders.filter(f => f.id !== id));
 		// Move threads from this folder to root
 		const threadsRecord: Record<string, IChatThread> = {};
 		let changed = false;
@@ -121,7 +122,7 @@ export function useThreadsAndFolders() {
 		}
 		// Only update if threads were actually moved
 		if (changed) setThreads(threadsRecord);
-	}, [threads]);
+	}, [folders, threads]);
 
 	const refreshFolders = useCallback(async () => {
 		const fRes = await fetchFolders();

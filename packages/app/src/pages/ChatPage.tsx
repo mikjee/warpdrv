@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useDependantState } from '../hooks/useDependantState';
-import { Box, Flex, IconButton, Text, HStack } from '@chakra-ui/react';
-import { MessageSquare, ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Box, Button, Flex, IconButton, Text, HStack } from '@chakra-ui/react';
+import { MessageSquare, ChevronDown, PanelLeftClose, PanelLeftOpen, Plus } from 'lucide-react';
 import {
 	AssistantRuntimeProvider,
 	useExternalStoreRuntime,
@@ -531,6 +531,7 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 export const ChatPage = React.memo(() => {
 
 	const title = useStore(s => s.currentThreadId ? s.threads[s.currentThreadId]?.title || "New Chat" : "New Chat");
+	const setCurrentThreadId = useStore(s => s.setCurrentThreadId);
 	const [threadsListCollapsed, setThreadsListCollapsed] = useState(false);
 
 	return (
@@ -538,6 +539,23 @@ export const ChatPage = React.memo(() => {
 			<PageHeader
 				title="Chat"
 				icon={<MessageSquare size={20} />}
+				actionsRight={
+					<Button
+						size="sm"
+						bg="rgba(51, 129, 255, 0.12)"
+						color="#3381ff"
+						borderWidth="1px"
+						borderColor="rgba(51, 129, 255, 0.25)"
+						_hover={{ bg: 'rgba(51, 129, 255, 0.2)' }}
+						borderRadius="lg"
+						fontSize="13px"
+						fontWeight="500"
+						onClick={() => setCurrentThreadId(globalThis.crypto.randomUUID())}
+					>
+						<Plus size={15} />
+						New Chat
+					</Button>
+				}
 				actions={
 					<>
 						<IconButton

@@ -1,6 +1,6 @@
 import { Box, Text, HStack, Flex, Badge, Button, Spinner, Input } from '@chakra-ui/react';
 import {
-	FolderOpen, Search, MoreVertical, ExternalLink,
+	FolderOpen, Search, MoreVertical, ExternalLink, Eye,
 	FolderOpen as FolderIcon, Trash2, ChevronUp, ChevronDown,
 } from 'lucide-react';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
@@ -38,7 +38,7 @@ function formatContext(ctx: number): string {
 // Sort
 // ============================================================
 
-type TSortKey = 'name' | 'user' | 'quant' | 'params' | 'size' | 'context' | 'files';
+type TSortKey = 'name' | 'user' | 'quant' | 'params' | 'size' | 'context' | 'files' | 'vision';
 
 interface ISortState {
 	key: TSortKey;
@@ -55,6 +55,7 @@ function getSortValue(model: IModel, key: TSortKey): string | number {
 		case 'size': return model.totalSizeMb;
 		case 'context': return meta?.contextLength ?? 0;
 		case 'files': return model.files.length;
+		case 'vision': return model.mmprojFile ? 1 : 0;
 	}
 }
 
@@ -230,10 +231,11 @@ export function ModelsPage() {
 		name: '1',      // flex
 		user: '140px',
 		quant: '90px',
-		params: '100px',
+		params: '60px',
 		size: '80px',
 		context: '70px',
 		files: '50px',
+		vision: '50px',
 		actions: '40px',
 	};
 
@@ -260,7 +262,7 @@ export function ModelsPage() {
 							placeholder="Search models..."
 							value={search}
 							onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-							size="xs"
+							size="sm"
 							pl="8"
 							w="220px"
 							bg="rgba(255, 255, 255, 0.03)"
@@ -294,7 +296,7 @@ export function ModelsPage() {
 				}
 			/>
 
-			<Box p="4">
+			<Box p="3">
 				{/* Table header */}
 				<Flex
 					px="4"
@@ -305,8 +307,9 @@ export function ModelsPage() {
 				>
 					<Box flex={cols.name}><SortHeader label="Model" sortKey="name" sort={sort} onSort={handleSort} /></Box>
 					<Box w={cols.user}><SortHeader label="User" sortKey="user" sort={sort} onSort={handleSort} /></Box>
-					<Box w={cols.quant}><SortHeader label="Quant" sortKey="quant" sort={sort} onSort={handleSort} /></Box>
-					<Box w={cols.params}><SortHeader label="Params" sortKey="params" sort={sort} onSort={handleSort} /></Box>
+<Box w={cols.quant}><SortHeader label="Quant" sortKey="quant" sort={sort} onSort={handleSort} /></Box>
+				<Box w={cols.vision}><SortHeader label="Vision" sortKey="vision" sort={sort} onSort={handleSort} /></Box>
+				<Box w={cols.params}><SortHeader label="Params" sortKey="params" sort={sort} onSort={handleSort} /></Box>
 					<Box w={cols.size}><SortHeader label="Size" sortKey="size" sort={sort} onSort={handleSort} align="right" /></Box>
 					<Box w={cols.context}><SortHeader label="Context" sortKey="context" sort={sort} onSort={handleSort} align="right" /></Box>
 					<Box w={cols.files}><SortHeader label="Files" sortKey="files" sort={sort} onSort={handleSort} align="right" /></Box>
@@ -353,7 +356,7 @@ export function ModelsPage() {
 								{/* Model name */}
 								<Box flex={cols.name} overflow="hidden">
 									<Text
-										fontSize="13px"
+										fontSize="14px"
 										fontWeight="500"
 										color="#e4e4e7"
 										lineClamp={1}
@@ -361,7 +364,7 @@ export function ModelsPage() {
 										{model.name}
 									</Text>
 									{meta?.architecture && (
-										<Text fontSize="11px" color="rgba(255, 255, 255, 0.25)" mt="0.5">
+										<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" mt="0.5">
 											{meta.architecture}
 										</Text>
 									)}
@@ -389,6 +392,11 @@ export function ModelsPage() {
 									>
 										{quantType}
 									</Badge>
+								</Box>
+
+								{/* Vision */}
+								<Box w={cols.vision} display="flex" justifyContent="center">
+									{model.mmprojFile && <Eye size={16} color="#fbbf24" />}
 								</Box>
 
 								{/* Params */}

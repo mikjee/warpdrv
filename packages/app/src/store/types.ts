@@ -5,6 +5,7 @@ import type {
 	IMcpServerState,
 	IToolPermission,
 	IServerPermission as IMcpServerPermission,
+	IFolder,
 	IChatThread,
 	IChatMessage,
 	IToolCall,
@@ -114,4 +115,8 @@ export interface AppState {
 	stepOutputs: Record<TStepId, string>;
 	// Checkpoints
 	checkpoints: Record<TCheckpointId, ICheckpoint>;
+
+	// Chat Folders
+	folders: IFolder[];
+	setFolders: (folders: IFolder[]) => void;
 }

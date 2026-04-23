@@ -20,7 +20,7 @@ export function SlotPill({ slot, metadata }: ISlotPillProps) {
 		label = pct >= 100 ? 'pp' : `pp ${pct}%`;
 		progress = slot.prefillProgress ?? 0;
 	} else if (isGen) {
-		color = '#1acaff';
+		color = '#1a98ff';
 		label = slot.generatedTokens > 0 ? `gen ${slot.generatedTokens}` : 'gen';
 		progress = 0;
 	} else {

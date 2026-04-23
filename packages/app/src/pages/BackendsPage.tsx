@@ -237,15 +237,15 @@ export function BackendsPage() {
 	return (
 		<Box>
 			<PageHeader
-				title="Llama.cpp"
+				title="Llamas"
 				subtitle={` ${backends.length} Builds, ${groups.length} Groups`}
 				icon={<Blocks size={20} />}
 				actions={
-					<HStack gap="2">
+					<HStack gap="3">
 						<InputGroup startElement={<Search size={14} color="rgba(255, 255, 255, 0.3)" />} w="220px">
 							<Input
 								placeholder="Search backends and groups"
-								size="xs"
+								size="sm"
 								bg="rgba(255, 255, 255, 0.03)"
 								borderColor="rgba(255, 255, 255, 0.08)"
 								color="rgba(255, 255, 255, 0.7)"
@@ -257,7 +257,7 @@ export function BackendsPage() {
 								onChange={e => setSearchQuery(e.target.value)}
 							/>
 						</InputGroup>
-						<HStack gap="1.5">
+						<HStack gap="3">
 							{(() => {
 								const sortCollection = createListCollection({
 									items: (Object.keys(FIELD_LABELS) as TBackendSortField[]).map(f => ({ value: f, label: FIELD_LABELS[f] })),
@@ -276,7 +276,7 @@ export function BackendsPage() {
 											<Combobox.Trigger asChild>
 												<Button
 													variant="outline"
-													size="xs"
+													size="sm"
 													w="170px"
 													justifyContent="space-between"
 													bg="rgba(255, 255, 255, 0.03)"
@@ -316,12 +316,12 @@ export function BackendsPage() {
 								);
 							})()}
 							<Button
-								size="xs"
+								size="sm"
 								variant="outline"
 								bg="rgba(255, 255, 255, 0.03)"
 								borderColor="rgba(255, 255, 255, 0.08)"
 								color="rgba(255, 255, 255, 0.5)"
-								p="1" minW="auto"
+								p="3" minW="auto"
 								borderRadius="md"
 								_hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
 								title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
@@ -368,7 +368,7 @@ export function BackendsPage() {
 								</VStack>
 							</Flex>
 						) : (
-							<VStack align="stretch" gap="2.5">
+							<VStack align="stretch" gap="3">
 								{filteredAndSortedBackends.map(backend => {
 									const statusColor = STATUS_COLORS[backend.validation] ?? 'rgba(255, 255, 255, 0.3)';
 									const backendDevices = devicesByBackend.get(backend.id) ?? backend.detectedDevices ?? [];
@@ -385,7 +385,7 @@ export function BackendsPage() {
 													<Flex justify="space-between" align="center">
 														<HStack gap="3" flex="1">
 															<Flex w="10" h="10" borderRadius="lg" alignItems="center" justifyContent="center" bg="rgba(255, 255, 255, 0.04)">
-																<Terminal size={20} color="rgba(255, 255, 255, 0.5)" />
+																<Blocks size={20} color="rgba(255, 255, 255, 0.5)" />
 															</Flex>
 															<Box flex="1">
 																<HStack gap="2" align="center">

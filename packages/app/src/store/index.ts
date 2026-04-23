@@ -101,6 +101,10 @@ export const useStore = create<AppState>()(
 					setCurrentInferenceParams: bridge.setCurrentInferenceParams,
 					tempThreadServerId: bridge.tempThreadServerId,
 					setTempThreadServerId: bridge.setTempThreadServerId,
+
+					// Chat Folders
+					folders: [],
+					setFolders: (folders) => set(s => { s.folders = folders; }),
 				};
 		}),
 	),

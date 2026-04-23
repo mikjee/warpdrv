@@ -289,11 +289,11 @@ export const ServersPage = React.memo(() => {
 				subtitle={`${servers.filter(s => s.status === EServerStatus.RUNNING).length} / ${servers.length} Running`}
 				icon={<Server size={20} />}
 				actions={
-					<HStack gap="2">
+					<HStack gap="3">
 						<InputGroup startElement={<Search size={14} color="rgba(255, 255, 255, 0.3)" />} w="200px">
 							<Input
 								placeholder="Search servers..."
-								size="xs"
+								size="sm"
 								bg="rgba(255, 255, 255, 0.03)"
 								borderColor="rgba(255, 255, 255, 0.08)"
 								color="rgba(255, 255, 255, 0.7)"
@@ -305,7 +305,7 @@ export const ServersPage = React.memo(() => {
 								onChange={e => setSearchQuery(e.target.value)}
 							/>
 						</InputGroup>
-						<HStack gap="1.5">
+						<HStack gap="3">
 							{(() => {
 								const sortCollection = createListCollection({
 									items: (Object.keys(FIELD_LABELS) as TSortField[]).map(f => ({ value: f, label: FIELD_LABELS[f] })),
@@ -324,7 +324,7 @@ export const ServersPage = React.memo(() => {
 											<Combobox.Trigger asChild>
 												<Button
 													variant="outline"
-													size="xs"
+													size="sm"
 													w="150px"
 													justifyContent="space-between"
 													bg="rgba(255, 255, 255, 0.03)"
@@ -364,7 +364,7 @@ export const ServersPage = React.memo(() => {
 								);
 							})()}
 							<Button
-								size="xs"
+								size="sm"
 								variant="outline"
 								bg="rgba(255, 255, 255, 0.03)"
 								borderColor="rgba(255, 255, 255, 0.08)"
@@ -412,7 +412,7 @@ export const ServersPage = React.memo(() => {
 				}
 			/>
 
-			<Box p="3">
+			<Box p="4">
 				{filteredServers.length === 0 ? (
 					<Flex
 						h="300px" alignItems="center" justifyContent="center"
@@ -425,7 +425,7 @@ export const ServersPage = React.memo(() => {
 						</VStack>
 					</Flex>
 				) : (
-					<VStack align="stretch" gap="3">
+					<VStack align="stretch" gap="4">
 						{filteredServers.map(server => {
 							const isRunning = server.status === EServerStatus.RUNNING;
 							const isLoading = server.status === EServerStatus.LOADING;
@@ -453,7 +453,7 @@ export const ServersPage = React.memo(() => {
 													{/* {isRunning && <Box position="absolute" top="-1px" right="-1px" w="8px" h="8px" borderRadius="full" bg="#34d399" shadow="0 0 8px #34d399" />} */}
 												</Flex>
 												<Box>
-													<HStack gap="2.5" alignItems="center" flexWrap="wrap">
+													<HStack gap="3" alignItems="center" flexWrap="wrap">
 														<HoverCard.Root size="sm" openDelay={150}>
 															<HoverCard.Trigger asChild>
 																<Text fontSize="13px" fontWeight="600" color="#d0d0d0" cursor="help">{server.serverName}</Text>
@@ -482,7 +482,7 @@ export const ServersPage = React.memo(() => {
 														{server.serverAlias && server.serverAlias.length > 0 && (
 															<>
 																{server.serverAlias.map(alias => (
-																	<Badge key={alias} px="1.5" py="0.25" borderRadius="md" fontSize="10px" fontFamily='"Geist Mono", monospace' bg="rgba(99, 102, 241, 0.15)" color="#a5b4fc" borderWidth="1px" borderColor="rgba(99, 102, 241, 0.3)">
+																	<Badge key={alias} px="1.5" py="0.25" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="rgba(99, 102, 241, 0.15)" color="#a5b4fc" borderWidth="1px" borderColor="rgba(99, 102, 241, 0.3)">
 																		{alias}
 																		<Button
 																			size="xs"
@@ -505,7 +505,7 @@ export const ServersPage = React.memo(() => {
 														)}
 														<Popover.Root lazyMount unmountOnExit open={addingAlias?.serverId === server.id} onOpenChange={(details) => { if (!details.open) closeAddAliasPopover(); }}>
 															<Popover.Trigger asChild>
-																<Badge px="1.5" py="0.25" borderRadius="md" fontSize="10px" fontFamily='"Geist Mono", monospace' bg="rgba(99, 102, 241, 0.1)" color="#a5b4fc" borderWidth="1px" borderColor="rgba(99, 102, 241, 0.25)" cursor="pointer" onClick={(e) => { e.stopPropagation(); openAddAliasPopover(server.id, server.serverName); }}>
+																<Badge px="1.5" py="0.25" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="rgba(99, 102, 241, 0.1)" color="#a5b4fc" borderWidth="1px" borderColor="rgba(99, 102, 241, 0.25)" cursor="pointer" onClick={(e) => { e.stopPropagation(); openAddAliasPopover(server.id, server.serverName); }}>
 																	<Plus size={10} />
 																</Badge>
 															</Popover.Trigger>
