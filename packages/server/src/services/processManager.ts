@@ -1,19 +1,24 @@
 import { spawn, type ChildProcess } from 'child_process';
 import http from 'http';
 import net from 'net';
-import type { IServer, ILaunchParams, IChatInferenceParams } from '@warpcore/shared';
-import { EServerStatus, EKvQuantType } from '@warpcore/shared';
-import { INFER_PARAM_TO_API } from '@warpcore/bridge/inferParamNames';
-import { startStatsPolling, stopStatsPolling } from './statsPoller';
+import type { IServer, ILaunchParams, IChatInferenceParams, IBackend, IBackendGroup, ISettings } from '@warpcore/shared';
+import { EServerStatus, EKvQuantType, DEFAULT_SETTINGS } from '@warpcore/shared';
+import { parse as shellParse } from 'shell-quote';
 import { bootstrapServer, teardownServer, parseLogLine } from './slotStateTracker';
 import { listCheckpoints, restoreCheckpoint, saveCheckpoint, getCheckpointsDir } from './checkpointService';
 import { ECheckpointSaveMode } from '@warpcore/shared';
 import { store } from '../util/store';
 import { sseManager } from './sseManagerInstance';
+import { getCachedModels } from '../routes/models';
 
-const SERVERS_PREFIX = 'servers:';
+export const SERVERS_PREFIX = 'servers:';
+const SETTINGS_KEY = 'settings:general';
+
+// Track used ports to avoid collisions
+export const usedPorts = new Set<number>();
+
 // Health poller — checks /health endpoint until server is ready or timeout
-function pollHealth(
+export function pollHealth(
 	port: number,
 	onReady: () => void,
 	onFail: (err: string) => void,
@@ -123,9 +128,10 @@ export function buildArgs(
 			args.push(`--${key}`, value);
 		}
 	}
-	// Extra args — split by whitespace
+	// Extra args — tokenize respecting quoted JSON values
 	if (params.extraArgs.trim()) {
-		args.push(...params.extraArgs.trim().split(/\s+/));
+		const tokens = shellParse(params.extraArgs).filter((t): t is string => typeof t === 'string');
+		args.push(...tokens);
 	}
 	return args;
 }
@@ -445,4 +451,181 @@ async function maybeAutoSaveCheckpoint(serverId: string): Promise<void> {
 	} catch (err) {
 		console.error(`[auto-save] ${serverId}:`, err);
 	}
+}
+
+/**
+ * Parse CLI flags into a map, handling quoted values and various formats
+ */
+export function parseCliFlags(flags: string): Map<string, string | true> {
+	const result = new Map<string, string | true>();
+	
+	if (!flags?.trim()) return result;
+	
+	// Tokenize respecting quotes via shell-quote
+	const tokens: string[] = shellParse(flags).filter((t): t is string => typeof t === 'string');
+	
+	// Parse tokens into flags
+	for (let i = 0; i < tokens.length; i++) {
+		const token = tokens[i];
+		if (!token) continue;
+		
+		if (token.startsWith('--')) {
+			// Check for --key=value format
+			const equalsIndex = token.indexOf('=');
+			if (equalsIndex !== -1) {
+				const key = token.substring(0, equalsIndex);
+				const value = token.substring(equalsIndex + 1);
+				result.set(key, value);
+			} else {
+				// Check if next token is a value (not another flag)
+				const nextToken = tokens[i + 1];
+				if (nextToken && typeof nextToken === 'string' && !nextToken.startsWith('--')) {
+					result.set(token, nextToken);
+					i++; // Skip the value token
+				} else {
+					// Boolean flag
+					result.set(token, true);
+				}
+			}
+		}
+	}
+	
+	return result;
+}
+
+
+/**
+ * Merge CLI flags with override flags taking precedence
+ */
+export function mergeCliFlags(baseFlags: string, overrideFlags: string): string {
+	const merged = parseCliFlags(baseFlags);
+	const overrides = parseCliFlags(overrideFlags);
+	
+	// Apply overrides
+	overrides.forEach((value, key) => {
+		merged.set(key, value);
+	});
+	
+	// Reconstruct CLI string
+	const parts: string[] = [];
+	merged.forEach((value, key) => {
+		if (value === true) {
+			parts.push(key); // Boolean flag
+		} else {
+			// Quote values containing spaces or JSON; use single quotes so inner "..." survive
+			const needsQuoting = value.includes(' ') || value.startsWith('{') || value.startsWith('[');
+			if (needsQuoting) {
+				// Escape any single quotes in value using shell-safe '\'' pattern
+				const escaped = value.replace(/'/g, `'\\''`);
+				parts.push(key, `'${escaped}'`);
+			} else {
+				parts.push(key, value);
+			}
+		}
+	});
+	
+	return parts.join(' ');
+}
+
+export async function findAvailablePort(): Promise<number> {
+	const settings = await store.get<ISettings>(SETTINGS_KEY) ?? DEFAULT_SETTINGS;
+	for (let port = settings.portRangeStart; port <= settings.portRangeEnd; port++) {
+		if (!usedPorts.has(port)) {
+			usedPorts.add(port);
+			return port;
+		}
+	}
+	throw new Error('No available ports in configured range');
+}
+
+// On startup, reconcile stored servers with actual running processes
+export async function reconcileServers(): Promise<void> {
+	const servers = await store.list<IServer>(SERVERS_PREFIX);
+	for (const server of servers) {
+		if (server.status === EServerStatus.RUNNING || server.status === EServerStatus.LOADING) {
+			if (server.pid && isProcessAlive(server.pid)) {
+				usedPorts.add(server.port);
+			} else {
+				server.status = EServerStatus.STOPPED;
+				server.pid = undefined;
+				await store.put(SERVERS_PREFIX + server.id, server);
+			}
+		}
+	}
+}
+
+// Launch servers with autoLaunch=true that are not already running
+export async function launchAutoStartServers(): Promise<void> {
+	const servers = await store.list<IServer>(SERVERS_PREFIX);
+	for (const server of servers) {
+		if ((server.autoLaunch ?? false) && server.status === EServerStatus.STOPPED) {
+			try {
+				await launchServer(server);
+				console.log(`[WarpCore] Auto-launching server: ${server.serverName}`);
+			} catch (err) {
+				console.log(`[WarpCore] Skipping auto-launch for ${server.serverName}: ${err}`);
+			}
+		}
+	}
+}
+
+// Common server spawn logic — resolves backend, builds args, spawns, sets PID + status.
+// Mutates server.pid, server.status, server.error, server.port. Persists to store.
+// Throws if backend resolution fails.
+export async function launchServer(server: IServer): Promise<void> {
+	let backend: IBackend | null = null;
+	if (server.backendGroupId) {
+		const group = await store.get<IBackendGroup>('backendGroups:' + server.backendGroupId);
+		if (!group) throw new Error('Backend group not found');
+		backend = await store.get<IBackend>('backends:' + group.activeBackendId);
+		if (!backend) throw new Error('Active backend in group not found');
+	} else if (server.backendId) {
+		backend = await store.get<IBackend>('backends:' + server.backendId);
+		if (!backend) throw new Error('Backend not found');
+	}
+	if (!backend) throw new Error('No backend or backend group configured');
+
+	const model = getCachedModels().find(m => m.primaryFile?.filePath === server.modelPath);
+	const mmprojPath = model?.mmprojFile?.filePath && server.useMultiModal ? model.mmprojFile.filePath : null;
+
+	// Append recommended inference params to extraArgs if enabled
+	const launchParams = { ...server.params };
+	if (server.useRecommendedInferenceParams && model?.recommendedInferenceParams) {
+		launchParams.extraArgs = mergeCliFlags(model.recommendedInferenceParams, server.params.extraArgs);
+	}
+
+	// Auto-assign port if not yet determined
+	if (server.port === 0) {
+		server.port = await findAvailablePort();
+	}
+	if (launchParams.port === 0) {
+		launchParams.port = server.port;
+	}
+	if (server.params.port > 0) {
+		usedPorts.add(server.port);
+	}
+
+	const args = await buildServerArgs(
+		server.modelPath,
+		mmprojPath,
+		launchParams,
+		backend.defaultArgs,
+	);
+
+	const pid = spawnServer(
+		server.id,
+		backend.path,
+		args,
+		async (status, error) => {
+			server.status = status;
+			if (error) server.error = error;
+			if (status === EServerStatus.RUNNING) server.startedAt = Date.now();
+			await store.put(SERVERS_PREFIX + server.id, server);
+		},
+	);
+
+	server.pid = pid || undefined;
+	server.status = EServerStatus.LOADING;
+	server.error = null;
+	await store.put(SERVERS_PREFIX + server.id, server);
 }

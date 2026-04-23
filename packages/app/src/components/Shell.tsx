@@ -296,15 +296,15 @@ export const Shell = React.memo(() => {
 					direction="column"
 					w={isCollapsed ? '60px' : '220px'}
 					minW={isCollapsed ? '60px' : '220px'}
-					// borderRightWidth="1px"
-					// borderColor="rgba(255, 255, 255, 0.06)"
+					borderRightWidth="1px"
+					borderColor="rgba(255, 255, 255, 0.06)"
 					px={isCollapsed ? '2' : '4'}
 					pt={'3'}
 					pb={("0")}
 					gap="0"
 					transition="all 0.2s ease"
 					zIndex={100}
-					boxShadow={"0px 0px 10px rgba(0,0,0,1)"}
+					// boxShadow={"0px 0px 10px rgba(0,0,0,1)"}
 
 					className='drag'
 					onDoubleClick={handleDoubleClick}

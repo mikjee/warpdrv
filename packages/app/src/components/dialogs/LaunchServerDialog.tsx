@@ -49,7 +49,7 @@ export function SelectField({ label, value, options, onChange, mono, optionLabel
 	const displayValue = optionLabels && optionLabels[value] ? optionLabels[value] : value;
 	return (
 		<Box position="relative" flex="1">
-			<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">{label}</Text>
+			<Text fontSize="12px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">{label}</Text>
 			<Button ref={buttonRef} w="100%" size="sm" variant="outline" justifyContent="space-between"
 				bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
 				fontFamily={mono ? '"Geist Mono", monospace' : undefined} fontSize="12px" borderRadius="lg"
@@ -560,7 +560,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 	const [autoLoadCheckpointOnStart, setAutoLoadCheckpointOnStart] = useState<boolean>(editMode?.autoLoadCheckpointOnStart ?? false);
 	const [useMultiModal, setUseMultiModal] = useState<boolean>(editMode?.useMultiModal ?? false);
 	const [launching, setLaunching] = useState(false);
-	const [useRecommendedInferParams, setUseRecommendedInferParams] = useState<boolean>(editMode?.useRecommendedInferenceParams ?? true);
+	const [useRecommendedInferParams, setUseRecommendedInferParams] = useState<boolean>(editMode?.useRecommendedInferenceParams ?? false);
 	const [recommendedText, setRecommendedText] = useState('');
 	const [isEditingRecommended, setIsEditingRecommended] = useState(false);
 	const originalTextRef = useRef('');
@@ -718,7 +718,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 		if (!selectedEntry) return;
 		const newRecommendedParams = useRecommendedInferParams ? recommendedText.trim() : undefined;
 		if (newRecommendedParams !== selectedEntry.model.recommendedInferenceParams) {
-			const result = await updateModel(selectedEntry.model.id, { recommendedInferenceParams: newRecommendedParams || undefined });
+			const result = await updateModel(selectedEntry.model.id, { recommendedInferenceParams: newRecommendedParams ?? undefined });
 			if (result.ok) {
 				toast('success', 'Recommended params saved to model');
 			} else {
@@ -816,7 +816,6 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 
 	const canLaunch = selectedModelPath && (!useBackendGroup ? selectedBackendId : selectedBackendGroupId) && !launching;
 
-	const [showAdvanced, setShowAdvanced] = useState(true);
 	const maxLayers = meta?.nLayers ?? 999;
 	const maxContext = meta?.contextLength ?? 131072;
 	const modelContextLength = meta?.contextLength ?? null;
@@ -883,22 +882,25 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 							{/* Server name + Port + Aliases */}
 							<Card>
 								<VStack align="stretch" gap="4">
-									<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">Server Name <Text as="span" color="rgba(255, 255, 255, 0.25)" fontWeight="400">(optional)</Text></Text>
-									<Input value={serverName} onChange={e => setServerName(e.target.value)}
-										placeholder={selectedEntry?.file.fileName.replace('.gguf', '') ?? 'Leave empty for auto-generated name'}
-										bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
-										fontSize="13px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
-										_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
-									/>
-									<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">Server Port</Text>
-									<HStack gap="1.5">
-										<Input type="number" value={params.port} onChange={e => updateParam('port', Number(e.target.value))} size="sm"
-											bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
-											fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
-											_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} min={0} max={65535}
-										/>
-										<Text fontSize="11px" color="rgba(255, 255, 255, 0.25)" flexShrink={0}>0 = auto</Text>
-									</HStack>
+									<Flex gap="4">
+										<Box flex="7.5">
+											<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Server Name<Text as="span" color="rgba(255, 255, 255, 0.25)" fontWeight="400">(optional)</Text></Text>
+											<Input value={serverName} onChange={e => setServerName(e.target.value)}
+												placeholder={selectedEntry?.file.fileName.replace('.gguf', '') ?? 'Leave empty for auto-generated name'}
+												bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
+												fontSize="13px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
+												_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
+											/>
+										</Box>
+										<Box flex="2.5">
+											<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Port <Text as="span" color="rgba(255, 255, 255, 0.25)" fontWeight="400" textTransform="none">(0 = Auto)</Text></Text>
+											<Input type="number" value={params.port} onChange={e => updateParam('port', Number(e.target.value))} size="sm"
+												bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
+												fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
+												_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} min={0} max={65535}
+											/>
+										</Box>
+									</Flex>
 									<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">Proxy Aliases <Text as="span" color="rgba(255, 255, 255, 0.25)" fontWeight="400">(optional)</Text></Text>
 									<Input value={serverAliasesInput} onChange={e => setServerAliasesInput(e.target.value)}
 										placeholder="alias1, alias2, alias3"
@@ -906,7 +908,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 										fontSize="13px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
 										_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
 									/>
-									<Text fontSize="11px" color="rgba(255, 255, 255, 0.25)">Comma-separated aliases for proxy routing.</Text>
+									<Text fontSize="11px" color="rgba(255,255,255,0.3)">Comma-separated aliases, used for routing requests via proxy.</Text>
 								</VStack>
 							</Card>
 
@@ -977,34 +979,29 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 										)
 									)}
 								</VStack>
-							</Card>
 
-							{/* Device + GPU Layers — only if devices available */}
-							{deviceOptions.length > 0 && (
-								<Card>
-									<VStack align="stretch" gap="4">
-										<SelectField
-											label="Device"
-											value={params.device}
-											options={deviceOptions}
-											onChange={v => handleTargetParamChange('device', v)}
-											mono
-											optionLabels={deviceIdToName}
+								{deviceOptions.length > 0 && <VStack align="stretch" gap="4" mt="5">
+									<SelectField
+										label="Device"
+										value={params.device}
+										options={deviceOptions}
+										onChange={v => handleTargetParamChange('device', v)}
+										mono
+										optionLabels={deviceIdToName}
+									/>
+									{params.gpuLayers ? (
+										<SliderNumberField
+											label="GPU Layers"
+											value={params.gpuLayers}
+											onChange={v => handleTargetParamChange('gpuLayers', v)}
+											min={0} max={maxLayers}
+											suffix={`/ ${maxLayers} layers`}
 										/>
-										{params.gpuLayers ? (
-											<SliderNumberField
-												label="GPU Layers"
-												value={params.gpuLayers}
-												onChange={v => handleTargetParamChange('gpuLayers', v)}
-												min={0} max={maxLayers}
-												suffix={`/ ${maxLayers} layers`}
-											/>
-										) : (
-											<NumberField label="GPU Layers" value={params.gpuLayers} onChange={v => handleTargetParamChange('gpuLayers', v)} min={0} max={999} />
-										)}
-									</VStack>
-								</Card>
-							)}
+									) : (
+										<NumberField label="GPU Layers" value={params.gpuLayers} onChange={v => handleTargetParamChange('gpuLayers', v)} min={0} max={999} />
+									)}
+								</VStack>}
+							</Card>
 
 							{/* Speculative Decoding Section */}
 							<Card
@@ -1020,7 +1017,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 											</Flex>
 											<VStack align="start" gap="0.5">
 												<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em">Speculative Decoding</Text>
-												<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)">Use a smaller model as the draft driver</Text>
+												<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">Use a smaller model as the draft driver</Text>
 											</VStack>
 										</HStack>
 										<Switch.Root label="Enable speculative decoding" checked={params.specDecode.enabled} onCheckedChange={(details) => updateSpecParam('enabled', details.checked)} color={params.specDecode.enabled ? '#a78bfa' : 'rgba(255, 255, 255, 0.4)'}>
@@ -1125,32 +1122,6 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 						<VStack gap="5" flex="1" minW="0" align="stretch">
 							<VStack align="stretch" gap="4">
 
-								{/* Multi-modal toggle */}
-								<Card
-									bg={useMultiModal ? 'rgba(251, 191, 36, 0.03)' : undefined}
-									borderColor={useMultiModal ? 'rgba(251, 191, 36, 0.12)' : undefined}
-								>
-									<HStack justify="space-between" align="center">
-										<HStack gap="3">
-											<Flex w="6" h="6" borderRadius="md" alignItems="center" justifyContent="center"
-												bg={useMultiModal ? 'rgba(251, 191, 36, 0.15)' : 'rgba(255, 255, 255, 0.04)'}
-											>
-												<Eye size={14} color={useMultiModal ? '#fbbf24' : 'rgba(255, 255, 255, 0.3)'} />
-											</Flex>
-											<VStack align="start" gap="0.5">
-												<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em">Multi-modal</Text>
-												<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)">Enable mmproj for vision models</Text>
-											</VStack>
-										</HStack>
-										<Switch.Root label="Use multi-modal (mmproj)" checked={useMultiModal} onCheckedChange={(details) => handleTargetParamChange('useMultiModal', details.checked)} disabled={!selectedEntry?.model.mmprojFile} color={useMultiModal ? '#fbbf24' : 'rgba(255, 255, 255, 0.4)'}>
-											<Switch.HiddenInput />
-											<Switch.Control css={{ bg: useMultiModal ? '#fbbf24' : 'surface.4' }}>
-												<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
-											</Switch.Control>
-										</Switch.Root>
-									</HStack>
-								</Card>
-
 								{/* Context Size + KV Quant + Parallel Slots */}
 								<Card>
 									<VStack align="stretch" gap="4">
@@ -1175,6 +1146,114 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 									</VStack>
 								</Card>
 
+								{/* Multi-modal toggle */}
+								<Card
+									bg={useMultiModal ? 'rgba(251, 191, 36, 0.03)' : undefined}
+									borderColor={useMultiModal ? 'rgba(251, 191, 36, 0.12)' : undefined}
+								>
+									<HStack justify="space-between" align="center">
+										<HStack gap="3">
+											<Flex w="6" h="6" borderRadius="md" alignItems="center" justifyContent="center"
+												bg={useMultiModal ? 'rgba(251, 191, 36, 0.15)' : 'rgba(255, 255, 255, 0.04)'}
+											>
+												<Eye size={14} color={useMultiModal ? '#fbbf24' : 'rgba(255, 255, 255, 0.3)'} />
+											</Flex>
+											<VStack align="start" gap="0.5">
+												<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em">Multi-modal</Text>
+												<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">Vision requires mmproj.GGUF</Text>
+											</VStack>
+										</HStack>
+										<Switch.Root label="Use multi-modal (mmproj)" checked={useMultiModal} onCheckedChange={(details) => handleTargetParamChange('useMultiModal', details.checked)} disabled={!selectedEntry?.model.mmprojFile} color={useMultiModal ? '#fbbf24' : 'rgba(255, 255, 255, 0.4)'}>
+											<Switch.HiddenInput />
+											<Switch.Control css={{ bg: useMultiModal ? '#fbbf24' : 'surface.4' }}>
+												<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+											</Switch.Control>
+										</Switch.Root>
+									</HStack>
+								</Card>
+
+								{/* Recommended Model params */}
+								<Card>
+									<VStack align="stretch" gap="3">
+										<HStack justify="space-between" align="center">
+											<VStack align="start" gap="0.5">
+												<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em">Model Params</Text>
+												<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">These params will apply to all servers that use this Model.</Text>
+											</VStack>
+											<Switch.Root label="Use recommended params" checked={useRecommendedInferParams} onCheckedChange={(details) => setUseRecommendedInferParams(details.checked)} color={useRecommendedInferParams ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'}>
+												<Switch.HiddenInput />
+												<Switch.Control css={{ bg: useRecommendedInferParams ? '#3b86d6' : 'surface.4' }}>
+													<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+												</Switch.Control>
+											</Switch.Root>
+										</HStack>
+										{useRecommendedInferParams && (
+											<Box position="relative">
+												<Textarea
+													value={recommendedText}
+													variant={"subtle"}
+													bg={isEditingRecommended ? "rgb(30,30,30)" : "transparent"}
+													outline={"none"}
+													onChange={(e) => setRecommendedText(e.target.value)}
+													readOnly={!isEditingRecommended}
+													opacity={isEditingRecommended ? 1 : 0.5}
+													fontFamily="monospace"
+													fontSize="12px"
+													border={!isEditingRecommended ? "1px solid rgb(40,40,40)" : "auto"}
+													cursor={isEditingRecommended? "auto" : "default"}
+													style={{
+														caretColor: isEditingRecommended ? "auto" : "transparent",
+													}}
+													resize="vertical"
+													minH="100px"
+													borderRadius="lg"
+													placeholder="No recommended params available for this model"
+												/>
+												<HStack position="absolute" bottom="2" right="2" gap="2">
+													{isEditingRecommended && (
+														<Button
+															size="xs"
+															variant="ghost"
+															color="rgba(255, 255, 255, 0.6)"
+															_hover={{ color: '#f43f5e', bg: 'rgba(244, 63, 94, 0.1)' }}
+															borderRadius="md"
+															fontSize="10px"
+															onClick={() => {
+																setRecommendedText(originalTextRef.current);
+																setIsEditingRecommended(false);
+															}}
+														>
+															Cancel
+														</Button>
+													)}
+													<Button
+														size="xs"
+														variant="outline"
+														borderColor="rgba(255, 255, 255, 0.2)"
+														color="rgba(255, 255, 255, 0.6)"
+														_hover={{ borderColor: '#3b86d6', color: '#3b86d6', bg: 'rgba(51, 129, 255, 0.05)' }}
+														borderRadius="md"
+														fontSize="10px"
+														gap="1"
+														onClick={() => {
+															if (isEditingRecommended) {
+																handleSaveRecommendedParams();
+																setIsEditingRecommended(false);
+															} else {
+																originalTextRef.current = recommendedText;
+																setIsEditingRecommended(true);
+															}
+														}}
+													>
+														{isEditingRecommended ? <Check size={10} /> : <Pencil size={10} />}
+														{isEditingRecommended ? 'Save' : 'Edit'}
+													</Button>
+												</HStack>
+											</Box>
+										)}
+									</VStack>
+								</Card>
+
 								{/* Toggle options */}
 								<Card>
 									<VStack align="stretch" gap="3">
@@ -1188,12 +1267,6 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 											<ToggleChip label="Jinja" active={params.jinja} onClick={() => handleTargetParamChange('jinja', !params.jinja)} />
 											<ToggleChip label="SWA Full" active={params.swaFull} onClick={() => handleTargetParamChange('swaFull', !params.swaFull)} />
 										</HStack>
-									</VStack>
-								</Card>
-
-								{/* Batch sizes + threads */}
-								<Card>
-									<VStack align="stretch" gap="4">
 										<Flex gap="4">
 											<NumberField label="Batch Size" value={params.batchSize} onChange={v => handleTargetParamChange('batchSize', v)} min={1} step={256} />
 											<NumberField label="Micro Batch" value={params.ubatchSize} onChange={v => handleTargetParamChange('ubatchSize', v)} min={1} step={64} />
@@ -1202,109 +1275,16 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 											<NumberField label="Threads" value={params.threads} onChange={v => handleTargetParamChange('threads', v)} min={0} suffix="0 = auto" />
 											<NumberField label="Threads (Batch)" value={params.threadsBatch} onChange={v => handleTargetParamChange('threadsBatch', v)} min={0} suffix="0 = auto" />
 										</Flex>
+										<Box>
+											<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Chat Template</Text>
+											<Input placeholder="Auto-detect" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={params.chatTemplate} onChange={e => handleTargetParamChange('chatTemplate', e.target.value)} />
+										</Box>
+										<Box>
+											<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Custom Flags</Text>
+											<Input placeholder="--some-flag value" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={params.extraArgs} onChange={e => handleTargetParamChange('extraArgs', e.target.value)} />
+										</Box>
 									</VStack>
 								</Card>
-
-								{/* Recommended Model params */}
-								<Box>
-									<Card>
-										<VStack align="stretch" gap="3">
-											<HStack justify="space-between" align="center">
-												<VStack align="start" gap="0.5">
-													<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em">Recommended Params</Text>
-													<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)">Use model-specific recommended Params</Text>
-												</VStack>
-												<Switch.Root label="Use recommended params" checked={useRecommendedInferParams} onCheckedChange={(details) => setUseRecommendedInferParams(details.checked)} color={useRecommendedInferParams ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'}>
-													<Switch.HiddenInput />
-													<Switch.Control css={{ bg: useRecommendedInferParams ? '#3b86d6' : 'surface.4' }}>
-														<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
-													</Switch.Control>
-												</Switch.Root>
-											</HStack>
-											{useRecommendedInferParams && (
-												<Box position="relative">
-													<Textarea
-														value={recommendedText}
-														variant={"subtle"}
-														bg="rgb(30,30,30)"
-														outline={"none"}
-														onChange={(e) => setRecommendedText(e.target.value)}
-														readOnly={!isEditingRecommended}
-														opacity={isEditingRecommended ? 1 : 0.5}
-														fontFamily="monospace"
-														fontSize="12px"
-														resize="vertical"
-														minH="100px"
-														borderRadius="lg"
-														placeholder="No recommended params available for this model"
-													/>
-													<HStack position="absolute" bottom="2" right="2" gap="2">
-														{isEditingRecommended && (
-															<Button
-																size="xs"
-																variant="ghost"
-																color="rgba(255, 255, 255, 0.6)"
-																_hover={{ color: '#f43f5e', bg: 'rgba(244, 63, 94, 0.1)' }}
-																borderRadius="md"
-																fontSize="10px"
-																onClick={() => {
-																	setRecommendedText(originalTextRef.current);
-																	setIsEditingRecommended(false);
-																}}
-															>
-																Cancel
-															</Button>
-														)}
-														<Button
-															size="xs"
-															variant="outline"
-															borderColor="rgba(255, 255, 255, 0.2)"
-															color="rgba(255, 255, 255, 0.6)"
-															_hover={{ borderColor: '#3b86d6', color: '#3b86d6', bg: 'rgba(51, 129, 255, 0.05)' }}
-															borderRadius="md"
-															fontSize="10px"
-															gap="1"
-															onClick={() => {
-																if (isEditingRecommended) {
-																	handleSaveRecommendedParams();
-																	setIsEditingRecommended(false);
-																} else {
-																	originalTextRef.current = recommendedText;
-																	setIsEditingRecommended(true);
-																}
-															}}
-														>
-															{isEditingRecommended ? <Check size={10} /> : <Pencil size={10} />}
-															{isEditingRecommended ? 'Save' : 'Edit'}
-														</Button>
-													</HStack>
-												</Box>
-											)}
-										</VStack>
-									</Card>
-								</Box>
-
-								{/* Advanced section */}
-								<Box>
-									<Button w="100%" size="sm" variant="ghost" justifyContent="space-between" color="rgba(255, 255, 255, 0.35)" _hover={{ color: 'rgba(255, 255, 255, 0.6)', bg: 'rgba(255, 255, 255, 0.03)' }} borderRadius="lg" fontSize="12px" onClick={() => setShowAdvanced(!showAdvanced)}>
-										Advanced Options
-										{showAdvanced ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-									</Button>
-									{showAdvanced && (
-										<Card>
-											<VStack align="stretch" gap="3" mt="2">
-												<Box>
-													<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Chat Template</Text>
-													<Input placeholder="Auto-detect" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={params.chatTemplate} onChange={e => handleTargetParamChange('chatTemplate', e.target.value)} />
-												</Box>
-												<Box>
-													<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Extra Arguments</Text>
-													<Input placeholder="--some-flag value" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={params.extraArgs} onChange={e => handleTargetParamChange('extraArgs', e.target.value)} />
-												</Box>
-											</VStack>
-										</Card>
-									)}
-								</Box>
 
 							</VStack>
 

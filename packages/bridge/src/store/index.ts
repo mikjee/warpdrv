@@ -236,10 +236,8 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 					}
 					
 					// Fallback to parent if no siblings
-					if (newHead === null) {
-						newHead = parentId;
-					}
-					
+					// root msgs cannot beleted so it will always have a parent ID or not get deleted.
+					if (newHead === null) newHead = parentId!;					
 					draft.headMessageIdByThread[threadId] = newHead;
 				}
 				
@@ -325,7 +323,7 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 
 				// Same partId - check time delta
 				const timeDelta = now - buffer.lastUpdate.getTime();
-				if (timeDelta <= 100) {
+				if (timeDelta <= 200) {
 					// Within 100ms - append to buffer
 					buffer.chunk += deltaText;
 				} else {

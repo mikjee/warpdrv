@@ -20,6 +20,7 @@ export const useTauriWindow = () => {
 		useEffect(() => {
 			if (!isTauri) return;
 
+			let cancelled = false;
 			let unlisten: (() => void) | undefined;
 
 			(async () => {
@@ -29,11 +30,13 @@ export const useTauriWindow = () => {
 				setIsMaximized(await win.isMaximized());
 
 				unlisten = await win.onResized(async () => {
+					if (cancelled) return;
 					setIsMaximized(await win.isMaximized());
 				});
 			})();
 
 			return () => {
+				cancelled = true;
 				if (unlisten) unlisten();
 			};
 		}, []);
@@ -66,7 +69,7 @@ export const useTauriWindow = () => {
 				if (dx >= DRAG_THRESHOLD || dy >= DRAG_THRESHOLD) {
 					isDragging.current = true;
 					const { getCurrentWindow } = await import('@tauri-apps/api/window');
-					getCurrentWindow().startDragging();
+					getCurrentWindow().startDragging().catch((err) => console.error(err));
 				}
 			};
 
@@ -82,6 +85,7 @@ export const useTauriWindow = () => {
 			return () => {
 				window.removeEventListener('mousemove', handleMouseMove);
 				window.removeEventListener('mouseup', handleMouseUp);
+				window.removeEventListener('mousedown', handleMouseDown);
 			};
 		}, []);
 	};

@@ -343,6 +343,11 @@ export async function clearDownloadHistory(): Promise<void> {
 			downloadState.delete(dl.id);
 		}
 	}
+	const remaining = await getAllDownloads();
+	sseManager.emit('downloads:init', remaining.reduce((acc, dl) => {
+		acc[dl.id] = dl;
+		return acc;
+	}, {} as Record<string, IDownload>));
 }
 
 export function getAllDownloadsRecord(): Record<string, IDownload> {

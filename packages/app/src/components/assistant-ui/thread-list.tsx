@@ -49,6 +49,7 @@ export function useThreadsAndFolders() {
 
 	// Initial load
 	useEffect(() => {
+		if (Object.keys(useStore.getState().threads).length) return;
 		Promise.all([fetchThreads(), fetchFolders()]).then(([tRes, fRes]) => {
 			if (tRes.ok && tRes.data) {
 				const threadsRecord = tRes.data.reduce((acc, t) => {
@@ -240,13 +241,13 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect, onDelet
 			onClick={() => {
 				onSelect(thread.id);
 			}}
-			style={{ minHeight: '40px', cursor: 'grab' }}
+			style={{ minHeight: '32px', cursor: 'grab' }}
 			display="flex"
 			alignItems="center"
 			gap="1"
 			borderRadius="lg"
-			px="2"
-			py="1.5"
+			px="3"
+			py="0"
 			_hover={{ bg: 'rgba(255,255,255,0.06)' }}
 		>
 			{renaming ? (
@@ -260,16 +261,16 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect, onDelet
 			) : (
 				<>
 					<Box flex="1" display="flex" flexDirection="column" overflow="hidden">
-						<Text fontSize="12px" color="rgba(255,255,255,0.75)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" lineHeight="1.3">
-							{thread.title ?? 'New Chat'}
-						</Text>
-						<HStack gap="2" mt="0.5">
-							<Text fontSize="10px" color="rgba(255,255,255,0.25)" fontFamily="mono">
-								{(() => { const total = (thread.totalPromptTokens ?? 0) + (thread.totalCompletionTokens ?? 0); return total > 0 ? `${(total / 1000).toFixed(1)}k tok` : (thread.messageCount ?? 0) > 0 ? `${thread.messageCount ?? 0} msg` : 'empty'; })()}
+						<HStack>
+							<Text fontSize="13px" color="rgba(255,255,255,0.75)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+								{thread.title ?? 'New Chat'}
 							</Text>
-							<Text fontSize="10px" color="rgba(255,255,255,0.2)">
+							<Text fontSize="12px" color="rgba(255,255,255,0.35)">
+								{(() => { const total = (thread.totalPromptTokens ?? 0) + (thread.totalCompletionTokens ?? 0); return total > 0 ? `${(total / 1000).toFixed(1)}k` : (thread.messageCount ?? 0) > 0 ? `${thread.messageCount ?? 0} msg` : 'empty'; })()}
+							</Text>
+							{/* <Text fontSize="12px" color="rgba(255,255,255,0.35)">
 								{timeAgo(thread.updatedAt)}
-							</Text>
+							</Text> */}
 						</HStack>
 					</Box>
 				<Box position="relative">
@@ -340,7 +341,7 @@ function FolderSection({
 	onReorderFolder: (fromFolderId: string, toFolderId: string) => void;
 	children: ReactNode;
 }) {
-	const [open, setOpen] = useState(true);
+	const [open, setOpen] = useState(false);
 	const [renaming, setRenaming] = useState(false);
 	const [dragOver, setDragOver] = useState(false);
 	const [menuOpen, setMenuOpen] = useState(false);
@@ -377,13 +378,14 @@ function FolderSection({
 		return (
 			<Box
 				w="full"
-				mb="1"
 				onDragOver={handleDragOver}
 				onDragLeave={handleDragLeave}
 				onDrop={handleDrop}
-				bg={dragOver ? 'rgba(100,150,255,0.08)' : 'transparent'}
-				borderRadius="md"
+				bg={dragOver ? 'rgba(100,150,255,0.08)' : 'rgb(20,20,20)'}
+				my="1"
+				borderRadius="lg"
 				transition="background 0.15s"
+				border="1px solid rgb(50,50,50)"
 			>
 				<HStack
 					gap="1" px="2" py="1.5" cursor="grab"
@@ -402,8 +404,8 @@ function FolderSection({
 					: <ChevronRightIcon size={12} style={{ opacity: 0.4, flexShrink: 0 }} />
 				}
 				{open
-					? <FolderOpenIcon size={13} style={{ opacity: 0.5, flexShrink: 0 }} />
-					: <FolderIcon size={13} style={{ opacity: 0.5, flexShrink: 0 }} />
+					? <FolderOpenIcon size={14} style={{ opacity: 0.5, flexShrink: 0 }} />
+					: <FolderIcon size={14} style={{ opacity: 0.5, flexShrink: 0 }} />
 				}
 				{renaming ? (
 					<RenamePopover
@@ -412,11 +414,11 @@ function FolderSection({
 						onCancel={() => setRenaming(false)}
 					/>
 				) : (
-					<Text flex="1" fontSize="12px" fontWeight="500" color="rgba(255,255,255,0.5)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+					<Text flex="1" fontSize="13px" fontWeight="500" color="rgba(255,255,255,0.5)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" ml="1">
 						{folder.name}
 					</Text>
 				)}
-				<Text fontSize="10px" color="rgba(255,255,255,0.2)" flexShrink={0}>{threads.length}</Text>
+				<Text fontSize="12px" color="rgba(255,255,255,0.35)" flexShrink={0}>{threads.length}</Text>
 				<Box
 					onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
 					opacity={0.4}
@@ -454,7 +456,7 @@ function FolderSection({
 				)}
 			</HStack>
 			{open && (
-				<Box pl="4">
+				<Box pl="4" my="1">
 					{children}
 					{threads.length === 0 && (
 						<Text fontSize="11px" color="rgba(255,255,255,0.15)" px="2" py="1">Drop threads here</Text>
@@ -615,7 +617,7 @@ export const ThreadList: FC = React.memo(() => {
 			{/* Fixed header */}
 			<Box flexShrink={0} mb="2">
 				<HStack
-					gap="1" px="2" py="1.5"
+					gap="1" px="2" py="1"
 					borderRadius="md" borderWidth="1px"
 					borderColor="rgba(255,255,255,0.06)"
 					bg="rgba(255,255,255,0.03)"
@@ -626,9 +628,8 @@ export const ThreadList: FC = React.memo(() => {
 						placeholder="Search threads..."
 						value={search}
 						onChange={(e) => setSearch(e.target.value)}
-						fontSize="12px"
+						size="2xs"
 						color="rgba(255,255,255,0.7)"
-						h="20px"
 					/>
 					{search && (
 						<Box cursor="pointer" onClick={() => setSearch('')} opacity={0.3} _hover={{ opacity: 0.6 }}>
@@ -638,11 +639,11 @@ export const ThreadList: FC = React.memo(() => {
 				</HStack>
 			</Box>
 
-			<HStack gap="1" mb="2" px="1" justify="space-between" flexShrink={0}>
+			<HStack gap="1" mb="2" px="1" justify="space-between" alignItems={"center"} flexShrink={0}>
 				<HStack gap="1">
 					<Box
-						as="button" px="2" py="1" borderRadius="md" fontSize="10px"
-						color="rgba(255,255,255,0.4)" bg="rgba(255,255,255,0.03)"
+						as="button" px="2.5" py="1" borderRadius="md" fontSize="12px"
+						color="rgba(255,255,255,0.4)" bg="rgba(255,255,255,0.035)"
 						_hover={{ bg: 'rgba(255,255,255,0.06)' }}
 						onClick={cycleSortField}
 						title="Click to change sort field"
@@ -656,24 +657,25 @@ export const ThreadList: FC = React.memo(() => {
 						onClick={() => setSortDir(sortDir === 'desc' ? 'asc' : 'desc')}
 						title={sortDir === 'desc' ? 'Newest first' : 'Oldest first'}
 					>
-						{sortDir === 'desc' ? <SortDescIcon size={12} /> : <SortAscIcon size={12} />}
+						{sortDir === 'desc' ? <SortDescIcon size={16} /> : <SortAscIcon size={16} />}
 					</Box>
 				</HStack>
 				<HStack gap="1">
 					<Box
 						as="button" p="1" borderRadius="md"
 						color="rgba(255,255,255,0.3)"
-						_hover={{ color: 'rgba(255,255,255,0.6)' }}
+						_hover={{ color: 'rgba(255,255,255,0.8)' }}
 						onClick={handleCreateFolder}
 						title="New folder"
+						mt="1"
 					>
-						<FolderPlusIcon size={13} />
+						<FolderPlusIcon size={16} />
 					</Box>
 				</HStack>
 			</HStack>
 
 			{/* Scrollable thread list */}
-			<Box flex="1" overflowY="auto" css={{ '&::-webkit-scrollbar': { width: '4px' }, '&::-webkit-scrollbar-thumb': { background: 'rgba(255,255,255,0.1)', borderRadius: '2px' } }}>
+			<Box flex="1" overflowY="auto" css={{ '&::-webkit-scrollbar': { width: '4px' }, '&::-webkit-scrollbar-thumb': { background: 'rgba(255,255,255,0.1)', borderRadius: '2px' } }} borderTop="1px solid rgb(25,25,25)" pt="2" >
 				<VStack align="start" gap="0" w="full">
 				{threadsAPI.folders.map((f) => (
 					<FolderSection
@@ -744,7 +746,7 @@ export const ThreadList: FC = React.memo(() => {
 						cursor="pointer"
 					>
 						<PlusIcon size={14} />
-						<Text>New Thread</Text>
+						<Text>New Chat</Text>
 					</Box>
 				</ThreadListPrimitive.New>
 			</Box>

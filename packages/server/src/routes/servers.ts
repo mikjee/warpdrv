@@ -8,105 +8,15 @@ import {
 	isProcessAlive,
 	getServerLogs,
 	clearServerLogs,
+	SERVERS_PREFIX,
+	findAvailablePort,
+	usedPorts,
+	launchServer,
 } from '../services/processManager';
 import { getServerStats } from '../services/statsPoller';
 import { clearStickyRoute, getStickyRoutesResolved } from '../services/modelProxy';
 import { sseManager } from '../services/sseManagerInstance';
-import { getCachedModels } from './models';
 
-/**
- * Parse CLI flags into a map, handling quoted values and various formats
- */
-function parseCliFlags(flags: string): Map<string, string | true> {
-	const result = new Map<string, string | true>();
-	
-	if (!flags?.trim()) return result;
-	
-	// Tokenize respecting quotes
-	const tokens: string[] = [];
-	let current = '';
-	let inQuote = false;
-	let quoteChar = '';
-	
-	for (let i = 0; i < flags.length; i++) {
-		const char = flags[i];
-		
-		if (!inQuote && (char === '"' || char === "'")) {
-			inQuote = true;
-			quoteChar = char;
-		} else if (inQuote && char === quoteChar) {
-			inQuote = false;
-			quoteChar = '';
-		} else if (!inQuote && char === ' ') {
-			if (current) {
-				tokens.push(current);
-				current = '';
-			}
-		} else {
-			current += char;
-		}
-	}
-	if (current) tokens.push(current);
-	
-	// Parse tokens into flags
-	for (let i = 0; i < tokens.length; i++) {
-		const token = tokens[i];
-		if (!token) continue;
-		
-		if (token.startsWith('--')) {
-			// Check for --key=value format
-			const equalsIndex = token.indexOf('=');
-			if (equalsIndex !== -1) {
-				const key = token.substring(0, equalsIndex);
-				const value = token.substring(equalsIndex + 1);
-				result.set(key, value);
-			} else {
-				// Check if next token is a value (not another flag)
-				const nextToken = tokens[i + 1];
-				if (nextToken && typeof nextToken === 'string' && !nextToken.startsWith('--')) {
-					result.set(token, nextToken);
-					i++; // Skip the value token
-				} else {
-					// Boolean flag
-					result.set(token, true);
-				}
-			}
-		}
-	}
-	
-	return result;
-}
-
-/**
- * Merge CLI flags with override flags taking precedence
- */
-function mergeCliFlags(baseFlags: string, overrideFlags: string): string {
-	const merged = parseCliFlags(baseFlags);
-	const overrides = parseCliFlags(overrideFlags);
-	
-	// Apply overrides
-	overrides.forEach((value, key) => {
-		merged.set(key, value);
-	});
-	
-	// Reconstruct CLI string
-	const parts: string[] = [];
-	merged.forEach((value, key) => {
-		if (value === true) {
-			parts.push(key); // Boolean flag
-		} else {
-			// Check if value needs quoting (contains spaces or is JSON)
-			const needsQuoting = value.includes(' ') || value.startsWith('{') || value.startsWith('[');
-			if (needsQuoting) {
-				parts.push(key, `"${value}"`);
-			} else {
-				parts.push(key, value);
-			}
-		}
-	});
-	
-	return parts.join(' ');
-}
 import type {
 	IServer,
 	IServerCreatePayload,
@@ -117,97 +27,9 @@ import type {
 import { EServerStatus } from '@warpcore/shared';
 import { DEFAULT_SETTINGS } from '@warpcore/shared';
 
-const PREFIX = 'servers:';
-const SETTINGS_KEY = 'settings:general';
-
-// Track used ports to avoid collisions
-const usedPorts = new Set<number>();
+const PREFIX = SERVERS_PREFIX;
 
 export const serversRouter = Router();
-
-async function findAvailablePort(): Promise<number> {
-	const settings = await store.get<ISettings>(SETTINGS_KEY) ?? DEFAULT_SETTINGS;
-	for (let port = settings.portRangeStart; port <= settings.portRangeEnd; port++) {
-		if (!usedPorts.has(port)) {
-			usedPorts.add(port);
-			return port;
-		}
-	}
-	throw new Error('No available ports in configured range');
-}
-
-// On startup, reconcile stored servers with actual running processes
-export async function reconcileServers(): Promise<void> {
-	const servers = await store.list<IServer>(PREFIX);
-	for (const server of servers) {
-		if (server.status === EServerStatus.RUNNING || server.status === EServerStatus.LOADING) {
-			if (server.pid && isProcessAlive(server.pid)) {
-				usedPorts.add(server.port);
-			} else {
-				server.status = EServerStatus.STOPPED;
-				server.pid = undefined;
-				await store.put(PREFIX + server.id, server);
-			}
-		}
-	}
-}
-
-// Launch servers with autoLaunch=true that are not already running
-export async function launchAutoStartServers(): Promise<void> {
-	const servers = await store.list<IServer>(PREFIX);
-	for (const server of servers) {
-		if ((server.autoLaunch ?? false) && server.status === EServerStatus.STOPPED) {
-			const backend = await store.get<IBackend>('backends:' + server.backendId);
-			if (!backend) {
-				console.log(`[WarpCore] Skipping auto-launch for ${server.serverName}: backend not found`);
-				continue;
-			}
-
-			const model = getCachedModels().find(m => m.primaryFile?.filePath === server.modelPath);
-			const mmprojPath = model?.mmprojFile?.filePath && server.useMultiModal ? model.mmprojFile.filePath : null;
-			
-			// Append recommended inference params to extraArgs if enabled
-			const launchParams = { ...server.params };
-			if (server.useRecommendedInferenceParams && model?.recommendedInferenceParams) {
-				launchParams.extraArgs = mergeCliFlags(model.recommendedInferenceParams, server.params.extraArgs);
-			}
-			
-			// Auto-assign port if params.port is 0
-			if (launchParams.port === 0) {
-				server.port = await findAvailablePort();
-				launchParams.port = server.port;
-			} else {
-				// User-assigned port: track it
-				usedPorts.add(server.port);
-			}
-			
-			const args = await buildServerArgs(
-				server.modelPath,
-				mmprojPath,
-				launchParams,
-				backend.defaultArgs,
-			);
-
-			const pid = spawnServer(
-				server.id,
-				backend.path,
-				args,
-				async (status, error) => {
-					server.status = status;
-					if (error) server.error = error;
-					if (status === EServerStatus.RUNNING) server.startedAt = Date.now();
-					await store.put(PREFIX + server.id, server);
-				},
-			);
-
-			server.pid = pid || undefined;
-			server.status = EServerStatus.LOADING;
-			server.error = null;
-			await store.put(PREFIX + server.id, server);
-			console.log(`[WarpCore] Auto-launching server: ${server.serverName}`);
-		}
-	}
-}
 
 // GET /api/servers
 serversRouter.get('/', async (_req, res) => {
@@ -230,36 +52,12 @@ serversRouter.get('/:id', async (req, res) => {
 serversRouter.post('/', async (req, res) => {
 	const payload = req.body as IServerCreatePayload;
 
-	// Use backendGroupId if provided, otherwise use backendId
-	let backend: IBackend | null = null;
-	if (payload.backendGroupId) {
-		const group = await store.get<IBackendGroup>('backendGroups:' + payload.backendGroupId);
-		if (!group) {
-			res.status(400).json({ ok: false, data: null, error: 'Backend group not found' });
-			return;
-		}
-		backend = await store.get<IBackend>('backends:' + group.activeBackendId);
-		if (!backend) {
-			res.status(400).json({ ok: false, data: null, error: 'Active backend in group not found' });
-			return;
-		}
-	} else if (payload.backendId) {
-		backend = await store.get<IBackend>('backends:' + payload.backendId);
-		if (!backend) {
-			res.status(400).json({ ok: false, data: null, error: 'Backend not found' });
-			return;
-		}
-	} else {
-		res.status(400).json({ ok: false, data: null, error: 'Either backendId or backendGroupId is required' });
-		return;
-	}
-
 	// Assign port for server.port, but keep params.port as-is (0 = auto-assign on every launch)
 	const serverPort = payload.params.port > 0
 		? payload.params.port
 		: await findAvailablePort();
 
-	// Track user-assigned port (auto-assigned is already tracked by findAvailablePort)
+	// Track user-assigned port
 	if (payload.params.port > 0) {
 		usedPorts.add(serverPort);
 	}
@@ -290,45 +88,12 @@ serversRouter.post('/', async (req, res) => {
 		useMultiModal: payload.useMultiModal ?? false,
 	};
 
-	// Build args and spawn
-	const model = getCachedModels().find(m => m.primaryFile?.filePath === payload.modelPath);
-	const mmprojPath = model?.mmprojFile?.filePath && payload.useMultiModal ? model.mmprojFile.filePath : null;
-	
-	// Append recommended inference params to extraArgs if enabled
-	const launchParams = { ...server.params };
-	if (payload.useRecommendedInferenceParams && model?.recommendedInferenceParams) {
-		launchParams.extraArgs = mergeCliFlags(model.recommendedInferenceParams, server.params.extraArgs);
+	try {
+		await launchServer(server);
+		res.status(201).json({ ok: true, data: server, error: null });
+	} catch (err) {
+		res.status(400).json({ ok: false, data: null, error: String(err) });
 	}
-	
-	// Override port if auto-assign (0)
-	if (launchParams.port === 0) {
-		launchParams.port = server.port;
-	}
-	
-	const args = await buildServerArgs(
-		payload.modelPath,
-		mmprojPath,
-		launchParams,
-		backend.defaultArgs,
-	);
-
-	const pid = spawnServer(
-		id,
-		backend.path,
-		args,
-		async (status, error) => {
-			server.status = status;
-			if (error) server.error = error;
-			if (status === EServerStatus.RUNNING) server.startedAt = Date.now();
-			await store.put(PREFIX + id, server);
-		},
-	) || undefined;
-
-	server.pid = pid;
-	server.status = EServerStatus.LOADING;
-	await store.put(PREFIX + id, server);
-
-	res.status(201).json({ ok: true, data: server, error: null });
 });
 
 // POST /api/servers/:id/stop
@@ -378,74 +143,15 @@ serversRouter.post('/:id/restart', async (req, res) => {
 		return;
 	}
 
-	let backend: IBackend | null = null;
-	if (server.backendGroupId) {
-		const group = await store.get<IBackendGroup>('backendGroups:' + server.backendGroupId);
-		if (!group) {
-			res.status(400).json({ ok: false, data: null, error: 'Backend group not found' });
-			return;
-		}
-		backend = await store.get<IBackend>('backends:' + group.activeBackendId);
-		if (!backend) {
-			res.status(400).json({ ok: false, data: null, error: 'Active backend in group not found' });
-			return;
-		}
-	} else if (server.backendId) {
-		backend = await store.get<IBackend>('backends:' + server.backendId);
-		if (!backend) {
-			res.status(400).json({ ok: false, data: null, error: 'Backend not found' });
-			return;
-		}
-	}
-
-	if (!backend) {
-		res.status(400).json({ ok: false, data: null, error: 'Backend not found' });
-		return;
-	}
-
-	// Kill existing and wait for termination
 	await killServer(server.id, server.pid);
 	usedPorts.delete(server.port);
 
-	// Re-spawn
-	const model = getCachedModels().find(m => m.primaryFile?.filePath === server.modelPath);
-	const mmprojPath = model?.mmprojFile?.filePath && server.useMultiModal ? model.mmprojFile.filePath : null;
-	
-	// Create launch params and auto-assign port if needed
-	const launchParams = { ...server.params };
-	if (launchParams.port === 0) {
-		server.port = await findAvailablePort();
-		launchParams.port = server.port;
-	} else {
-		// User-assigned port: track it
-		usedPorts.add(server.port);
+	try {
+		await launchServer(server);
+		res.json({ ok: true, data: server, error: null });
+	} catch (err) {
+		res.status(400).json({ ok: false, data: null, error: String(err) });
 	}
-	
-	const args = await buildServerArgs(
-		server.modelPath,
-		mmprojPath,
-		launchParams,
-		backend.defaultArgs,
-	);
-
-	const pid = spawnServer(
-		server.id,
-		backend.path,
-		args,
-		async (status, error) => {
-			server.status = status;
-			if (error) server.error = error;
-			if (status === EServerStatus.RUNNING) server.startedAt = Date.now();
-			await store.put(PREFIX + server.id, server);
-		},
-	);
-
-	server.pid = pid || undefined;
-	server.status = EServerStatus.LOADING;
-	server.error = null;
-	await store.put(PREFIX + server.id, server);
-
-	res.json({ ok: true, data: server, error: null });
 });
 
 // PUT /api/servers/:id — update params and optionally restart
@@ -548,49 +254,12 @@ serversRouter.put('/:id', async (req, res) => {
 	}
 
 	if (shouldRelaunch) {
-		// Re-spawn with new params
-		const model = getCachedModels().find(m => m.primaryFile?.filePath === server.modelPath);
-		const mmprojPath = model?.mmprojFile?.filePath && server.useMultiModal ? model.mmprojFile.filePath : null;
-		
-		// Append recommended inference params to extraArgs if enabled
-		const launchParams = { ...server.params };
-		if (server.useRecommendedInferenceParams && model?.recommendedInferenceParams) {
-			launchParams.extraArgs = mergeCliFlags(model.recommendedInferenceParams, server.params.extraArgs);
+		try {
+			await launchServer(server);
+		} catch (err) {
+			res.status(400).json({ ok: false, data: null, error: String(err) });
+			return;
 		}
-		
-		// Auto-assign port if params.port is 0
-		if (launchParams.port === 0) {
-			server.port = await findAvailablePort();
-			launchParams.port = server.port;
-		} else {
-			// User-assigned port: track it
-			usedPorts.add(server.port);
-		}
-		
-		const args = await buildServerArgs(
-			server.modelPath,
-			mmprojPath,
-			launchParams,
-			backend.defaultArgs,
-		);
-
-		const pid = spawnServer(
-			server.id,
-			backend.path,
-			args,
-			async (status, error) => {
-				server.status = status;
-				if (error) server.error = error;
-				if (status === EServerStatus.RUNNING) server.startedAt = Date.now();
-				await store.put(PREFIX + server.id, server);
-			},
-		);
-
-		server.pid = pid || undefined;
-		server.status = EServerStatus.LOADING;
-		server.error = null;
-	} else {
-		// Just update config without relaunching — preserve current status and PID
 	}
 
 	await store.put(PREFIX + server.id, server);

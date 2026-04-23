@@ -39,7 +39,7 @@ const SORT_FIELD_OPTIONS: { value: EHubSortField; label: string }[] = [
 	{ value: EHubSortField.CREATED, label: 'Created Date' },
 ];
 
-const PARAM_STEPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 17, 20, 24, 27, 30, 36, 45, 90, 140, 280, 560, 1000];
+const PARAM_STEPS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 17, 20, 24, 27, 30, 36, 45, 90, 140, 280, 560, 1000];
 
 export function HubPage() {
 	const { toast } = useToast();

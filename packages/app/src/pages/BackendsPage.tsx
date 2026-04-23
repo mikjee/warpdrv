@@ -389,7 +389,7 @@ export function BackendsPage() {
 															</Flex>
 															<Box flex="1">
 																<HStack gap="2" align="center">
-																	<Text fontSize="15px" fontWeight="600" color="#e4e4e7">{backend.name}</Text>
+																	<Text fontSize="14px" fontWeight="600" color="#cfcfcf">{backend.name}</Text>
 																	<HStack gap="1" color={statusColor}>
 																		{backend.validation === EValidationStatus.VALID ? <CheckCircle size={13} /> : <AlertCircle size={13} />}
 																		<Text fontSize="11px" fontWeight="500">{backend.version || backend.validation}</Text>

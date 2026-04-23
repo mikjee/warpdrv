@@ -5,6 +5,8 @@ import { Plug } from 'lucide-react';
 import { ChatConfigContentPanel } from './ChatConfigSidebar';
 import { ChatToolsContentPanel } from './ChatToolsSidebar';
 import type { IChatInferenceParams, IChatPreset } from '@warpcore/shared';
+import { LuPlug, LuSlidersHorizontal } from 'react-icons/lu';
+import { VscTools } from 'react-icons/vsc';
 
 interface IChatSidebarProps {
 	configParams: IChatInferenceParams;
@@ -32,7 +34,7 @@ export const ChatSidebar = React.memo(({
 			{open && (
 				<Box
 					w="300px"
-					bg="rgba(0,0,0,0.15)"
+					// bg="rgba(0,0,0,0.15)"
 					overflowY="auto"
 					css={{
 						'&::-webkit-scrollbar': { width: '4px' },
@@ -62,7 +64,7 @@ export const ChatSidebar = React.memo(({
 				flexDirection="column"
 				alignItems="center"
 				pt="2"
-				bg="rgba(0,0,0,0.05)"
+				// bg="rgba(0,0,0,0.05)"
 			>
 				{/* Config tab */}
 				<Flex
@@ -84,7 +86,7 @@ export const ChatSidebar = React.memo(({
 					borderColor={activeTab === 'config' && open ? 'rgba(90, 90, 90, 0.2)' : 'transparent'}
 					_hover={{ bg: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.8)' }}
 				>
-					<Settings size={18} color={activeTab === 'config' ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.4)'} />
+					<LuSlidersHorizontal size={18} color={activeTab === 'config' && open ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.4)'} />
 				</Flex>
 
 				{/* Tools tab */}
@@ -108,7 +110,7 @@ export const ChatSidebar = React.memo(({
 					borderColor={activeTab === 'tools' && open ? 'rgba(90, 90, 90, 0.2)' : 'transparent'}
 					_hover={{ bg: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.8)' }}
 				>
-					<Plug size={18} color={activeTab === 'tools' ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.4)'} />
+					<Plug size={18} color={activeTab === 'tools' && open ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.4)'} />
 				</Flex>
 
 				{/* Close button (only when open) */}

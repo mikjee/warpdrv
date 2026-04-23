@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { api } from "@/api/client";
-import { Box } from '@chakra-ui/react';
+import { Box, Image } from '@chakra-ui/react';
 import {
 	ActionBarMorePrimitive,
 	ActionBarPrimitive,
@@ -153,7 +153,20 @@ const ThreadWelcome: FC = () => {
 	return (
 		<div className="aui-thread-welcome-root mx-auto my-auto flex w-full max-w-(--thread-max-width) grow flex-col">
 			<div className="aui-thread-welcome-center flex w-full grow flex-col items-center justify-center">
-				<div className="aui-thread-welcome-message flex size-full flex-col justify-center px-4">
+				<div className="aui-thread-welcome-message flex size-full flex-col justify-center px-4" style={{
+					alignItems: "center"
+				}}>
+					<Image
+						src="/logo.png"
+						alt=""
+						mb="4"
+						w="96px"
+						h="96px"
+						borderRadius="xl"
+						opacity={0.8}
+						objectFit="cover"
+						className="fade-in slide-in-from-bottom-1 animate-in fill-mode-both duration-200"
+					/>
 					<h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both font-semibold text-2xl duration-200">
 						Hello there!
 					</h1>

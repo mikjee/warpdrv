@@ -7,6 +7,8 @@ import { useDependantState } from '../hooks/useDependantState';
 import { updateSettings } from '../api/services';
 import { useStore } from '../store';
 import { useTauriWindow } from '@/hooks/useTauriWindow';
+import { RiMenuFold4Line } from "react-icons/ri";
+import { RiMenuFold3Line } from "react-icons/ri";
 
 interface IPageHeaderProps {
 	title: string;
@@ -77,14 +79,14 @@ export function PageHeader({ title, subtitle, icon, actions, actionsRight }: IPa
 			justify="space-between"
 			align="center"
 			px="4"
-			py="2"
+			py="3"
 			borderBottomWidth="1px"
 			borderColor="rgba(255, 255, 255, 0.06)"
-			bg="#0c0c0c"
+			// bg="#0c0c0c"
 			className='drag'
 			onDoubleClick={handleDoubleClick}
 			style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
-			boxShadow={"0px 0px 20px black"}
+			// boxShadow={"0px 0px 20px black"}
 		>
 			<HStack gap="4" ml="2">
 				<Flex
@@ -103,14 +105,14 @@ export function PageHeader({ title, subtitle, icon, actions, actionsRight }: IPa
 					ml="-2"
 					className='no-drag'
 				>
-					{collapsed ? <VscLayoutSidebarLeftOff size={18} /> : <VscLayoutSidebarLeft size={18} />}
+					{collapsed ? <RiMenuFold4Line size={20} /> : <RiMenuFold3Line size={20} />}
 				</Flex>
 				<Box mr="1" ml="-1">
-					<Text fontSize="14px" fontWeight="500" letterSpacing="-0.02em" color="#7d7d7d">
+					<Text fontSize="16px" fontWeight="500" letterSpacing="-0.02em" color="rgb(180,180,180)">
 						{title}
 					</Text>
 					{subtitle && (
-						<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">
+						<Text fontSize="12px" color="rgba(255, 255, 255, 0.35)">
 							{subtitle}
 						</Text>
 					)}

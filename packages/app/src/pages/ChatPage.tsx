@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useDependantState } from '../hooks/useDependantState';
-import { Box, Flex, Text, HStack } from '@chakra-ui/react';
-import { MessageSquare, ChevronDown } from 'lucide-react';
+import { Box, Flex, IconButton, Text, HStack } from '@chakra-ui/react';
+import { MessageSquare, ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import {
 	AssistantRuntimeProvider,
 	useExternalStoreRuntime,
@@ -27,6 +27,7 @@ import { useThreadConfig } from '@/hooks/useThreadConfig';
 import { convertMessagesToOpenAIFormat } from '@warpcore/bridge';
 import { useToast } from '../components/ToastProvider';
 import { parseThreadMeta } from '@/components/ServerSelector';
+import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff } from 'react-icons/vsc';
 
 const getFileDataURL = (file: File): Promise<string> =>
 	new Promise((resolve, reject) => {
@@ -172,7 +173,7 @@ export const BranchTokensContext = React.createContext(0);
 // ChatInner — main chat layout using bridge store
 // ============================================================
 const emptyMsgs = {};
-const ChatInner = React.memo(() => {
+const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: boolean }) => {
 	const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
 	const generateTitle = useStore(s => !s.settings.disableTitleGen);
 
@@ -490,10 +491,11 @@ const ChatInner = React.memo(() => {
 		<ChatConfigContext.Provider value={chatConfigValue}>
 			<TooltipProvider>
 				<AssistantRuntimeProvider runtime={runtime}>
-					<Flex flex="1" h="100%" overflow="hidden" className="dark">
+				<Flex flex="1" h="100%" overflow="hidden" className="dark">
+						{!threadsListCollapsed && (
 						<Box
-							w="260px"
-							minW="260px"
+							w="280px"
+							minW="280px"
 							borderRightWidth="1px"
 							borderColor="rgba(255,255,255,0.06)"
 							h="full"
@@ -505,6 +507,7 @@ const ChatInner = React.memo(() => {
 								<ThreadList />
 							</Flex>
 						</Box>
+						)}
 						<Box flex="1" overflow="hidden">
 							<BranchTokensContext value={branchTokenCount}>
 								<Thread isLoading={isLoadingThread} currentServerId={currentServerId} />
@@ -526,17 +529,40 @@ const ChatInner = React.memo(() => {
 	);
 });
 export const ChatPage = React.memo(() => {
-	
+
+	const title = useStore(s => s.currentThreadId ? s.threads[s.currentThreadId]?.title || "New Chat" : "New Chat");
+	const [threadsListCollapsed, setThreadsListCollapsed] = useState(false);
+
 	return (
 		<Flex direction="column" h="100%" overflow="hidden">
 			<PageHeader
 				title="Chat"
 				icon={<MessageSquare size={20} />}
+				actions={
+					<>
+						<IconButton
+							aria-label="Toggle threads list"
+							variant="ghost"
+							size="sm"
+							color="rgba(255, 255, 255, 0.6)"
+							_hover={{ color: 'rgba(255, 255, 255, 0.8)', bg: 'rgba(255, 255, 255, 0.08)' }}
+							onClick={() => setThreadsListCollapsed(!threadsListCollapsed)}
+						>
+							{threadsListCollapsed ? <VscLayoutSidebarLeftOff size={20} /> : <VscLayoutSidebarLeft size={20} />}
+						</IconButton>
+						<span style={{
+							fontSize: "13px",
+							color: "grey",
+							position: "fixed",
+							left: `calc(50vw - (${title.length * 3.5}px - ${threadsListCollapsed ? "0" : "135"}px)`
+						}}>{title}</span>
+					</>
+				}
 			/>
 			<Flex flex="1" overflow="hidden">
 				<Flex flex="1" overflow="hidden">
-					<ChatInner />
-				</Flex>			
+					<ChatInner threadsListCollapsed={threadsListCollapsed} />
+				</Flex>
 			</Flex>
 		</Flex>
 	);

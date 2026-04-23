@@ -15,12 +15,12 @@ export function SlotPill({ slot, metadata }: ISlotPillProps) {
 	let progress: number;
 
 	if (isPrompt) {
-		color = '#fbbf24';
+		color = '#fbb324';
 		const pct = Math.round((slot.prefillProgress ?? 0) * 100);
 		label = pct >= 100 ? 'pp' : `pp ${pct}%`;
 		progress = slot.prefillProgress ?? 0;
 	} else if (isGen) {
-		color = '#22c55e';
+		color = '#1acaff';
 		label = slot.generatedTokens > 0 ? `gen ${slot.generatedTokens}` : 'gen';
 		progress = 0;
 	} else {

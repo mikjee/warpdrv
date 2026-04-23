@@ -412,7 +412,7 @@ export const ServersPage = React.memo(() => {
 				}
 			/>
 
-			<Box p="4">
+			<Box p="3">
 				{filteredServers.length === 0 ? (
 					<Flex
 						h="300px" alignItems="center" justifyContent="center"
@@ -425,7 +425,7 @@ export const ServersPage = React.memo(() => {
 						</VStack>
 					</Flex>
 				) : (
-					<VStack align="stretch" gap="2.5">
+					<VStack align="stretch" gap="3">
 						{filteredServers.map(server => {
 							const isRunning = server.status === EServerStatus.RUNNING;
 							const isLoading = server.status === EServerStatus.LOADING;
@@ -439,7 +439,7 @@ export const ServersPage = React.memo(() => {
 									gradientTo="transparent"
 									borderColor={isRunning ? 'rgba(52, 211, 153, 0.15)' : isLoading ? 'rgba(251, 191, 36, 0.3)' : undefined}
 								>
-									<VStack align="stretch" gap="4">
+									<VStack align="stretch" gap="2.5">
 										<Flex justify="space-between" align="start">
 											<HStack gap="3" pr="3">
 												<Flex
@@ -453,31 +453,31 @@ export const ServersPage = React.memo(() => {
 													{/* {isRunning && <Box position="absolute" top="-1px" right="-1px" w="8px" h="8px" borderRadius="full" bg="#34d399" shadow="0 0 8px #34d399" />} */}
 												</Flex>
 												<Box>
-													<HStack gap="2" alignItems="center" flexWrap="wrap">
+													<HStack gap="2.5" alignItems="center" flexWrap="wrap">
 														<HoverCard.Root size="sm" openDelay={150}>
-														<HoverCard.Trigger asChild>
-															<Text fontSize="12px" fontWeight="600" color="#e4e4e7" cursor="help">{server.serverName}</Text>
-														</HoverCard.Trigger>
-														<Portal>
-															<HoverCard.Positioner>
-																<HoverCard.Content
-																	bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
-																	borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="3"
-																	maxW="500px"
-																>
-																	<VStack align="stretch" gap="2">
-																		<Box
-																			fontSize="10px" fontFamily='"Geist Mono", monospace' color="rgba(255, 255, 255, 0.7)"
-																			bg="rgba(255, 255, 255, 0.03)" borderRadius="md" p="2.5"
-																			whiteSpace="pre-wrap" wordBreak="break-all" lineHeight="1.4"
-																		>
-																			{server.launchCommand}
-																		</Box>
-																	</VStack>
-																</HoverCard.Content>
-															</HoverCard.Positioner>
-														</Portal>
-													</HoverCard.Root>
+															<HoverCard.Trigger asChild>
+																<Text fontSize="13px" fontWeight="600" color="#d0d0d0" cursor="help">{server.serverName}</Text>
+															</HoverCard.Trigger>
+															<Portal>
+																<HoverCard.Positioner>
+																	<HoverCard.Content
+																		bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
+																		borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="3"
+																		maxW="500px"
+																	>
+																		<VStack align="stretch" gap="2">
+																			<Box
+																				fontSize="10px" fontFamily='"Geist Mono", monospace' color="rgba(255, 255, 255, 0.7)"
+																				bg="rgba(255, 255, 255, 0.03)" borderRadius="md" p="2.5"
+																				whiteSpace="pre-wrap" wordBreak="break-all" lineHeight="1.4"
+																			>
+																				{server.launchCommand}
+																			</Box>
+																		</VStack>
+																	</HoverCard.Content>
+																</HoverCard.Positioner>
+															</Portal>
+														</HoverCard.Root>
 														<StatusBadge status={server.status as EServerStatus} port={server.port} />
 														{server.serverAlias && server.serverAlias.length > 0 && (
 															<>
@@ -553,7 +553,7 @@ export const ServersPage = React.memo(() => {
 														)}
 													</HStack>
 													{/* Details row */}
-													<HStack gap="2" flexWrap="wrap" mt="1.5">
+													<HStack gap="2.5" flexWrap="wrap" mt="1.5">
 														{(() => {
 															const backend = backendMap.get(server.backendId || '');
 															const group = groupMap.get(server.backendGroupId || '');
@@ -662,7 +662,7 @@ export const ServersPage = React.memo(() => {
 											const slotsState = serverSlots[server.id] ?? null;
 											if (!slotsState || slotsState.slots.length === 0) return null;
 											return (
-												<HStack gap="2" flexWrap="wrap" style={{ marginLeft: "50px" }}>
+												<HStack gap="2.5" flexWrap="wrap" style={{ marginLeft: "50px" }}>
 													{slotsState.slots.map(slot => (
 														<SlotPill
 															key={slot.slotId}
@@ -704,6 +704,7 @@ export const ServersPage = React.memo(() => {
 						autoSaveCheckpointOnStop: editingServer.autoSaveCheckpointOnStop ?? false,
 						autoLoadCheckpointOnStart: editingServer.autoLoadCheckpointOnStart ?? false,
 						useMultiModal: editingServer.useMultiModal ?? false,
+						useRecommendedInferenceParams: editingServer.useRecommendedInferenceParams ?? false,
 					}}
 				/>
 			)}

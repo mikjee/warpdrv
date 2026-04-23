@@ -258,7 +258,7 @@ interface IRecipeRowProps {
 
 function RecipeRow({ recipe, onRun, onEdit, onDelete }: IRecipeRowProps) {
 	const activeRun = useStore((s) => s.activeRun);
-	const isThisActive = activeRun !== null && activeRun.recipeId === recipe.id;
+	const isThisActive = activeRun !== null && activeRun.recipeId === recipe.id && activeRun.status === ERecipeRunStatus.RUNNING;
 	const isOtherActive = activeRun !== null && activeRun.recipeId !== recipe.id && activeRun.status === ERecipeRunStatus.RUNNING;
 
 	return (

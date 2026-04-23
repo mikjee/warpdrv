@@ -6,7 +6,7 @@ import { settingsRouter } from './routes/settings';
 import { backendsRouter } from './routes/backends';
 import { backendGroupsRouter } from './routes/backendGroups';
 import { modelsRouter, loadCachedModels, getCachedModels } from './routes/models';
-import { serversRouter, reconcileServers, launchAutoStartServers } from './routes/servers';
+import { serversRouter} from './routes/servers';
 import { presetsRouter } from './routes/presets';
 import { hubRouter } from './routes/hub';
 import { tokensRouter } from './routes/tokens';
@@ -45,6 +45,7 @@ export let mcpConfig: McpConfig;
 export let broadcaster: SseBroadcaster;
 
 import { execSync } from 'child_process';
+import { launchAutoStartServers, reconcileServers } from './services/processManager';
 
 function resolveShellPath(): string | null {
 	try {
