@@ -1,14 +1,14 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
-	Box, Text, HStack, VStack, Flex, Input, Button, Slider, Badge, Spinner, Portal, Combobox, createListCollection, Switch,
+	Box, Text, HStack, VStack, Flex, Input, Button, Slider, Badge, Spinner, Portal, Combobox, createListCollection, Switch, Checkbox,
 } from '@chakra-ui/react';
 import {
 	Play, X, ChevronDown, RefreshCw, Zap, Cpu,
 	Layers, Server, Package, Bookmark, Sparkles, Eye,
-	Pencil, Check, ChevronRight
+	Pencil, Check, ChevronRight, GitBranch
 } from 'lucide-react';
 import {
-	EKvQuantType,
+	EKvQuantType, ESplitMode, ESpecType,
 	type IModel, type IBackend, type IBackendGroup, type ILaunchParams, type IServer, type IChatInferenceParams,
 	type ISpecDecodeParams,
 	DEFAULT_LAUNCH_PARAMS, DEFAULT_SPEC_DECODE_PARAMS,
@@ -704,6 +704,27 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 	);
 	const deviceOptions = selectedBackendDevices.map(d => d.id);
 
+	// Sync mainGpu from device selection
+	useEffect(() => {
+		if (params.device && selectedBackendDevices.length > 0) {
+			const idx = selectedBackendDevices.findIndex(d => d.id === params.device);
+			if (idx >= 0 && idx !== params.mainGpu) {
+				updateParam('mainGpu', idx);
+			}
+		}
+	}, [params.device, selectedBackendDevices]);
+
+	// Initialize gpuSplitValues when multi-GPU enabled
+	useEffect(() => {
+		if (params.multiGpu && selectedBackendDevices.length > 0) {
+			const current = params.gpuSplitValues ?? [];
+			if (current.length !== selectedBackendDevices.length) {
+				const values = selectedBackendDevices.map((d, i) => current[i] ?? 1);
+				updateParam('gpuSplitValues', values);
+			}
+		}
+	}, [params.multiGpu, selectedBackendDevices.length]);
+
 	// Model metadata
 	const meta = selectedEntry?.file.metadata ?? null;
 	const draftMeta = selectedDraftEntry?.file.metadata ?? null;
@@ -985,21 +1006,137 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 										label="Device"
 										value={params.device}
 										options={deviceOptions}
-										onChange={v => handleTargetParamChange('device', v)}
+										onChange={(v) => { handleTargetParamChange('device', v); const idx = selectedBackendDevices.findIndex(d => d.id === v); if (idx >= 0) updateParam('mainGpu', idx); }}
 										mono
 										optionLabels={deviceIdToName}
 									/>
-									{params.gpuLayers ? (
-										<SliderNumberField
-											label="GPU Layers"
-											value={params.gpuLayers}
-											onChange={v => handleTargetParamChange('gpuLayers', v)}
-											min={0} max={maxLayers}
-											suffix={`/ ${maxLayers} layers`}
-										/>
-									) : (
-										<NumberField label="GPU Layers" value={params.gpuLayers} onChange={v => handleTargetParamChange('gpuLayers', v)} min={0} max={999} />
+
+									{/* Autofit toggle */}
+									<HStack justify="space-between" align="center">
+										<VStack align="start" gap="0.5">
+											<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">Autofit GPU Layers</Text>
+											<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)">Let llama.cpp auto-distribute layers</Text>
+										</VStack>
+										<Switch.Root label="Autofit GPU layers" checked={params.gpuLayersAuto ?? false} onCheckedChange={(details) => updateParam('gpuLayersAuto', details.checked)} color={(params.gpuLayersAuto ?? false) ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'}>
+											<Switch.HiddenInput />
+											<Switch.Control css={{ bg: (params.gpuLayersAuto ?? false) ? '#3381ff' : 'surface.4' }}>
+												<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+											</Switch.Control>
+										</Switch.Root>
+									</HStack>
+
+									{/* GPU Layers — hidden when autofit is ON */}
+									{(params.gpuLayersAuto !== true) && (
+										meta ? (
+											<SliderNumberField label="GPU Layers" value={params.gpuLayers} onChange={v => handleTargetParamChange('gpuLayers', v)} min={0} max={maxLayers} suffix={`/ ${maxLayers} layers`} />
+										) : (
+											<NumberField label="GPU Layers" value={params.gpuLayers} onChange={v => handleTargetParamChange('gpuLayers', v)} min={0} max={999} />
+										)
 									)}
+
+									{/* Multi-GPU Section */}
+									<Box borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" pt="4">
+										<HStack justify="space-between" align="center" mb="3">
+											<HStack gap="3">
+												<Flex w="6" h="6" borderRadius="md" alignItems="center" justifyContent="center"
+													bg={(params.multiGpu ?? false) ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.04)'}
+												>
+													<GitBranch size={14} color={(params.multiGpu ?? false) ? '#34d399' : 'rgba(255, 255, 255, 0.3)'} />
+												</Flex>
+												<VStack align="start" gap="0.5">
+													<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">Multi-GPU Split</Text>
+													<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)">Distribute layers across GPUs</Text>
+												</VStack>
+											</HStack>
+											<Switch.Root label="Enable multi-GPU split" checked={params.multiGpu ?? false} onCheckedChange={(details) => updateParam('multiGpu', details.checked)} color={(params.multiGpu ?? false) ? '#34d399' : 'rgba(255, 255, 255, 0.4)'}>
+												<Switch.HiddenInput />
+												<Switch.Control css={{ bg: (params.multiGpu ?? false) ? '#34d399' : 'surface.4' }}>
+													<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+												</Switch.Control>
+											</Switch.Root>
+										</HStack>
+
+										{(params.multiGpu ?? false) && selectedBackendDevices.length > 0 && (
+											<VStack align="stretch" gap="3">
+												{/* Per-GPU rows */}
+												{selectedBackendDevices.map((device, idx) => {
+													const splitVal = (params.gpuSplitValues ?? [])[idx] ?? 0;
+													const isActive = splitVal > 0;
+													return (
+														<HStack key={device.id} gap="2" align="center">
+															<Checkbox.Root
+															 checked={isActive}
+															 onCheckedChange={(details) => {
+																 const values = [...(params.gpuSplitValues ?? selectedBackendDevices.map(() => 0))];
+																 values[idx] = details.checked ? 1 : 0;
+																 updateParam('gpuSplitValues', values);
+															 }}
+															 color="#34d399"
+															>
+																<Checkbox.HiddenInput />
+																<Checkbox.Control borderRadius="sm" bg={isActive ? '#34d399' : 'rgba(255, 255, 255, 0.06)'}>
+																	<Checkbox.Indicator><Check size={12} /></Checkbox.Indicator>
+																</Checkbox.Control>
+															</Checkbox.Root>
+															<Box flex="1" minW="0">
+																<Text fontSize="11px" color="rgba(255, 255, 255, 0.5)" lineClamp={1}>{device.name}</Text>
+																<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)">{device.backendType} · {(device.vramTotalMb / 1024).toFixed(1)} GB</Text>
+															</Box>
+															<HStack gap="1">
+																<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)" flexShrink={0}>GPU{idx}</Text>
+																<Input
+																 type="number" value={splitVal}
+																 onChange={(e) => {
+																	 const val = Math.max(0, Number(e.target.value));
+																	 const values = [...(params.gpuSplitValues ?? selectedBackendDevices.map(() => 0))];
+																	 values[idx] = val;
+																	 updateParam('gpuSplitValues', values);
+																 }}
+																 size="xs" w="60px" textAlign="right"
+																 bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)"
+																 color="rgba(255, 255, 255, 0.6)" fontFamily='"Geist Mono", monospace'
+																 fontSize="11px" borderRadius="md" min={0}
+																 _focus={{ borderColor: 'rgba(52, 211, 153, 0.4)', outline: 'none' }}
+																 disabled={!isActive}
+																/>
+															</HStack>
+														</HStack>
+													);
+												})}
+
+												{/* Auto-fill button */}
+												<HStack justify="flex-end">
+													<Button size="xs" variant="ghost" fontSize="10px" color="rgba(255, 255, 255, 0.3)"
+														_hover={{ color: '#34d399', bg: 'rgba(52, 211, 153, 0.08)' }}
+														onClick={() => {
+															const values = selectedBackendDevices.map((d, i) => {
+																const current = (params.gpuSplitValues ?? [])[i] ?? 0;
+																return current > 0 ? 1 : 0;
+															});
+															updateParam('gpuSplitValues', values);
+														}}
+													>
+														Equal distribution
+													</Button>
+												</HStack>
+
+												{/* Split mode */}
+												<HStack gap="3">
+													<SelectField
+														label="Split Mode"
+														value={params.splitMode ?? ESplitMode.LAYER}
+														options={[ESplitMode.LAYER, ESplitMode.ROW, ESplitMode.TENSOR]}
+														onChange={v => updateParam('splitMode', v)}
+														optionLabels={{
+															[ESplitMode.LAYER]: 'Layer (pipeline)',
+															[ESplitMode.ROW]: 'Row (weight matrix)',
+															[ESplitMode.TENSOR]: 'Tensor (true TP)',
+														}}
+													/>
+												</HStack>
+											</VStack>
+										)}
+									</Box>
 								</VStack>}
 							</Card>
 
@@ -1017,7 +1154,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 											</Flex>
 											<VStack align="start" gap="0.5">
 												<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em">Speculative Decoding</Text>
-												<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">Use a smaller model as the draft driver</Text>
+												<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">{params.specDecode.mode === 'ngram' ? 'Draftless n-gram speculation' : 'Use a smaller model as the draft driver'}</Text>
 											</VStack>
 										</HStack>
 										<Switch.Root label="Enable speculative decoding" checked={params.specDecode.enabled} onCheckedChange={(details) => updateSpecParam('enabled', details.checked)} color={params.specDecode.enabled ? '#a78bfa' : 'rgba(255, 255, 255, 0.4)'}>
@@ -1030,77 +1167,107 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 
 								{params.specDecode.enabled && (
 									<VStack align="stretch" gap="4" mt="4">
-											{/* Draft model picker */}
-											<Box>
-												<Text fontSize="11px" color="rgba(167, 139, 250, 0.7)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Draft Model</Text>
-												{!targetArchitecture ? (
-													<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">Select a target model first to see compatible draft models.</Text>
-												) : draftModelEntries.length === 0 ? (
-													<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">
-														No compatible draft models found. Draft models must share the same architecture ({targetArchitecture}).
-													</Text>
-												) : (
-													<ModelCombobox
-														entries={draftModelEntries}
-														selectedPath={params.specDecode.draftModelPath || null}
-														onSelect={(path) => updateSpecParam('draftModelPath', path)}
-														placeholder="Search compatible draft models..."
-													/>
-												)}
-												{selectedDraftEntry?.file.metadata && (
-													<HStack mt="2" gap="4" px="3" py="2" bg="rgba(167, 139, 250, 0.04)" borderRadius="lg" borderWidth="1px" borderColor="rgba(167, 139, 250, 0.1)">
-														<HStack gap="1.5"><Layers size={12} color="rgba(167, 139, 250, 0.5)" /><Text fontSize="11px" color="rgba(167, 139, 250, 0.7)">{selectedDraftEntry.file.metadata.nLayers} layers</Text></HStack>
-														<HStack gap="1.5"><Cpu size={12} color="rgba(167, 139, 250, 0.5)" /><Text fontSize="11px" color="rgba(167, 139, 250, 0.7)">{selectedDraftEntry.file.metadata.paramCount}</Text></HStack>
-														<Text fontSize="11px" color="rgba(167, 139, 250, 0.5)" fontFamily='"Geist Mono", monospace'>{formatSize(selectedDraftEntry.model.totalSizeMb)}</Text>
-													</HStack>
-												)}
-											</Box>
+											{/* Mode toggle */}
+											<HStack gap="2">
+												<Button
+													size="sm"
+													variant="outline"
+													flex="1"
+													justifyContent="center"
+													borderColor={params.specDecode.mode === 'ngram' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(167, 139, 250, 0.3)'}
+													borderWidth={params.specDecode.mode === 'ngram' ? '1px' : '2px'}
+													color={params.specDecode.mode === 'ngram' ? 'rgba(255, 255, 255, 0.4)' : '#a78bfa'}
+													bg={params.specDecode.mode === 'ngram' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(167, 139, 250, 0.05)'}
+													_hover={{ borderColor: params.specDecode.mode === 'ngram' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(167, 139, 250, 0.5)' }}
+													onClick={() => updateSpecParam('mode', 'draft')}
+												>
+													<Text fontSize="13px" fontWeight="500">Draft Model</Text>
+												</Button>
+												<Button
+													size="sm"
+													variant="outline"
+													flex="1"
+													justifyContent="center"
+													borderColor={params.specDecode.mode === 'ngram' ? 'rgba(167, 139, 250, 0.3)' : 'rgba(255, 255, 255, 0.08)'}
+													borderWidth={params.specDecode.mode === 'ngram' ? '2px' : '1px'}
+													color={params.specDecode.mode === 'ngram' ? '#a78bfa' : 'rgba(255, 255, 255, 0.4)'}
+													bg={params.specDecode.mode === 'ngram' ? 'rgba(167, 139, 250, 0.05)' : 'rgba(255, 255, 255, 0.02)'}
+													_hover={{ borderColor: params.specDecode.mode === 'ngram' ? 'rgba(167, 139, 250, 0.5)' : 'rgba(255, 255, 255, 0.15)' }}
+													onClick={() => updateSpecParam('mode', 'ngram')}
+												>
+													<Text fontSize="13px" fontWeight="500">Ngram</Text>
+												</Button>
+											</HStack>
 
-											{/* Draft device */}
-											{deviceOptions.length > 0 && (
-												<Box>
-													<SelectField
-														label="Draft Device"
-														value={params.specDecode.draftDevice}
-														options={['', ...deviceOptions]}
-														onChange={v => updateSpecParam('draftDevice', v)}
-														mono
-														optionLabels={{
-															'': 'Same as target',
-															...deviceIdToName,
-														}}
-													/>
-													<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)" mt="1">Leave empty to use target device.</Text>
-												</Box>
-											)}
-
-											{/* Draft GPU layers + context */}
-											<Flex gap="4">
-												{draftMeta ? (
-													<Box flex="1">
-														<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">
-															GPU Layers <Text as="span" color="rgba(255, 255, 255, 0.2)">/ {draftMeta.nLayers}</Text>
-														</Text>
-														<Input type="number" value={params.specDecode.draftGpuLayers} onChange={e => updateSpecParam('draftGpuLayers', Number(e.target.value))} size="sm"
-															bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
-															fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
-															_focus={{ borderColor: 'rgba(167, 139, 250, 0.4)', outline: 'none' }} min={0} max={draftMeta.nLayers}
-														/>
+											{/* Draft Model Panel */}
+											{(params.specDecode.mode !== 'ngram') && (
+												<VStack align="stretch" gap="4">
+													{/* Draft model picker */}
+													<Box>
+														<Text fontSize="11px" color="rgba(167, 139, 250, 0.7)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Draft Model</Text>
+														{!targetArchitecture ? (
+															<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">Select a target model first to see compatible draft models.</Text>
+														) : draftModelEntries.length === 0 ? (
+															<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">
+																No compatible draft models found. Draft models must share the same architecture ({targetArchitecture}).
+															</Text>
+														) : (
+															<ModelCombobox
+																entries={draftModelEntries}
+																selectedPath={params.specDecode.draftModelPath || null}
+																onSelect={(path) => updateSpecParam('draftModelPath', path)}
+																placeholder="Search compatible draft models..."
+															/>
+														)}
+														{selectedDraftEntry?.file.metadata && (
+															<HStack mt="2" gap="4" px="3" py="2" bg="rgba(167, 139, 250, 0.04)" borderRadius="lg" borderWidth="1px" borderColor="rgba(167, 139, 250, 0.1)">
+																<HStack gap="1.5"><Layers size={12} color="rgba(167, 139, 250, 0.5)" /><Text fontSize="11px" color="rgba(167, 139, 250, 0.7)">{selectedDraftEntry.file.metadata.nLayers} layers</Text></HStack>
+																<HStack gap="1.5"><Cpu size={12} color="rgba(167, 139, 250, 0.5)" /><Text fontSize="11px" color="rgba(167, 139, 250, 0.7)">{selectedDraftEntry.file.metadata.paramCount}</Text></HStack>
+																<Text fontSize="11px" color="rgba(167, 139, 250, 0.5)" fontFamily='"Geist Mono", monospace'>{formatSize(selectedDraftEntry.model.totalSizeMb)}</Text>
+															</HStack>
+														)}
 													</Box>
-												) : (
-													<NumberField label="GPU Layers" value={params.specDecode.draftGpuLayers} onChange={v => updateSpecParam('draftGpuLayers', v)} min={0} max={999} />
-												)}
-												<NumberField label="Context Size" value={params.specDecode.draftContextSize} onChange={v => updateSpecParam('draftContextSize', v)} min={0} step={1024} suffix="0 = auto" />
-											</Flex>
 
-											{/* Spec decode tuning params */}
-											<Box>
-												<Text fontSize="11px" color="rgba(167, 139, 250, 0.7)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Drafting Parameters</Text>
-												<Flex gap="4">
-													<NumberField label="Draft Max" value={params.specDecode.draftMax} onChange={v => updateSpecParam('draftMax', v)} min={1} max={128} />
-													<NumberField label="Draft Min" value={params.specDecode.draftMin} onChange={v => updateSpecParam('draftMin', v)} min={0} max={64} />
-													<Box flex="1">
-														<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Accept Threshold</Text>
+													{/* Draft device */}
+													{deviceOptions.length > 0 && (
+														<Box>
+															<SelectField
+																label="Draft Device"
+																value={params.specDecode.draftDevice}
+																options={['', ...deviceOptions]}
+																onChange={v => updateSpecParam('draftDevice', v)}
+																mono
+																optionLabels={{
+																	'': 'Same as target',
+																	...deviceIdToName,
+																}}
+															/>
+															<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)" mt="1">Leave empty to use target device.</Text>
+														</Box>
+													)}
+
+													{/* Draft GPU layers + context */}
+													<Flex gap="4">
+														{draftMeta ? (
+															<Box flex="1">
+																<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">
+																	GPU Layers <Text as="span" color="rgba(255, 255, 255, 0.2)">/ {draftMeta.nLayers}</Text>
+																</Text>
+																<Input type="number" value={params.specDecode.draftGpuLayers} onChange={e => updateSpecParam('draftGpuLayers', Number(e.target.value))} size="sm"
+																	bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
+																	fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
+																	_focus={{ borderColor: 'rgba(167, 139, 250, 0.4)', outline: 'none' }} min={0} max={draftMeta.nLayers}
+																/>
+															</Box>
+														) : (
+															<NumberField label="GPU Layers" value={params.specDecode.draftGpuLayers} onChange={v => updateSpecParam('draftGpuLayers', v)} min={0} max={999} />
+														)}
+														<NumberField label="Context Size" value={params.specDecode.draftContextSize} onChange={v => updateSpecParam('draftContextSize', v)} min={0} step={1024} suffix="0 = auto" />
+													</Flex>
+
+													{/* Accept Threshold (draft-only) */}
+													<Box>
+														<Text fontSize="11px" color="rgba(167, 139, 250, 0.7)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Accept Threshold</Text>
 														<Input type="number" value={params.specDecode.draftPMin}
 															onChange={e => updateSpecParam('draftPMin', Number(e.target.value))} size="sm"
 															bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
@@ -1110,6 +1277,46 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 														/>
 														<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)" mt="1">0.0 - 1.0</Text>
 													</Box>
+												</VStack>
+											)}
+
+											{/* Ngram Panel */}
+											{(params.specDecode.mode === 'ngram') && (
+												<VStack align="stretch" gap="4">
+													{/* Spec type selector */}
+													<SelectField
+														label="Spec Type"
+														value={params.specDecode.specType ?? ESpecType.NGRAM_SIMPLE}
+														options={[ESpecType.NGRAM_SIMPLE, ESpecType.NGRAM_CACHE, ESpecType.NGRAM_MAP_K, ESpecType.NGRAM_MAP_K4V, ESpecType.NGRAM_MOD]}
+														onChange={v => updateSpecParam('specType', v)}
+														optionLabels={{
+															[ESpecType.NGRAM_SIMPLE]: 'ngram-simple (fastest)',
+															[ESpecType.NGRAM_CACHE]: 'ngram-cache (legacy)',
+															[ESpecType.NGRAM_MAP_K]: 'ngram-map-k (hash map)',
+															[ESpecType.NGRAM_MAP_K4V]: 'ngram-map-k4v (multi-value)',
+															[ESpecType.NGRAM_MOD]: 'ngram-mod (best MoE/code)',
+														}}
+													/>
+
+													{/* Ngram params */}
+													<Flex gap="4">
+														<NumberField label="N-Gram Size (n)" value={params.specDecode.ngramSizeN ?? 12} onChange={v => updateSpecParam('ngramSizeN', v)} min={1} max={64} />
+														<NumberField label="M-Gram Size (m)" value={params.specDecode.ngramSizeM ?? 48} onChange={v => updateSpecParam('ngramSizeM', v)} min={1} max={256} />
+													</Flex>
+
+													{/* Min Hits — only for ngram-map-k types */}
+													{(params.specDecode.specType === ESpecType.NGRAM_MAP_K || params.specDecode.specType === ESpecType.NGRAM_MAP_K4V) && (
+														<NumberField label="Min Hits" value={params.specDecode.ngramMinHits ?? 1} onChange={v => updateSpecParam('ngramMinHits', v)} min={1} max={32} />
+													)}
+												</VStack>
+											)}
+
+											{/* Shared params */}
+											<Box>
+												<Text fontSize="11px" color="rgba(167, 139, 250, 0.7)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Drafting Parameters</Text>
+												<Flex gap="4">
+													<NumberField label="Draft Max" value={params.specDecode.draftMax} onChange={v => updateSpecParam('draftMax', v)} min={1} max={128} />
+													<NumberField label="Draft Min" value={params.specDecode.draftMin} onChange={v => updateSpecParam('draftMin', v)} min={0} max={64} />
 												</Flex>
 											</Box>
 									</VStack>

@@ -9,7 +9,7 @@ export function useEventSource() {
 			// @ts-ignore
 			? __CONTROL_API_PORT__
 			: window.location.port || '4400';
-		const eventSource = new EventSource(`http://localhost:${port}/api/events`);
+		const eventSource = new EventSource(`/api/events`);
 
 		eventSource.onopen = () => {
 			useStore.getState().setSseConnected(true);

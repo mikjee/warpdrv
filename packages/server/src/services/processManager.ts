@@ -88,7 +88,7 @@ export function buildArgs(
 	}
 	args.push('-m', modelPath);
 	if (mmprojPath) args.push('--mmproj', mmprojPath);
-	if (params.gpuLayers > 0 && !argsSet.has('-ngl')) args.push('-ngl', String(params.gpuLayers));
+	if (params.gpuLayersAuto !== true && params.gpuLayers > 0 && !argsSet.has('-ngl')) args.push('-ngl', String(params.gpuLayers));
 	if (params.contextSize > 0 && !argsSet.has('-c')) args.push('-c', String(params.contextSize));
 	if (params.batchSize > 0 && !argsSet.has('-b')) args.push('-b', String(params.batchSize));
 	if (params.ubatchSize > 0 && !argsSet.has('-ub')) args.push('-ub', String(params.ubatchSize));
@@ -105,20 +105,48 @@ export function buildArgs(
 	if (params.kvQuantV !== EKvQuantType.F16) args.push('--cache-type-v', params.kvQuantV);
 	if (params.chatTemplate) args.push('--chat-template', params.chatTemplate);
 	if (params.device) args.push('--device', params.device);
+	// Multi-GPU tensor split — preserve zeros to maintain device index alignment
+	if (params.multiGpu && params.gpuSplitValues && params.gpuSplitValues.length > 1) {
+		args.push('-ts', params.gpuSplitValues.join(','));
+	}
+	// Split mode (layer is default, only emit when different)
+	if (params.multiGpu && params.splitMode && params.splitMode !== 'layer') {
+		args.push('-sm', params.splitMode);
+	}
+	// Main GPU (-1 or undefined = default/GPU0)
+	if (params.multiGpu && params.mainGpu !== undefined && params.mainGpu >= 0) {
+		args.push('-mg', String(params.mainGpu));
+	}
 	// Parallel slots - add --kv-unified to share context across all slots instead of splitting it
 	if (params.parallelSlots > 0) {
 		args.push('-np', String(params.parallelSlots));
 		args.push('--kv-unified');
 	}
 	// Speculative decoding
-	if (params.specDecode?.enabled && params.specDecode.draftModelPath) {
-		args.push('--model-draft', params.specDecode.draftModelPath);
-		if (params.specDecode.draftDevice) args.push('--device-draft', params.specDecode.draftDevice);
-		if (params.specDecode.draftGpuLayers > 0) args.push('--gpu-layers-draft', String(params.specDecode.draftGpuLayers));
-		if (params.specDecode.draftContextSize > 0) args.push('--ctx-size-draft', String(params.specDecode.draftContextSize));
-		if (params.specDecode.draftMax > 0) args.push('--draft-max', String(params.specDecode.draftMax));
-		if (params.specDecode.draftMin > 0) args.push('--draft-min', String(params.specDecode.draftMin));
-		if (params.specDecode.draftPMin > 0) args.push('--draft-p-min', String(params.specDecode.draftPMin));
+	if (params.specDecode?.enabled) {
+		const sd = params.specDecode;
+		const isNgram = sd.mode === 'ngram';
+		// Ngram mode — draftless speculative decoding
+		if (isNgram && sd.specType && sd.specType !== 'none') {
+			args.push('--spec-type', sd.specType);
+			if (sd.ngramSizeN) args.push('--spec-ngram-size-n', String(sd.ngramSizeN));
+			if (sd.ngramSizeM) args.push('--spec-ngram-size-m', String(sd.ngramSizeM));
+			if ((sd.specType === 'ngram-map-k' || sd.specType === 'ngram-map-k4v') && sd.ngramMinHits) {
+				args.push('--spec-ngram-min-hits', String(sd.ngramMinHits));
+			}
+		}
+		// Draft model mode
+		if (!isNgram && sd.draftModelPath) {
+			args.push('--model-draft', sd.draftModelPath);
+			if (sd.draftDevice) args.push('--device-draft', sd.draftDevice);
+			if (sd.draftGpuLayers > 0) args.push('--gpu-layers-draft', String(sd.draftGpuLayers));
+			if (sd.draftContextSize > 0) args.push('--ctx-size-draft', String(sd.draftContextSize));
+		}
+		// Shared across modes
+		if (sd.draftMax > 0) args.push('--draft-max', String(sd.draftMax));
+		if (sd.draftMin > 0) args.push('--draft-min', String(sd.draftMin));
+		// Draft-model-only
+		if (!isNgram && sd.draftPMin > 0) args.push('--draft-p-min', String(sd.draftPMin));
 	}
 	args.push('--host', '0.0.0.0');
 	args.push('--port', String(params.port));

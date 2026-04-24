@@ -3,6 +3,8 @@ import {
 	EKvQuantType,
 	EValidationStatus,
 	EDeviceBackendType,
+	ESplitMode,
+	ESpecType,
 	EResponseFormat,
 	EReasoningFormat,
 	EReasoningEffort,
@@ -126,13 +128,21 @@ export interface IModel {
 // ============================================================
 export interface ISpecDecodeParams {
 	enabled: boolean;
+	mode?: 'draft' | 'ngram'; // undefined → 'draft' (backward compat)
+	// Shared across modes
+	draftMax: number; // max tokens to draft per step
+	draftMin: number; // min tokens to draft per step
+	// Draft-model-only
 	draftModelPath: string; // path to draft GGUF file
 	draftDevice: string; // empty = same as target, e.g. "CUDA0", "Vulkan0"
 	draftGpuLayers: number;
 	draftContextSize: number; // 0 = loaded from model
-	draftMax: number; // max tokens to draft per step
-	draftMin: number; // min tokens to draft per step
 	draftPMin: number; // acceptance probability threshold (0.0-1.0)
+	// Ngram-only (optional)
+	specType?: ESpecType;
+	ngramSizeN?: number; // lookup n-gram length
+	ngramSizeM?: number; // draft m-gram length
+	ngramMinHits?: number; // min occurrences before drafting (ngram-map-k* only)
 }
 export const DEFAULT_SPEC_DECODE_PARAMS: ISpecDecodeParams = {
 	enabled: false,
@@ -169,6 +179,12 @@ export interface ILaunchParams {
 	extraArgs: string; // free-form additional flags
 	parallelSlots: number; // number of concurrent slots, 0 = server default
 	specDecode: ISpecDecodeParams;
+	// Multi-GPU split (optional for backward compatibility)
+	gpuLayersAuto?: boolean; // true = autofit (omit -ngl), false/undefined = manual
+	multiGpu?: boolean; // enables multi-GPU tensor split
+	splitMode?: ESplitMode; // layer | row | tensor
+	gpuSplitValues?: number[]; // per-GPU proportions, zeros exclude devices
+	mainGpu?: number; // -1 = default, >=0 = explicit GPU index
 }
 // Default launch params
 export const DEFAULT_LAUNCH_PARAMS: ILaunchParams = {

@@ -32,6 +32,23 @@ export enum EDeviceBackendType {
 	VULKAN = 'Vulkan',
 }
 
+// Multi-GPU split mode for llama.cpp
+export enum ESplitMode {
+	LAYER = 'layer',
+	ROW = 'row',
+	TENSOR = 'tensor',
+}
+
+// Speculative decoding types for llama.cpp
+export enum ESpecType {
+	NONE = 'none',
+	NGRAM_SIMPLE = 'ngram-simple',
+	NGRAM_CACHE = 'ngram-cache',
+	NGRAM_MAP_K = 'ngram-map-k',
+	NGRAM_MAP_K4V = 'ngram-map-k4v',
+	NGRAM_MOD = 'ngram-mod',
+}
+
 // Re-export from hub-types
 export { EDownloadStatus } from './hub-types';
 
