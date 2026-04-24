@@ -30,7 +30,14 @@ mcpRouter.put('/config', async (req, res) => {
 			return;
 		}
 		writeMcpConfig(config);
-		// Reconnect all servers
+		// Disconnect servers removed from config
+		const currentStates = mcpClient.getAllServerStates();
+		for (const name of Object.keys(currentStates)) {
+			if (!config.mcpServers[name]) {
+				await mcpClient.disconnect(name);
+			}
+		}
+		// Connect servers from new config
 		for (const [name, entry] of Object.entries(config.mcpServers)) {
 			await mcpClient.connect(name, entry);
 		}

@@ -4,7 +4,7 @@
 // and tool permissions sidebar.
 // ============================================================
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
 	Box,
 	Flex,
@@ -113,12 +113,14 @@ function ApprovalModeButton({
 // Tool list sidebar
 // ============================================================
 function ToolListSidebar({
+	serverNames,
 	mcpServers,
 	serverPermissions,
 	toolPermissions,
 	onToggleServer,
 	onSetToolPermission,
 }: {
+	serverNames: string[];
 	mcpServers: Record<string, IMcpServerState>;
 	serverPermissions: IMcpServerPermission[];
 	toolPermissions: IToolPermission[];
@@ -147,7 +149,8 @@ function ToolListSidebar({
 				Tools
 			</Text>
 
-			{Object.entries(mcpServers).map(([name, state]) => {
+			{serverNames.map(name => {
+				const state = mcpServers[name];
 				const serverEnabled = serverPermMap.get(name) ?? true;
 				const isExpanded = expandedServers[name] ?? false;
 
@@ -164,7 +167,7 @@ function ToolListSidebar({
 							opacity={serverEnabled ? 1 : 0.4}
 						>
 							{isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-							<StatusDot status={state.status} />
+							<StatusDot status={state?.status ?? EMcpServerStatus.DISCONNECTED} />
 							<Text flex="1" fontSize="13px" color="rgba(255,255,255,0.8)" fontWeight="500">
 								{name}
 							</Text>
@@ -176,7 +179,7 @@ function ToolListSidebar({
 								bg="rgba(255,255,255,0.06)"
 								color="rgba(255,255,255,0.4)"
 							>
-								{state.tools.length}
+								{state?.tools.length ?? 0}
 							</Badge>
 							<Box
 								as="button"
@@ -192,7 +195,7 @@ function ToolListSidebar({
 							</Box>
 						</HStack>
 
-						{isExpanded && serverEnabled && (
+						{isExpanded && serverEnabled && state && (
 							<VStack gap="0" pl="6" mt="1">
 								{state.tools.map(tool => {
 									const perm = toolPermMap.get(`${name}:${tool.name}`);
@@ -254,7 +257,7 @@ function ToolListSidebar({
 				);
 			})}
 
-			{Object.keys(mcpServers).length === 0 && (
+			{serverNames.length === 0 && (
 				<Text fontSize="12px" color="rgba(255,255,255,0.25)" textAlign="center" py="4">
 					No MCP servers configured
 				</Text>
@@ -604,6 +607,7 @@ export function McpPage() {
 	}
 
 	const serverEntries = config?.mcpServers ?? {};
+	const serverNames = useMemo(() => Object.keys(serverEntries), [serverEntries]);
 
 	return (
 		<Flex direction="column" h="100%" overflow="hidden">
@@ -688,6 +692,7 @@ export function McpPage() {
 
 				{/* Tool list sidebar */}
 				<ToolListSidebar
+					serverNames={serverNames}
 					mcpServers={mcpServers}
 					serverPermissions={serverPerms}
 					toolPermissions={toolPerms}

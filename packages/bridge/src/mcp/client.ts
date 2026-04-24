@@ -18,6 +18,8 @@ interface IClientEntry {
 	state: IMcpServerState;
 	reconnectTimer: ReturnType<typeof setTimeout> | null;
 	config: IMcpServerEntry;
+	wasConnected: boolean;
+	_disconnecting: boolean;
 }
 
 export class McpClientManager implements IMcpClient {
@@ -86,7 +88,7 @@ export class McpClientManager implements IMcpClient {
 				);
 			}
 
-			this.clients[name] = { name, client, transport, state, reconnectTimer: null, config: entry };
+			this.clients[name] = { name, client, transport, state, reconnectTimer: null, config: entry, wasConnected: false, _disconnecting: false };
 			this.emitChange();
 
 			await client.connect(transport);
@@ -105,13 +107,19 @@ export class McpClientManager implements IMcpClient {
 			state.status = EMcpServerStatus.CONNECTED;
 			state.connectedAt = Date.now();
 			state.error = null;
+			const ce = this.clients[name];
+			if (ce) ce.wasConnected = true;
 			this.emitChange();
 
 			client.onclose = () => {
+				const ce = this.clients[name];
+				if (!ce || ce._disconnecting) return;
 				state.status = EMcpServerStatus.DISCONNECTED;
 				state.error = 'Connection closed';
 				this.emitChange();
-				this.scheduleReconnect(name);
+				if (ce.wasConnected) {
+					this.scheduleReconnect(name);
+				}
 			};
 		} catch (err) {
 			const errorMsg = err instanceof Error ? err.message : String(err);
@@ -123,9 +131,8 @@ export class McpClientManager implements IMcpClient {
 			}
 			state.status = EMcpServerStatus.ERROR;
 			state.error = errorMsg;
-			this.clients[name] = { name, client, transport: transport!, state, reconnectTimer: null, config: entry };
+			this.clients[name] = { name, client, transport: transport!, state, reconnectTimer: null, config: entry, wasConnected: false, _disconnecting: false };
 			this.emitChange();
-			this.scheduleReconnect(name);
 		}
 	}
 
@@ -133,6 +140,7 @@ export class McpClientManager implements IMcpClient {
 		const entry = this.clients[name];
 		if (!entry) return;
 		if (entry.reconnectTimer) clearTimeout(entry.reconnectTimer);
+		entry._disconnecting = true;
 		try { await entry.client.close(); } catch { /* ignore */ }
 		delete this.clients[name];
 		this.emitChange();

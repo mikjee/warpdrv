@@ -173,7 +173,54 @@ const NAV_ITEMS: INavItem[] = [
 	},
 	{ isSeparator: true },
 
-	{ path: '/mcp', label: 'MCP', icon: <Plug size={18} /> },
+	{
+		path: '/mcp',
+		label: 'MCP',
+		icon: <Plug size={18} />,
+		badge: (s) => {
+			if (s == null || s.mcp.total === 0) return null;
+			if (s.mcp.connecting > 0) {
+				return (
+					<Box
+						w="5px"
+						h="5px"
+						borderRadius="full"
+						bg="#f59e0b"
+						boxShadow="0 0 6px rgba(245, 158, 11, 0.6)"
+						ml="auto"
+						flexShrink={0}
+					/>
+				);
+			}
+			if (s.mcp.error > 0) {
+				return (
+					<Box
+						w="5px"
+						h="5px"
+						borderRadius="full"
+						bg="#ef4444"
+						boxShadow="0 0 6px rgba(239, 68, 68, 0.6)"
+						ml="auto"
+						flexShrink={0}
+					/>
+				);
+			}
+			if (s.mcp.connected === s.mcp.total) {
+				return (
+					<Box
+						w="5px"
+						h="5px"
+						borderRadius="full"
+						bg="#22c55e"
+						boxShadow="0 0 6px rgba(34, 197, 94, 0.5)"
+						ml="auto"
+						flexShrink={0}
+					/>
+				);
+			}
+			return null;
+		},
+	},
 	{ path: '/chat', label: 'Chat', icon: <MessageSquare size={18} /> },
 ];
 

@@ -5,6 +5,7 @@ export interface ISummaryData {
 	router: { online: boolean; hasError: boolean };
 	devices: { unique: number };
 	downloads: { active: number; completed: number };
+	mcp: { total: number; connected: number; connecting: number; error: number };
 }
 
 const API_BASE = '/api';
