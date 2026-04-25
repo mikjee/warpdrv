@@ -1,14 +1,36 @@
+import { useStore } from '@/store';
 import { HStack, Text, Box } from '@chakra-ui/react';
 import type { ISlotLiveState, ISlotLiveMetadata } from '@warpcore/shared';
+import React from 'react';
+
+export const ServerSlots = React.memo(({ serverId }: {
+	serverId: string;
+}) => {
+	const serverSlots = useStore(s => s.serverSlots[serverId]);
+
+	if (!serverSlots || serverSlots.slots.length === 0) return null;
+	return (
+		<HStack gap="2.5" flexWrap="wrap" style={{ marginLeft: "50px" }}>
+			{serverSlots.slots.map(slot => (
+				<SlotPill
+					key={slot.slotId}
+					slot={slot}
+					metadata={serverSlots.metadata[slot.slotId] ?? null}
+				/>
+			))}
+		</HStack>
+	);
+});
 
 interface ISlotPillProps {
 	slot: ISlotLiveState;
 	metadata: ISlotLiveMetadata | null;
 }
 
-export function SlotPill({ slot, metadata }: ISlotPillProps) {
-	const isPrompt = slot.isProcessing && slot.prefillProgress !== null;
-	const isGen = slot.isProcessing && slot.prefillProgress === null;
+function SlotPill({ slot, metadata }: ISlotPillProps) {
+
+	const isPrompt = slot?.isProcessing && slot?.prefillProgress !== null;
+	const isGen = slot?.isProcessing && slot?.prefillProgress === null;
 
 	let color: string;
 	let label: string;
@@ -44,7 +66,7 @@ export function SlotPill({ slot, metadata }: ISlotPillProps) {
 			overflow="hidden"
 		>
 			<HStack gap="2" fontSize="10px" fontFamily='"Geist Mono", monospace' color={color}>
-				<Text fontWeight="600">S{slot.slotId}</Text>
+				<Text fontWeight="600">S{slot?.slotId}</Text>
 				<Text>{label}</Text>
 				{msgCount !== null && (
 					<Text color="rgba(255, 255, 255, 0.4)" ml="auto">{msgCount} msg</Text>
@@ -67,4 +89,4 @@ export function SlotPill({ slot, metadata }: ISlotPillProps) {
 			</Box>
 		</Box>
 	);
-}
+};

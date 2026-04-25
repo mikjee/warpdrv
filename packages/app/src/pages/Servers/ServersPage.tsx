@@ -11,11 +11,11 @@ import { useMutation } from '@/hooks/useQuery';
 import type { IServer, IBackend, IBackendGroup, IModel, TSortField, TSortOrder } from '@warpcore/shared';
 import { EServerStatus } from '@warpcore/shared';
 import { ServerCard } from './ServerCard';
-import { LaunchServerDialog } from './LaunchServerDialog';
+import { LaunchServerDialog } from './LaunchServer/LaunchServerDialog';
 import { ServerLogs } from './ServerLogs';
 import { ConfirmDialog } from '@/components/dialogs/ConfirmDialog';
-import { SaveCheckpointDialog } from './SaveCheckpointDialog';
-import { LoadCheckpointDialog } from './LoadCheckpointDialog';
+import { SaveCheckpointDialog } from './Checkpoints/SaveCheckpointDialog';
+import { LoadCheckpointDialog } from './Checkpoints/LoadCheckpointDialog';
 
 const FIELD_LABELS: Record<TSortField, string> = {
 	name: 'Name',
@@ -46,7 +46,6 @@ export const ServersPage = React.memo(() => {
 	const [deletingServerId, setDeletingServerId] = useState<string | null>(null);
 
 	const logsServer = logsServerId ? servers[logsServerId] : null;
-	const editingServer = editingServerId ? servers[editingServerId] : null;
 	const deletingServer = deletingServerId ? servers[deletingServerId] : null;
 
 	const handleSortChange = useCallback((field: TSortField, order: TSortOrder) => {
@@ -128,8 +127,10 @@ export const ServersPage = React.memo(() => {
 	const removeCallback = useCallback((id: string) => removeServer(id), []);
 
 	// Mutations
-	const removeMut = useMutation<string, null>(removeCallback);
-	const handleRemove = async (id: string) => { await removeMut.mutate(id); setDeletingServerId(null); };
+	const { mutate: removeMut, loading } = useMutation<string, null>(removeCallback);
+	const handleRemove = useCallback(async (id: string) => { await removeMut(id); setDeletingServerId(null); }, [
+		removeMut
+	]);
 
 	return (
 		<Box>
@@ -299,23 +300,10 @@ export const ServersPage = React.memo(() => {
 				<ServerLogs serverId={logsServer.id} serverName={logsServer.serverName} onClose={() => setLogsServerId(null)} />
 			)}
 
-			{editingServer && (
+			{editingServerId && (
 				<LaunchServerDialog
 					onClose={() => setEditingServerId(null)}
-					editMode={{
-						serverId: editingServer.id,
-						backendId: editingServer.backendId!,
-						backendGroupId: editingServer.backendGroupId,
-						modelPath: editingServer.modelPath,
-						serverName: editingServer.serverName,
-						serverAlias: editingServer.serverAlias ?? [],
-						params: editingServer.params,
-						autoLaunch: editingServer.autoLaunch ?? false,
-						autoSaveCheckpointOnStop: editingServer.autoSaveCheckpointOnStop ?? false,
-						autoLoadCheckpointOnStart: editingServer.autoLoadCheckpointOnStart ?? false,
-						useMultiModal: editingServer.useMultiModal ?? false,
-						useRecommendedInferenceParams: editingServer.useRecommendedInferenceParams ?? false,
-					}}
+					serverId={editingServerId ?? undefined}
 				/>
 			)}
 			{saveCheckpointServerId && servers[saveCheckpointServerId] && (
@@ -338,7 +326,7 @@ export const ServersPage = React.memo(() => {
 					title="Delete Server?"
 					message={`This will remove "${deletingServer.serverName}" from your configuration. The server process will not be affected.`}
 					isOpen={true}
-					isLoading={removeMut.loading}
+					isLoading={loading}
 					onCancel={() => setDeletingServerId(null)}
 					onConfirm={() => handleRemove(deletingServer.id)}
 				/>

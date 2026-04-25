@@ -20,6 +20,7 @@ import { Card } from '@/components/Card';
 import { launchServer, updateServer, updateModel } from '@/api/services';
 import { useToast } from '@/components/ToastProvider';
 import { useStore } from '@/store';
+import { QUANT_COLORS } from '@/pages/Servers/utils';
 
 // ============================================================
 // Shared sub-components
@@ -200,12 +201,6 @@ function SliderNumberField({ label, value, onChange, min, max, step, suffix, log
 // Main params panel
 // ============================================================
 const KV_QUANT_OPTIONS = Object.values(EKvQuantType);
-
-const QUANT_COLORS: Record<string, string> = {
-	Q5_K_XL: '#34d399', Q6_K_XL: '#34d399', Q6_K: '#34d399', Q4_K_M: '#34d399',
-	Q8_0: '#22d3ee', IQ3_XXS: '#fbbf24', IQ3_M: '#fbbf24',
-	MXFP4: '#a78bfa', F32: 'rgba(255, 255, 255, 0.4)', BF16: 'rgba(255, 255, 255, 0.4)',
-};
 
 function formatSize(mb: number): string {
 	if (mb >= 1024) return (mb / 1024).toFixed(1) + ' GB';
@@ -520,53 +515,41 @@ const GroupCombobox = React.memo(({ entries, selectedId, onSelect, placeholder }
 
 interface ILaunchServerDialogProps {
 	onClose: () => void;
-	editMode?: {
-		serverId: string;
-		backendId: string;
-		backendGroupId?: string;
-		modelPath: string;
-		serverName: string;
-		serverAlias: string[];
-		params: ILaunchParams;
-		autoLaunch?: boolean;
-		autoSaveCheckpointOnStop?: boolean;
-		autoLoadCheckpointOnStart?: boolean;
-		useRecommendedInferenceParams?: boolean;
-		useMultiModal?: boolean;
-	};
+	serverId?: string;
 }
 
-export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServerDialogProps) => {
+export const LaunchServerDialog = React.memo(({ onClose, serverId }: ILaunchServerDialogProps) => {
 	const { toast } = useToast();
+	const server = useStore(s => serverId ? s.servers[serverId] : null);
 
 	// Get backends and groups from Zustand store
-	const backendsRecord = useStore((s) => s.backends);
-	const backendGroupsRecord = useStore((s) => s.backendGroups);
-	const modelsRecord = useStore((s) => s.models);
+	const backends = useStore((s) => s.backends);
+	const groups = useStore((s) => s.backendGroups);
+	const models = useStore((s) => s.models);
 
-	const backends = useMemo(() => Object.values(backendsRecord), [backendsRecord]);
-	const groups = useMemo(() => Object.values(backendGroupsRecord), [backendGroupsRecord]);
-	const models = useMemo(() => Object.values(modelsRecord), [modelsRecord]);
+	const backendsArr = useMemo(() => Object.values(backends), [backends]);
+	const groupsArr = useMemo(() => Object.values(groups), [groups]);
+	const modelsArr = useMemo(() => Object.values(models), [models]);
 
 	// Selection state
-	const [selectedModelPath, setSelectedModelPath] = useState<string | null>(editMode?.modelPath ?? null);
-	const [selectedBackendId, setSelectedBackendId] = useState<string | null>(editMode?.backendId ?? null);
-	const [useBackendGroup, setUseBackendGroup] = useState<boolean>(!!editMode?.backendGroupId);
-	const [selectedBackendGroupId, setSelectedBackendGroupId] = useState<string | null>(editMode?.backendGroupId ?? null);
-	const [serverName, setServerName] = useState<string>(editMode?.serverName ?? '');
-	const [serverAliasesInput, setServerAliasesInput] = useState<string>(editMode?.serverAlias?.join(', ') ?? '');
-	const [autoLaunch, setAutoLaunch] = useState<boolean>(editMode?.autoLaunch ?? false);
-	const [autoSaveCheckpointOnStop, setAutoSaveCheckpointOnStop] = useState<boolean>(editMode?.autoSaveCheckpointOnStop ?? false);
-	const [autoLoadCheckpointOnStart, setAutoLoadCheckpointOnStart] = useState<boolean>(editMode?.autoLoadCheckpointOnStart ?? false);
-	const [useMultiModal, setUseMultiModal] = useState<boolean>(editMode?.useMultiModal ?? false);
+	const [selectedModelPath, setSelectedModelPath] = useState<string | null>(server?.modelPath ?? null);
+	const [selectedBackendId, setSelectedBackendId] = useState<string | null>(server?.backendId ?? null);
+	const [isGroup, setIsGroup] = useState<boolean>(!!server?.backendGroupId);
+	const [selectedBackendGroupId, setSelectedBackendGroupId] = useState<string | null>(server?.backendGroupId ?? null);
+	const [serverName, setServerName] = useState<string>(server?.serverName ?? '');
+	const [serverAliasesInput, setServerAliasesInput] = useState<string>(server?.serverAlias?.join(', ') ?? '');
+	const [autoLaunch, setAutoLaunch] = useState<boolean>(server?.autoLaunch ?? false);
+	const [autoSaveCheckpointOnStop, setAutoSaveCheckpointOnStop] = useState<boolean>(server?.autoSaveCheckpointOnStop ?? false);
+	const [autoLoadCheckpointOnStart, setAutoLoadCheckpointOnStart] = useState<boolean>(server?.autoLoadCheckpointOnStart ?? false);
+	const [useMultiModal, setUseMultiModal] = useState<boolean>(server?.useMultiModal ?? false);
 	const [launching, setLaunching] = useState(false);
-	const [useRecommendedInferParams, setUseRecommendedInferParams] = useState<boolean>(editMode?.useRecommendedInferenceParams ?? false);
+	const [useRecommendedInferParams, setUseRecommendedInferParams] = useState<boolean>(server?.useRecommendedInferenceParams ?? false);
 	const [recommendedText, setRecommendedText] = useState('');
 	const [isEditingRecommended, setIsEditingRecommended] = useState(false);
 	const originalTextRef = useRef('');
 
 	// Params
-	const [params, setParams] = useState<ILaunchParams>(editMode?.params ?? { ...DEFAULT_LAUNCH_PARAMS, specDecode: { ...DEFAULT_SPEC_DECODE_PARAMS } });
+	const [params, setParams] = useState<ILaunchParams>(server?.params ?? { ...DEFAULT_LAUNCH_PARAMS, specDecode: { ...DEFAULT_SPEC_DECODE_PARAMS } });
 
 	const updateParam = <K extends keyof ILaunchParams>(key: K, value: ILaunchParams[K]) => {
 		setParams(prev => ({ ...prev, [key]: value }));
@@ -606,7 +589,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 	// Flatten models to selectable file entries
 	const modelEntries = useMemo(() => {
 		if (!models) return [];
-		return models.flatMap(m =>
+		return modelsArr.flatMap(m =>
 			m.files
 				.filter(f => !f.isMmproj)
 				.filter(f => f.shardIndex === null || f.shardIndex === 1)
@@ -617,7 +600,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 					searchText: `${m.user} ${m.name} ${f.fileName} ${f.metadata?.quantType ?? ''} ${f.metadata?.paramCount ?? ''}`.toLowerCase(),
 				}))
 		);
-	}, [models]);
+	}, [modelsArr]);
 
 	const selectedEntry = useMemo(() => modelEntries.find(e => e.file.filePath === selectedModelPath), [
 		modelEntries,
@@ -625,28 +608,36 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 	]);
 	
 	const backendEntries = useMemo((): TBackendEntry[] =>
-		backends.map(b => ({
+		backendsArr.map(b => ({
 			id: b.id,
 			name: b.name,
 			primaryDevice: b.detectedDevices[0] ?? null,
 		})),
-	[backends]
+		[backendsArr]
 	);
 
 	const groupEntries = useMemo((): TGroupEntry[] =>
-		groups.map(g => ({
+		groupsArr.map(g => ({
 			id: g.id,
 			name: g.name,
 			backendCount: g.backendIds.length,
 			description: g.description ?? '',
-			activeBackendName: backends.find(b => b.id === g.activeBackendId)?.name ?? 'Unknown',
+			activeBackendName: backends[g.activeBackendId]?.name ?? 'Unknown',
 		})),
-	[groups, backends]
+		[groups, backends]
 	);
 
-	const selectedBackend = useBackendGroup && selectedBackendGroupId
-		? backends.find(b => b.id === groups.find(g => g.id === selectedBackendGroupId)?.activeBackendId)
-		: backends.find(b => b.id === selectedBackendId);
+	const selectedBackend = useMemo(() => isGroup && selectedBackendGroupId && groups[selectedBackendGroupId]?.activeBackendId
+		? backends[groups[selectedBackendGroupId]?.activeBackendId]
+		: selectedBackendId 
+			? backends[selectedBackendId] 
+			: null
+	, [
+		isGroup,
+		selectedBackendGroupId,
+		groups,
+		backends
+	]);
 
 	// Draft model entries — filtered by compatible architecture
 	const targetArchitecture = selectedEntry?.file.metadata?.architecture ?? null;
@@ -674,7 +665,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 
 	// Backend defaults — reset toggle flags to backend defaults when backend changes
 	useEffect(() => {
-		if (selectedBackendId && selectedBackend && !editMode) {
+		if (selectedBackendId && selectedBackend && !server) {
 			const defaultsFromBackend = sharedParseDefaultArgsToParams(selectedBackend.defaultArgs);
 			setParams(prev => ({
 				...prev,
@@ -687,7 +678,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 				swaFull: defaultsFromBackend.swaFull ?? false,
 			}));
 		}
-	}, [selectedBackendId, selectedBackend, editMode]);
+	}, [selectedBackendId, selectedBackend, server]);
 
 	// Reset device when backend changes
 	useEffect(() => {
@@ -699,10 +690,10 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 
 	// Device info from selected backend
 	const selectedBackendDevices = selectedBackend?.detectedDevices ?? [];
-	const deviceIdToName = Object.fromEntries(
+	const deviceIdToName = useMemo(() => Object.fromEntries(
 		selectedBackendDevices.map(d => [d.id, `${d.name} (${d.backendType}) [${d.id}]`])
-	);
-	const deviceOptions = selectedBackendDevices.map(d => d.id);
+	), [selectedBackendDevices]);
+	const deviceOptions = useMemo(() => selectedBackendDevices.map(d => d.id), [selectedBackendDevices]);
 
 	// Sync mainGpu from device selection
 	useEffect(() => {
@@ -730,13 +721,14 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 	const draftMeta = selectedDraftEntry?.file.metadata ?? null;
 
 	// Aliases
-	const parseAliases = (input: string): string[] => {
+	const parseAliases = useCallback((input: string): string[] => {
 		return input.split(',').map(a => a.trim()).filter(a => a.length > 0);
-	};
+	}, []);
 
 	// Save recommended params to model
-	const handleSaveRecommendedParams = async () => {
+	const handleSaveRecommendedParams = useCallback(async () => {
 		if (!selectedEntry) return;
+
 		const newRecommendedParams = useRecommendedInferParams ? recommendedText.trim() : undefined;
 		if (newRecommendedParams !== selectedEntry.model.recommendedInferenceParams) {
 			const result = await updateModel(selectedEntry.model.id, { recommendedInferenceParams: newRecommendedParams ?? undefined });
@@ -746,19 +738,24 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 				toast('error', result.error ?? 'Failed to save recommended params');
 			}
 		}
-	};
+	}, [
+		useRecommendedInferParams,
+		recommendedText,
+		selectedEntry,
+		toast,
+	]);
 
 	// Save without relaunch (edit mode)
 	const handleSaveWithoutRelaunch = async () => {
-		if (!selectedEntry || !editMode || (!selectedBackendId && !selectedBackendGroupId)) return;
+		if (!selectedEntry || !server || (!selectedBackendId && !selectedBackendGroupId)) return;
 		setLaunching(true);
 
 		await handleSaveRecommendedParams();
 
 		const aliases = parseAliases(serverAliasesInput);
-		const backendId = !useBackendGroup ? selectedBackendId ?? undefined : undefined;
-		const backendGroupId = useBackendGroup ? selectedBackendGroupId ?? undefined : undefined;
-		const result = await updateServer(editMode.serverId, {
+		const backendId = !isGroup ? selectedBackendId ?? undefined : undefined;
+		const backendGroupId = isGroup ? selectedBackendGroupId ?? undefined : undefined;
+		const result = await updateServer(server.id, {
 			backendId,
 			backendGroupId,
 			modelPath: selectedEntry.file.filePath,
@@ -782,16 +779,16 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 
 	// Launch/Relaunch handler
 	const handleLaunch = async () => {
-		if (!selectedEntry || (!useBackendGroup ? !selectedBackendId : !selectedBackendGroupId)) return;
+		if (!selectedEntry || (!isGroup ? !selectedBackendId : !selectedBackendGroupId)) return;
 		setLaunching(true);
 
 		await handleSaveRecommendedParams();
 
 		const aliases = parseAliases(serverAliasesInput);
-		const backendId = !useBackendGroup ? selectedBackendId ?? undefined : undefined;
-		const backendGroupId = useBackendGroup ? selectedBackendGroupId ?? undefined : undefined;
-		if (editMode) {
-			const result = await updateServer(editMode.serverId, {
+		const backendId = !isGroup ? selectedBackendId ?? undefined : undefined;
+		const backendGroupId = isGroup ? selectedBackendGroupId ?? undefined : undefined;
+		if (server) {
+			const result = await updateServer(server.id, {
 				backendId,
 				backendGroupId,
 				modelPath: selectedEntry.file.filePath,
@@ -835,7 +832,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 		}
 	};
 
-	const canLaunch = selectedModelPath && (!useBackendGroup ? selectedBackendId : selectedBackendGroupId) && !launching;
+	const canLaunch = selectedModelPath && (!isGroup ? selectedBackendId : selectedBackendGroupId) && !launching;
 
 	const maxLayers = meta?.nLayers ?? 999;
 	const maxContext = meta?.contextLength ?? 131072;
@@ -853,15 +850,15 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 					<HStack gap="3">
 						<Flex w="9" h="9" borderRadius="lg" alignItems="center" justifyContent="center"
 							bgGradient="to-br"
-							gradientFrom={editMode ? 'rgba(251, 191, 36, 0.2)' : 'rgba(51, 129, 255, 0.2)'}
-							gradientTo={editMode ? 'rgba(245, 158, 11, 0.2)' : 'rgba(167, 139, 250, 0.2)'}
-							borderWidth="1px" borderColor={editMode ? 'rgba(251, 191, 36, 0.2)' : 'rgba(51, 129, 255, 0.2)'}
+							gradientFrom={server ? 'rgba(251, 191, 36, 0.2)' : 'rgba(51, 129, 255, 0.2)'}
+							gradientTo={server ? 'rgba(245, 158, 11, 0.2)' : 'rgba(167, 139, 250, 0.2)'}
+							borderWidth="1px" borderColor={server ? 'rgba(251, 191, 36, 0.2)' : 'rgba(51, 129, 255, 0.2)'}
 						>
-							{editMode ? <RefreshCw size={18} color="#fbbf24" /> : <Zap size={18} color="#3381ff" />}
+							{server ? <RefreshCw size={18} color="#fbbf24" /> : <Zap size={18} color="#3381ff" />}
 						</Flex>
 						<Box>
-							<Text fontSize="16px" fontWeight="700" color="#e4e4e7" letterSpacing="-0.01em">{editMode ? 'Edit Server' : 'Launch Server'}</Text>
-							<Text fontSize="12px" color="rgba(255, 255, 255, 0.35)">{editMode ? 'Modify launch parameters — requires relaunch' : 'Configure and start a llama-server instance'}</Text>
+							<Text fontSize="16px" fontWeight="700" color="#e4e4e7" letterSpacing="-0.01em">{server ? 'Edit Server' : 'Launch Server'}</Text>
+							<Text fontSize="12px" color="rgba(255, 255, 255, 0.35)">{server ? 'Modify launch parameters — requires relaunch' : 'Configure and start a llama-server instance'}</Text>
 						</Box>
 					</HStack>
 					<HStack gap="2">
@@ -880,7 +877,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 							{/* Model picker */}
 							<Box>
 								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Model</Text>
-								{models.length === 0 ? (
+								{modelsArr.length === 0 ? (
 									<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No models scanned. Go to Settings and scan.</Text>
 								) : (
 									<ModelCombobox entries={modelEntries} selectedPath={selectedModelPath} onSelect={setSelectedModelPath} />
@@ -944,12 +941,12 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 												variant="outline"
 												flex="1"
 												justifyContent="center"
-												borderColor={useBackendGroup ? 'rgba(255, 255, 255, 0.08)' : 'rgba(167, 139, 250, 0.3)'}
-												borderWidth={useBackendGroup ? '1px' : '2px'}
-												color={useBackendGroup ? 'rgba(255, 255, 255, 0.4)' : '#a78bfa'}
-												bg={useBackendGroup ? 'rgba(255, 255, 255, 0.02)' : 'rgba(167, 139, 250, 0.05)'}
-												_hover={{ borderColor: useBackendGroup ? 'rgba(255, 255, 255, 0.15)' : 'rgba(167, 139, 250, 0.5)' }}
-												onClick={() => setUseBackendGroup(false)}
+												borderColor={isGroup ? 'rgba(255, 255, 255, 0.08)' : 'rgba(167, 139, 250, 0.3)'}
+												borderWidth={isGroup ? '1px' : '2px'}
+												color={isGroup ? 'rgba(255, 255, 255, 0.4)' : '#a78bfa'}
+												bg={isGroup ? 'rgba(255, 255, 255, 0.02)' : 'rgba(167, 139, 250, 0.05)'}
+												_hover={{ borderColor: isGroup ? 'rgba(255, 255, 255, 0.15)' : 'rgba(167, 139, 250, 0.5)' }}
+												onClick={() => setIsGroup(false)}
 											>
 												<Text fontSize="13px" fontWeight="500">Backend</Text>
 											</Button>
@@ -958,26 +955,26 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 												variant="outline"
 												flex="1"
 												justifyContent="center"
-												borderColor={useBackendGroup ? 'rgba(167, 139, 250, 0.3)' : 'rgba(255, 255, 255, 0.08)'}
-												borderWidth={useBackendGroup ? '2px' : '1px'}
-												color={useBackendGroup ? '#a78bfa' : 'rgba(255, 255, 255, 0.4)'}
-												bg={useBackendGroup ? 'rgba(167, 139, 250, 0.05)' : 'rgba(255, 255, 255, 0.02)'}
-												_hover={{ borderColor: useBackendGroup ? 'rgba(167, 139, 250, 0.5)' : 'rgba(255, 255, 255, 0.15)' }}
-												onClick={() => setUseBackendGroup(true)}
+												borderColor={isGroup ? 'rgba(167, 139, 250, 0.3)' : 'rgba(255, 255, 255, 0.08)'}
+												borderWidth={isGroup ? '2px' : '1px'}
+												color={isGroup ? '#a78bfa' : 'rgba(255, 255, 255, 0.4)'}
+												bg={isGroup ? 'rgba(167, 139, 250, 0.05)' : 'rgba(255, 255, 255, 0.02)'}
+												_hover={{ borderColor: isGroup ? 'rgba(167, 139, 250, 0.5)' : 'rgba(255, 255, 255, 0.15)' }}
+												onClick={() => setIsGroup(true)}
 											>
 												<Text fontSize="13px" fontWeight="500">Group</Text>
 											</Button>
 										</HStack>
 									</HStack>
 
-									{backends.length === 0 && (
+									{backendsArr.length === 0 && (
 										<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No backends registered. Go to Backends page.</Text>
 									)}
-									{useBackendGroup && groups.length === 0 && (
+									{isGroup && groupsArr.length === 0 && (
 										<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No backend groups. Create one in Backends page.</Text>
 									)}
-									{backends.length > 0 && (
-										useBackendGroup ? (
+									{backendsArr.length > 0 && (
+										isGroup ? (
 											<Box>
 												<GroupCombobox
 													entries={groupEntries}
@@ -987,7 +984,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 												{selectedBackendGroupId && (
 													<HStack mt="2" gap="4" px="3" py="2" bg="rgba(167, 139, 250, 0.04)" borderRadius="lg" borderWidth="1px" borderColor="rgba(167, 139, 250, 0.1)">
 														<HStack gap="1.5"><Layers size={12} color="rgba(167, 139, 250, 0.5)" /><Text fontSize="11px" color="rgba(167, 139, 250, 0.7)">Active: {selectedBackend?.name ?? 'Unknown'}</Text></HStack>
-														<HStack gap="1.5"><Server size={12} color="rgba(255, 255, 255, 0.35)" /><Text fontSize="11px" color="rgba(255, 255, 255, 0.5)">{groups.find(g => g.id === selectedBackendGroupId)?.backendIds.length} backends</Text></HStack>
+														<HStack gap="1.5"><Server size={12} color="rgba(255, 255, 255, 0.35)" /><Text fontSize="11px" color="rgba(255, 255, 255, 0.5)">{groups[selectedBackendGroupId]?.backendIds.length} backends</Text></HStack>
 													</HStack>
 												)}
 											</Box>
@@ -1126,7 +1123,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 														label="Split Mode"
 														value={params.splitMode ?? ESplitMode.LAYER}
 														options={[ESplitMode.LAYER, ESplitMode.ROW, ESplitMode.TENSOR]}
-														onChange={v => updateParam('splitMode', v)}
+														onChange={v => updateParam('splitMode', v as ESplitMode)}
 														optionLabels={{
 															[ESplitMode.LAYER]: 'Layer (pipeline)',
 															[ESplitMode.ROW]: 'Row (weight matrix)',
@@ -1288,7 +1285,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 														label="Spec Type"
 														value={params.specDecode.specType ?? ESpecType.NGRAM_SIMPLE}
 														options={[ESpecType.NGRAM_SIMPLE, ESpecType.NGRAM_CACHE, ESpecType.NGRAM_MAP_K, ESpecType.NGRAM_MAP_K4V, ESpecType.NGRAM_MOD]}
-														onChange={v => updateSpecParam('specType', v)}
+														onChange={v => updateSpecParam('specType', v as ESpecType)}
 														optionLabels={{
 															[ESpecType.NGRAM_SIMPLE]: 'ngram-simple (fastest)',
 															[ESpecType.NGRAM_CACHE]: 'ngram-cache (legacy)',
@@ -1532,7 +1529,7 @@ export const LaunchServerDialog = React.memo(({ onClose, editMode }: ILaunchServ
 					</HStack>
 					<HStack gap="2">
 						<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="lg" fontSize="13px" onClick={onClose}>Cancel</Button>
-						{editMode ? (
+						{server ? (
 							<>
 								<Button size="sm" disabled={!canLaunch || launching}
 									bg="rgba(255, 255, 255, 0.08)" color="#e4e4e7" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.15)"

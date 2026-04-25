@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Box, Text, HStack, Flex, Button } from '@chakra-ui/react';
 import { X, Terminal, Trash2, Download, ArrowDown } from 'lucide-react';
 import { useStore } from '@/store';
@@ -10,32 +10,31 @@ interface IServerLogsProps {
 	onClose: () => void;
 }
 
-export function ServerLogs({ serverId, serverName, onClose }: IServerLogsProps) {
+export const ServerLogs = React.memo(({ serverId, serverName, onClose }: IServerLogsProps) => {
 	const logsEndRef = useRef<HTMLDivElement>(null);
 	const [autoScroll, setAutoScroll] = useState(true);
 
-	const serverLogs = useStore((s) => s.serverLogs);
-	const logs = serverLogs[serverId] || [];
+	const serverLogs = useStore((s) => s.serverLogs[serverId] || []);
 
 	useEffect(() => {
 		if (autoScroll && logsEndRef.current) {
 			logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
 		}
-	}, [logs, autoScroll]);
+	}, [serverLogs, autoScroll]);
 
-	const handleClear = async () => {
+	const handleClear = useCallback(async () => {
 		await clearLogsApi(serverId);
-	};
+	}, [serverId]);
 
-	const handleDownload = () => {
-		const blob = new Blob([logs.join('\n')], { type: 'text/plain' });
+	const handleDownload = useCallback(() => {
+		const blob = new Blob([serverLogs.join('\n')], { type: 'text/plain' });
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		a.href = url;
 		a.download = `${serverName}-logs.txt`;
 		a.click();
 		URL.revokeObjectURL(url);
-	};
+	}, [serverLogs]);
 
 	return (
 		<Box position="fixed" bottom="20px" right="20px" w="700px" h="400px" bg="#0c0c0f"
@@ -65,12 +64,12 @@ export function ServerLogs({ serverId, serverName, onClose }: IServerLogsProps) 
 			</Flex>
 
 			<Box flex="1" overflowY="auto" px="4" py="2" fontFamily='"Geist Mono", monospace' fontSize="11px" lineHeight="1.8">
-				{logs.length === 0 ? (
+				{serverLogs.length === 0 ? (
 					<Flex h="100%" alignItems="center" justifyContent="center">
 						<Text color="rgba(255, 255, 255, 0.15)">No logs yet...</Text>
 					</Flex>
 				) : (
-					logs.map((line: string, i: number) => (
+					serverLogs.map((line: string, i: number) => (
 						<Text key={i} color="rgba(255, 255, 255, 0.6)" whiteSpace="pre-wrap" wordBreak="break-all" _hover={{ bg: 'rgba(255, 255, 255, 0.02)' }} px="1" borderRadius="sm">
 							{line}
 						</Text>
@@ -80,4 +79,4 @@ export function ServerLogs({ serverId, serverName, onClose }: IServerLogsProps) 
 			</Box>
 		</Box>
 	);
-}
+});

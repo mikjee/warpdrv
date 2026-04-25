@@ -1,5 +1,5 @@
 import { Box, Text, HStack, Flex } from '@chakra-ui/react';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff } from 'react-icons/vsc';
 import { Minus, Square, X, Copy } from 'lucide-react';
@@ -52,7 +52,7 @@ function WindowButton({ onClick, children, isClose }: {
 	);
 }
 
-export function PageHeader({ title, subtitle, icon, actions, actionsRight }: IPageHeaderProps) {
+export const PageHeader = React.memo(({ title, subtitle, icon, actions, actionsRight }: IPageHeaderProps) => {
 	const settings = useStore(s => s.settings);
 	const [collapsed, setCollapsed] = useDependantState(settings.sidebarCollapsed);
 
@@ -136,4 +136,4 @@ export function PageHeader({ title, subtitle, icon, actions, actionsRight }: IPa
 			</HStack>
 		</Flex>
 	);
-}
+});

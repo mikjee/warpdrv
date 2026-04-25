@@ -15,8 +15,8 @@ import { useStore } from '@/store';
 import { stopServer, restartServer, updateServer, clearStickyRoute } from '@/api/services';
 import type { IServer, IBackend, IBackendGroup, IModel, TServerId } from '@warpcore/shared';
 import { EServerStatus } from '@warpcore/shared';
-import { SlotPill } from './SlotPill';
 import { formatUptime, formatCount, QUANT_COLORS, StatPill } from './utils';
+import { ServerSlots } from '@/pages/Servers/SlotPill';
 
 interface IServerCardProps {
 	serverId: TServerId;
@@ -38,7 +38,6 @@ export const ServerCard = React.memo(({
 	onConfirmDelete,
 }: IServerCardProps) => {
 	const server = useStore((s) => s.servers[serverId])!;
-	const slotsState = useStore((s) => s.serverSlots[serverId] ?? null);
 	const group = useStore((s) => server.backendGroupId ? s.backendGroups[server.backendGroupId] : null);
 
 	const isRunning = server.status === EServerStatus.RUNNING;
@@ -55,30 +54,32 @@ export const ServerCard = React.memo(({
 	);
 
 	// Stop/restart
-	const stopMut = useMutation<string, IServer>(useCallback((id: string) => stopServer(id), []));
-	const restartMut = useMutation<string, IServer>(useCallback((id: string) => restartServer(id), []));
+	const { mutate: stopMut } = useMutation<string, IServer>(useCallback((id: string) => stopServer(id), []));
+	const { mutate: restartMut} = useMutation<string, IServer>(useCallback((id: string) => restartServer(id), []));
 
-	const handleStop = async () => { await stopMut.mutate(serverId); };
-	const handleRestart = async () => { await restartMut.mutate(serverId); };
+	const handleStop = useCallback(async () => { await stopMut(serverId); }, [stopMut, serverId]);
+	const handleRestart = useCallback(async () => { await restartMut(serverId); }, [restartMut, serverId]);
 
 	// Alias management
 	const [removingAlias, setRemovingAlias] = useState<string | null>(null);
 	const [addingAliasOpen, setAddingAliasOpen] = useState(false);
 	const [newAliasValue, setNewAliasValue] = useState('');
 
-	const updateServerMut = useMutation<[string, Partial<Pick<IServer, 'serverAlias'>>], IServer>(
-		useCallback(([id, data]) => updateServer(id, data, false), [])
-	);
+	const updateCallback = useCallback(([id, data]: Array<any>) => updateServer(id, data, false), []);
+	const {
+		mutate: updateMut,
+		loading,
+	} = useMutation<[string, Partial<Pick<IServer, 'serverAlias'>>], IServer>(updateCallback);
 
-	const handleRemoveAlias = async () => {
+	const handleRemoveAlias = useCallback(async () => {
 		if (!removingAlias) return;
 		await clearStickyRoute(removingAlias).catch(() => {});
 		const newAliases = (server.serverAlias ?? []).filter(a => a !== removingAlias);
-		await updateServerMut.mutate([serverId, { serverAlias: newAliases }]);
+		await updateMut([serverId, { serverAlias: newAliases }]);
 		setRemovingAlias(null);
-	};
+	}, [removingAlias, server, updateMut, serverId]);
 
-	const handleAddAlias = async () => {
+	const handleAddAlias = useCallback(async () => {
 		if (!newAliasValue.trim()) return;
 		const existingAliases = server.serverAlias ?? [];
 		const newAliasesToAdd: string[] = [];
@@ -89,32 +90,33 @@ export const ServerCard = React.memo(({
 			}
 		});
 		if (newAliasesToAdd.length > 0) {
-			await updateServerMut.mutate([serverId, { serverAlias: [...existingAliases, ...newAliasesToAdd] }]);
+			await updateMut([serverId, { serverAlias: [...existingAliases, ...newAliasesToAdd] }]);
 		}
 		setAddingAliasOpen(false);
 		setNewAliasValue('');
-	};
+	}, [newAliasValue, server, updateMut, serverId]);
 
 	// Helper functions
-	function getDeviceName(): string {
+	const getDeviceName = useCallback((): string => {
 		const device = backend?.detectedDevices.find(d => d.id === server.params.device);
 		if (device) return `${device.name} (${device.id})`;
 		if (server.params.device) return server.params.device;
+
 		const firstDevice = backend?.detectedDevices[0];
 		return firstDevice ? `${firstDevice.name} (${firstDevice.id})` : 'Default';
-	}
+	}, [backend, server]);
 
-	function getModelMaxContext(): number | null {
+	const getModelMaxContext = useCallback((): number | null => {
 		return modelByPath[server.modelPath]?.primaryFile?.metadata?.contextLength ?? null;
-	}
+	}, [modelByPath, server]);
 
 	const model = modelByPath[server.modelPath];
 	const draftModel = server.params.specDecode?.draftModelPath ? modelByPath[server.params.specDecode.draftModelPath] : null;
-	const deviceName = getDeviceName();
-	const modelMaxCtx = getModelMaxContext();
+	const deviceName = useMemo(getDeviceName, [getDeviceName]);
+	const modelMaxCtx = useMemo(getModelMaxContext, [getModelMaxContext]);
 	const configuredCtx = server.params.contextSize;
-	const displayCtx = configuredCtx === 0 ? (modelMaxCtx ? formatCount(modelMaxCtx) : 'auto') : formatCount(configuredCtx);
-	const backendName = group?.name ? `${group.name} (${backend?.name ?? 'Unknown'})` : backend?.name ?? "Backend Not Found!";
+	const displayCtx = useMemo(() => configuredCtx === 0 ? (modelMaxCtx ? formatCount(modelMaxCtx) : 'auto') : formatCount(configuredCtx), [configuredCtx, modelMaxCtx]);
+	const backendName = useMemo(() => group?.name ? `${group.name} (${backend?.name ?? 'Unknown'})` : backend?.name ?? "Backend Not Found!", [group, backend]);
 
 	return (
 		<Card
@@ -312,17 +314,7 @@ export const ServerCard = React.memo(({
 						)}
 					</HStack>
 				</Flex>
-				{slotsState?.slots && slotsState.slots.length > 0 && (
-					<HStack gap="2.5" flexWrap="wrap" style={{ marginLeft: "50px" }}>
-						{slotsState.slots.map(slot => (
-							<SlotPill
-								key={slot.slotId}
-								slot={slot}
-								metadata={slotsState.metadata[slot.slotId] ?? null}
-							/>
-						))}
-					</HStack>
-				)}
+				<ServerSlots serverId={serverId} />
 			</VStack>
 
 			{removingAlias && (
@@ -330,7 +322,7 @@ export const ServerCard = React.memo(({
 					title="Remove Alias?"
 					message={`This will remove the alias "${removingAlias}" from the server. This won't affect the running server.`}
 					isOpen={true}
-					isLoading={updateServerMut.loading}
+					isLoading={loading}
 					onCancel={() => setRemovingAlias(null)}
 					onConfirm={handleRemoveAlias}
 				/>

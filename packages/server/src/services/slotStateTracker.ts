@@ -20,7 +20,7 @@ export async function bootstrapServer(serverId: TServerId, port: number): Promis
 	for (let attempt = 0; attempt < maxRetries; attempt++) {
 		const slots = await fetchSlotsSnapshot(port);
 		if (slots != null) {
-			const liveSlots: ISlotLiveState[] = slots.map(s => ({
+			const liveSlots: ISlotLiveState[] = slots.sort((a, b) => a.id - b.id).map(s => ({
 				slotId: s.id,
 				isProcessing: s.is_processing,
 				taskId: s.id_task ?? null,
