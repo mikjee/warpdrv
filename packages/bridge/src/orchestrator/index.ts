@@ -254,35 +254,39 @@ export class Orchestrator {
 			messageId: assistantMsg.id,
 		});
 
-		const result = await this.runPass(
-			inferenceUrl,
-			messages,
-			enabledTools,
-			request,
-			abortSignal,
-			turn,
-		);
-
-		// Final checkpoint patch with full message state, then inference.ended
-		const finalMessage = await this.persistence.getMessage(assistantMsg.id);
-		if (finalMessage) {
+		let result: IPassResult | null = null;
+		try {
+			result = await this.runPass(
+				inferenceUrl,
+				messages,
+				enabledTools,
+				request,
+				abortSignal,
+				turn,
+			);
+		} finally {
+			// Final checkpoint patch with full message state, then inference.ended
+			const finalMessage = await this.persistence.getMessage(assistantMsg.id);
+			if (finalMessage) {
+				this.broadcaster.emit({
+					type: 'message.patched',
+					messageId: assistantMsg.id,
+					threadId: request.threadId,
+					updates: {
+						stats: finalMessage.stats ?? undefined,
+						replaceParts: finalMessage.content,
+					},
+				});
+			}
 			this.broadcaster.emit({
-				type: 'message.patched',
-				messageId: assistantMsg.id,
+				type: 'inference.ended',
 				threadId: request.threadId,
-				updates: {
-					stats: finalMessage.stats ?? undefined,
-					replaceParts: finalMessage.content,
-				},
+				messageId: assistantMsg.id,
 			});
 		}
-		this.broadcaster.emit({
-			type: 'inference.ended',
-			threadId: request.threadId,
-			messageId: assistantMsg.id,
-		});
 
 		// Stop conditions: waiting for approval, or no tool calls fired
+		if (!result) return;
 		if (result.needsAsk) return;
 		if (!result.hadToolCalls) return;
 
@@ -392,8 +396,9 @@ export class Orchestrator {
 		const toolCallAccumulators: Record<number, IToolCallAccumulator> = {};
 		let streamError: string | null = null;
 
-		while (true) {
-			const { done, value } = await reader.read();
+		try {
+			while (true) {
+				const { done, value } = await reader.read();
 			if (done) break;
 			buffer += decoder.decode(value, { stream: true });
 			const { chunks, remaining } = parseSSEBuffer(buffer);
@@ -482,6 +487,10 @@ export class Orchestrator {
 				if (chunk.timings) timings = chunk.timings as Record<string, number>;
 				if (chunk.usage) usage = chunk.usage as Record<string, number>;
 			}
+		}
+		} finally {
+			await this.flushReasoningPart(turn);
+			await this.flushTextPart(turn);
 		}
 
 		await this.flushReasoningPart(turn);
