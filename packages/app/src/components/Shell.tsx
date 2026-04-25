@@ -26,7 +26,7 @@ import { Plug } from 'lucide-react';
 import { AboutPage } from '../pages/AboutPage';
 import { ModelsPage } from '../pages/ModelsPage';
 import { BackendsPage } from '../pages/BackendsPage';
-import { ServersPage } from '../pages/ServersPage';
+import { ServersPage } from '@/pages/ServerPage/ServersPage';
 import { HubPage } from '../pages/HubPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { ProxyPage } from '../pages/ProxyPage';
