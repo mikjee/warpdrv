@@ -23,17 +23,17 @@ import type { ISummaryData } from '../api/summary-services';
 import { Plug } from 'lucide-react';
 
 // Page imports for registry
-import { AboutPage } from '../pages/AboutPage';
-import { ModelsPage } from '../pages/ModelsPage';
-import { BackendsPage } from '../pages/BackendsPage';
+import { AboutPage } from '../pages/About/AboutPage';
+import { ModelsPage } from '../pages/Models/ModelsPage';
+import { BackendsPage } from '../pages/Backends/BackendsPage';
 import { ServersPage } from '@/pages/Servers/ServersPage';
-import { HubPage } from '../pages/HubPage';
-import { SettingsPage } from '../pages/SettingsPage';
-import { ProxyPage } from '../pages/ProxyPage';
-import { ChatPage } from '../pages/ChatPage';
-import { McpPage } from '../pages/McpPage';
-import { RecipesPage } from '../pages/RecipesPage';
-import { CheckpointsPage } from '../pages/CheckpointsPage';
+import { HubPage } from '../pages/Hub/HubPage';
+import { SettingsPage } from '../pages/Settings/SettingsPage';
+import { ProxyPage } from '../pages/Proxy/ProxyPage';
+import { ChatPage } from '../pages/Chat/ChatPage';
+import { McpPage } from '../pages/MCP/McpPage';
+import { RecipesPage } from '../pages/Recipes/RecipesPage';
+import { CheckpointsPage } from '../pages/Checkpoints/CheckpointsPage';
 import { useTauriWindow } from '@/hooks/useTauriWindow';
 
 // Page lifecycle config: closeOnSwitch=false means page persists (hidden but not unmounted)

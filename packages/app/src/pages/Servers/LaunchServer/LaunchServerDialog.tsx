@@ -1,517 +1,24 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
+import { Box, Flex, Text, HStack, VStack, Button } from '@chakra-ui/react';
+import { RefreshCw, Zap, X } from 'lucide-react';
 import {
-	Box, Text, HStack, VStack, Flex, Input, Button, Slider, Badge, Spinner, Portal, Combobox, createListCollection, Switch, Checkbox,
-} from '@chakra-ui/react';
-import {
-	Play, X, ChevronDown, RefreshCw, Zap, Cpu,
-	Layers, Server, Package, Bookmark, Sparkles, Eye,
-	Pencil, Check, ChevronRight, GitBranch
-} from 'lucide-react';
-import {
-	EKvQuantType, ESplitMode, ESpecType,
-	type IModel, type IBackend, type IBackendGroup, type ILaunchParams, type IServer, type IChatInferenceParams,
-	type ISpecDecodeParams,
+	type ILaunchParams, type ISpecDecodeParams,
 	DEFAULT_LAUNCH_PARAMS, DEFAULT_SPEC_DECODE_PARAMS,
-	parseDefaultArgsToParams as sharedParseDefaultArgsToParams,
 } from '@warpcore/shared';
 
-import { Textarea } from '@chakra-ui/react';
-import { Card } from '@/components/Card';
 import { launchServer, updateServer, updateModel } from '@/api/services';
 import { useToast } from '@/components/ToastProvider';
 import { useStore } from '@/store';
-import { QUANT_COLORS } from '@/pages/Servers/utils';
 
-// ============================================================
-// Shared sub-components
-// ============================================================
-export function ToggleChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-	return (
-		<Button
-			size="xs" px="3" py="1.5" h="auto" borderRadius="lg" fontSize="12px" fontWeight="500"
-			bg={active ? 'rgba(51, 129, 255, 0.12)' : 'rgba(255, 255, 255, 0.03)'}
-			color={active ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'}
-			borderWidth="1px"
-			borderColor={active ? 'rgba(51, 129, 255, 0.3)' : 'rgba(255, 255, 255, 0.06)'}
-			_hover={{ bg: active ? 'rgba(51, 129, 255, 0.18)' : 'rgba(255, 255, 255, 0.06)', color: active ? '#3381ff' : 'rgba(255, 255, 255, 0.6)' }}
-			onClick={onClick} transition="all 0.15s ease"
-		>
-			{active && <Check size={12} />}
-			{label}
-		</Button>
-	);
-}
-
-export function SelectField({ label, value, options, onChange, mono, optionLabels }: {
-	label: string; value: string; options: string[]; onChange: (v: string) => void; mono?: boolean; optionLabels?: Record<string, string>;
-}) {
-	const [open, setOpen] = useState(false);
-	const buttonRef = useRef<HTMLButtonElement>(null);
-	const displayValue = optionLabels && optionLabels[value] ? optionLabels[value] : value;
-	return (
-		<Box position="relative" flex="1">
-			<Text fontSize="12px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">{label}</Text>
-			<Button ref={buttonRef} w="100%" size="sm" variant="outline" justifyContent="space-between"
-				bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
-				fontFamily={mono ? '"Geist Mono", monospace' : undefined} fontSize="12px" borderRadius="lg"
-				_hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }} onClick={() => setOpen(!open)}
-			>
-				{displayValue}
-				<ChevronDown size={14} />
-			</Button>
-			{open && buttonRef.current && (
-				<Portal>
-					<Box
-						position="fixed"
-						top={buttonRef.current.getBoundingClientRect().bottom + 4}
-						left={buttonRef.current.getBoundingClientRect().left}
-						w={buttonRef.current.getBoundingClientRect().width}
-						bg="#18181b" borderWidth="1px"
-						borderColor="rgba(255, 255, 255, 0.1)" borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)"
-						zIndex={9999} maxH="200px" overflowY="auto" py="1"
-					>
-						{options.map(opt => {
-							const displayLabel = optionLabels && optionLabels[opt] ? optionLabels[opt] : opt;
-							return (
-								<Box key={opt} px="3" py="1.5" fontSize="12px" fontFamily={mono ? '"Geist Mono", monospace' : undefined}
-									color={opt === value ? '#3381ff' : 'rgba(255, 255, 255, 0.6)'}
-									bg={opt === value ? 'rgba(51, 129, 255, 0.08)' : 'transparent'}
-									cursor="pointer" _hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
-									onClick={() => { onChange(opt); setOpen(false); }}
-								>
-									{displayLabel}
-								</Box>
-							);
-						})}
-					</Box>
-				</Portal>
-			)}
-		</Box>
-	);
-}
-
-export function NumberField({ label, value, onChange, suffix, min, max, step }: {
-	label: string; value: number; onChange: (v: number) => void; suffix?: string; min?: number; max?: number; step?: number;
-}) {
-	return (
-		<Box flex="1">
-			<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">{label}</Text>
-			<HStack gap="1.5">
-				<Input type="number" value={value} onChange={e => onChange(Number(e.target.value))} size="sm"
-					bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
-					fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
-					_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} min={min} max={max} step={step}
-				/>
-				{suffix && <Text fontSize="11px" color="rgba(255, 255, 255, 0.25)" flexShrink={0}>{suffix}</Text>}
-			</HStack>
-		</Box>
-	);
-}
-
-// ============================================================
-// Square root slider for context size
-// ============================================================
-// Maps a 0-100 slider position to a sqrt-scale value between min and max
-// More linear than logarithmic, but still gives finer control at lower values
-function sqrtSliderToValue(position: number, minVal: number, maxVal: number): number {
-	if (position <= 0) return minVal;
-	if (position >= 100) return maxVal;
-	const t = position / 100;
-	const value = minVal + t * t * (maxVal - minVal);
-	// Round to nearest 256 for context size
-	return Math.round(value / 256) * 256;
-}
-
-function valueToSqrtSlider(value: number, minVal: number, maxVal: number): number {
-	if (value <= minVal) return 0;
-	if (value >= maxVal) return 100;
-	const t = Math.sqrt((value - minVal) / (maxVal - minVal));
-	return t * 100;
-}
-
-// ============================================================
-// Slider + Input row component
-// ============================================================
-function SliderNumberField({ label, value, onChange, min, max, step, suffix, logarithmic }: {
-	label: string; value: number; onChange: (v: number) => void;
-	min: number; max: number; step?: number; suffix?: string; logarithmic?: boolean;
-}) {
-	const sliderVal = logarithmic
-		? valueToSqrtSlider(value, min, max)
-		: ((value - min) / (max - min)) * 100;
-
-	const handleSliderChange = (details: { value: number[] }) => {
-		const pos = details.value[0] ?? 0;
-		if (logarithmic) {
-			onChange(sqrtSliderToValue(pos, min, max));
-		} else {
-			const val = Math.round(min + (pos / 100) * (max - min));
-			onChange(val);
-		}
-	};
-
-	return (
-		<Box>
-			<Flex justify="space-between" align="center" mb="1.5">
-				<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">{label}</Text>
-				{suffix && <Text fontSize="10px" color="rgba(255, 255, 255, 0.2)">{suffix}</Text>}
-			</Flex>
-			<HStack gap="3">
-				<Box flex="1">
-					<Slider.Root
-						min={0} max={100}
-						value={[Math.max(0, Math.min(100, sliderVal))]}
-						onValueChange={handleSliderChange}
-						step={logarithmic ? 0.5 : (step ? (step / (max - min)) * 100 : 1)}
-					>
-						<Slider.Control>
-							<Slider.Track h="6px" borderRadius="full" bg="rgba(255, 255, 255, 0.06)">
-								<Slider.Range bg="rgba(51, 129, 255, 0.5)" borderRadius="full" />
-							</Slider.Track>
-							<Slider.Thumb
-								index={0}
-								w="14px" h="14px" borderRadius="full"
-								bg="#3381ff" borderWidth="2px" borderColor="#0f0f12"
-								shadow="0 2px 8px rgba(51, 129, 255, 0.3)"
-								_hover={{ transform: 'scale(1.15)' }}
-								transition="transform 0.1s ease"
-							/>
-						</Slider.Control>
-					</Slider.Root>
-				</Box>
-				<Input
-					type="number" value={value}
-					onChange={e => {
-						const v = Number(e.target.value);
-						if (!isNaN(v)) onChange(Math.max(min, Math.min(max, v)));
-					}}
-					size="sm" w="100px"
-					bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)"
-					color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace'
-					fontSize="13px" borderRadius="lg" textAlign="right"
-					_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
-					min={min} max={max}
-				/>
-			</HStack>
-		</Box>
-	);
-}
-
-// ============================================================
-// Main params panel
-// ============================================================
-const KV_QUANT_OPTIONS = Object.values(EKvQuantType);
-
-function formatSize(mb: number): string {
-	if (mb >= 1024) return (mb / 1024).toFixed(1) + ' GB';
-	return mb + ' MB';
-}
-
-function getModelDisplayName(modelName: string, file: IModel['files'][number]): string {
-	if (file.shardIndex !== null && file.shardTotal !== null && file.shardTotal > 1) {
-		const quant = file.metadata?.quantType ?? '';
-		return quant ? `${modelName} ${quant}` : modelName;
-	}
-	return modelName;
-}
-
-type TModelEntry = {
-	model: IModel;
-	file: IModel['files'][number];
-	label: string;
-	searchText: string;
-};
-
-const ModelCombobox = React.memo(({ entries, selectedPath, onSelect, placeholder }: {
-	entries: TModelEntry[];
-	selectedPath: string | null;
-	onSelect: (path: string) => void;
-	placeholder?: string;
-}) => {
-	const [inputValue, setInputValue] = useState('');
-	const filteredItems = useMemo(() => {
-		if (!inputValue) return entries;
-		const terms = inputValue.toLowerCase().split(/\s+/).filter(Boolean);
-		return entries.filter(e => terms.every(term => e.searchText.includes(term)));
-	}, [entries, inputValue]);
-	const collection = useMemo(() =>
-		createListCollection({
-			items: filteredItems.map(e => ({
-				label: e.file.fileName,
-				value: e.file.filePath,
-				entry: e,
-			})),
-			itemToString: (item) => item.label,
-			itemToValue: (item) => item.value,
-		}),
-	[filteredItems]);
-	return (
-		<Combobox.Root
-			collection={collection}
-			onValueChange={(details) => {
-				const val = details.value?.[0];
-				if (val) onSelect(val);
-			}}
-			onInputValueChange={(details) => setInputValue(details.inputValue)}
-			value={selectedPath ? [selectedPath] : []}
-			openOnClick
-		>
-			<Combobox.Control>
-				<Combobox.Input
-					placeholder={placeholder ?? 'Search models...'}
-					bg="rgba(255, 255, 255, 0.03)"
-					borderColor="rgba(255, 255, 255, 0.08)"
-					color="rgba(255, 255, 255, 0.7)"
-					fontSize="13px"
-					borderRadius="lg"
-					_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
-					_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
-				/>
-				<Combobox.IndicatorGroup>
-					<Combobox.ClearTrigger />
-					<Combobox.Trigger />
-				</Combobox.IndicatorGroup>
-			</Combobox.Control>
-			<Portal>
-				<Combobox.Positioner>
-					<Combobox.Content
-						maxH="280px" overflowY="auto"
-						bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
-						borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
-					>
-						<Combobox.Empty>
-							<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)" py="4" textAlign="center">No matches</Text>
-						</Combobox.Empty>
-						{collection.items.map((item) => {
-							const entry = (item as { entry: TModelEntry }).entry;
-							const qt = entry.file.metadata?.quantType ?? '?';
-							const quantColor = QUANT_COLORS[qt] ?? 'rgba(255, 255, 255, 0.4)';
-							return (
-								<Combobox.Item
-									key={item.value}
-									item={item}
-									px="3" py="2" borderRadius="md" cursor="pointer"
-									_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
-									_highlighted={{ bg: 'rgba(51, 129, 255, 0.08)' }}
-								>
-									<HStack gap="3" w="100%">
-										<Box flex="1" minW="0">
-											<Text fontSize="12px" fontWeight="500" color="#e4e4e7" lineClamp={1}>{getModelDisplayName(entry.model.name, entry.file)}</Text>
-											<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)" mt="0.5">{entry.model.user}</Text>
-										</Box>
-										<HStack gap="2" flexShrink={0}>
-											<Badge px="1.5" py="0" borderRadius="sm" fontSize="10px" fontWeight="600" bg={`color-mix(in srgb, ${quantColor} 12%, transparent)`} color={quantColor}>{qt}</Badge>
-											<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)" fontFamily='"Geist Mono", monospace'>{formatSize(entry.model.totalSizeMb)}</Text>
-										</HStack>
-										<Combobox.ItemIndicator />
-									</HStack>
-								</Combobox.Item>
-							);
-						})}
-					</Combobox.Content>
-				</Combobox.Positioner>
-			</Portal>
-		</Combobox.Root>
-	);
-});
-
-type TBackendEntry = {
-	id: string;
-	name: string;
-	primaryDevice: { name: string; vramFreeMb: number; vramTotalMb: number } | null;
-};
-
-const BackendCombobox = React.memo(({ entries, selectedId, onSelect, placeholder }: {
-	entries: TBackendEntry[];
-	selectedId: string | null;
-	onSelect: (id: string) => void;
-	placeholder?: string;
-}) => {
-	const [inputValue, setInputValue] = useState('');
-	const filteredItems = useMemo(() => {
-		if (!inputValue) return entries;
-		const terms = inputValue.toLowerCase().split(/\s+/).filter(Boolean);
-		return entries.filter(e => terms.every(term => `${e.name} ${e.primaryDevice?.name ?? ''}`.toLowerCase().includes(term)));
-	}, [entries, inputValue]);
-	const collection = useMemo(() =>
-		createListCollection({
-			items: filteredItems.map(e => ({
-				label: e.name,
-				value: e.id,
-				entry: e,
-			})),
-			itemToString: (item) => item.label,
-			itemToValue: (item) => item.value,
-		}),
-	[filteredItems]);
-	return (
-		<Combobox.Root
-			collection={collection}
-			onValueChange={(details) => {
-				const val = details.value?.[0];
-				if (val) onSelect(val);
-			}}
-			onInputValueChange={(details) => setInputValue(details.inputValue)}
-			value={selectedId ? [selectedId] : []}
-			openOnClick
-		>
-			<Combobox.Control>
-				<Combobox.Input
-					placeholder={placeholder ?? 'Search backends...'}
-					bg="rgba(255, 255, 255, 0.03)"
-					borderColor="rgba(255, 255, 255, 0.08)"
-					color="rgba(255, 255, 255, 0.7)"
-					fontSize="13px"
-					borderRadius="lg"
-					_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
-					_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
-				/>
-				<Combobox.IndicatorGroup>
-					<Combobox.ClearTrigger />
-					<Combobox.Trigger />
-				</Combobox.IndicatorGroup>
-			</Combobox.Control>
-			<Portal>
-				<Combobox.Positioner>
-					<Combobox.Content
-						maxH="280px" overflowY="auto"
-						bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
-						borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
-					>
-						<Combobox.Empty>
-							<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)" py="4" textAlign="center">No matches</Text>
-						</Combobox.Empty>
-						{collection.items.map((item) => {
-							const entry = (item as { entry: TBackendEntry }).entry;
-							return (
-								<Combobox.Item
-									key={item.value}
-									item={item}
-									px="3" py="2" borderRadius="md" cursor="pointer"
-									_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
-									_highlighted={{ bg: 'rgba(51, 129, 255, 0.08)' }}
-								>
-									<HStack gap="3" w="100%">
-										<Box flex="1" minW="0">
-											<Text fontSize="12px" fontWeight="500" color="#e4e4e7" lineClamp={1}>{entry.name}</Text>
-											<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)">{entry.primaryDevice?.name ?? 'No devices detected'}</Text>
-										</Box>
-										{entry.primaryDevice && (
-											<Text fontSize="11px" color="rgba(255, 255, 255, 0.5)" fontFamily='"Geist Mono", monospace' flexShrink={0}>
-												{(entry.primaryDevice.vramFreeMb > 0 ? entry.primaryDevice.vramFreeMb : entry.primaryDevice.vramTotalMb) / 1024 | 0} GB
-											</Text>
-										)}
-										<Combobox.ItemIndicator />
-									</HStack>
-								</Combobox.Item>
-							);
-						})}
-					</Combobox.Content>
-				</Combobox.Positioner>
-			</Portal>
-		</Combobox.Root>
-	);
-});
-
-type TGroupEntry = {
-	id: string;
-	name: string;
-	backendCount: number;
-	description: string;
-	activeBackendName: string;
-};
-
-const GroupCombobox = React.memo(({ entries, selectedId, onSelect, placeholder }: {
-	entries: TGroupEntry[];
-	selectedId: string | null;
-	onSelect: (id: string) => void;
-	placeholder?: string;
-}) => {
-	const [inputValue, setInputValue] = useState('');
-	const filteredItems = useMemo(() => {
-		if (!inputValue) return entries;
-		const terms = inputValue.toLowerCase().split(/\s+/).filter(Boolean);
-		return entries.filter(e => terms.every(term => `${e.name} ${e.description} ${e.activeBackendName}`.toLowerCase().includes(term)));
-	}, [entries, inputValue]);
-	const collection = useMemo(() =>
-		createListCollection({
-			items: filteredItems.map(e => ({
-				label: e.name,
-				value: e.id,
-				entry: e,
-			})),
-			itemToString: (item) => item.label,
-			itemToValue: (item) => item.value,
-		}),
-	[filteredItems]);
-	return (
-		<Combobox.Root
-			collection={collection}
-			onValueChange={(details) => {
-				const val = details.value?.[0];
-				if (val) onSelect(val);
-			}}
-			onInputValueChange={(details) => setInputValue(details.inputValue)}
-			value={selectedId ? [selectedId] : []}
-			openOnClick
-		>
-			<Combobox.Control>
-				<Combobox.Input
-					placeholder={placeholder ?? 'Search groups...'}
-					bg="rgba(255, 255, 255, 0.03)"
-					borderColor="rgba(255, 255, 255, 0.08)"
-					color="rgba(255, 255, 255, 0.7)"
-					fontSize="13px"
-					borderRadius="lg"
-					_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
-					_focus={{ borderColor: 'rgba(167, 139, 250, 0.4)', outline: 'none' }}
-				/>
-				<Combobox.IndicatorGroup>
-					<Combobox.ClearTrigger />
-					<Combobox.Trigger />
-				</Combobox.IndicatorGroup>
-			</Combobox.Control>
-			<Portal>
-				<Combobox.Positioner>
-					<Combobox.Content
-						maxH="280px" overflowY="auto"
-						bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
-						borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
-					>
-						<Combobox.Empty>
-							<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)" py="4" textAlign="center">No matches</Text>
-						</Combobox.Empty>
-						{collection.items.map((item) => {
-							const entry = (item as { entry: TGroupEntry }).entry;
-							return (
-								<Combobox.Item
-									key={item.value}
-									item={item}
-									px="3" py="2" borderRadius="md" cursor="pointer"
-									_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
-									_highlighted={{ bg: 'rgba(167, 139, 250, 0.08)' }}
-								>
-									<HStack gap="3" w="100%">
-										<Box flex="1" minW="0">
-											<Text fontSize="12px" fontWeight="500" color="#e4e4e7" lineClamp={1}>{entry.name}</Text>
-											<HStack gap="2" mt="0.5">
-												<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)">{entry.backendCount} backends</Text>
-												{entry.description && <Text fontSize="10px" color="rgba(255, 255, 255, 0.25)">|</Text>}
-												{entry.description && <Text fontSize="10px" color="rgba(255, 255, 255, 0.25)">{entry.description}</Text>}
-											</HStack>
-											<Text fontSize="10px" color="rgba(167, 139, 250, 0.6)" mt="0.5">Active: {entry.activeBackendName}</Text>
-										</Box>
-										<Combobox.ItemIndicator />
-									</HStack>
-								</Combobox.Item>
-							);
-						})}
-					</Combobox.Content>
-				</Combobox.Positioner>
-			</Portal>
-		</Combobox.Root>
-	);
-});
+import { ModelPicker, TModelEntry } from './ModelPicker';
+import { ServerInfoCard } from './ServerInfoCard';
+import { BackendPickerCard } from './BackendPickerCard';
+import { SpeculativeDecodingCard } from './SpeculativeDecodingCard';
+import { ContextKVCard } from './ContextKVCard';
+import { MultiModalCard } from './MultiModalCard';
+import { RecommendedParamsCard } from './RecommendedParamsCard';
+import { OptionsCard } from './OptionsCard';
+import { Footer } from './Footer';
 
 interface ILaunchServerDialogProps {
 	onClose: () => void;
@@ -522,19 +29,16 @@ export const LaunchServerDialog = React.memo(({ onClose, serverId }: ILaunchServ
 	const { toast } = useToast();
 	const server = useStore(s => serverId ? s.servers[serverId] : null);
 
-	// Get backends and groups from Zustand store
+	// Get records from Zustand store
 	const backends = useStore((s) => s.backends);
 	const groups = useStore((s) => s.backendGroups);
 	const models = useStore((s) => s.models);
 
-	const backendsArr = useMemo(() => Object.values(backends), [backends]);
-	const groupsArr = useMemo(() => Object.values(groups), [groups]);
 	const modelsArr = useMemo(() => Object.values(models), [models]);
 
 	// Selection state
 	const [selectedModelPath, setSelectedModelPath] = useState<string | null>(server?.modelPath ?? null);
 	const [selectedBackendId, setSelectedBackendId] = useState<string | null>(server?.backendId ?? null);
-	const [isGroup, setIsGroup] = useState<boolean>(!!server?.backendGroupId);
 	const [selectedBackendGroupId, setSelectedBackendGroupId] = useState<string | null>(server?.backendGroupId ?? null);
 	const [serverName, setServerName] = useState<string>(server?.serverName ?? '');
 	const [serverAliasesInput, setServerAliasesInput] = useState<string>(server?.serverAlias?.join(', ') ?? '');
@@ -544,9 +48,9 @@ export const LaunchServerDialog = React.memo(({ onClose, serverId }: ILaunchServ
 	const [useMultiModal, setUseMultiModal] = useState<boolean>(server?.useMultiModal ?? false);
 	const [launching, setLaunching] = useState(false);
 	const [useRecommendedInferParams, setUseRecommendedInferParams] = useState<boolean>(server?.useRecommendedInferenceParams ?? false);
-	const [recommendedText, setRecommendedText] = useState('');
-	const [isEditingRecommended, setIsEditingRecommended] = useState(false);
-	const originalTextRef = useRef('');
+
+	// Derive isGroup from which ID is set
+	const isGroup = !!selectedBackendGroupId;
 
 	// Params
 	const [params, setParams] = useState<ILaunchParams>(server?.params ?? { ...DEFAULT_LAUNCH_PARAMS, specDecode: { ...DEFAULT_SPEC_DECODE_PARAMS } });
@@ -562,32 +66,8 @@ export const LaunchServerDialog = React.memo(({ onClose, serverId }: ILaunchServ
 		}));
 	};
 
-	// Generic param change handler for
-	const handleTargetParamChange = (key: string, value: number | string | boolean) => {
-		if (key === 'useMultiModal') {
-			setUseMultiModal(value as boolean);
-		} else {
-			updateParam(key as keyof ILaunchParams, value as ILaunchParams[keyof ILaunchParams]);
-		}
-	};
-
-	// Draft param change handler — maps to specDecode sub-fields
-	const handleDraftParamChange = (key: string, value: number | string | boolean) => {
-		// Map the generic param keys to specDecode field names
-		const draftKeyMap: Record<string, keyof ISpecDecodeParams> = {
-			gpuLayers: 'draftGpuLayers',
-			contextSize: 'draftContextSize',
-			device: 'draftDevice',
-		};
-		const mappedKey = draftKeyMap[key];
-		if (mappedKey) {
-			updateSpecParam(mappedKey, value as ISpecDecodeParams[keyof ISpecDecodeParams]);
-		}
-		// Draft doesn't use the other params (batch, threads, kv quant etc. are inherited from target)
-	};
-
-	// Flatten models to selectable file entries
-	const modelEntries = useMemo(() => {
+		// Flatten models to selectable file entries
+	const modelEntries = useMemo((): TModelEntry[] => {
 		if (!models) return [];
 		return modelsArr.flatMap(m =>
 			m.files
@@ -602,52 +82,30 @@ export const LaunchServerDialog = React.memo(({ onClose, serverId }: ILaunchServ
 		);
 	}, [modelsArr]);
 
-	const selectedEntry = useMemo(() => modelEntries.find(e => e.file.filePath === selectedModelPath), [
-		modelEntries,
-		selectedModelPath
-	]);
-	
-	const backendEntries = useMemo((): TBackendEntry[] =>
-		backendsArr.map(b => ({
-			id: b.id,
-			name: b.name,
-			primaryDevice: b.detectedDevices[0] ?? null,
-		})),
-		[backendsArr]
-	);
+	const selectedEntry = useMemo(() => modelEntries.find(e => e.file.filePath === selectedModelPath), [modelEntries, selectedModelPath]);
 
-	const groupEntries = useMemo((): TGroupEntry[] =>
-		groupsArr.map(g => ({
-			id: g.id,
-			name: g.name,
-			backendCount: g.backendIds.length,
-			description: g.description ?? '',
-			activeBackendName: backends[g.activeBackendId]?.name ?? 'Unknown',
-		})),
-		[groups, backends]
-	);
+	// Resolve active backend (needed for spec decode device options + launch validation)
+	const selectedBackend = useMemo(() => {
+		if (isGroup && selectedBackendGroupId) {
+			const group = groups[selectedBackendGroupId];
+			return group ? backends[group.activeBackendId] ?? null : null;
+		}
+		return selectedBackendId ? backends[selectedBackendId] ?? null : null;
+	}, [isGroup, selectedBackendGroupId, groups, backends, selectedBackendId]);
 
-	const selectedBackend = useMemo(() => isGroup && selectedBackendGroupId && groups[selectedBackendGroupId]?.activeBackendId
-		? backends[groups[selectedBackendGroupId]?.activeBackendId]
-		: selectedBackendId 
-			? backends[selectedBackendId] 
-			: null
-	, [
-		isGroup,
-		selectedBackendGroupId,
-		groups,
-		backends
-	]);
+	// Device info for spec decode card
+	const selectedBackendDevices = selectedBackend?.detectedDevices ?? [];
+	const deviceIdToName = useMemo(() => Object.fromEntries(
+		selectedBackendDevices.map(d => [d.id, `${d.name} (${d.backendType}) [${d.id}]`])
+	), [selectedBackendDevices]);
+	const deviceOptions = useMemo(() => selectedBackendDevices.map(d => d.id), [selectedBackendDevices]);
 
-	// Draft model entries — filtered by compatible architecture
+	// Draft model entries
 	const targetArchitecture = selectedEntry?.file.metadata?.architecture ?? null;
-
 	const draftModelEntries = useMemo(() => {
 		if (!targetArchitecture) return [];
 		return modelEntries.filter(e => {
-			// Must match architecture
 			if (e.file.metadata?.architecture !== targetArchitecture) return false;
-			// Exclude the target model itself
 			if (e.file.filePath === selectedModelPath) return false;
 			return true;
 		});
@@ -655,191 +113,73 @@ export const LaunchServerDialog = React.memo(({ onClose, serverId }: ILaunchServ
 
 	const selectedDraftEntry = modelEntries.find(e => e.file.filePath === params.specDecode.draftModelPath);
 
-	// Populate recommended params text when model changes
-	useEffect(() => {
-		const text = selectedEntry?.model.recommendedInferenceParams ?? '';
-		setRecommendedText(text);
-		originalTextRef.current = text;
-		setIsEditingRecommended(false);
-	}, [selectedEntry]);
-
-	// Backend defaults — reset toggle flags to backend defaults when backend changes
-	useEffect(() => {
-		if (selectedBackendId && selectedBackend && !server) {
-			const defaultsFromBackend = sharedParseDefaultArgsToParams(selectedBackend.defaultArgs);
-			setParams(prev => ({
-				...prev,
-				flashAttn: defaultsFromBackend.flashAttn ?? false,
-				mlock: defaultsFromBackend.mlock ?? false,
-				mmap: defaultsFromBackend.mmap ?? false,
-				directIo: defaultsFromBackend.directIo ?? false,
-				noWarmup: defaultsFromBackend.noWarmup ?? false,
-				jinja: defaultsFromBackend.jinja ?? false,
-				swaFull: defaultsFromBackend.swaFull ?? false,
-			}));
-		}
-	}, [selectedBackendId, selectedBackend, server]);
-
-	// Reset device when backend changes
-	useEffect(() => {
-		if (selectedBackend && params.device) {
-			const deviceIsValid = selectedBackend.detectedDevices.some(d => d.id === params.device);
-			if (!deviceIsValid) updateParam('device', '');
-		}
-	}, [selectedBackendId]);
-
-	// Device info from selected backend
-	const selectedBackendDevices = selectedBackend?.detectedDevices ?? [];
-	const deviceIdToName = useMemo(() => Object.fromEntries(
-		selectedBackendDevices.map(d => [d.id, `${d.name} (${d.backendType}) [${d.id}]`])
-	), [selectedBackendDevices]);
-	const deviceOptions = useMemo(() => selectedBackendDevices.map(d => d.id), [selectedBackendDevices]);
-
-	// Sync mainGpu from device selection
-	useEffect(() => {
-		if (params.device && selectedBackendDevices.length > 0) {
-			const idx = selectedBackendDevices.findIndex(d => d.id === params.device);
-			if (idx >= 0 && idx !== params.mainGpu) {
-				updateParam('mainGpu', idx);
-			}
-		}
-	}, [params.device, selectedBackendDevices]);
-
-	// Initialize gpuSplitValues when multi-GPU enabled
-	useEffect(() => {
-		if (params.multiGpu && selectedBackendDevices.length > 0) {
-			const current = params.gpuSplitValues ?? [];
-			if (current.length !== selectedBackendDevices.length) {
-				const values = selectedBackendDevices.map((d, i) => current[i] ?? 1);
-				updateParam('gpuSplitValues', values);
-			}
-		}
-	}, [params.multiGpu, selectedBackendDevices.length]);
-
 	// Model metadata
 	const meta = selectedEntry?.file.metadata ?? null;
-	const draftMeta = selectedDraftEntry?.file.metadata ?? null;
 
 	// Aliases
 	const parseAliases = useCallback((input: string): string[] => {
 		return input.split(',').map(a => a.trim()).filter(a => a.length > 0);
 	}, []);
 
-	// Save recommended params to model
-	const handleSaveRecommendedParams = useCallback(async () => {
-		if (!selectedEntry) return;
+	// Backend selection callback from card
+	const handleBackendSelection = useCallback((backendId: string | null, groupId: string | null) => {
+		setSelectedBackendId(backendId);
+		setSelectedBackendGroupId(groupId);
+	}, []);
 
-		const newRecommendedParams = useRecommendedInferParams ? recommendedText.trim() : undefined;
-		if (newRecommendedParams !== selectedEntry.model.recommendedInferenceParams) {
-			const result = await updateModel(selectedEntry.model.id, { recommendedInferenceParams: newRecommendedParams ?? undefined });
-			if (result.ok) {
-				toast('success', 'Recommended params saved to model');
-			} else {
-				toast('error', result.error ?? 'Failed to save recommended params');
-			}
-		}
-	}, [
-		useRecommendedInferParams,
-		recommendedText,
-		selectedEntry,
-		toast,
-	]);
-
-	// Save without relaunch (edit mode)
+	// Save without relaunch
 	const handleSaveWithoutRelaunch = async () => {
 		if (!selectedEntry || !server || (!selectedBackendId && !selectedBackendGroupId)) return;
 		setLaunching(true);
-
-		await handleSaveRecommendedParams();
-
 		const aliases = parseAliases(serverAliasesInput);
-		const backendId = !isGroup ? selectedBackendId ?? undefined : undefined;
-		const backendGroupId = isGroup ? selectedBackendGroupId ?? undefined : undefined;
 		const result = await updateServer(server.id, {
-			backendId,
-			backendGroupId,
+			backendId: selectedBackendId ?? undefined,
+			backendGroupId: selectedBackendGroupId ?? undefined,
 			modelPath: selectedEntry.file.filePath,
-			serverName: serverName.trim() || undefined,
-			params,
-			serverAlias: aliases,
-			autoLaunch,
-			autoSaveCheckpointOnStop,
-			autoLoadCheckpointOnStart,
-			useRecommendedInferenceParams: useRecommendedInferParams,
-			useMultiModal,
+			serverName: serverName.trim() || undefined, params, serverAlias: aliases,
+			autoLaunch, autoSaveCheckpointOnStop, autoLoadCheckpointOnStart,
+			useRecommendedInferenceParams: useRecommendedInferParams, useMultiModal,
 		}, false);
 		setLaunching(false);
-		if (result.ok) {
-			toast('success', 'Server config saved');
-			onClose();
-		} else {
-			toast('error', result.error ?? 'Failed to save server config');
-		}
+		if (result.ok) { toast('success', 'Server config saved'); onClose(); }
+		else toast('error', result.error ?? 'Failed to save server config');
 	};
 
-	// Launch/Relaunch handler
+	// Launch/Relaunch
 	const handleLaunch = async () => {
-		if (!selectedEntry || (!isGroup ? !selectedBackendId : !selectedBackendGroupId)) return;
+		if (!selectedEntry || (!selectedBackendId && !selectedBackendGroupId)) return;
 		setLaunching(true);
-
-		await handleSaveRecommendedParams();
-
 		const aliases = parseAliases(serverAliasesInput);
-		const backendId = !isGroup ? selectedBackendId ?? undefined : undefined;
-		const backendGroupId = isGroup ? selectedBackendGroupId ?? undefined : undefined;
 		if (server) {
 			const result = await updateServer(server.id, {
-				backendId,
-				backendGroupId,
+				backendId: selectedBackendId ?? undefined,
+				backendGroupId: selectedBackendGroupId ?? undefined,
 				modelPath: selectedEntry.file.filePath,
-				serverName: serverName.trim() || undefined,
-				params,
-				serverAlias: aliases,
-				autoLaunch,
-				autoSaveCheckpointOnStop,
-				autoLoadCheckpointOnStart,
-				useRecommendedInferenceParams: useRecommendedInferParams,
-				useMultiModal,
+				serverName: serverName.trim() || undefined, params, serverAlias: aliases,
+				autoLaunch, autoSaveCheckpointOnStop, autoLoadCheckpointOnStart,
+				useRecommendedInferenceParams: useRecommendedInferParams, useMultiModal,
 			}, true);
 			setLaunching(false);
-			if (result.ok) {
-				toast('success', 'Server relaunched with changes');
-				onClose();
-			} else {
-				toast('error', result.error ?? 'Failed to relaunch server');
-			}
+			if (result.ok) { toast('success', 'Server relaunched with changes'); onClose(); }
+			else toast('error', result.error ?? 'Failed to relaunch server');
 		} else {
 			const result = await launchServer({
-				backendId,
-				backendGroupId,
+				backendId: selectedBackendId ?? undefined,
+				backendGroupId: selectedBackendGroupId ?? undefined,
 				modelPath: selectedEntry.file.filePath,
-				serverName: serverName.trim() || null,
-				params,
-				serverAlias: aliases,
-				autoLaunch,
-				autoSaveCheckpointOnStop,
-				autoLoadCheckpointOnStart,
-				useRecommendedInferenceParams: useRecommendedInferParams,
-				useMultiModal,
+				serverName: serverName.trim() || null, params, serverAlias: aliases,
+				autoLaunch, autoSaveCheckpointOnStop, autoLoadCheckpointOnStart,
+				useRecommendedInferenceParams: useRecommendedInferParams, useMultiModal,
 			});
 			setLaunching(false);
-			if (result.ok) {
-				toast('success', `Server launched on port ${result.data.port}`);
-				onClose();
-			} else {
-				toast('error', result.error ?? 'Failed to launch server');
-			}
+			if (result.ok) { toast('success', `Server launched on port ${result.data.port}`); onClose(); }
+			else toast('error', result.error ?? 'Failed to launch server');
 		}
 	};
 
-	const canLaunch = selectedModelPath && (!isGroup ? selectedBackendId : selectedBackendGroupId) && !launching;
-
-	const maxLayers = meta?.nLayers ?? 999;
-	const maxContext = meta?.contextLength ?? 131072;
-	const modelContextLength = meta?.contextLength ?? null;
-
+	const canLaunch = selectedModelPath && (selectedBackendId || selectedBackendGroupId) && !launching;
 	return (
-		<Box position="fixed" inset="6px" zIndex="modal" display="flex" alignItems="center" justifyContent="center" borderRadius={"12px"} overflow={"hidden"}>
+		<Box position="fixed" inset="6px" zIndex="modal" display="flex" alignItems="center" justifyContent="center" borderRadius="12px" overflow="hidden">
 			<Box position="absolute" inset="0" bg="rgba(0, 0, 0, 0.7)" backdropFilter="blur(8px)" onClick={onClose} />
 			<Box position="relative" w="960px" maxH="90vh" bg="#0f0f12" borderWidth="1px"
 				borderColor="rgba(255, 255, 255, 0.08)" borderRadius="2xl"
@@ -861,706 +201,57 @@ export const LaunchServerDialog = React.memo(({ onClose, serverId }: ILaunchServ
 							<Text fontSize="12px" color="rgba(255, 255, 255, 0.35)">{server ? 'Modify launch parameters — requires relaunch' : 'Configure and start a llama-server instance'}</Text>
 						</Box>
 					</HStack>
-					<HStack gap="2">
-						<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.3)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="md" onClick={onClose} minW="8" px="0">
-							<X size={16} />
-						</Button>
-					</HStack>
+					<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.3)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="md" onClick={onClose} minW="8" px="0">
+						<X size={16} />
+					</Button>
 				</Flex>
 
 				{/* Content */}
 				<Box flex="1" overflowY="auto" p="6">
 					<Flex gap="6">
-						{/* Left — Model + Backend + Spec Decode */}
+						{/* Left column */}
 						<VStack align="stretch" gap="5" flex="1" minW="0">
-
-							{/* Model picker */}
-							<Box>
-								<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Model</Text>
-								{modelsArr.length === 0 ? (
-									<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No models scanned. Go to Settings and scan.</Text>
-								) : (
-									<ModelCombobox entries={modelEntries} selectedPath={selectedModelPath} onSelect={setSelectedModelPath} />
-								)}
-								{selectedEntry?.file.metadata && (
-									<HStack mt="2" gap="4" px="3" py="2" bg="rgba(51, 129, 255, 0.04)" borderRadius="lg" borderWidth="1px" borderColor="rgba(51, 129, 255, 0.1)">
-										<HStack gap="1.5"><Layers size={12} color="rgba(255, 255, 255, 0.35)" /><Text fontSize="11px" color="rgba(255, 255, 255, 0.5)">{selectedEntry.file.metadata.nLayers} layers</Text></HStack>
-										<HStack gap="1.5"><Cpu size={12} color="rgba(255, 255, 255, 0.35)" /><Text fontSize="11px" color="rgba(255, 255, 255, 0.5)">{selectedEntry.file.metadata.paramCount}</Text></HStack>
-										<HStack gap="1.5"><Package size={12} color="rgba(255, 255, 255, 0.35)" /><Text fontSize="11px" color="rgba(255, 255, 255, 0.5)" fontFamily='"Geist Mono", monospace'>{formatSize(selectedEntry.model.totalSizeMb)}</Text></HStack>
-										{selectedEntry.file.metadata.contextLength > 0 && (
-											<HStack gap="1.5"><Text fontSize="11px" color="rgba(255, 255, 255, 0.4)">{(selectedEntry.file.metadata.contextLength / 1024).toFixed(0)}k ctx</Text></HStack>
-										)}
-										{selectedEntry.model.mmprojFile && (
-											<HStack gap="1.5"><Package size={12} color="#a78bfa" /><Text fontSize="11px" color="#a78bfa">mmproj</Text></HStack>
-										)}
-									</HStack>
-								)}
-							</Box>
-
-							{/* Server name + Port + Aliases */}
-							<Card>
-								<VStack align="stretch" gap="4">
-									<Flex gap="4">
-										<Box flex="7.5">
-											<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Server Name<Text as="span" color="rgba(255, 255, 255, 0.25)" fontWeight="400">(optional)</Text></Text>
-											<Input value={serverName} onChange={e => setServerName(e.target.value)}
-												placeholder={selectedEntry?.file.fileName.replace('.gguf', '') ?? 'Leave empty for auto-generated name'}
-												bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
-												fontSize="13px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
-												_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
-											/>
-										</Box>
-										<Box flex="2.5">
-											<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Port <Text as="span" color="rgba(255, 255, 255, 0.25)" fontWeight="400" textTransform="none">(0 = Auto)</Text></Text>
-											<Input type="number" value={params.port} onChange={e => updateParam('port', Number(e.target.value))} size="sm"
-												bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
-												fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
-												_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} min={0} max={65535}
-											/>
-										</Box>
-									</Flex>
-									<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">Proxy Aliases <Text as="span" color="rgba(255, 255, 255, 0.25)" fontWeight="400">(optional)</Text></Text>
-									<Input value={serverAliasesInput} onChange={e => setServerAliasesInput(e.target.value)}
-										placeholder="alias1, alias2, alias3"
-										bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
-										fontSize="13px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
-										_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
-									/>
-									<Text fontSize="11px" color="rgba(255,255,255,0.3)">Comma-separated aliases, used for routing requests via proxy.</Text>
-								</VStack>
-							</Card>
-
-							{/* Backend picker */}
-							<Card>
-								<VStack align="stretch" gap="3">
-									{/* Backend source toggle */}
-									<HStack gap="3" mb="2">
-										<HStack gap="2" flex="1">
-											<Button
-												size="sm"
-												variant="outline"
-												flex="1"
-												justifyContent="center"
-												borderColor={isGroup ? 'rgba(255, 255, 255, 0.08)' : 'rgba(167, 139, 250, 0.3)'}
-												borderWidth={isGroup ? '1px' : '2px'}
-												color={isGroup ? 'rgba(255, 255, 255, 0.4)' : '#a78bfa'}
-												bg={isGroup ? 'rgba(255, 255, 255, 0.02)' : 'rgba(167, 139, 250, 0.05)'}
-												_hover={{ borderColor: isGroup ? 'rgba(255, 255, 255, 0.15)' : 'rgba(167, 139, 250, 0.5)' }}
-												onClick={() => setIsGroup(false)}
-											>
-												<Text fontSize="13px" fontWeight="500">Backend</Text>
-											</Button>
-											<Button
-												size="sm"
-												variant="outline"
-												flex="1"
-												justifyContent="center"
-												borderColor={isGroup ? 'rgba(167, 139, 250, 0.3)' : 'rgba(255, 255, 255, 0.08)'}
-												borderWidth={isGroup ? '2px' : '1px'}
-												color={isGroup ? '#a78bfa' : 'rgba(255, 255, 255, 0.4)'}
-												bg={isGroup ? 'rgba(167, 139, 250, 0.05)' : 'rgba(255, 255, 255, 0.02)'}
-												_hover={{ borderColor: isGroup ? 'rgba(167, 139, 250, 0.5)' : 'rgba(255, 255, 255, 0.15)' }}
-												onClick={() => setIsGroup(true)}
-											>
-												<Text fontSize="13px" fontWeight="500">Group</Text>
-											</Button>
-										</HStack>
-									</HStack>
-
-									{backendsArr.length === 0 && (
-										<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No backends registered. Go to Backends page.</Text>
-									)}
-									{isGroup && groupsArr.length === 0 && (
-										<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No backend groups. Create one in Backends page.</Text>
-									)}
-									{backendsArr.length > 0 && (
-										isGroup ? (
-											<Box>
-												<GroupCombobox
-													entries={groupEntries}
-													selectedId={selectedBackendGroupId}
-													onSelect={(id) => { setSelectedBackendGroupId(id); setSelectedBackendId(null); }}
-												/>
-												{selectedBackendGroupId && (
-													<HStack mt="2" gap="4" px="3" py="2" bg="rgba(167, 139, 250, 0.04)" borderRadius="lg" borderWidth="1px" borderColor="rgba(167, 139, 250, 0.1)">
-														<HStack gap="1.5"><Layers size={12} color="rgba(167, 139, 250, 0.5)" /><Text fontSize="11px" color="rgba(167, 139, 250, 0.7)">Active: {selectedBackend?.name ?? 'Unknown'}</Text></HStack>
-														<HStack gap="1.5"><Server size={12} color="rgba(255, 255, 255, 0.35)" /><Text fontSize="11px" color="rgba(255, 255, 255, 0.5)">{groups[selectedBackendGroupId]?.backendIds.length} backends</Text></HStack>
-													</HStack>
-												)}
-											</Box>
-										) : (
-											<BackendCombobox
-												entries={backendEntries}
-												selectedId={selectedBackendId}
-												onSelect={(id) => { setSelectedBackendId(id); setSelectedBackendGroupId(null); }}
-											/>
-										)
-									)}
-								</VStack>
-
-								{deviceOptions.length > 0 && <VStack align="stretch" gap="4" mt="5">
-									<SelectField
-										label="Device"
-										value={params.device}
-										options={deviceOptions}
-										onChange={(v) => { handleTargetParamChange('device', v); const idx = selectedBackendDevices.findIndex(d => d.id === v); if (idx >= 0) updateParam('mainGpu', idx); }}
-										mono
-										optionLabels={deviceIdToName}
-									/>
-
-									{/* Autofit toggle */}
-									<HStack justify="space-between" align="center">
-										<VStack align="start" gap="0.5">
-											<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">Autofit GPU Layers</Text>
-											<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)">Let llama.cpp auto-distribute layers</Text>
-										</VStack>
-										<Switch.Root label="Autofit GPU layers" checked={params.gpuLayersAuto ?? false} onCheckedChange={(details) => updateParam('gpuLayersAuto', details.checked)} color={(params.gpuLayersAuto ?? false) ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'}>
-											<Switch.HiddenInput />
-											<Switch.Control css={{ bg: (params.gpuLayersAuto ?? false) ? '#3381ff' : 'surface.4' }}>
-												<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
-											</Switch.Control>
-										</Switch.Root>
-									</HStack>
-
-									{/* GPU Layers — hidden when autofit is ON */}
-									{(params.gpuLayersAuto !== true) && (
-										meta ? (
-											<SliderNumberField label="GPU Layers" value={params.gpuLayers} onChange={v => handleTargetParamChange('gpuLayers', v)} min={0} max={maxLayers} suffix={`/ ${maxLayers} layers`} />
-										) : (
-											<NumberField label="GPU Layers" value={params.gpuLayers} onChange={v => handleTargetParamChange('gpuLayers', v)} min={0} max={999} />
-										)
-									)}
-
-									{/* Multi-GPU Section */}
-									<Box borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" pt="4">
-										<HStack justify="space-between" align="center" mb="3">
-											<HStack gap="3">
-												<Flex w="6" h="6" borderRadius="md" alignItems="center" justifyContent="center"
-													bg={(params.multiGpu ?? false) ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.04)'}
-												>
-													<GitBranch size={14} color={(params.multiGpu ?? false) ? '#34d399' : 'rgba(255, 255, 255, 0.3)'} />
-												</Flex>
-												<VStack align="start" gap="0.5">
-													<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">Multi-GPU Split</Text>
-													<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)">Distribute layers across GPUs</Text>
-												</VStack>
-											</HStack>
-											<Switch.Root label="Enable multi-GPU split" checked={params.multiGpu ?? false} onCheckedChange={(details) => updateParam('multiGpu', details.checked)} color={(params.multiGpu ?? false) ? '#34d399' : 'rgba(255, 255, 255, 0.4)'}>
-												<Switch.HiddenInput />
-												<Switch.Control css={{ bg: (params.multiGpu ?? false) ? '#34d399' : 'surface.4' }}>
-													<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
-												</Switch.Control>
-											</Switch.Root>
-										</HStack>
-
-										{(params.multiGpu ?? false) && selectedBackendDevices.length > 0 && (
-											<VStack align="stretch" gap="3">
-												{/* Per-GPU rows */}
-												{selectedBackendDevices.map((device, idx) => {
-													const splitVal = (params.gpuSplitValues ?? [])[idx] ?? 0;
-													const isActive = splitVal > 0;
-													return (
-														<HStack key={device.id} gap="2" align="center">
-															<Checkbox.Root
-															 checked={isActive}
-															 onCheckedChange={(details) => {
-																 const values = [...(params.gpuSplitValues ?? selectedBackendDevices.map(() => 0))];
-																 values[idx] = details.checked ? 1 : 0;
-																 updateParam('gpuSplitValues', values);
-															 }}
-															 color="#34d399"
-															>
-																<Checkbox.HiddenInput />
-																<Checkbox.Control borderRadius="sm" bg={isActive ? '#34d399' : 'rgba(255, 255, 255, 0.06)'}>
-																	<Checkbox.Indicator><Check size={12} /></Checkbox.Indicator>
-																</Checkbox.Control>
-															</Checkbox.Root>
-															<Box flex="1" minW="0">
-																<Text fontSize="11px" color="rgba(255, 255, 255, 0.5)" lineClamp={1}>{device.name}</Text>
-																<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)">{device.backendType} · {(device.vramTotalMb / 1024).toFixed(1)} GB</Text>
-															</Box>
-															<HStack gap="1">
-																<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)" flexShrink={0}>GPU{idx}</Text>
-																<Input
-																 type="number" value={splitVal}
-																 onChange={(e) => {
-																	 const val = Math.max(0, Number(e.target.value));
-																	 const values = [...(params.gpuSplitValues ?? selectedBackendDevices.map(() => 0))];
-																	 values[idx] = val;
-																	 updateParam('gpuSplitValues', values);
-																 }}
-																 size="xs" w="60px" textAlign="right"
-																 bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)"
-																 color="rgba(255, 255, 255, 0.6)" fontFamily='"Geist Mono", monospace'
-																 fontSize="11px" borderRadius="md" min={0}
-																 _focus={{ borderColor: 'rgba(52, 211, 153, 0.4)', outline: 'none' }}
-																 disabled={!isActive}
-																/>
-															</HStack>
-														</HStack>
-													);
-												})}
-
-												{/* Auto-fill button */}
-												<HStack justify="flex-end">
-													<Button size="xs" variant="ghost" fontSize="10px" color="rgba(255, 255, 255, 0.3)"
-														_hover={{ color: '#34d399', bg: 'rgba(52, 211, 153, 0.08)' }}
-														onClick={() => {
-															const values = selectedBackendDevices.map((d, i) => {
-																const current = (params.gpuSplitValues ?? [])[i] ?? 0;
-																return current > 0 ? 1 : 0;
-															});
-															updateParam('gpuSplitValues', values);
-														}}
-													>
-														Equal distribution
-													</Button>
-												</HStack>
-
-												{/* Split mode */}
-												<HStack gap="3">
-													<SelectField
-														label="Split Mode"
-														value={params.splitMode ?? ESplitMode.LAYER}
-														options={[ESplitMode.LAYER, ESplitMode.ROW, ESplitMode.TENSOR]}
-														onChange={v => updateParam('splitMode', v as ESplitMode)}
-														optionLabels={{
-															[ESplitMode.LAYER]: 'Layer (pipeline)',
-															[ESplitMode.ROW]: 'Row (weight matrix)',
-															[ESplitMode.TENSOR]: 'Tensor (true TP)',
-														}}
-													/>
-												</HStack>
-											</VStack>
-										)}
-									</Box>
-								</VStack>}
-							</Card>
-
-							{/* Speculative Decoding Section */}
-							<Card
-								bg={params.specDecode.enabled ? 'rgba(167, 139, 250, 0.03)' : undefined}
-								borderColor={params.specDecode.enabled ? 'rgba(167, 139, 250, 0.12)' : undefined}
-							>
-								<HStack justify="space-between" align="center">
-										<HStack gap="3">
-											<Flex w="6" h="6" borderRadius="md" alignItems="center" justifyContent="center"
-												bg={params.specDecode.enabled ? 'rgba(167, 139, 250, 0.15)' : 'rgba(255, 255, 255, 0.04)'}
-											>
-												<Sparkles size={14} color={params.specDecode.enabled ? '#a78bfa' : 'rgba(255, 255, 255, 0.3)'} />
-											</Flex>
-											<VStack align="start" gap="0.5">
-												<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em">Speculative Decoding</Text>
-												<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">{params.specDecode.mode === 'ngram' ? 'Draftless n-gram speculation' : 'Use a smaller model as the draft driver'}</Text>
-											</VStack>
-										</HStack>
-										<Switch.Root label="Enable speculative decoding" checked={params.specDecode.enabled} onCheckedChange={(details) => updateSpecParam('enabled', details.checked)} color={params.specDecode.enabled ? '#a78bfa' : 'rgba(255, 255, 255, 0.4)'}>
-											<Switch.HiddenInput />
-											<Switch.Control css={{ bg: params.specDecode.enabled ? '#a78bfa' : 'surface.4' }}>
-												<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
-											</Switch.Control>
-										</Switch.Root>
-									</HStack>
-
-								{params.specDecode.enabled && (
-									<VStack align="stretch" gap="4" mt="4">
-											{/* Mode toggle */}
-											<HStack gap="2">
-												<Button
-													size="sm"
-													variant="outline"
-													flex="1"
-													justifyContent="center"
-													borderColor={params.specDecode.mode === 'ngram' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(167, 139, 250, 0.3)'}
-													borderWidth={params.specDecode.mode === 'ngram' ? '1px' : '2px'}
-													color={params.specDecode.mode === 'ngram' ? 'rgba(255, 255, 255, 0.4)' : '#a78bfa'}
-													bg={params.specDecode.mode === 'ngram' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(167, 139, 250, 0.05)'}
-													_hover={{ borderColor: params.specDecode.mode === 'ngram' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(167, 139, 250, 0.5)' }}
-													onClick={() => updateSpecParam('mode', 'draft')}
-												>
-													<Text fontSize="13px" fontWeight="500">Draft Model</Text>
-												</Button>
-												<Button
-													size="sm"
-													variant="outline"
-													flex="1"
-													justifyContent="center"
-													borderColor={params.specDecode.mode === 'ngram' ? 'rgba(167, 139, 250, 0.3)' : 'rgba(255, 255, 255, 0.08)'}
-													borderWidth={params.specDecode.mode === 'ngram' ? '2px' : '1px'}
-													color={params.specDecode.mode === 'ngram' ? '#a78bfa' : 'rgba(255, 255, 255, 0.4)'}
-													bg={params.specDecode.mode === 'ngram' ? 'rgba(167, 139, 250, 0.05)' : 'rgba(255, 255, 255, 0.02)'}
-													_hover={{ borderColor: params.specDecode.mode === 'ngram' ? 'rgba(167, 139, 250, 0.5)' : 'rgba(255, 255, 255, 0.15)' }}
-													onClick={() => updateSpecParam('mode', 'ngram')}
-												>
-													<Text fontSize="13px" fontWeight="500">Ngram</Text>
-												</Button>
-											</HStack>
-
-											{/* Draft Model Panel */}
-											{(params.specDecode.mode !== 'ngram') && (
-												<VStack align="stretch" gap="4">
-													{/* Draft model picker */}
-													<Box>
-														<Text fontSize="11px" color="rgba(167, 139, 250, 0.7)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Draft Model</Text>
-														{!targetArchitecture ? (
-															<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">Select a target model first to see compatible draft models.</Text>
-														) : draftModelEntries.length === 0 ? (
-															<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">
-																No compatible draft models found. Draft models must share the same architecture ({targetArchitecture}).
-															</Text>
-														) : (
-															<ModelCombobox
-																entries={draftModelEntries}
-																selectedPath={params.specDecode.draftModelPath || null}
-																onSelect={(path) => updateSpecParam('draftModelPath', path)}
-																placeholder="Search compatible draft models..."
-															/>
-														)}
-														{selectedDraftEntry?.file.metadata && (
-															<HStack mt="2" gap="4" px="3" py="2" bg="rgba(167, 139, 250, 0.04)" borderRadius="lg" borderWidth="1px" borderColor="rgba(167, 139, 250, 0.1)">
-																<HStack gap="1.5"><Layers size={12} color="rgba(167, 139, 250, 0.5)" /><Text fontSize="11px" color="rgba(167, 139, 250, 0.7)">{selectedDraftEntry.file.metadata.nLayers} layers</Text></HStack>
-																<HStack gap="1.5"><Cpu size={12} color="rgba(167, 139, 250, 0.5)" /><Text fontSize="11px" color="rgba(167, 139, 250, 0.7)">{selectedDraftEntry.file.metadata.paramCount}</Text></HStack>
-																<Text fontSize="11px" color="rgba(167, 139, 250, 0.5)" fontFamily='"Geist Mono", monospace'>{formatSize(selectedDraftEntry.model.totalSizeMb)}</Text>
-															</HStack>
-														)}
-													</Box>
-
-													{/* Draft device */}
-													{deviceOptions.length > 0 && (
-														<Box>
-															<SelectField
-																label="Draft Device"
-																value={params.specDecode.draftDevice}
-																options={['', ...deviceOptions]}
-																onChange={v => updateSpecParam('draftDevice', v)}
-																mono
-																optionLabels={{
-																	'': 'Same as target',
-																	...deviceIdToName,
-																}}
-															/>
-															<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)" mt="1">Leave empty to use target device.</Text>
-														</Box>
-													)}
-
-													{/* Draft GPU layers + context */}
-													<Flex gap="4">
-														{draftMeta ? (
-															<Box flex="1">
-																<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">
-																	GPU Layers <Text as="span" color="rgba(255, 255, 255, 0.2)">/ {draftMeta.nLayers}</Text>
-																</Text>
-																<Input type="number" value={params.specDecode.draftGpuLayers} onChange={e => updateSpecParam('draftGpuLayers', Number(e.target.value))} size="sm"
-																	bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
-																	fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
-																	_focus={{ borderColor: 'rgba(167, 139, 250, 0.4)', outline: 'none' }} min={0} max={draftMeta.nLayers}
-																/>
-															</Box>
-														) : (
-															<NumberField label="GPU Layers" value={params.specDecode.draftGpuLayers} onChange={v => updateSpecParam('draftGpuLayers', v)} min={0} max={999} />
-														)}
-														<NumberField label="Context Size" value={params.specDecode.draftContextSize} onChange={v => updateSpecParam('draftContextSize', v)} min={0} step={1024} suffix="0 = auto" />
-													</Flex>
-
-													{/* Accept Threshold (draft-only) */}
-													<Box>
-														<Text fontSize="11px" color="rgba(167, 139, 250, 0.7)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Accept Threshold</Text>
-														<Input type="number" value={params.specDecode.draftPMin}
-															onChange={e => updateSpecParam('draftPMin', Number(e.target.value))} size="sm"
-															bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
-															fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
-															_focus={{ borderColor: 'rgba(167, 139, 250, 0.4)', outline: 'none' }}
-															min={0} max={1} step={0.05}
-														/>
-														<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)" mt="1">0.0 - 1.0</Text>
-													</Box>
-												</VStack>
-											)}
-
-											{/* Ngram Panel */}
-											{(params.specDecode.mode === 'ngram') && (
-												<VStack align="stretch" gap="4">
-													{/* Spec type selector */}
-													<SelectField
-														label="Spec Type"
-														value={params.specDecode.specType ?? ESpecType.NGRAM_SIMPLE}
-														options={[ESpecType.NGRAM_SIMPLE, ESpecType.NGRAM_CACHE, ESpecType.NGRAM_MAP_K, ESpecType.NGRAM_MAP_K4V, ESpecType.NGRAM_MOD]}
-														onChange={v => updateSpecParam('specType', v as ESpecType)}
-														optionLabels={{
-															[ESpecType.NGRAM_SIMPLE]: 'ngram-simple (fastest)',
-															[ESpecType.NGRAM_CACHE]: 'ngram-cache (legacy)',
-															[ESpecType.NGRAM_MAP_K]: 'ngram-map-k (hash map)',
-															[ESpecType.NGRAM_MAP_K4V]: 'ngram-map-k4v (multi-value)',
-															[ESpecType.NGRAM_MOD]: 'ngram-mod (best MoE/code)',
-														}}
-													/>
-
-													{/* Ngram params */}
-													<Flex gap="4">
-														<NumberField label="N-Gram Size (n)" value={params.specDecode.ngramSizeN ?? 12} onChange={v => updateSpecParam('ngramSizeN', v)} min={1} max={64} />
-														<NumberField label="M-Gram Size (m)" value={params.specDecode.ngramSizeM ?? 48} onChange={v => updateSpecParam('ngramSizeM', v)} min={1} max={256} />
-													</Flex>
-
-													{/* Min Hits — only for ngram-map-k types */}
-													{(params.specDecode.specType === ESpecType.NGRAM_MAP_K || params.specDecode.specType === ESpecType.NGRAM_MAP_K4V) && (
-														<NumberField label="Min Hits" value={params.specDecode.ngramMinHits ?? 1} onChange={v => updateSpecParam('ngramMinHits', v)} min={1} max={32} />
-													)}
-												</VStack>
-											)}
-
-											{/* Shared params */}
-											<Box>
-												<Text fontSize="11px" color="rgba(167, 139, 250, 0.7)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Drafting Parameters</Text>
-												<Flex gap="4">
-													<NumberField label="Draft Max" value={params.specDecode.draftMax} onChange={v => updateSpecParam('draftMax', v)} min={1} max={128} />
-													<NumberField label="Draft Min" value={params.specDecode.draftMin} onChange={v => updateSpecParam('draftMin', v)} min={0} max={64} />
-												</Flex>
-											</Box>
-									</VStack>
-								)}
-							</Card>
-
+							<ModelPicker modelCount={modelsArr.length} modelEntries={modelEntries} selectedModelPath={selectedModelPath} onSelectModel={setSelectedModelPath} selectedEntry={selectedEntry ?? null} />
+							<ServerInfoCard serverName={serverName} onServerNameChange={setServerName} port={params.port} onPortChange={v => updateParam('port', v)} aliases={serverAliasesInput} onAliasesChange={setServerAliasesInput} placeholder={selectedEntry?.file.fileName.replace('.gguf', '') ?? 'Leave empty for auto-generated name'} />
+							<BackendPickerCard
+								params={params} onParamChange={updateParam} meta={meta}
+								initialBackendId={server?.backendId ?? null} initialGroupId={server?.backendGroupId ?? null}
+								onSelection={handleBackendSelection}
+							/>
+							<SpeculativeDecodingCard
+								specDecode={params.specDecode} onSpecParamChange={updateSpecParam}
+								targetArchitecture={targetArchitecture} draftModelEntries={draftModelEntries} selectedDraftEntry={selectedDraftEntry ?? null}
+								deviceOptions={deviceOptions} deviceIdToName={deviceIdToName}
+							/>
 						</VStack>
 
-						{/* Right — Target Params Panel */}
+						{/* Right column */}
 						<VStack gap="5" flex="1" minW="0" align="stretch">
-							<VStack align="stretch" gap="4">
-
-								{/* Context Size + KV Quant + Parallel Slots */}
-								<Card>
-									<VStack align="stretch" gap="4">
-										{modelContextLength ? (
-											<SliderNumberField
-												label="Context Size"
-												value={params.contextSize}
-												onChange={v => handleTargetParamChange('contextSize', v)}
-												min={0} max={maxContext}
-												suffix={params.contextSize === 0 ? '0 = auto' : `/ ${(maxContext / 1024).toFixed(0)}k max`}
-												logarithmic
-											/>
-										) : (
-											<NumberField label="Context Size" value={params.contextSize} onChange={v => handleTargetParamChange('contextSize', v)} min={0} step={1024} suffix="0 = auto" />
-										)}
-										<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">KV Cache Quantization</Text>
-										<Flex gap="4">
-											<SelectField label="K Type" value={params.kvQuantK} options={KV_QUANT_OPTIONS} onChange={v => handleTargetParamChange('kvQuantK', v)} mono />
-											<SelectField label="V Type" value={params.kvQuantV} options={KV_QUANT_OPTIONS} onChange={v => handleTargetParamChange('kvQuantV', v)} mono />
-										</Flex>
-										<NumberField label="Parallel Slots" value={params.parallelSlots} onChange={v => handleTargetParamChange('parallelSlots', v)} min={0} suffix="0 = server default" />
-									</VStack>
-								</Card>
-
-								{/* Multi-modal toggle */}
-								<Card
-									bg={useMultiModal ? 'rgba(251, 191, 36, 0.03)' : undefined}
-									borderColor={useMultiModal ? 'rgba(251, 191, 36, 0.12)' : undefined}
-								>
-									<HStack justify="space-between" align="center">
-										<HStack gap="3">
-											<Flex w="6" h="6" borderRadius="md" alignItems="center" justifyContent="center"
-												bg={useMultiModal ? 'rgba(251, 191, 36, 0.15)' : 'rgba(255, 255, 255, 0.04)'}
-											>
-												<Eye size={14} color={useMultiModal ? '#fbbf24' : 'rgba(255, 255, 255, 0.3)'} />
-											</Flex>
-											<VStack align="start" gap="0.5">
-												<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em">Multi-modal</Text>
-												<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">Vision requires mmproj.GGUF</Text>
-											</VStack>
-										</HStack>
-										<Switch.Root label="Use multi-modal (mmproj)" checked={useMultiModal} onCheckedChange={(details) => handleTargetParamChange('useMultiModal', details.checked)} disabled={!selectedEntry?.model.mmprojFile} color={useMultiModal ? '#fbbf24' : 'rgba(255, 255, 255, 0.4)'}>
-											<Switch.HiddenInput />
-											<Switch.Control css={{ bg: useMultiModal ? '#fbbf24' : 'surface.4' }}>
-												<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
-											</Switch.Control>
-										</Switch.Root>
-									</HStack>
-								</Card>
-
-								{/* Recommended Model params */}
-								<Card>
-									<VStack align="stretch" gap="3">
-										<HStack justify="space-between" align="center">
-											<VStack align="start" gap="0.5">
-												<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em">Model Params</Text>
-												<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">These params will apply to all servers that use this Model.</Text>
-											</VStack>
-											<Switch.Root label="Use recommended params" checked={useRecommendedInferParams} onCheckedChange={(details) => setUseRecommendedInferParams(details.checked)} color={useRecommendedInferParams ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'}>
-												<Switch.HiddenInput />
-												<Switch.Control css={{ bg: useRecommendedInferParams ? '#3b86d6' : 'surface.4' }}>
-													<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
-												</Switch.Control>
-											</Switch.Root>
-										</HStack>
-										{useRecommendedInferParams && (
-											<Box position="relative">
-												<Textarea
-													value={recommendedText}
-													variant={"subtle"}
-													bg={isEditingRecommended ? "rgb(30,30,30)" : "transparent"}
-													outline={"none"}
-													onChange={(e) => setRecommendedText(e.target.value)}
-													readOnly={!isEditingRecommended}
-													opacity={isEditingRecommended ? 1 : 0.5}
-													fontFamily="monospace"
-													fontSize="12px"
-													border={!isEditingRecommended ? "1px solid rgb(40,40,40)" : "auto"}
-													cursor={isEditingRecommended? "auto" : "default"}
-													style={{
-														caretColor: isEditingRecommended ? "auto" : "transparent",
-													}}
-													resize="vertical"
-													minH="100px"
-													borderRadius="lg"
-													placeholder="No recommended params available for this model"
-												/>
-												<HStack position="absolute" bottom="2" right="2" gap="2">
-													{isEditingRecommended && (
-														<Button
-															size="xs"
-															variant="ghost"
-															color="rgba(255, 255, 255, 0.6)"
-															_hover={{ color: '#f43f5e', bg: 'rgba(244, 63, 94, 0.1)' }}
-															borderRadius="md"
-															fontSize="10px"
-															onClick={() => {
-																setRecommendedText(originalTextRef.current);
-																setIsEditingRecommended(false);
-															}}
-														>
-															Cancel
-														</Button>
-													)}
-													<Button
-														size="xs"
-														variant="outline"
-														borderColor="rgba(255, 255, 255, 0.2)"
-														color="rgba(255, 255, 255, 0.6)"
-														_hover={{ borderColor: '#3b86d6', color: '#3b86d6', bg: 'rgba(51, 129, 255, 0.05)' }}
-														borderRadius="md"
-														fontSize="10px"
-														gap="1"
-														onClick={() => {
-															if (isEditingRecommended) {
-																handleSaveRecommendedParams();
-																setIsEditingRecommended(false);
-															} else {
-																originalTextRef.current = recommendedText;
-																setIsEditingRecommended(true);
-															}
-														}}
-													>
-														{isEditingRecommended ? <Check size={10} /> : <Pencil size={10} />}
-														{isEditingRecommended ? 'Save' : 'Edit'}
-													</Button>
-												</HStack>
-											</Box>
-										)}
-									</VStack>
-								</Card>
-
-								{/* Toggle options */}
-								<Card>
-									<VStack align="stretch" gap="3">
-										<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">Options</Text>
-										<HStack gap="2" flexWrap="wrap">
-											<ToggleChip label="Flash Attention" active={params.flashAttn} onClick={() => handleTargetParamChange('flashAttn', !params.flashAttn)} />
-											<ToggleChip label="MLock" active={params.mlock} onClick={() => handleTargetParamChange('mlock', !params.mlock)} />
-											<ToggleChip label="MMap" active={params.mmap} onClick={() => handleTargetParamChange('mmap', !params.mmap)} />
-											<ToggleChip label="Direct I/O" active={params.directIo} onClick={() => handleTargetParamChange('directIo', !params.directIo)} />
-											<ToggleChip label="No Warmup" active={params.noWarmup} onClick={() => handleTargetParamChange('noWarmup', !params.noWarmup)} />
-											<ToggleChip label="Jinja" active={params.jinja} onClick={() => handleTargetParamChange('jinja', !params.jinja)} />
-											<ToggleChip label="SWA Full" active={params.swaFull} onClick={() => handleTargetParamChange('swaFull', !params.swaFull)} />
-										</HStack>
-										<Flex gap="4">
-											<NumberField label="Batch Size" value={params.batchSize} onChange={v => handleTargetParamChange('batchSize', v)} min={1} step={256} />
-											<NumberField label="Micro Batch" value={params.ubatchSize} onChange={v => handleTargetParamChange('ubatchSize', v)} min={1} step={64} />
-										</Flex>
-										<Flex gap="4">
-											<NumberField label="Threads" value={params.threads} onChange={v => handleTargetParamChange('threads', v)} min={0} suffix="0 = auto" />
-											<NumberField label="Threads (Batch)" value={params.threadsBatch} onChange={v => handleTargetParamChange('threadsBatch', v)} min={0} suffix="0 = auto" />
-										</Flex>
-										<Box>
-											<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Chat Template</Text>
-											<Input placeholder="Auto-detect" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={params.chatTemplate} onChange={e => handleTargetParamChange('chatTemplate', e.target.value)} />
-										</Box>
-										<Box>
-											<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Custom Flags</Text>
-											<Input placeholder="--some-flag value" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={params.extraArgs} onChange={e => handleTargetParamChange('extraArgs', e.target.value)} />
-										</Box>
-									</VStack>
-								</Card>
-
-							</VStack>
-
+							<ContextKVCard params={params} onParamChange={updateParam} meta={meta} />
+							<MultiModalCard useMultiModal={useMultiModal} onUseMultiModalChange={setUseMultiModal} hasMmproj={!!selectedEntry?.model.mmprojFile} />
+							<RecommendedParamsCard
+								useRecommended={useRecommendedInferParams} onUseRecommendedChange={setUseRecommendedInferParams}
+								selectedEntry={selectedEntry ?? null}
+								onSave={async (modelId, text) => {
+									const newRecommendedParams = useRecommendedInferParams ? text : undefined;
+									const result = await updateModel(modelId, { recommendedInferenceParams: newRecommendedParams ?? undefined });
+									if (result.ok) toast('success', 'Recommended params saved to model');
+									else toast('error', result.error ?? 'Failed to save recommended params');
+								}}
+							/>
+							<OptionsCard params={params} onParamChange={updateParam} />
 						</VStack>
 					</Flex>
 				</Box>
 
 				{/* Footer */}
-				<Flex px="6" py="4" justify="space-between" align="center" borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" bg="rgba(255, 255, 255, 0.01)">
-					<HStack gap="4">
-						<Switch.Root label="Auto-launch at startup" checked={autoLaunch} onCheckedChange={(details) => setAutoLaunch(details.checked)} color={autoLaunch ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'}>
-							<Switch.HiddenInput />
-							<Switch.Control css={{ bg: autoLaunch ? '#3b86d6' : 'surface.4' }}>
-								<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
-							</Switch.Control>
-							<Switch.Label ml="2" fontSize="13px" color={autoLaunch ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
-								Auto-launch at startup
-							</Switch.Label>
-						</Switch.Root>
-						<Switch.Root label="Auto-load latest checkpoint on start" checked={autoLoadCheckpointOnStart} onCheckedChange={(details) => setAutoLoadCheckpointOnStart(details.checked)} color={autoLoadCheckpointOnStart ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'}>
-							<Switch.HiddenInput />
-							<Switch.Control css={{ bg: autoLoadCheckpointOnStart ? '#3b86d6' : 'surface.4' }}>
-								<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
-							</Switch.Control>
-							<Switch.Label ml="2" fontSize="13px" color={autoLoadCheckpointOnStart ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
-								Auto-load latest checkpoint on start
-							</Switch.Label>
-						</Switch.Root>
-						<Switch.Root label="Auto-save checkpoint on stop" checked={autoSaveCheckpointOnStop} onCheckedChange={(details) => setAutoSaveCheckpointOnStop(details.checked)} color={autoSaveCheckpointOnStop ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'}>
-							<Switch.HiddenInput />
-							<Switch.Control css={{ bg: autoSaveCheckpointOnStop ? '#3b86d6' : 'surface.4' }}>
-								<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
-							</Switch.Control>
-							<Switch.Label ml="2" fontSize="13px" color={autoSaveCheckpointOnStop ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
-								Auto-save all slots on stop
-							</Switch.Label>
-						</Switch.Root>
-					</HStack>
-					<HStack gap="2">
-						<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="lg" fontSize="13px" onClick={onClose}>Cancel</Button>
-						{server ? (
-							<>
-								<Button size="sm" disabled={!canLaunch || launching}
-									bg="rgba(255, 255, 255, 0.08)" color="#e4e4e7" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.15)"
-									_hover={{ bg: 'rgba(255, 255, 255, 0.12)', borderColor: 'rgba(255, 255, 255, 0.25)' }}
-									_disabled={{ opacity: 0.3, cursor: 'not-allowed' }} borderRadius="lg" fontSize="13px" fontWeight="600" px="5"
-									onClick={handleSaveWithoutRelaunch}
-								>Save</Button>
-								<Button size="sm" disabled={!canLaunch || launching}
-									bgGradient="to-r" gradientFrom="#fbbf24" gradientTo="#f59e0b" color="#18181b"
-									borderWidth="1px" borderColor="rgba(251, 191, 36, 0.3)"
-									_hover={{ opacity: 0.9, shadow: '0 4px 20px rgba(251, 191, 36, 0.3)' }}
-									_disabled={{ opacity: 0.3, cursor: 'not-allowed' }} borderRadius="lg" fontSize="13px" fontWeight="600" px="6"
-									transition="all 0.2s ease" onClick={handleLaunch}
-								>
-									{launching ? <Spinner size="xs" /> : <RefreshCw size={14} />}
-									Relaunch with Changes
-								</Button>
-							</>
-						) : (
-							<Button size="sm" disabled={!canLaunch || launching}
-								bgGradient="to-r" gradientFrom="#3381ff" gradientTo="#5b6af5" color="white"
-								_hover={{ opacity: 0.9, shadow: '0 4px 20px rgba(51, 129, 255, 0.3)' }}
-								_disabled={{ opacity: 0.3, cursor: 'not-allowed' }} borderRadius="lg" fontSize="13px" fontWeight="600" px="6"
-								transition="all 0.2s ease" onClick={handleLaunch}
-							>
-								{launching ? <Spinner size="xs" /> : <Play size={14} />}
-								Launch
-							</Button>
-						)}
-					</HStack>
-				</Flex>
+				<Footer
+					isEdit={!!server} autoLaunch={autoLaunch} onAutoLaunchChange={setAutoLaunch}
+					autoLoadCheckpoint={autoLoadCheckpointOnStart} onAutoLoadCheckpointChange={setAutoLoadCheckpointOnStart}
+					autoSaveCheckpoint={autoSaveCheckpointOnStop} onAutoSaveCheckpointChange={setAutoSaveCheckpointOnStop}
+					canLaunch={!!canLaunch} launching={launching}
+					onCancel={onClose} onSave={handleSaveWithoutRelaunch} onLaunch={handleLaunch}
+				/>
 			</Box>
 		</Box>
 	);

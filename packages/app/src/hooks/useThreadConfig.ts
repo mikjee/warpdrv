@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useStore } from '../store';
-import { DEFAULT_INFERENCE_PARAMS } from '@/components/ChatConfigSidebar';
+import { DEFAULT_INFERENCE_PARAMS } from '@/pages/Chat/ChatConfigSidebar';
 import { EReasoningEffort, IChatInferenceParams, IThreadConfig } from '@warpcore/shared';
 import { fetchThreadConfig, updateThreadConfig } from '@/api';
 

@@ -136,7 +136,7 @@ export const ServersPage = React.memo(() => {
 		<Box>
 			<PageHeader
 				title="Servers"
-				subtitle={`${serversArr.filter(s => s.status === EServerStatus.RUNNING).length} / ${servers.length} Running`}
+				subtitle={`${serversArr.filter(s => s.status === EServerStatus.RUNNING).length} / ${serversArr.length} Running`}
 				icon={<Server size={20} />}
 				actions={
 					<HStack gap="3">

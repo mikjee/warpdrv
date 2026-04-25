@@ -8,7 +8,7 @@ import { LuSaveOff } from "react-icons/lu";
 import { GoEyeClosed } from "react-icons/go";
 import { FaBrain, FaBookOpen, FaRegEye } from 'react-icons/fa6';
 import { Card } from '@/components/Card';
-import { StatusBadge } from '@/components/StatusBadge';
+import { StatusBadge } from '@/pages/Servers/StatusBadge';
 import { ConfirmDialog } from '@/components/dialogs/ConfirmDialog';
 import { useMutation } from '@/hooks/useQuery';
 import { useStore } from '@/store';
