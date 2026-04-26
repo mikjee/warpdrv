@@ -6,7 +6,7 @@
 
 **LLMs + Server + Chat + More**
 
-**100% Offline - Built for Local AI master race, oh yeah!**
+😎 **100% Offline - Built for Local AI Master Race, Oh Yeahhh!** 😎
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Release](https://img.shields.io/github/v/release/mikjee/warpdrv?include_prereleases)](https://github.com/mikjee/warpdrv/releases)
@@ -37,7 +37,7 @@ It's a **workshop bench** for cutting-edge LLM testing: try beta models the day 
 
 ## Why use this?
 
-- **Try new models as soon as they are released** - bring your own llama.cpp builds; not wait for vendor's release cycle.
+- **Try new models as soon as they are released** - Bring your own llama.cpp builds; not wait for vendor's release cycle.
 - **Multi-backend, multi-GPU** - CUDA, ROCm, Vulkan; mix devices in one inference session.
 - **Your daily driver** - Integrates with your favorite tools with a customizable router. batteries included.
 - **Workshop tools** - Speculative decoding config, MCP integration, bash-based build recipes, KV cache checkpointing.
