@@ -12,8 +12,8 @@
 				"server,app",
 				"-c",
 				"blue,green",
-				"cd packages/server && CONTROL_API_PORT=4401 npx tsx src/index.ts",
-				"cd packages/app && CONTROL_API_PORT=4401 npx vite"
+				"cd packages/server && cross-env CONTROL_API_PORT=4401 npx tsx src/index.ts",
+				"cd packages/app && cross-env CONTROL_API_PORT=4401 npx vite"
 			],
 			"console": "integratedTerminal",
 			"cwd": "${workspaceFolder}"

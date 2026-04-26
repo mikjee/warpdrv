@@ -1,5 +1,5 @@
 import { Box, Text, HStack, VStack, Flex, Input, Button, Spinner, Switch } from '@chakra-ui/react';
-import { Settings, FolderOpen, Plus, Trash2, Save, Check, FolderInput } from 'lucide-react';
+import { Settings, FolderOpen, Plus, Trash2, Save, Check, FolderInput, BookOpen } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { useDependantState } from '../../hooks/useDependantState';
 import { PageHeader } from '../../components/PageHeader';
@@ -382,6 +382,27 @@ const handleSave = async () => {
 									</Switch.Root>
 								</HStack>
 							</Box>
+						</VStack>
+					</Card>
+
+					{/* Onboarding */}
+					<Card>
+						<VStack align="stretch" gap="4">
+							<Box>
+								<Text fontSize="14px" fontWeight="600" color="#e4e4e7" mb="1">Onboarding</Text>
+								<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)">Re-run the setup guide</Text>
+							</Box>
+							<Button
+								size="sm"
+								variant="ghost"
+								color="rgba(255, 255, 255, 0.5)"
+								_hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }}
+								borderRadius="lg"
+								leftIcon={<BookOpen size={15} />}
+								onClick={() => updateSettings({ isOnboardingComplete: false })}
+							>
+								Re-run Onboarding
+							</Button>
 						</VStack>
 					</Card>
 				</VStack>

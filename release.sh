@@ -5,13 +5,10 @@ set -e
 # Pass bundle formats as arguments: ./release.sh deb appimage
 # Defaults to 'deb' only if no arguments given.
 # AppImage is excluded by default because it takes a long time to build.
-if [ $# -eq 0 ]; then
-	BUNDLE_FORMATS=("deb")
-else
-	BUNDLE_FORMATS=("$@")
-fi
-
-echo "Bundle formats: ${BUNDLE_FORMATS[*]}"
+# Default bundle formats per platform (set after platform detection below).
+# Pass bundle formats as arguments to override: ./release.sh deb appimage
+# AppImage is excluded by default on Linux because it takes a long time to build.
+BUNDLE_FORMATS_ARGS=("$@")
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 RELEASE_JSON="$REPO_ROOT/release.json"
@@ -22,6 +19,47 @@ APP_DIR="$REPO_ROOT/packages/app"
 # Get target triple
 TARGET_TRIPLE=$(rustc --print host-tuple 2>/dev/null || rustc -Vv | grep host | cut -d' ' -f2)
 echo "Target: $TARGET_TRIPLE"
+
+# Detect platform and set platform-specific variables
+case "$TARGET_TRIPLE" in
+	*-windows-*)
+		PLATFORM="windows"
+		PKG_TARGET="node24-win-x64"
+		SIDECAR_EXT=".exe"
+		;;
+	*-linux-*)
+		PLATFORM="linux"
+		PKG_TARGET="node24-linux-x64"
+		SIDECAR_EXT=""
+		;;
+	*-darwin-*)
+		PLATFORM="macos"
+		case "$TARGET_TRIPLE" in
+			aarch64*) PKG_TARGET="node24-macos-arm64" ;;
+			x86_64*)  PKG_TARGET="node24-macos-x64" ;;
+		esac
+		SIDECAR_EXT=""
+		;;
+	*)
+		echo "ERROR: Unsupported platform: $TARGET_TRIPLE"
+		exit 1
+		;;
+esac
+
+echo "Platform: $PLATFORM ($PKG_TARGET)"
+
+# Resolve bundle formats now that platform is known
+case "$PLATFORM" in
+	windows) DEFAULT_FORMATS=("msi") ;;
+	macos)   DEFAULT_FORMATS=("dmg") ;;
+	linux)   DEFAULT_FORMATS=("deb") ;;
+esac
+if [ ${#BUNDLE_FORMATS_ARGS[@]} -eq 0 ]; then
+	BUNDLE_FORMATS=("${DEFAULT_FORMATS[@]}")
+else
+	BUNDLE_FORMATS=("${BUNDLE_FORMATS_ARGS[@]}")
+fi
+echo "Bundle formats: ${BUNDLE_FORMATS[*]}"
 
 # Read current version
 CURRENT_VERSION=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$RELEASE_JSON','utf8')).version)")
@@ -75,8 +113,8 @@ npx esbuild src/index.ts \
 cp "$REPO_ROOT/node_modules/better-sqlite3/build/Release/better_sqlite3.node" "$SERVER_DIR/dist/better_sqlite3.node"
 
 npx @yao-pkg/pkg dist/server.cjs \
-	--target node24-linux-x64 \
-	--output dist/warpcore-server \
+	--target "$PKG_TARGET" \
+	--output "dist/warpcore-server${SIDECAR_EXT}" \
 	--compress GZip
 
 echo "Server binary: $SERVER_DIR/dist/warpcore-server"
@@ -85,14 +123,16 @@ ls -lh "$SERVER_DIR/dist/warpcore-server"
 echo ""
 echo "=== Step 3/4: Preparing Tauri sidecar ==="
 mkdir -p "$DESKTOP_DIR/binaries"
-cp "$SERVER_DIR/dist/warpcore-server" "$DESKTOP_DIR/binaries/warpcore-server-$TARGET_TRIPLE"
+cp "$SERVER_DIR/dist/warpcore-server${SIDECAR_EXT}" "$DESKTOP_DIR/binaries/warpcore-server-${TARGET_TRIPLE}${SIDECAR_EXT}"
 cp "$SERVER_DIR/dist/better_sqlite3.node" "$DESKTOP_DIR/binaries/better_sqlite3.node"
-chmod +x "$DESKTOP_DIR/binaries/warpcore-server-$TARGET_TRIPLE"
+if [ "$PLATFORM" != "windows" ]; then
+	chmod +x "$DESKTOP_DIR/binaries/warpcore-server-${TARGET_TRIPLE}${SIDECAR_EXT}"
+fi
 
 rm -r "$DESKTOP_DIR/app-dist" 2>/dev/null || true
 cp -r "$APP_DIR/dist" "$DESKTOP_DIR/app-dist"
 
-echo "Sidecar: $DESKTOP_DIR/binaries/warpcore-server-$TARGET_TRIPLE"
+echo "Sidecar: $DESKTOP_DIR/binaries/warpcore-server-${TARGET_TRIPLE}${SIDECAR_EXT}"
 echo "Frontend: $DESKTOP_DIR/app-dist/"
 
 echo ""

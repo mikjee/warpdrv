@@ -15,7 +15,7 @@
 		"release": "bash release.sh"
 	},
 	"devDependencies": {
-		"concurrently": "^9.1.2"
-	},
-	"dependencies": {}
+		"concurrently": "^9.1.2",
+		"cross-env": "^10.1.0"
+	}
 }

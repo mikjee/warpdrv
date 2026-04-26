@@ -6,6 +6,14 @@ import { system } from './theme/system';
 import { ToastProvider } from './components/ToastProvider';
 import { AuthProvider } from './components/AuthProvider';
 import { App } from './App';
+import { OnboardingPage } from './pages/Onboarding/OnboardingPage';
+import { useStore } from './store';
+
+function OnboardingWrapper() {
+	const isOnboardingComplete = useStore(s => s.settings.isOnboardingComplete);
+	if (isOnboardingComplete === true) return null;
+	return <OnboardingPage />;
+}
 
 createRoot(document.getElementById('root')!).render(
 	<StrictMode>
@@ -14,6 +22,7 @@ createRoot(document.getElementById('root')!).render(
 				<ToastProvider>
 					<AuthProvider>
 						<App />
+						<OnboardingWrapper />
 					</AuthProvider>
 				</ToastProvider>
 			</BrowserRouter>
