@@ -5,6 +5,7 @@ import { StepWelcome } from './steps/StepWelcome';
 import { StepModelFolders } from './steps/StepModelFolders';
 import { StepGuide } from './steps/StepGuide';
 import { StepDone } from './steps/StepDone';
+import { useTauriWindow } from '@/hooks/useTauriWindow';
 
 const STEPS = [StepWelcome, StepModelFolders, StepGuide, StepDone];
 const TOTAL_STEPS = STEPS.length;

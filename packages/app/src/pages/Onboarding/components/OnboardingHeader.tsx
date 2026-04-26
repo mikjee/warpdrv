@@ -8,7 +8,7 @@ interface IOnboardingHeaderProps {
 
 export function OnboardingHeader({ title, step, totalSteps }: IOnboardingHeaderProps) {
 	return (
-		<Box textAlign="center" pb="6">
+		<Box textAlign="center" pb="6" className='drag'>
 			<Text fontSize="24px" fontWeight="600" color="#e4e4e7" letterSpacing="-0.02em">
 				{title}
 			</Text>

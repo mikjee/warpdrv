@@ -100,7 +100,9 @@ fn get_server_port() -> u16 {
 
 fn spawn_server(app: &tauri::AppHandle) -> Option<Child> {
 	let (bin, args) = find_server_binary()?;
-	let log_file = std::fs::File::create("/tmp/warpcore-server.log").unwrap();
+    let log_dir = std::env::temp_dir();
+	let log_path = log_dir.join("warpcore-server.log");
+	let log_file = std::fs::File::create(&log_path).unwrap();
 	let err_file = log_file.try_clone().unwrap();
 	// Resolve resource dir via Tauri API - works cross-platform
 	let resource_dir = app.path().resource_dir()
