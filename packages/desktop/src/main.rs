@@ -29,12 +29,14 @@ fn is_server_running(port: u16) -> bool {
 fn find_server_binary() -> Option<(String, Vec<String>)> {
     if let Ok(exe_path) = env::current_exe() {
         let exe_dir = exe_path.parent().unwrap_or(std::path::Path::new("."));
-
         for entry in std::fs::read_dir(exe_dir).ok()? {
             if let Ok(entry) = entry {
                 let name = entry.file_name().to_string_lossy().to_string();
                 if name.starts_with("warpcore-server") && !name.ends_with(".sig") {
-                    return Some((entry.path().to_string_lossy().to_string(), vec![]));
+                    let path_str = entry.path().to_string_lossy().to_string();
+                    // Strip Windows \\?\ UNC prefix that crashes Node.js realpathSync
+                    let cleaned = path_str.strip_prefix(r"\\?\").unwrap_or(&path_str).to_string();
+                    return Some((cleaned, vec![]));
                 }
             }
         }
@@ -105,8 +107,11 @@ fn spawn_server(app: &tauri::AppHandle) -> Option<Child> {
 	let log_file = std::fs::File::create(&log_path).unwrap();
 	let err_file = log_file.try_clone().unwrap();
 	// Resolve resource dir via Tauri API - works cross-platform
-	let resource_dir = app.path().resource_dir()
-		.map(|p| p.to_string_lossy().to_string())
+    let resource_dir = app.path().resource_dir()
+		.map(|p| {
+			let s = p.to_string_lossy().to_string();
+			s.strip_prefix(r"\\?\").unwrap_or(&s).to_string()
+		})
 		.unwrap_or_else(|_| ".".to_string());
 
 	// Get port from env var or settings, and pass to server process
