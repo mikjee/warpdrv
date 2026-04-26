@@ -119,12 +119,18 @@ fn spawn_server(app: &tauri::AppHandle) -> Option<Child> {
 	let rust_path = env::var("PATH").unwrap_or_else(|_| "(not set)".to_string());
 	println!("[WarpCore] Rust PATH: {}", rust_path);
 	let mut cmd = Command::new(&bin);
-
 	cmd.args(&args)
 		.env("WARPCORE_RESOURCE_DIR", &resource_dir)
 		.env("CONTROL_API_PORT", server_port.to_string())
 		.stdout(log_file)
 		.stderr(err_file);
+
+	#[cfg(windows)]
+	{
+		use std::os::windows::process::CommandExt;
+		const CREATE_NO_WINDOW: u32 = 0x08000000;
+		cmd.creation_flags(CREATE_NO_WINDOW);
+	}
 
 	match cmd.spawn() {
 		Ok(c) => {
@@ -397,6 +403,15 @@ fn main() {
             // - Must be launched via autostart (--hidden flag)
             // - AND startMinimized setting must be true
             let should_start_minimized = launched_hidden && read_start_minimized_setting();
+
+            // Apply Mica blur on Windows (replaces transparent padding shadow trick)
+            #[cfg(target_os = "windows")]
+            {
+                use window_vibrancy::apply_mica;
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = apply_mica(&window, Some(true));
+                }
+            }
 
             // Show loading page immediately (or hide if starting minimized)
             if let Some(window) = app.get_webview_window("main") {
