@@ -1,0 +1,71 @@
+# Auto-detect text files and normalise line endings to LF
+* text=auto eol=lf
+
+# Source code — explicit text + LF
+*.ts        text eol=lf
+*.tsx       text eol=lf
+*.js        text eol=lf
+*.jsx       text eol=lf
+*.json      text eol=lf
+*.css       text eol=lf
+*.html      text eol=lf
+*.md        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.toml      text eol=lf
+*.rs        text eol=lf
+*.sh        text eol=lf
+
+# Shell scripts must be LF even on Windows checkouts
+*.sh        text eol=lf
+*.bash      text eol=lf
+
+# Windows-specific files keep CRLF
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+
+# Binary files — never normalise, never diff as text
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.webp      binary
+*.svg       text eol=lf
+*.woff      binary
+*.woff2     binary
+*.ttf       binary
+*.otf       binary
+*.eot       binary
+*.mp4       binary
+*.mp3       binary
+*.wav       binary
+*.zip       binary
+*.tar       binary
+*.gz        binary
+*.tgz       binary
+*.7z        binary
+*.pdf       binary
+*.gguf      binary
+*.bin       binary
+*.so        binary
+*.dll       binary
+*.dylib     binary
+*.AppImage  binary
+*.deb       binary
+*.rpm       binary
+*.msi       binary
+*.dmg       binary
+*.exe       binary
+
+# Lockfiles — text but mark for diff suppression on GitHub
+package-lock.json   text eol=lf linguist-generated=true
+yarn.lock           text eol=lf linguist-generated=true
+Cargo.lock          text eol=lf linguist-generated=true
+
+# Generated / vendored files — exclude from GitHub language stats
+packages/*/dist/**          linguist-generated=true
+packages/*/build/**         linguist-generated=true
+packages/desktop/target/**  linguist-generated=true
+node_modules/**             linguist-vendored=true
