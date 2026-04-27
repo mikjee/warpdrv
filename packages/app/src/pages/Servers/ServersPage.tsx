@@ -48,6 +48,8 @@ export const ServersPage = React.memo(() => {
 	const logsServer = logsServerId ? servers[logsServerId] : null;
 	const deletingServer = deletingServerId ? servers[deletingServerId] : null;
 
+	const onCloseServerLogs = useCallback(() => setLogsServerId(null), []);
+
 	const handleSortChange = useCallback((field: TSortField, order: TSortOrder) => {
 		setSortField(field);
 		setSortOrder(order);
@@ -297,7 +299,7 @@ export const ServersPage = React.memo(() => {
 			)}
 
 			{logsServer && (
-				<ServerLogs serverId={logsServer.id} serverName={logsServer.serverName} onClose={() => setLogsServerId(null)} />
+				<ServerLogs serverId={logsServer.id} serverName={logsServer.serverName} onClose={onCloseServerLogs} />
 			)}
 
 			{editingServerId && (

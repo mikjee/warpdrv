@@ -10,11 +10,12 @@ interface IServerLogsProps {
 	onClose: () => void;
 }
 
+const emptyLogs: Array<string> = [];
 export const ServerLogs = React.memo(({ serverId, serverName, onClose }: IServerLogsProps) => {
 	const logsEndRef = useRef<HTMLDivElement>(null);
 	const [autoScroll, setAutoScroll] = useState(true);
 
-	const serverLogs = useStore((s) => s.serverLogs[serverId] || []);
+	const serverLogs = useStore((s) => s.serverLogs[serverId] || emptyLogs);
 
 	useEffect(() => {
 		if (autoScroll && logsEndRef.current) {
