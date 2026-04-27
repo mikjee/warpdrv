@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'child_process';
+import { spawn, spawnSync, type ChildProcess } from 'child_process';
 import http from 'http';
 import net from 'net';
 import type { IServer, ILaunchParams, IChatInferenceParams, IBackend, IBackendGroup, ISettings } from '@warpcore/shared';
@@ -13,6 +13,20 @@ import { getCachedModels } from '../routes/models';
 
 export const SERVERS_PREFIX = 'servers:';
 const SETTINGS_KEY = 'settings:general';
+
+// Cross-platform process tree kill.
+// Linux/macOS: signal the process group via negative PID.
+// Windows: taskkill /T /F walks the process tree and force-terminates.
+function killProcessTree(pid: number, signal: 'SIGTERM' | 'SIGKILL'): void {
+	if (process.platform === 'win32') {
+		const args = signal === 'SIGKILL'
+			? ['/T', '/F', '/PID', String(pid)]
+			: ['/T', '/PID', String(pid)];
+		spawnSync('taskkill', args, { stdio: 'ignore' });
+	} else {
+		process.kill(-pid, signal);
+	}
+}
 
 // Track used ports to avoid collisions
 export const usedPorts = new Set<number>();
@@ -343,9 +357,9 @@ export async function killServer(serverId: string, pid?: number): Promise<boolea
                 waitForPort();
             });
             
-            // Send SIGTERM to process group
+			// Send SIGTERM to process tree
             try {
-                process.kill(-pidToUse!, 'SIGTERM');
+                killProcessTree(pidToUse!, 'SIGTERM');
             } catch (err) {
                 if (isProcessAlive(pidToUse!)) {
                     finish(false);
@@ -359,7 +373,7 @@ export async function killServer(serverId: string, pid?: number): Promise<boolea
             const timeout = setTimeout(() => {
                 if (isProcessAlive(pidToUse!)) {
                     try {
-                        process.kill(-pidToUse!, 'SIGKILL');
+                        killProcessTree(pidToUse!, 'SIGKILL');
                     } catch {}
                     setTimeout(() => {
                         if (!resolved) {
@@ -391,7 +405,7 @@ export async function killServer(serverId: string, pid?: number): Promise<boolea
             
             // Send SIGTERM
             try {
-                process.kill(-pid, 'SIGTERM');
+                killProcessTree(pid, 'SIGTERM');
             } catch {
                 finish(false);
                 return;
@@ -410,7 +424,7 @@ export async function killServer(serverId: string, pid?: number): Promise<boolea
                 clearInterval(checkInterval);
                 if (isProcessAlive(pid)) {
                     try {
-                        process.kill(-pid, 'SIGKILL');
+                        killProcessTree(pid, 'SIGKILL');
                     } catch {}
                     setTimeout(() => finish(true), 200);
                 }

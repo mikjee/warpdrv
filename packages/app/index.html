@@ -19,6 +19,7 @@
 			overflow: hidden;
 			-webkit-app-region: no-drag;
 		}
+
 		#root {
 			position: relative;
 			background: #09090b;
@@ -29,10 +30,28 @@
 			box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.5), 0px 0px 4px rgba(0, 0, 0, 0.3);
 			-webkit-app-region: no-drag;
 		}
+
+		html[data-platform="windows"] #root-wrapper {
+			padding: 0;
+		}
+
+		html[data-platform="windows"] #root {
+			border-radius: 0;
+			box-shadow: none;
+		}
 	</style>
-</head>
-<body>
-	<div id="root-wrapper"><div id="root"></div></div>
-	<script type="module" src="/src/main.tsx"></script>
-</body>
+	</head>
+
+	<body>
+		<div id="root-wrapper">
+			<div id="root"></div>
+		</div>
+		<script>
+			// Set platform attribute early so CSS applies before render
+			if (navigator.userAgent.toLowerCase().includes('windows')) {
+				document.documentElement.dataset.platform = 'windows';
+			}
+		</script>
+		<script type="module" src="/src/main.tsx"></script>
+	</body>
 </html>

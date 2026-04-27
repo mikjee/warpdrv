@@ -405,13 +405,13 @@ fn main() {
             let should_start_minimized = launched_hidden && read_start_minimized_setting();
 
             // Apply Mica blur on Windows (replaces transparent padding shadow trick)
-            #[cfg(target_os = "windows")]
-            {
-                use window_vibrancy::apply_mica;
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = apply_mica(&window, Some(true));
-                }
-            }
+            // #[cfg(target_os = "windows")]
+            // {
+            //     use window_vibrancy::apply_mica;
+            //     if let Some(window) = app.get_webview_window("main") {
+            //         let _ = apply_mica(&window, Some(true));
+            //     }
+            // }
 
             // Show loading page immediately (or hide if starting minimized)
             if let Some(window) = app.get_webview_window("main") {

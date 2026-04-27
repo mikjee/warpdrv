@@ -51,7 +51,11 @@ function getSortValue(model: IModel, key: TSortKey): string | number {
 		case 'name': return model.name.toLowerCase();
 		case 'user': return model.user.toLowerCase();
 		case 'quant': return meta?.quantType?.toLowerCase() ?? '';
-		case 'params': return meta?.paramCount?.toLowerCase() ?? '';
+		case 'params': {
+			const raw = meta?.paramCount ?? '';
+			const match = raw.match(/([\d.]+)/);
+			return match ? parseFloat(match[1]!) : 0;
+		}
 		case 'size': return model.totalSizeMb;
 		case 'context': return meta?.contextLength ?? 0;
 		case 'files': return model.files.length;
