@@ -10,7 +10,7 @@ set -e
 # AppImage is excluded by default on Linux because it takes a long time to build.
 BUNDLE_FORMATS_ARGS=("$@")
 
-REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$(dirname "$0")" && pwd -W 2>/dev/null || pwd)"
 RELEASE_JSON="$REPO_ROOT/release.json"
 DESKTOP_DIR="$REPO_ROOT/packages/desktop"
 SERVER_DIR="$REPO_ROOT/packages/server"
