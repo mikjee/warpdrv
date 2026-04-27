@@ -1,23 +1,16 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Box, Text, HStack, VStack, Flex, Input, Button, Spinner, Portal } from '@chakra-ui/react';
 import { Layers, CheckCircle, X } from 'lucide-react';
-import { createBackendGroup, updateBackendGroup, restartServer } from '../../api/services';
+import { createBackendGroup, updateBackendGroup } from '../../api/services';
 import { ActivateBackendDialog } from './ActivateBackendDialog';
-import type { IBackend, IBackendGroup, IBackendGroupCreatePayload, IBackendGroupUpdatePayload, IServer } from '@warpcore/shared';
+import { useStore } from '../../store';
+import type { IBackend, IBackendGroup, IBackendGroupCreatePayload, IBackendGroupUpdatePayload, TBackendGroupId } from '@warpcore/shared';
 import { EServerStatus } from '@warpcore/shared';
 import { useToast } from '../../components/ToastProvider';
 
 interface IBackendGroupDialogProps {
 	onClose: () => void;
-	editData?: {
-		id: string;
-		name: string;
-		description: string | undefined;
-		backendIds: string[];
-		activeBackendId: string;
-	};
-	backends: IBackend[];
-	servers: IServer[];
+	editGroupId?: TBackendGroupId;
 }
 
 interface IPendingSave {
@@ -27,33 +20,36 @@ interface IPendingSave {
 	activeBackendId: string;
 }
 
-export function BackendGroupDialog({ onClose, editData, backends, servers }: IBackendGroupDialogProps) {
+export function BackendGroupDialog({ onClose, editGroupId }: IBackendGroupDialogProps) {
 	const { toast } = useToast();
-	const isEdit = !!editData;
+	const group = editGroupId ? useStore((s) => s.backendGroups[editGroupId]) : undefined;
+	const backends = useStore((s) => s.backends);
+	const servers = useStore((s) => s.servers);
 
-	const [name, setName] = useState(editData?.name ?? '');
-	const [description, setDescription] = useState(editData?.description ?? '');
-	const [selectedBackendIds, setSelectedBackendIds] = useState<string[]>(editData?.backendIds ?? []);
-	const [activeBackendId, setActiveBackendId] = useState<string>(editData?.activeBackendId ?? '');
+	const isEdit = !!group;
+	const backendList = useMemo(() => Object.values(backends), [backends]);
+	const serverList = useMemo(() => Object.values(servers), [servers]);
+
+	const [name, setName] = useState(group?.name ?? '');
+	const [description, setDescription] = useState(group?.description ?? '');
+	const [selectedBackendIds, setSelectedBackendIds] = useState<string[]>(group?.backendIds ?? []);
+	const [activeBackendId, setActiveBackendId] = useState<string>(group?.activeBackendId ?? '');
 	const [saving, setSaving] = useState(false);
 
 	const [showActivateDialog, setShowActivateDialog] = useState(false);
 	const [pendingSave, setPendingSave] = useState<IPendingSave | null>(null);
-	const [capturedAffectedServers, setCapturedAffectedServers] = useState<IServer[]>([]);
-	const originalActiveBackendId = editData?.activeBackendId ?? null;
+	const originalActiveBackendId = group?.activeBackendId ?? null;
 
 	const hasActiveChange = isEdit && activeBackendId !== originalActiveBackendId;
 
 	const affectedServers = useMemo(() => {
-		if (!isEdit || !hasActiveChange || !editData) return [];
-		return servers.filter(s => s.backendGroupId === editData.id && s.status === EServerStatus.RUNNING);
-	}, [isEdit, hasActiveChange, editData, servers]);
+		if (!isEdit || !hasActiveChange || !group) return [];
+		return serverList.filter(s => s.backendGroupId === group.id && s.status === EServerStatus.RUNNING);
+	}, [isEdit, hasActiveChange, group, serverList]);
 
 	const handleShowActivateDialog = useCallback(() => {
-		const currentAffected = servers.filter(s => s.backendGroupId === editData!.id && s.status === EServerStatus.RUNNING);
-		setCapturedAffectedServers(currentAffected);
 		setShowActivateDialog(true);
-	}, [editData, servers]);
+	}, []);
 
 	const handleToggleBackend = (backendId: string) => {
 		const isSelected = selectedBackendIds.includes(backendId);
@@ -82,7 +78,7 @@ export function BackendGroupDialog({ onClose, editData, backends, servers }: IBa
 			activeBackendId: activeBackendId,
 		};
 
-		if (hasActiveChange && editData && affectedServers.length > 0) {
+		if (hasActiveChange && group && affectedServers.length > 0) {
 			setPendingSave(saveData);
 			handleShowActivateDialog();
 			return;
@@ -97,7 +93,7 @@ export function BackendGroupDialog({ onClose, editData, backends, servers }: IBa
 		const createPayload: IBackendGroupCreatePayload = { name: saveData.name, description: saveData.description, backendIds: saveData.backendIds, activeBackendId: saveData.activeBackendId };
 
 		const result = isEdit
-			? await updateBackendGroup(editData!.id, updatePayload)
+			? await updateBackendGroup(group!.id, updatePayload)
 			: await createBackendGroup(createPayload);
 
 		setSaving(false);
@@ -109,42 +105,10 @@ export function BackendGroupDialog({ onClose, editData, backends, servers }: IBa
 		}
 	};
 
-	const handleCompleteSave = async () => {
-		if (!pendingSave || !editData) return;
-		await completeSave(pendingSave);
-	};
-
-	const handleCompleteSaveWithRestart = async () => {
-		if (!pendingSave || !editData) return;
-
-		setSaving(true);
-		const payload: IBackendGroupUpdatePayload = {
-			name: pendingSave.name,
-			description: pendingSave.description,
-			backendIds: pendingSave.backendIds,
-			activeBackendId: pendingSave.activeBackendId,
-		};
-
-		const result = await updateBackendGroup(editData.id, payload);
-		setSaving(false);
-
-		if (result.ok) {
-			toast('success', `Group "${pendingSave.name}" updated`);
-
-			const restartPromises = capturedAffectedServers.map(async (server) => {
-				try {
-					await restartServer(server.id);
-				} catch (error) {
-					toast('error', `Failed to restart server ${server.serverName}`);
-				}
-			});
-
-			await Promise.all(restartPromises);
-			onClose();
-		} else {
-			toast('error', result.error ?? 'Failed to update group');
-		}
-	};
+	const handleActivationComplete = useCallback(() => {
+		if (!pendingSave || !group) return;
+		completeSave(pendingSave);
+	}, [pendingSave, group]);
 
 	const canSave = name.trim() && selectedBackendIds.length > 0 && !saving && !showActivateDialog;
 
@@ -183,7 +147,7 @@ export function BackendGroupDialog({ onClose, editData, backends, servers }: IBa
 							<Box>
 								<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Select Backends</Text>
 								<VStack align="stretch" gap="2" maxH="200px" overflowY="auto">
-									{backends.map(backend => {
+									{backendList.map(backend => {
 										const isSelected = selectedBackendIds.includes(backend.id);
 										const isCurrentActive = originalActiveBackendId === backend.id;
 										return (
@@ -206,7 +170,7 @@ export function BackendGroupDialog({ onClose, editData, backends, servers }: IBa
 									<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Select Active Backend</Text>
 									<VStack align="stretch" gap="2">
 										{selectedBackendIds.map(backendId => {
-											const backend = backends.find(b => b.id === backendId);
+											const backend = backends[backendId];
 											if (!backend) return null;
 											const isSelected = activeBackendId === backendId;
 											const isCurrentActive = originalActiveBackendId === backendId;
@@ -241,27 +205,14 @@ export function BackendGroupDialog({ onClose, editData, backends, servers }: IBa
 				</Box>
 			</Box>
 
-			{showActivateDialog && pendingSave && editData && (
+			{showActivateDialog && pendingSave && group && (
 				<Portal>
 					<ActivateBackendDialog
 						isOpen={true}
 						onClose={() => setShowActivateDialog(false)}
-						groupId={editData.id}
-						group={{
-							id: editData.id,
-							name: name,
-							description: description,
-							backendIds: selectedBackendIds,
-							activeBackendId: originalActiveBackendId!,
-							createdAt: 0,
-							updatedAt: 0,
-						}}
+						groupId={group.id}
 						newBackendId={activeBackendId}
-						newBackend={backends.find(b => b.id === activeBackendId)!}
-						currentBackend={backends.find(b => b.id === originalActiveBackendId)}
-						affectedServers={capturedAffectedServers}
-						onSwitchOnly={handleCompleteSave}
-						onSwitchAndRestart={handleCompleteSaveWithRestart}
+						onComplete={handleActivationComplete}
 					/>
 				</Portal>
 			)}

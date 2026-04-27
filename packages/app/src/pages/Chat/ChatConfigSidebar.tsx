@@ -245,9 +245,6 @@ export function ChatConfigContentPanel({
 		updateSettings(partial);
 	}, []);
 
-	const modelsRecord = useStore(s => s.models);
-	const models = useMemo(() => Object.values(modelsRecord), [modelsRecord]);
-
 	const displayParams = useMemo((): IChatInferenceParams => {
 		return { ...DEFAULT_INFERENCE_PARAMS, ...params };
 	}, [params]);

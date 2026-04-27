@@ -1,22 +1,18 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Dialog, Portal, Box, Text, HStack, VStack, Button, Spinner, Badge } from '@chakra-ui/react';
 import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { restartServer, activateBackendInGroup } from '../../api/services';
-import type { IBackend, IBackendGroup, IServer } from '@warpcore/shared';
+import { useStore } from '../../store';
+import type { TBackendId, TBackendGroupId } from '@warpcore/shared';
 import { EServerStatus } from '@warpcore/shared';
 import { useToast } from '../../components/ToastProvider';
 
 interface IActivateBackendDialogProps {
 	isOpen: boolean;
 	onClose: () => void;
-	groupId: string;
-	group: IBackendGroup;
-	newBackendId: string;
-	newBackend: IBackend;
-	currentBackend?: IBackend;
-	affectedServers: IServer[];
-	onSwitchOnly?: () => Promise<void>;
-	onSwitchAndRestart?: () => Promise<void>;
+	groupId: TBackendGroupId;
+	newBackendId: TBackendId;
+	onComplete?: () => void;
 }
 
 interface IServerState {
@@ -27,30 +23,31 @@ interface IServerState {
 	error?: string;
 }
 
-export function ActivateBackendDialog({ isOpen, onClose, groupId, group, newBackendId, newBackend, currentBackend, affectedServers, onSwitchOnly, onSwitchAndRestart }: IActivateBackendDialogProps) {
+export function ActivateBackendDialog({ isOpen, onClose, groupId, newBackendId, onComplete }: IActivateBackendDialogProps) {
 	const { toast } = useToast();
+	const group = useStore((s) => s.backendGroups[groupId]);
+	const backends = useStore((s) => s.backends);
+	const servers = useStore((s) => s.servers);
+
 	const [open, setOpen] = useState(isOpen);
 	const [isSwitching, setIsSwitching] = useState(false);
 	const [switchingDone, setSwitchingDone] = useState(false);
+	const [isRestarting, setIsRestarting] = useState(false);
+
+	const newBackend = useMemo(() => backends[newBackendId], [backends, newBackendId]);
+	const currentBackend = useMemo(() => group ? backends[group.activeBackendId] : undefined, [group, backends]);
+
+	const affectedServers = useMemo(() => {
+		if (!group) return [];
+		return Object.values(servers).filter(s => s.backendGroupId === group.id && s.status === EServerStatus.RUNNING);
+	}, [group, servers]);
+
 	const [serversState, setServersState] = useState<Record<string, IServerState>>(
 		affectedServers.reduce((acc, s) => ({
 			...acc,
 			[s.id]: { id: s.id, name: s.serverName, port: s.port, status: 'idle' } as IServerState,
 		}), {})
 	);
-	const [isRestarting, setIsRestarting] = useState(false);
-
-	const resetState = useCallback(() => {
-		setIsSwitching(false);
-		setSwitchingDone(false);
-		setServersState(
-			affectedServers.reduce((acc, s) => ({
-				...acc,
-				[s.id]: { id: s.id, name: s.serverName, port: s.port, status: 'idle' } as IServerState,
-			}), {})
-		);
-		setIsRestarting(false);
-	}, [affectedServers]);
 
 	const handleClose = useCallback(() => {
 		setOpen(false);
@@ -58,88 +55,90 @@ export function ActivateBackendDialog({ isOpen, onClose, groupId, group, newBack
 	}, [onClose]);
 
 	const handleCancel = useCallback(() => {
-		resetState();
 		handleClose();
-	}, [resetState, handleClose]);
+	}, [handleClose]);
 
 	const handleSwitchOnly = async () => {
-	if (onSwitchOnly) {
-		await onSwitchOnly();
-		return;
-	}
-	setIsSwitching(true);
-	try {
-		await activateBackendInGroup(groupId, newBackendId);
-		toast('success', 'The active backend for this group has been updated.');
-		resetState();
-		handleClose();
-	} catch (error) {
-		toast('error', 'Unable to update the active backend. Please try again.');
-		setIsSwitching(false);
-	}
-};
-
-const handleSwitchAndRestart = async () => {
-	if (onSwitchAndRestart) {
-		await onSwitchAndRestart();
-		return;
-	}
-	setIsSwitching(true);
-	setIsRestarting(true);
-
-	try {
-		await activateBackendInGroup(groupId, newBackendId);
-		setSwitchingDone(true);
-
-		if (Object.keys(serversState).length === 0) {
-			toast('success', 'The active backend for this group has been updated.');
-			resetState();
-			handleClose();
-			return;
+		setIsSwitching(true);
+		try {
+			const result = await activateBackendInGroup(groupId, newBackendId);
+			if (result.ok) {
+				toast('success', 'The active backend for this group has been updated.');
+				handleClose();
+				onComplete?.();
+			} else {
+				toast('error', result.error ?? 'Unable to update the active backend. Please try again.');
+				setIsSwitching(false);
+			}
+		} catch {
+			toast('error', 'Unable to update the active backend. Please try again.');
+			setIsSwitching(false);
 		}
+	};
 
-		setServersState(prev => {
-			const newState: Record<string, IServerState> = {};
-			for (const s of Object.values(prev)) {
-				newState[s.id] = { ...s, status: 'restarting' as const };
+	const handleSwitchAndRestart = async () => {
+		setIsSwitching(true);
+		setIsRestarting(true);
+
+		try {
+			const result = await activateBackendInGroup(groupId, newBackendId);
+			if (!result.ok) {
+				toast('error', result.error ?? 'Unable to update the active backend.');
+				setIsSwitching(false);
+				setIsRestarting(false);
+				return;
 			}
-			return newState;
-		});
+			setSwitchingDone(true);
 
-		const restartPromises = Object.values(serversState).map(async (server) => {
-			try {
-				await restartServer(server.id);
-				setServersState(prev => {
-					const existing = prev[server.id];
-					if (!existing) return prev;
-					return {
-						...prev,
-						[server.id]: { id: existing.id, name: existing.name, port: existing.port, status: 'completed' },
-					};
-				});
-			} catch (error) {
-				setServersState(prev => {
-					const existing = prev[server.id];
-					if (!existing) return prev;
-					return {
-						...prev,
-						[server.id]: { id: existing.id, name: existing.name, port: existing.port, status: 'failed', error: 'Restart failed' },
-					};
-				});
+			if (Object.keys(serversState).length === 0) {
+				toast('success', 'The active backend for this group has been updated.');
+				handleClose();
+				onComplete?.();
+				return;
 			}
-		});
 
-		await Promise.all(restartPromises);
+			setServersState(prev => {
+				const newState: Record<string, IServerState> = {};
+				for (const s of Object.values(prev)) {
+					newState[s.id] = { ...s, status: 'restarting' as const };
+				}
+				return newState;
+			});
 
-		toast('success', 'The active backend has been updated and servers restarted.');
-		resetState();
-		handleClose();
-	} catch (error) {
-		toast('error', 'Unable to update the active backend.');
-		setIsSwitching(false);
-		setIsRestarting(false);
-	}
-};
+			const restartPromises = Object.values(serversState).map(async (server) => {
+				try {
+					await restartServer(server.id);
+					setServersState(prev => {
+						const existing = prev[server.id];
+						if (!existing) return prev;
+						return {
+							...prev,
+							[server.id]: { id: existing.id, name: existing.name, port: existing.port, status: 'completed' },
+						};
+					});
+				} catch {
+					setServersState(prev => {
+						const existing = prev[server.id];
+						if (!existing) return prev;
+						return {
+							...prev,
+							[server.id]: { id: existing.id, name: existing.name, port: existing.port, status: 'failed', error: 'Restart failed' },
+						};
+					});
+				}
+			});
+
+			await Promise.all(restartPromises);
+
+			toast('success', 'The active backend has been updated and servers restarted.');
+			handleClose();
+			onComplete?.();
+		} catch {
+			toast('error', 'Unable to update the active backend.');
+			setIsSwitching(false);
+			setIsRestarting(false);
+		}
+	};
 
 	const allCompleted = Object.keys(serversState).length > 0 && Object.values(serversState).every(s => s.status === 'completed' || s.status === 'failed');
 
@@ -166,7 +165,7 @@ const handleSwitchAndRestart = async () => {
 									Switch Active Backend?
 								</Dialog.Title>
 								<Text fontSize="13px" color="rgba(255, 255, 255, 0.5)" textAlign="center">
-									Changing from <Text as="span" color="#e4e4e7" fontWeight="500">{currentBackend?.name ?? '(deleted)'}</Text> to <Text as="span" color="#e4e4e7" fontWeight="500">{newBackend.name}</Text>
+									Changing from <Text as="span" color="#e4e4e7" fontWeight="500">{currentBackend?.name ?? '(deleted)'}</Text> to <Text as="span" color="#e4e4e7" fontWeight="500">{newBackend?.name ?? '(deleted)'}</Text>
 								</Text>
 							</VStack>
 

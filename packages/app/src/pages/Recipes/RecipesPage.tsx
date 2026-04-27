@@ -18,7 +18,8 @@ const RECIPE_FIELD_LABELS: Record<TRecipeSortField, string> = {
 };
 
 export function RecipesPage() {
-	const recipesRecord = useStore((s) => s.recipes);
+	const recipes = useStore((s) => s.recipes);
+	const recipesArr = useMemo(() => Object.values(recipes), [recipes]);
 	const activeRun = useStore((s) => s.activeRun);
 
 	const [showAddDialog, setShowAddDialog] = useState(false);
@@ -37,17 +38,17 @@ export function RecipesPage() {
 		updateSettings({ recipesSortField: field, recipesSortOrder: order });
 	}, []);
 
-	const recipes = useMemo(() => {
-		let result = Object.values(recipesRecord);
+	const sortedRecipes = useMemo(() => {
 		const q = searchQuery.toLowerCase().trim();
+		let result: Array<IRecipe> = [];
 		if (q) {
-			result = result.filter(r =>
+			result = recipesArr.filter(r =>
 				r.name.toLowerCase().includes(q)
 				|| r.description.toLowerCase().includes(q)
 				|| r.source.toLowerCase().includes(q)
 			);
 		}
-		result.sort((a, b) => {
+		recipesArr.sort((a, b) => {
 			let comparison = 0;
 			switch (sortField) {
 				case 'name':
@@ -63,7 +64,7 @@ export function RecipesPage() {
 			return sortOrder === 'asc' ? comparison : -comparison;
 		});
 		return result;
-	}, [recipesRecord, searchQuery, sortField, sortOrder]);
+	}, [recipesArr, searchQuery, sortField, sortOrder]);
 
 	const deleteMut = useMutation<string, null>(useCallback((id: string) => deleteRecipe(id), []));
 
@@ -72,7 +73,7 @@ export function RecipesPage() {
 		setDeletingId(null);
 	};
 
-	const activeRunRecipe = activeRun !== null ? recipesRecord[activeRun.recipeId] ?? null : null;
+	const activeRunRecipe = activeRun !== null ? recipes[activeRun.recipeId] ?? null : null;
 	const isAnyRunActive = activeRun !== null && activeRun.status === ERecipeRunStatus.RUNNING;
 
 	return (
@@ -195,7 +196,7 @@ export function RecipesPage() {
 							<HStack gap="3">
 								<ScrollText size={16} color="rgba(255, 255, 255, 0.5)" />
 								<Text fontSize="13px" fontWeight="600" color="rgba(255,255,255,0.8)">All Recipes</Text>
-								<Badge size="sm" px="1.5" borderRadius="full" bg="rgba(255,255,255,0.06)" color="rgba(255,255,255,0.4)" fontSize="10px" fontWeight="600">{recipes.length}</Badge>
+								<Badge size="sm" px="1.5" borderRadius="full" bg="rgba(255,255,255,0.06)" color="rgba(255,255,255,0.4)" fontSize="10px" fontWeight="600">{recipesArr.length}</Badge>
 							</HStack>
 							<Button size="xs" variant="ghost" color="rgba(255,255,255,0.5)" _hover={{ bg: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' }} onClick={() => setShowAddDialog(true)}>
 								<Plus size={15} />
@@ -203,7 +204,7 @@ export function RecipesPage() {
 						</Flex>
 
 						<Box px="4" pb="3">
-							{recipes.length === 0 ? (
+							{recipesArr.length === 0 ? (
 								<Flex h="200px" alignItems="center" justifyContent="center">
 									<VStack gap="3" color="rgba(255, 255, 255, 0.2)">
 										<ScrollText size={40} />
@@ -216,7 +217,7 @@ export function RecipesPage() {
 								</Flex>
 							) : (
 								<VStack align="stretch" gap="3">
-									{recipes.map(recipe => (
+									{recipesArr.map(recipe => (
 										<RecipeRow
 											key={recipe.id}
 											recipe={recipe}
@@ -238,7 +239,7 @@ export function RecipesPage() {
 			{deletingId && (
 				<ConfirmDialog
 					title="Delete Recipe?"
-					message={`This will permanently delete "${recipes.find(r => r.id === deletingId)?.name}".`}
+					message={`This will permanently delete "${recipes[deletingId]?.name}".`}
 					isOpen={true}
 					isLoading={deleteMut.loading}
 					onCancel={() => setDeletingId(null)}

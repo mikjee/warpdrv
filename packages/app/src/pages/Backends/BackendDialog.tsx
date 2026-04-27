@@ -9,10 +9,12 @@ import { EValidationStatus, ALL_COMMON_FLAGS, TOGGLE_FLAG_MAPPINGS, getFlagMappi
 import { Card } from '../../components/Card';
 import { createBackend, updateBackend } from '../../api/services';
 import { useToast } from '../../components/ToastProvider';
+import { useStore } from '../../store';
+import type { TBackendId } from '@warpcore/shared';
 
 interface IBackendDialogProps {
 	onClose: () => void;
-	editData?: { id: string; name: string; path: string; description: string; defaultArgs: string[] };
+	editBackendId?: TBackendId;
 }
 
 // Flags that take a numeric value (flag followed by its value)
@@ -26,9 +28,10 @@ const FLAG_VALUE_PAIRS: Record<string, RegExp> = {
 	'-fa': /^\d+$/,
 };
 
-export function BackendDialog({ onClose, editData }: IBackendDialogProps) {
+export function BackendDialog({ onClose, editBackendId }: IBackendDialogProps) {
 	const { toast } = useToast();
-	const isEdit = !!editData;
+	const backend = editBackendId ? useStore((s) => s.backends[editBackendId]) : undefined;
+	const isEdit = !!backend;
 
 	// Group related args for display (e.g., ["-ngl", "999"] -> [["-ngl", "999"]])
 	const groupArgsForDisplay = (args: string[]) => {
@@ -48,10 +51,10 @@ export function BackendDialog({ onClose, editData }: IBackendDialogProps) {
 		return grouped;
 	};
 
-	const [name, setName] = useState(editData?.name ?? '');
-	const [path, setPath] = useState(editData?.path ?? '');
-	const [description, setDescription] = useState(editData?.description ?? '');
-	const [defaultArgs, setDefaultArgs] = useState<string[]>(editData?.defaultArgs ?? []);
+	const [name, setName] = useState(backend?.name ?? '');
+	const [path, setPath] = useState(backend?.path ?? '');
+	const [description, setDescription] = useState(backend?.description ?? '');
+	const [defaultArgs, setDefaultArgs] = useState<string[]>(backend?.defaultArgs ?? []);
 	const [newArg, setNewArg] = useState('');
 	const [saving, setSaving] = useState(false);
 
@@ -117,7 +120,7 @@ export function BackendDialog({ onClose, editData }: IBackendDialogProps) {
 		const payload = { name: name.trim(), path: path.trim(), defaultArgs, description: description.trim() };
 
 		const result = isEdit
-			? await updateBackend(editData!.id, payload)
+			? await updateBackend(backend!.id, payload)
 			: await createBackend(payload);
 
 		setSaving(false);
