@@ -332,13 +332,19 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, con
 
 ## Acknowledgements
 
-warpdrv stands on the shoulders of:
+Thanks to the following projects and their developers/maintainers for enabling developers to create wonderful Open-Source projects:
 
 - [llama.cpp](https://github.com/ggml-org/llama.cpp) — Georgi Gerganov and contributors
 - [Tauri](https://tauri.app/) — desktop shell framework
 - [assistant-ui](https://github.com/Yonom/assistant-ui) — chat UI primitives
 - [better-sqlite3](https://github.com/WiseLibs/better-sqlite3), [better-sse](https://github.com/MatthewWid/better-sse), [Express](https://expressjs.com/), [React](https://react.dev/), [Chakra UI](https://chakra-ui.com/), [Vite](https://vitejs.dev/), [Zustand](https://zustand-demo.pmnd.rs/)
 - All beta testers and early users
+
+## Sponsor
+
+warpdrv is built and maintained by me, a solo dev. Consider supporting my open-source work - it helps in funding the hardware and fuels the late-night coding sessions 🤓
+
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-ff69b4?logo=github)](https://github.com/sponsors/mikjee)
 
 ---
 

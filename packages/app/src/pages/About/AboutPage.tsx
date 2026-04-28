@@ -24,11 +24,11 @@ export function AboutPage() {
 							<Text fontSize="14px" fontWeight="600" color="#e4e4e7">Attribution</Text>
 							<HStack gap="1.5" alignItems="center">
 								<Text fontSize="13px" color="rgba(255, 255, 255, 0.7)">
-									Slop-coded with <Text as="span" color="#fb7185">❤</Text> by
+									Built with <Text as="span" color="#fb7185">❤</Text> by&nbsp;
+									<Link href="https://www.github.com/mikjee" color="#3381ff" _hover={{ color: '#5b6af5', textDecoration: 'underline', cursor: 'pointer' }} onClick={(e) => { e.preventDefault(); openExternal('https://www.github.com/mikjee'); }}>
+										<Text fontSize="13px" fontWeight="500">@mikjee</Text>
+									</Link>
 								</Text>
-								<Link href="https://www.github.com/mikjee" color="#3381ff" _hover={{ color: '#5b6af5', textDecoration: 'underline', cursor: 'pointer' }} onClick={(e) => { e.preventDefault(); openExternal('https://www.github.com/mikjee'); }}>
-								<Text fontSize="13px" fontWeight="500">@mikjee</Text>
-							</Link>
 							</HStack>
 						</VStack>
 					</Card>
@@ -38,7 +38,7 @@ export function AboutPage() {
 						<VStack gap="3" align="center">
 							<Text fontSize="14px" fontWeight="600" color="#e4e4e7">Copyright</Text>
 							<Text fontSize="12px" color="rgba(255, 255, 255, 0.5)">
-								Copyright © 2026. All rights reserved.
+								Copyright © 2026 mikjee. All rights reserved.
 							</Text>
 						</VStack>
 					</Card>
@@ -49,10 +49,7 @@ export function AboutPage() {
 							<Text fontSize="14px" fontWeight="600" color="#e4e4e7">Legal</Text>
 							<Flex gap="4" flexWrap="wrap" justifyContent="center">
 								<Link href="#" color="#3381ff" _hover={{ color: '#5b6af5', textDecoration: 'underline' }} fontSize="12px">
-									License Agreement
-								</Link>
-								<Link href="#" color="#3381ff" _hover={{ color: '#5b6af5', textDecoration: 'underline' }} fontSize="12px">
-									Privacy Policy
+									License Agreement - AGPL 3.0
 								</Link>
 							</Flex>
 						</VStack>
@@ -60,7 +57,7 @@ export function AboutPage() {
 
 					{/* Footer */}
 					<Text fontSize="11px" color="rgba(255, 255, 255, 0.2)" textAlign="center" mt="2">
-						Buy me a coffee	- 
+						Become a Sponsor 
 					</Text>
 				</VStack>
 			</Box>

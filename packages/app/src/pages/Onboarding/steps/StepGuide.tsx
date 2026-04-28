@@ -30,7 +30,7 @@ export function StepGuide({ goNext, goPrev, finishOnboarding }: IStepProps) {
 			</Box>
 
 			<Box flex="1" display="flex" alignItems="center" px="4" py="4" overflow="auto">
-				<Box w="100%">
+				<Box w="100%" h="100%">
 					<Text fontSize="14px" color="rgba(255, 255, 255, 0.45)" textAlign="center" mb="6">
 						A quick walkthrough of the key features
 					</Text>
