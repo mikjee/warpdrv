@@ -311,29 +311,6 @@ export const Shell = React.memo(() => {
 
 	installHook();
 
-	// Render pages based on closeOnSwitch config
-	const renderPages = () => {
-		return Object.entries(PAGE_REGISTRY).map(([path, config]) => {
-			const isActive = currentPath === path || (currentPath === '/' && path === '/servers');
-
-			if (!config.closeOnSwitch) {
-				// Persistent: always mounted, toggle visibility with display
-				return (
-					<Box key={path} display={isActive ? 'block' : 'none'} h="100%">
-						<config.component />
-					</Box>
-				);
-			}
-
-			// Non-persistent: only render when active (unmounts on switch)
-			if (isActive) {
-				return <config.component key={path} />;
-			}
-
-			return null;
-		});
-	};
-
 	return (
 		<Flex direction="column" h="100%" overflow="hidden">
 			<Flex flex="1" overflow="hidden">
@@ -352,7 +329,10 @@ export const Shell = React.memo(() => {
 					transition="all 0.2s ease"
 					zIndex={100}
 					boxShadow={"0px 0px 10px #050505"}
-
+					style={{
+						userSelect: 'none',
+						userDrag: 'none',
+					}}
 					className='drag'
 					onDoubleClick={handleDoubleClick}
 				>
@@ -388,7 +368,25 @@ export const Shell = React.memo(() => {
 				{/* Main content */}
 				<Box flex="1" overflow="auto" bg="#0e0e0e">
 					<UpdateBanner />
-					{renderPages()}
+					{Object.entries(PAGE_REGISTRY).map(([path, config]) => {
+						const isActive = currentPath === path || (currentPath === '/' && path === '/servers');
+
+						if (!config.closeOnSwitch) {
+							// Persistent: always mounted, toggle visibility with display
+							return (
+								<Box key={path} display={isActive ? 'block' : 'none'} h="100%">
+									<config.component />
+								</Box>
+							);
+						}
+
+						// Non-persistent: only render when active (unmounts on switch)
+						if (isActive) {
+							return <config.component key={path} />;
+						}
+
+						return null;
+					})}
 				</Box>
 			</Flex>
 		</Flex>

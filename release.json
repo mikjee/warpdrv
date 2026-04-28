@@ -1,6 +1,6 @@
 {
 	"version": "0.4.1",
-	"updateCheckUrl": "https://raw.githubusercontent.com/OWNER/warpcore/main/release.json",
-	"downloadUrl": "https://github.com/OWNER/warpcore/releases/latest",
+	"updateCheckUrl": "https://raw.githubusercontent.com/mikjee/warpdrv/main/release.json",
+	"downloadUrl": "https://github.com/mikjee/warpdrv/releases/latest",
 	"notes": ""
 }

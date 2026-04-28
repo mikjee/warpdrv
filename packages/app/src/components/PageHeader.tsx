@@ -86,7 +86,7 @@ export const PageHeader = React.memo(({ title, subtitle, icon, actions, actionsR
 			bg="#050505"
 			className='drag'
 			onDoubleClick={handleDoubleClick}
-			style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+			style={{ userSelect: 'none', WebkitUserSelect: 'none', userDrag: 'none' }}
 			boxShadow={"0px 0px 10px #050505"}
 		>
 			<HStack gap="4" ml="2">

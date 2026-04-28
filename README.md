@@ -6,7 +6,7 @@
 
 **LLMs + Server + Chat + More**
 
-😎 **100% Offline - Built for Local AI Master Race, Oh Yeahhh!** 😎
+😎 **Built for Local AI Master Race!** 😎
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Release](https://img.shields.io/github/v/release/mikjee/warpdrv?include_prereleases)](https://github.com/mikjee/warpdrv/releases)
@@ -129,7 +129,8 @@ chmod +x warpdrv-*.AppImage
 
 ### Windows
 
-No prebuilt installer yet. Build from source — see [For Developers](#for-developers).
+Download the latest `.msi` installer from the [releases page](https://github.com/mikjee/warpdrv/releases).
+> **Note: Recipes feature does not work on natively Windows as it relies on Bash scripts.**
 
 ### macOS
 
@@ -165,12 +166,9 @@ warpdrv checks for updates on startup and shows a banner if a new version is ava
 ## How-To Guides
 
 - **Adding a custom llama.cpp build** — TODO
-- **Setting up speculative decoding** — TODO
-- **Configuring MCP servers** — TODO
 - **Writing a build recipe** — TODO
 - **Multi-GPU setup (CUDA + Vulkan)** — TODO
-- **Using warpdrv as a server-only backend for other chat UIs** — TODO
-- **Accessing warpdrv UI remotely**
+- **Accessing warpdrv UI remotely** - TODO
 
 ---
 
@@ -211,7 +209,7 @@ Many server management apps bundle a fixed llama.cpp version and limits which mo
 No, but you can. warpdrv works with any standard `llama-server` binary. The Recipe Engine helps if you want to compile your own. Note: warpdrv does *not* ship with a llama binary, you have download one from the official github repo [LlaMa.cpp Releases](https://github.com/ggml-org/llama.cpp/releases).
 
 **Where is my data stored?**
-Linux: `~/.config/warpcore/` — chat database, settings, MCP config, recipes. Models stay wherever you put them; warpdrv only indexes them.
+Linux: `~/.config/warpcore/` — chat database, settings, MCP config, recipes. Models stay wherever you put them; warpdrv only indexes them. Your data never leaves your computer.
 
 **Can I use warpdrv commercially?**
 warpdrv is licensed under AGPL-3.0. If you offer it as a network service, you must publish your modifications under AGPL. For commercial licensing without AGPL obligations, join the Discord and PM the mods.
@@ -220,10 +218,16 @@ warpdrv is licensed under AGPL-3.0. If you offer it as a network service, you mu
 To keep the project genuinely open: derivatives stay open, including SaaS forks.
 
 **Does warpdrv send my data anywhere?**
-No telemetry, no analytics, no remote calls — except the version-check ping to fetch `release.json` from the GitHub repo on startup.
+No telemetry, no analytics, no remote calls — except the update-check ping to fetch `release.json` from the GitHub repo on startup.
 
 **Why is X feature broken?**
 Alpha software. File an issue with reproduction steps. Better yet, send a PR :)
+
+**Who made this app?**
+A combination of AIs and human effort by one software developer. AI used were local Qwen 3.5 27b, Qwen 3.5 27b, Qwen 3.6 35b, Claude Opus 4.6 for planning and skeletons. This app itself was used to host the local LLMs during development.
+
+**How long did this take to build**
+Approx. One week for MVP. One month for initial public release.
 
 ---
 

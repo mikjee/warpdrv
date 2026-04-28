@@ -39,7 +39,8 @@ export function StepModelFolders({ goNext, goPrev, finishOnboarding }: IStepProp
 			const mod = await import('@tauri-apps/plugin-dialog');
 			const path = await mod.open({ directory: true, multiple: false });
 			if (path && !modelRoots.includes(path)) {
-				setNewRoot(path);
+				setModelRoots([...modelRoots, path]);
+				setHasScanned(false);
 			}
 		} catch {
 			try {
