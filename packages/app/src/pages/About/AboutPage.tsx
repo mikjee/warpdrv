@@ -48,7 +48,7 @@ export function AboutPage() {
 						<VStack gap="3" align="center">
 							<Text fontSize="14px" fontWeight="600" color="#e4e4e7">Legal</Text>
 							<Flex gap="4" flexWrap="wrap" justifyContent="center">
-								<Link href="#" color="#3381ff" _hover={{ color: '#5b6af5', textDecoration: 'underline' }} fontSize="12px">
+								<Link href="https://raw.githubusercontent.com/mikjee/warpdrv/master/LICENSE" color="#3381ff" _hover={{ color: '#5b6af5', textDecoration: 'underline' }} fontSize="12px" onClick={(e) => { e.preventDefault(); openExternal('https://raw.githubusercontent.com/mikjee/warpdrv/master/LICENSE'); }}>
 									License Agreement - AGPL 3.0
 								</Link>
 							</Flex>
