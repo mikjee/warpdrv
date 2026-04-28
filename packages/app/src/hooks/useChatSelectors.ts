@@ -75,10 +75,18 @@ export function useDerivedMsgsForUI(
 						name: part.fileName,
 						file: new File([blob], part.fileName || 'attachment', { type: part.mimeType }),
 					});
-					return null;
+				} else {
+					// Non-image: render as file chip with FileText icon
+					attachments.push({
+						id: part.id,
+						type: 'file' as const,
+						content: [],
+						name: part.fileName,
+						contentType: part.mimeType,
+					});
 				}
 				return null;
-			}
+			} 
 			if (part.type === EMessagePartType.TOOL_CALL) {
 				const tc = tcMap.get(part.toolCallId);
 				if (tc) {

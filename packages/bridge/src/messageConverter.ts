@@ -67,10 +67,10 @@ export function convertMessagesToOpenAIFormat(
 						if (att.mimeType.startsWith('image/')) {
 							const dataUrl = att.data.startsWith('data:') ? att.data : `data:${att.mimeType};base64,${att.data}`;
 							contentArray.push({ type: 'image_url', image_url: { url: dataUrl } });
-						} else {
-							contentArray.push({ type: 'text', text: att.data });
+						} else if (att.extractedText) {
+							contentArray.push({ type: 'text', text: `--- ${att.fileName} ---\n${att.extractedText}` });
 						}
-					}
+					} 
 					
 					result.push({ role: 'user', content: contentArray });
 				}

@@ -24,6 +24,7 @@ import { ChatSidebar } from './ChatSidebar';
 import { buildMessageChain, useDerivedMsgsForUI } from '@/hooks/useChatSelectors';
 import { useThreadConfig } from '@/hooks/useThreadConfig';
 import { convertMessagesToOpenAIFormat } from '@warpcore/bridge';
+import { extractTextFromFile } from '@/hooks/useFileReader';
 import { useToast } from '../../components/ToastProvider';
 import { parseThreadMeta } from '@/pages/Chat/assistant-ui/ServerSelector';
 import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff } from 'react-icons/vsc';
@@ -245,23 +246,45 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 		
 		for (const att of attachments) {
 			if (att.file instanceof File) {
-				// Read file as base64
-				const base64 = await new Promise<string>((resolve, reject) => {
-					const reader = new FileReader();
-					reader.onload = () => resolve(reader.result as string);
-					reader.onerror = reject;
-					reader.readAsDataURL(att.file);
-				});
-				
-				attachmentParts.push({
-					id: att.id || crypto.randomUUID(),
-					type: 'attachment',
-					orderIndex: 0,
-					data: base64,
-					mimeType: att.file.type || 'application/octet-stream',
-					fileName: att.file.name,
-					fileSize: att.file.size,
-				});
+				const isImage = att.file.type.startsWith('image/');
+				if (isImage) {
+					// Image: store base64 for display + LLM
+					const base64 = await new Promise<string>((resolve, reject) => {
+						const reader = new FileReader();
+						reader.onload = () => resolve(reader.result as string);
+						reader.onerror = reject;
+						reader.readAsDataURL(att.file);
+					});
+					attachmentParts.push({
+						id: att.id || crypto.randomUUID(),
+						type: 'attachment',
+						orderIndex: 0,
+						data: base64,
+						mimeType: att.file.type || 'application/octet-stream',
+						fileName: att.file.name,
+						fileSize: att.file.size,
+					});
+				} else {
+					// Document: extract text, drop binary data
+					let extractedText = '';
+					try {
+						extractedText = await extractTextFromFile(att.file);
+					} catch (err) {
+						console.error('[onNew] failed to extract text from', att.file.name, err);
+					}
+					if (extractedText) {
+						attachmentParts.push({
+							id: att.id || crypto.randomUUID(),
+							type: 'attachment',
+							orderIndex: 0,
+							data: '',
+							mimeType: att.file.type || 'application/octet-stream',
+							fileName: att.file.name,
+							fileSize: att.file.size,
+							extractedText,
+						});
+					}
+				}
 			} else if (att.content) {
 				// Already converted attachment
 				const imagePart = att.content.find((p: any) => p.type === 'image');

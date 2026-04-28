@@ -95,7 +95,8 @@ function buildSchema(t: ReturnType<typeof buildTableNames>): string {
 			data TEXT,
 			mimeType TEXT,
 			fileName TEXT,
-			fileSize INTEGER
+			fileSize INTEGER,
+			extractedText TEXT
 		);
 		CREATE TABLE IF NOT EXISTS ${t.toolCalls} (
 			id TEXT PRIMARY KEY,
@@ -167,6 +168,7 @@ export class SqlitePersistence implements IPersistence {
 			{ name: 'mimeType', type: 'TEXT' },
 			{ name: 'fileName', type: 'TEXT' },
 			{ name: 'fileSize', type: 'INTEGER' },
+			{ name: 'extractedText', type: 'TEXT' },
 		];
 		for (const col of columnSchema) {
 			try {
@@ -372,9 +374,10 @@ export class SqlitePersistence implements IPersistence {
 		const mimeType = part.type === EMessagePartType.ATTACHMENT ? part.mimeType : null;
 		const fileName = part.type === EMessagePartType.ATTACHMENT ? part.fileName : null;
 		const fileSize = part.type === EMessagePartType.ATTACHMENT ? part.fileSize : null;
+		const extractedText = part.type === EMessagePartType.ATTACHMENT ? (part.extractedText ?? null) : null;
 		this.db!.prepare(
-			`INSERT INTO ${this.t.messageParts} (id, messageId, type, orderIndex, text, toolCallId, data, mimeType, fileName, fileSize) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-		).run(part.id, messageId, part.type, part.orderIndex, text, toolCallId, data, mimeType, fileName, fileSize);
+			`INSERT INTO ${this.t.messageParts} (id, messageId, type, orderIndex, text, toolCallId, data, mimeType, fileName, fileSize, extractedText) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		).run(part.id, messageId, part.type, part.orderIndex, text, toolCallId, data, mimeType, fileName, fileSize, extractedText);
 	}
 
 	private hydrateMessage(row: Record<string, unknown>): IChatMessage {
@@ -396,8 +399,9 @@ export class SqlitePersistence implements IPersistence {
 					mimeType: (p.mimeType as string) ?? '',
 					fileName: (p.fileName as string) ?? '',
 					fileSize: (p.fileSize as number) ?? 0,
+					extractedText: (p.extractedText as string) ?? undefined,
 				};
-			}
+			} 
 			return { id: p.id as string, type: EMessagePartType.TOOL_CALL, orderIndex: p.orderIndex as number, toolCallId: p.toolCallId as string };
 		});
 

@@ -112,7 +112,7 @@ const AttachmentThumb: FC = () => {
   const src = useAttachmentSrc();
 
   return (
-    <Avatar className="aui-attachment-tile-avatar h-full w-full rounded-none">
+    <Avatar className="aui-attachment-tile-avatar h-full w-full rounded-none after:rounded-none">
       <AvatarImage
         src={src}
         alt="Attachment preview"

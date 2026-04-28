@@ -24,6 +24,7 @@ import type {
 import { EChatRole, EMessagePartType, EToolCallStatus, EToolApprovalMode } from '../types';
 import { parseSSEBuffer, accumulateToolCallDelta, finalizeToolCalls, type IToolCallAccumulator } from '../parser';
 import { validateToolArgs, cleanSchema } from '../validation';
+import { convertMessagesToOpenAIFormat } from '../messageConverter';
 
 const MAX_PASSES = 10;
 
@@ -108,6 +109,7 @@ export class Orchestrator {
 			let parentForAssistant: string | null = request.parentId ?? null;
 
 			// If userMessage content provided, bridge generates ID and saves
+			let userMsg: IChatMessage | null = null;
 			if (request.userMessage) {
 				const userMessageId = crypto.randomUUID();
 				const content: IMessagePart[] = [{
@@ -127,16 +129,17 @@ export class Orchestrator {
 							mimeType: att.mimeType,
 							fileName: att.fileName,
 							fileSize: att.fileSize,
+							extractedText: att.extractedText,
 						});
 					}
-				}
+				} 
 				
 				const userActualTokens = content.reduce((acc, p) => {
 					if (p.type === EMessagePartType.TEXT || p.type === EMessagePartType.REASONING) return acc + (p.text ?? '').length;
 					if (p.type === EMessagePartType.ATTACHMENT) return acc + (p.data?.length ?? 0);
 					return acc;
 				}, 0);
-				const userMsg: IChatMessage = {
+				userMsg = {
 					id: userMessageId,
 					parentId: request.parentId ?? null,
 					threadId: request.threadId,
@@ -150,7 +153,6 @@ export class Orchestrator {
 				this.broadcaster.emit({ type: 'message.created', message: userMsg });
 				parentForAssistant = userMessageId;
 			}
-
 			const enabledTools = await this.permissions.getEnabledTools(this.mcpClient.getAllTools());
 			
 			// Build base messages for LLM context
@@ -164,29 +166,13 @@ export class Orchestrator {
 			// Add conversation history
 			baseMessages.push(...(request.messages as any[]));
 			
-			// Add the new user message if provided (critical for first message)
-			if (request.userMessage) {
-				const text = request.userMessage.content;
-				const newAttachments = request.attachments ?? [];
-				
-				if (newAttachments.length > 0) {
-					// Build multimodal content: text + image_url for each attachment
-					const contentParts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
-					if (text) contentParts.push({ type: 'text', text });
-					for (const att of newAttachments) {
-						const base64 = att.data.startsWith('data:') ? att.data.split(',')[1] : att.data;
-						contentParts.push({
-							type: 'image_url',
-							image_url: { url: `data:${att.mimeType};base64,${base64}` },
-						});
-					}
-					baseMessages.push({ role: 'user', content: contentParts });
-				} else {
-					baseMessages.push({ role: 'user', content: text });
-				}
+			// Add the new user message - use shared converter so attachment branching matches history conversion
+			if (userMsg) {
+				const converted = convertMessagesToOpenAIFormat([userMsg], {});
+				baseMessages.push(...(converted as any[]));
 			}
 
-			await this.executePass(
+			await this.executePass( 
 				inferenceUrl,
 				request,
 				parentForAssistant,

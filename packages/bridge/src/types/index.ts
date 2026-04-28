@@ -178,6 +178,7 @@ export interface IMessagePartAttachment extends IMessagePartBase {
 	mimeType: string;
 	fileName: string;
 	fileSize: number;
+	extractedText?: string;
 }
 
 export interface IMessagePartBase {

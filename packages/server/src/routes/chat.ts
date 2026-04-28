@@ -318,7 +318,7 @@ chatRouter.post('/completions', async (req, res) => {
 	// Fire and forget — return immediately, all updates flow via broadcaster
 	res.json({ ok: true, data: null, error: null });
 
-	orchestrator.handleCompletion(inferenceUrl, body, abortController.signal)
+	orchestrator.handleCompletion(inferenceUrl, body, abortController.signal) 
 		.catch(err => {
 			console.error('[Completions] orchestrator error:', err);
 		})
