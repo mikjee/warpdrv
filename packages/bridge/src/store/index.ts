@@ -9,6 +9,7 @@ import type {
 	IChatThread,
 	IChatMessage,
 	IToolCall,
+	IToolAttachment,
 	IMessagePatch,
 	TThreadId,
 	TMessageId,
@@ -68,6 +69,10 @@ export interface IChatStoreState {
 	currentInferenceParams: Record<string, unknown>;
 	tempThreadServerId: string | null;
 
+	// Attached tools (for active thread context)
+	attachAllTools: boolean;
+	attachedTools: IToolAttachment[];
+
 	// Actions
 	applyThreadCreated: (thread: IChatThread) => void;
 	applyThreadUpdated: (threadId: TThreadId, updates: IThreadPatch) => void;
@@ -91,6 +96,9 @@ export interface IChatStoreState {
 	setCurrentSystemPrompt: (prompt: string) => void;
 	setCurrentInferenceParams: (params: Record<string, unknown>) => void;
 	setTempThreadServerId: (id: string | null) => void;
+
+	// Attached tools actions
+	setAttachedTools: (attachAll: boolean, tools: IToolAttachment[]) => void;
 
 	// MCP Actions
 	setMcpServers: (servers: Record<string, IMcpServerState>) => void;
@@ -124,6 +132,8 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 		currentSystemPrompt: '',
 		currentInferenceParams: {} as Record<string, unknown>,
 		tempThreadServerId: null,
+		attachAllTools: false,
+		attachedTools: [] as IToolAttachment[],
 	};
 
 	return {
@@ -323,7 +333,7 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 
 				// Same partId - check time delta
 				const timeDelta = now - buffer.lastUpdate.getTime();
-				if (timeDelta <= 200) {
+				if (timeDelta <= 300) {
 					// Within 100ms - append to buffer
 					buffer.chunk += deltaText;
 				} else {
@@ -432,6 +442,13 @@ setActiveThread: (id: TThreadId | null) =>
 		setTempThreadServerId: (id: string | null) =>
 			set((draft) => {
 				draft.tempThreadServerId = id;
+			}),
+
+		// Attached tools actions
+		setAttachedTools: (attachAll: boolean, tools: IToolAttachment[]) =>
+			set((draft) => {
+				draft.attachAllTools = attachAll;
+				draft.attachedTools = tools;
 			}),
 
 		// MCP Actions

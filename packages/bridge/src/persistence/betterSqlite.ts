@@ -16,6 +16,7 @@ import type {
 	IChatMessage,
 	IMessagePart,
 	IToolCall,
+	IToolAttachment,
 	IServerPermission,
 	IToolPermission,
 	TFolderId,
@@ -48,6 +49,7 @@ function buildTableNames(prefix: string) {
 		toolCalls: `${prefix}tool_calls`,
 		serverPermissions: `${prefix}mcp_server_permissions`,
 		toolPermissions: `${prefix}mcp_tool_permissions`,
+		threadAttachedTools: `${prefix}thread_attached_tools`,
 	};
 }
 
@@ -121,6 +123,11 @@ function buildSchema(t: ReturnType<typeof buildTableNames>): string {
 			enabled INTEGER NOT NULL DEFAULT 1,
 			approvalMode TEXT NOT NULL DEFAULT 'ASK',
 			PRIMARY KEY (serverName, toolName)
+		);
+		CREATE TABLE IF NOT EXISTS ${t.threadAttachedTools} (
+			threadId TEXT PRIMARY KEY,
+			attachAllTools INTEGER NOT NULL DEFAULT 1,
+			tools TEXT NOT NULL DEFAULT '[]'
 		);
 		CREATE INDEX IF NOT EXISTS idx_${t.threads}_folder ON ${t.threads}(folderId);
 		CREATE INDEX IF NOT EXISTS idx_${t.threads}_updated ON ${t.threads}(updatedAt);
@@ -516,5 +523,26 @@ export class SqlitePersistence implements IPersistence {
 			enabled: r.enabled === 1,
 			approvalMode: r.approvalMode as EToolApprovalMode,
 		}));
+	}
+
+	// ============================================================
+	// Thread Attached Tools
+	// ============================================================
+	async saveThreadAttachedTools(threadId: TThreadId, attachAllTools: boolean, tools: IToolAttachment[]): Promise<void> {
+		this.db!.prepare(
+			`INSERT INTO ${this.t.threadAttachedTools} (threadId, attachAllTools, tools) VALUES (?, ?, ?)
+			 ON CONFLICT(threadId) DO UPDATE SET attachAllTools = excluded.attachAllTools, tools = excluded.tools`
+		).run(threadId, attachAllTools ? 1 : 0, JSON.stringify(tools));
+	}
+
+	async getThreadAttachedTools(threadId: TThreadId): Promise<{ attachAllTools: boolean; tools: IToolAttachment[] } | null> {
+		const row = this.db!.prepare(
+			`SELECT * FROM ${this.t.threadAttachedTools} WHERE threadId = ?`
+		).get(threadId) as { threadId: string; attachAllTools: number; tools: string } | undefined;
+		if (!row) return null;
+		return {
+			attachAllTools: row.attachAllTools === 1,
+			tools: JSON.parse(row.tools) as IToolAttachment[],
+		};
 	}
 }

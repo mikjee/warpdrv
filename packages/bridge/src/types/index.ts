@@ -290,6 +290,11 @@ export interface ICompletionUserMessage {
 	content: string;
 }
 
+export interface IToolAttachment {
+	serverName: string;
+	toolName: string;
+}
+
 export interface ICompletionRequest {
 	threadId: TThreadId;
 	userMessage?: ICompletionUserMessage;
@@ -302,6 +307,8 @@ export interface ICompletionRequest {
 	tools?: IOpenAITool[];
 	attachments?: IMessagePartAttachment[];
 	generateTitle?: boolean;
+	attachAllTools?: boolean;
+	attachedTools?: IToolAttachment[];
 }
 
 // ============================================================

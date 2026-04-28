@@ -10,7 +10,7 @@ import { TooltipIconButton } from "./tooltip-icon-button";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { api } from "@/api/client";
+import { VscTools } from "react-icons/vsc";
 import { Box, Image } from '@chakra-ui/react';
 import {
 	ActionBarMorePrimitive,
@@ -40,6 +40,7 @@ import {
 	PencilIcon,
 	RefreshCwIcon,
 	SendHorizonal,
+	Wrench,
 	SquareIcon,
 	Timer,
 	Trash2,
@@ -278,7 +279,7 @@ const ReasoningEffortToggle: FC = () => {
 	const label = isOn ? reasoningEffort : 'off';
 	const color = isOn
 		? reasoningEffort === EReasoningEffort.LOW
-			? '#1badd9'
+			? '#1bd987'
 			: reasoningEffort === EReasoningEffort.MEDIUM
 				? '#da980a'
 				: '#f83737'
@@ -291,7 +292,7 @@ const ReasoningEffortToggle: FC = () => {
 			ml="1"
 			borderRadius={"lg"}
 			borderWidth="1px"
-			borderColor="rgba(255,255,255,0.08)"
+			borderColor={isOn ? color : "rgba(255,255,255,0.08)"}
 			_hover={{ bg: 'rgba(255,255,255,0.05)' }}
 			color={color}
 			onClick={next}
@@ -300,6 +301,36 @@ const ReasoningEffortToggle: FC = () => {
 		>
 			<BrainCircuit className={`${isOn ? '' : 'opacity-40'}`} />
 			<span style={{ textTransform: "capitalize", fontSize: "12px" }}>{label}</span>
+		</IconButton>
+	);
+};
+
+const ToolsToggle: FC = () => {
+	const attachAllTools = useStore(s => s.attachAllTools);
+	const setAttachedTools = useStore(s => s.setAttachedTools);
+	const toggle = () => {
+		const next = !attachAllTools;
+		setAttachedTools(next, []);
+	};
+	const label = attachAllTools ? 'Tools' : 'Off';
+	const color = attachAllTools ? '#4aa1ff' : 'grey';
+	return (
+		<IconButton
+			variant="outline"
+			size="md"
+			px="3"
+			ml="1"
+			borderRadius={"lg"}
+			borderWidth="1px"
+			borderColor={attachAllTools ? color : "rgba(255,255,255,0.08)"}
+			_hover={{ bg: 'rgba(255,255,255,0.05)' }}
+			color={color}
+			onClick={toggle}
+			className="flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors hover:bg-accent"
+			title={`Tools: ${label} (click to toggle)`}
+		>
+			<VscTools className={`${attachAllTools ? '' : 'opacity-40'}`} />
+			<span style={{ fontSize: "12px" }}>{label}</span>
 		</IconButton>
 	);
 };
@@ -313,6 +344,7 @@ const ComposerAction: FC = () => {
 			<div className="flex items-center gap-1">
 				<ComposerAddAttachment />
 				<ReasoningEffortToggle />
+				<ToolsToggle />
 			</div>
 			<div className="flex items-center gap-2">
 				<ThreadServerSelector threadId={currentThreadId} />

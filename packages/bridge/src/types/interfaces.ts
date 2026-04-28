@@ -18,6 +18,7 @@ import type {
 	IMessagePart,
 	IToolCall,
 	IToolDefinition,
+	IToolAttachment,
 	IServerPermission,
 	IToolPermission,
 	IMcpServerState,
@@ -84,6 +85,10 @@ export interface IPersistence {
 	getToolPermission(serverName: string, toolName: string): Promise<IToolPermission | null>;
 	setToolPermission(serverName: string, toolName: string, enabled: boolean, approvalMode: EToolApprovalMode): Promise<void>;
 	getAllToolPermissions(): Promise<IToolPermission[]>;
+
+	// Thread attached tools
+	saveThreadAttachedTools(threadId: TThreadId, attachAllTools: boolean, tools: IToolAttachment[]): Promise<void>;
+	getThreadAttachedTools(threadId: TThreadId): Promise<{ attachAllTools: boolean; tools: IToolAttachment[] } | null>;
 }
 
 // ============================================================

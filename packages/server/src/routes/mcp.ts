@@ -188,3 +188,13 @@ mcpRouter.get('/tool-calls/thread/:threadId', async (req, res) => {
 		res.status(500).json({ ok: false, data: null, error: String(err) });
 	}
 });
+
+// Attached tools
+mcpRouter.get('/attached-tools/thread/:threadId', async (req, res) => {
+	try {
+		const attached = await persistence.getThreadAttachedTools(req.params.threadId);
+		res.json({ ok: true, data: attached, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});

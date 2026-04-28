@@ -102,6 +102,11 @@ export const useStore = create<AppState>()(
 					tempThreadServerId: bridge.tempThreadServerId,
 					setTempThreadServerId: bridge.setTempThreadServerId,
 
+					// Attached tools
+					attachAllTools: bridge.attachAllTools,
+					attachedTools: bridge.attachedTools,
+					setAttachedTools: bridge.setAttachedTools,
+
 					// Chat Folders
 					folders: [],
 					setFolders: (folders) => set(s => { s.folders = folders; }),

@@ -23,6 +23,7 @@ import { createContext } from 'react';
 import { ChatSidebar } from './ChatSidebar';
 import { buildMessageChain, useDerivedMsgsForUI } from '@/hooks/useChatSelectors';
 import { useThreadConfig } from '@/hooks/useThreadConfig';
+import { useThreadAttachedTools } from '@/hooks/useThreadAttachedTools';
 import { convertMessagesToOpenAIFormat } from '@warpcore/bridge';
 import { extractTextFromFile } from '@/hooks/useFileReader';
 import { useToast } from '../../components/ToastProvider';
@@ -133,6 +134,11 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 		currentSystemPrompt,
 		currentInferenceParams,
 	} = useThreadConfig(selectedPresetId);
+
+	// Load attached tools when thread changes
+	useThreadAttachedTools();
+	const attachAllTools = useStore(s => s.attachAllTools);
+	const attachedTools = useStore(s => s.attachedTools);
 
 	// Get threads for adapter
 	const threadsAPI = useThreadsAndFolders();
@@ -316,6 +322,8 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 			inferenceParams: currentInferenceParams,
 			presetId: selectedPresetId,
 			generateTitle,
+			attachAllTools,
+			attachedTools: attachAllTools ? undefined : attachedTools,
 		};
 		
 		if (attachmentParts.length > 0) {
@@ -327,7 +335,7 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(body),
 		});
-	}, [currentThreadId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, toolCallsById, currentServerId, isValidServer]);
+	}, [currentThreadId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, toolCallsById, currentServerId, isValidServer, attachAllTools, attachedTools]);
 
 	const onReload = useCallback(async (parentId: string | null) => {
 		if (!isValidServer || !parentId) return;
@@ -355,9 +363,11 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 				inferenceParams: currentInferenceParams,
 				presetId: selectedPresetId,
 				generateTitle,
+				attachAllTools,
+				attachedTools: attachAllTools ? undefined : attachedTools,
 			}),
 		});
-	}, [currentThreadId, currentSystemPrompt, currentInferenceParams, toolCallsById, currentServerId, isValidServer]);
+	}, [currentThreadId, currentSystemPrompt, currentInferenceParams, toolCallsById, currentServerId, isValidServer, attachAllTools, attachedTools]);
 
 	const onCancel = useCallback(async () => {
 		if (currentThreadId && isValidServer) {

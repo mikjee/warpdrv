@@ -4,6 +4,7 @@ export { type ImmerSet, type ImmerGet } from '@warpcore/bridge';
 import type {
 	IMcpServerState,
 	IToolPermission,
+	IToolAttachment,
 	IServerPermission as IMcpServerPermission,
 	IFolder,
 	IChatThread,
@@ -108,6 +109,11 @@ export interface AppState {
 	setCurrentInferenceParams: (params: Record<string, unknown>) => void;
 	tempThreadServerId: string | null;
 	setTempThreadServerId: (id: string | null) => void;
+
+	// Attached tools
+	attachAllTools: boolean;
+	attachedTools: IToolAttachment[];
+	setAttachedTools: (attachAll: boolean, tools: IToolAttachment[]) => void;
 
 	// Recipes
 	recipes: Record<TRecipeId, IRecipe>;

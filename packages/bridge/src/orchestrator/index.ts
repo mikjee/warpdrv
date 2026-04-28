@@ -13,6 +13,7 @@ import type { IMcpClient, IPermissions, IPersistence, IBridgeBroadcaster } from 
 import type {
 	ICompletionRequest,
 	IToolDefinition,
+	IToolAttachment,
 	IToolCall,
 	IOpenAITool,
 	IChatMessageStats,
@@ -153,7 +154,7 @@ export class Orchestrator {
 				this.broadcaster.emit({ type: 'message.created', message: userMsg });
 				parentForAssistant = userMessageId;
 			}
-			const enabledTools = await this.permissions.getEnabledTools(this.mcpClient.getAllTools());
+		const enabledTools = await this.resolveEnabledTools(request);
 			
 			// Build base messages for LLM context
 			let baseMessages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }> = [];
@@ -833,7 +834,7 @@ export class Orchestrator {
 
 		// All tool calls resolved — trigger next inference pass
 		// Rebuild conversation context from thread history
-		const enabledTools = await this.permissions.getEnabledTools(this.mcpClient.getAllTools());
+		const enabledTools = await this.resolveEnabledTools(request);
 		const baseMessages = request.systemPrompt
 			? [{ role: 'system' as const, content: request.systemPrompt }, ...request.messages, ...toolOpenAIMessages]
 			: [...request.messages, ...toolOpenAIMessages];
@@ -892,6 +893,35 @@ export class Orchestrator {
 			...(p.extraSamplingParams ? { ...p.extraSamplingParams } : {}),
 			...(p.stopSequences && p.stopSequences.length ? { stop: p.stopSequences } : {}),
 		};
+	}
+
+	private async resolveEnabledTools(request: ICompletionRequest): Promise<IToolDefinition[]> {
+		// Save to DB — convenience for UI reload only, doesn't affect filtering
+		if (request.attachAllTools !== undefined || request.attachedTools !== undefined) {
+			await this.persistence.saveThreadAttachedTools(
+				request.threadId,
+				request.attachAllTools ?? false,
+				request.attachedTools ?? []
+			);
+		}
+
+		// Filter — ONLY from request, no DB fallback
+		const attachAllTools = request.attachAllTools ?? false;
+		const attachedTools = request.attachedTools;
+		const allTools = this.mcpClient.getAllTools();
+
+		if (attachAllTools) {
+			return this.permissions.getEnabledTools(allTools);
+		}
+
+		if (attachedTools && attachedTools.length > 0) {
+			const filtered = allTools.filter(t =>
+				attachedTools.some(a => a.serverName === t.serverName && a.toolName === t.name)
+			);
+			return this.permissions.getEnabledTools(filtered);
+		}
+
+		return [];
 	}
 
 	private generateTitle(inferenceUrl: string, userContent: string): Promise<string> {
