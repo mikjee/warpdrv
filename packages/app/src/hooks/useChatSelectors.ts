@@ -131,10 +131,11 @@ export function useDerivedMsgsForUI(
 		};
 
 		// Set message status based on inference state AND pending tool calls
+		// Only the head (newest) assistant message gets "running" status; prior messages are "complete"
 		if (isAssistant) {
 			if (hasPendingToolCalls) {
 				(result as any).status = { type: 'requires-action' as const, reason: 'tool-calls' as const };
-			} else if (isRunning) {
+			} else if (isRunning && msg.id === headMessageId) {
 				(result as any).status = { type: 'running' as const };
 			} else {
 				(result as any).status = { type: 'complete' as const, reason: 'stop' as const };
@@ -142,7 +143,7 @@ export function useDerivedMsgsForUI(
 		}
 
 		return result;
-	}, [currentThreadId, toolCallsById, isRunning]);
+	}, [currentThreadId, toolCallsById, isRunning, headMessageId]);
 
 	const updateCachedMessage = useCallback((convertedMsg: ReturnType<typeof convertMessage>, isRunningChanged: boolean) => {
 		const id = convertedMsg.id;

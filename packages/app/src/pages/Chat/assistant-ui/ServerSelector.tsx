@@ -1,8 +1,8 @@
 import { Box, Text, HStack } from '@chakra-ui/react';
-import { ChevronDown } from 'lucide-react';
-import React, { useCallback, useMemo, useState } from 'react';
+import { ChevronDown, Eye } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStore } from '@/store';
-import { EServerStatus, TServerId } from '@warpcore/shared';
+import { EServerStatus, TServerId, IModel } from '@warpcore/shared';
 import { updateThread } from '@/api/services';
 import { useDependantState } from '@/hooks/useDependantState';
 
@@ -28,6 +28,16 @@ export const ThreadServerSelector = React.memo(({
 	threadId: string | null;
 }) => {
 	const [open, setOpen] = useState(false);
+	const [shake, setShake] = useState(false);
+
+	useEffect(() => {
+		const handler = () => {
+			setShake(true);
+			setTimeout(() => setShake(false), 450);
+		};
+		document.addEventListener('server-selector-shake', handler);
+		return () => document.removeEventListener('server-selector-shake', handler);
+	}, []);
 	const thread = useStore(s => s.currentThreadId ? s.threads[s.currentThreadId] : undefined);
 	const serversMap = useStore(s => s.servers);
 	const servers = useMemo(() => Object.values(serversMap).sort((a,b) => {
@@ -63,7 +73,7 @@ export const ThreadServerSelector = React.memo(({
 	}, [threadId]);
 
 	return (
-		<Box position="relative">
+		<Box position="relative" className={shake ? 'animate-[jiggle_0.4s_ease-in-out]' : ''}>
 			<HStack
 				gap="2"
 				p="2.5"
@@ -85,6 +95,7 @@ export const ThreadServerSelector = React.memo(({
 						<Text flex="1" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" fontSize="12px">
 							{displayServer.serverName}
 						</Text>
+						{displayServer.useMultiModal && <Eye size={12} color="#ecbf42" />}
 						<ChevronDown size={12} style={{ opacity: 0.4 }} />
 					</>
 				) : (
@@ -130,6 +141,7 @@ export const ThreadServerSelector = React.memo(({
 							<Text flex="1" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
 								{s.serverName}
 							</Text>
+							{s.useMultiModal && <Eye size={12} color="#ecbf42" />}
 						</HStack>
 					))}
 					{servers.length === 0 && (

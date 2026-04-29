@@ -119,3 +119,11 @@
     --sidebar-ring: oklch(0.556 0 0);
 }
 
+@keyframes jiggle {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px) rotate(-1deg); }
+    40% { transform: translateX(4px) rotate(1deg); }
+    60% { transform: translateX(-3px) rotate(-0.5deg); }
+    80% { transform: translateX(3px) rotate(0.5deg); }
+}
+

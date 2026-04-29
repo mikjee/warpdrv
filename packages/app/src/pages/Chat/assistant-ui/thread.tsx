@@ -62,12 +62,14 @@ interface IServerStatusContext {
 	currentServerId: string | null;
 	currentServerStatus: EServerStatus | null;
 	isValidServer: boolean;
+	supportsMultiModal: boolean;
 }
 
 export const ServerStatusContext = React.createContext<IServerStatusContext>({
 	currentServerId: null,
 	currentServerStatus: null,
 	isValidServer: false,
+	supportsMultiModal: false,
 });
 
 export const Thread: FC<{ 
@@ -82,8 +84,9 @@ export const Thread: FC<{
 	]);
 	const currentServerStatus = currentServer?.status || null;
 	const isValidServer = !!currentServerId && currentServer?.status === EServerStatus.RUNNING;
+	const supportsMultiModal = currentServer?.useMultiModal ?? false;
 	return (
-		<ServerStatusContext.Provider value={{ currentServerId, currentServerStatus, isValidServer }}>
+		<ServerStatusContext.Provider value={{ currentServerId, currentServerStatus, isValidServer, supportsMultiModal }}>
 			<ThreadPrimitive.Root
 			className="aui-root aui-thread-root @container flex h-full flex-col"
 			style={{
@@ -236,6 +239,7 @@ const Composer: FC = () => {
 	const handleSubmit = (e: React.FormEvent) => {
 		if (!isValidServer) {
 			e.preventDefault();
+			document.dispatchEvent(new CustomEvent('server-selector-shake'));
 		}
 	};
 	
@@ -336,13 +340,14 @@ const ToolsToggle: FC = () => {
 };
 
 const ComposerAction: FC = () => {
-	const { isValidServer } = useContext(ServerStatusContext);
+	const { isValidServer, supportsMultiModal } = useContext(ServerStatusContext);
 	const currentThreadId = useStore(s => s.currentThreadId);
+	const canAttach = isValidServer && supportsMultiModal;
 
 	return (
 		<div className="aui-composer-action-wrapper relative flex items-center justify-between">
 			<div className="flex items-center gap-1">
-				<ComposerAddAttachment />
+				<ComposerAddAttachment disabled={!canAttach} tooltip={canAttach ? "Add Attachment" : "Multimodal not supported"} />
 				<ReasoningEffortToggle />
 				<ToolsToggle />
 			</div>
@@ -448,9 +453,19 @@ function mapStatusFromPart(status: any): 'complete' | 'running' | 'requires-acti
 	return 'complete';
 }
 
+const LoadingDot: FC<{ status: { type: string } }> = ({ status }) => {
+	if (status?.type !== 'running') return null;
+	return (
+		<div className="flex items-center py-1">
+			<div className="size-2 rounded-full bg-white/80 animate-pulse" />
+		</div>
+	);
+};
+
 const componentsMap = {
 	 Text: () => <MarkdownText />,
 		Reasoning: () => <ReasoningBlock />,
+		Empty: LoadingDot,
 		tools: {
 			Fallback: ToolCallRenderer,
 		},
@@ -458,9 +473,11 @@ const componentsMap = {
 
 const AssistantMessage: FC = React.memo(() => {
 	const parts = useAuiState((s) => s.message.content);
+	const status = useAuiState((s) => s.message.status?.type);
 
 	// Skip rendering empty assistant messages (converted TOOL messages)
-	if (parts.length === 0) return null;
+	// BUT render if status is "running" so the loading indicator appears during prompt processing
+	if (parts.length === 0 && status !== 'running') return null;
 
 	return (
 		<MessagePrimitive.Root
