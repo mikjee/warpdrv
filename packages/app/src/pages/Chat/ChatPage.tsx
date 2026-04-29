@@ -90,6 +90,7 @@ export const BranchTokensContext = React.createContext(0);
 // ============================================================
 const emptyMsgs = {};
 const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: boolean }) => {
+	console.log("inner")
 	const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
 	const generateTitle = useStore(s => !s.settings.disableTitleGen);
 
@@ -143,7 +144,7 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 	// Get threads for adapter
 	const threadsAPI = useThreadsAndFolders();
 
-	function handlePresetSelect(presetId: string | null, preset: IChatPreset | null) {
+	const handlePresetSelect = useCallback((presetId: string | null, preset: IChatPreset | null) => {
 		setSelectedPresetId(presetId);
 		if (preset) {
 			handleParamsChange(preset.params as unknown as Record<string, unknown>);
@@ -152,7 +153,10 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 			handleParamsChange({ } as unknown as Record<string, unknown>);
 			handleSystemPromptChange('');
 		}
-	}
+	}, [
+		handleParamsChange,
+		handleSystemPromptChange,
+	]);
 
 	const chatConfigValue = useMemo(() => {
 		const setBoth = (updates: { reasoningEffort: EReasoningEffort; enableThinking: boolean }) => {
@@ -594,7 +598,7 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 	);
 });
 export const ChatPage = React.memo(() => {
-
+	
 	const title = useStore(s => s.currentThreadId ? s.threads[s.currentThreadId]?.title || "New Chat" : "New Chat");
 	const setCurrentThreadId = useStore(s => s.setCurrentThreadId);
 	const [threadsListCollapsed, setThreadsListCollapsed] = useState(false);
