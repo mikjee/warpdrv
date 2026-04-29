@@ -1,7 +1,6 @@
 import { ToolCallBlock } from '@/pages/Chat/assistant-ui/ToolCallBlock';
 import { useStore } from '@/store';
-import { EToolCallStatus, convertMessagesToOpenAIFormat } from '@warpcore/bridge';
-import { buildMessageChain } from '@/hooks/useChatSelectors';
+import { EToolCallStatus } from '@warpcore/bridge';
 import { useContext } from 'react';
 import { ServerStatusContext } from './thread';
 
@@ -21,19 +20,8 @@ export function ToolCallBlockWrapper({ toolCallId, toolName, serverName, args, r
 	const currentInferenceParams = useStore(s => s.currentInferenceParams);
 	const toolCall = useStore(s => s.toolCallsById[toolCallId]);
 
-	async function handleDecision(decision: 'approve' | 'deny') {
+	async function handleDecisionV2(decision: 'approve' | 'deny') {
 		if (!currentThreadId || !currentServerId) return;
-
-		// Build messages for the backend
-		const messagesForBackend = buildMessageChain(
-			useStore.getState(),
-			currentThreadId,
-			{ includeToolMessages: true }
-		);
-		const openAIMessages = convertMessagesToOpenAIFormat(
-			messagesForBackend,
-			useStore.getState().toolCallsById
-		);
 
 		const { decideMcpToolCall } = await import('@/api/mcpServices');
 		await decideMcpToolCall(
@@ -41,7 +29,6 @@ export function ToolCallBlockWrapper({ toolCallId, toolName, serverName, args, r
 			decision,
 			currentThreadId,
 			currentServerId,
-			openAIMessages,
 			currentSystemPrompt,
 			currentInferenceParams
 		);
@@ -66,7 +53,7 @@ export function ToolCallBlockWrapper({ toolCallId, toolName, serverName, args, r
 			arguments={JSON.stringify(args)}
 			result={result ? JSON.stringify(result) : undefined}
 			status={displayStatus}
-			onDecided={handleDecision}
+			onDecided={handleDecisionV2}
 		/>
 	);
 }

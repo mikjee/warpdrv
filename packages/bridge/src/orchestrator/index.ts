@@ -25,7 +25,7 @@ import type {
 import { EChatRole, EMessagePartType, EToolCallStatus, EToolApprovalMode } from '../types';
 import { parseSSEBuffer, accumulateToolCallDelta, finalizeToolCalls, type IToolCallAccumulator } from '../parser';
 import { validateToolArgs, cleanSchema } from '../validation';
-import { convertMessagesToOpenAIFormat } from '../messageConverter';
+import { convertMessagesToOpenAIFormat, mergeConsecutiveMessages } from '../messageConverter';
 
 const MAX_PASSES = 10;
 
@@ -165,7 +165,7 @@ export class Orchestrator {
 			}
 			
 			// Add conversation history
-			baseMessages.push(...(request.messages as any[]));
+			baseMessages.push(...((request.messages ?? []) as any[]));
 			
 			// Add the new user message - use shared converter so attachment branching matches history conversion
 			if (userMsg) {
@@ -203,6 +203,179 @@ export class Orchestrator {
 				});
 			} else {
 				console.error('[Orchestrator] handleCompletion error:', errorMsg);
+				this.broadcaster.emit({
+					type: 'inference.error',
+					threadId: request.threadId,
+					messageId: request.parentId ?? crypto.randomUUID(),
+					error: errorMsg,
+				});
+			}
+		}
+	}
+
+	// Walk parentId chain from a given message ID up to root, return root-to-leaf
+	private buildBranchChain(allMessages: IChatMessage[], fromMessageId: TMessageId | null | undefined): IChatMessage[] {
+		if (!fromMessageId) return [];
+		const msgMap = new Map<TMessageId, IChatMessage>();
+		for (const m of allMessages) msgMap.set(m.id, m);
+
+		const chain: IChatMessage[] = [];
+		let currentId: TMessageId | null | undefined = fromMessageId;
+		while (currentId) {
+			const msg = msgMap.get(currentId);
+			if (!msg) break;
+			chain.push(msg);
+			currentId = msg.parentId ?? undefined;
+		}
+		return chain.reverse();
+	}
+
+	// V2: builds message chain from persistence instead of receiving it from frontend
+	async handleCompletionV2(
+		inferenceUrl: string,
+		request: ICompletionRequest,
+		abortSignal: AbortSignal,
+	): Promise<void> {
+		try {
+			// Auto-create thread if needed
+			let thread = await this.persistence.getThread(request.threadId);
+			let isNewThread: boolean = false;
+			if (!thread) {
+				isNewThread = true;
+				const now = Date.now();
+				let title = 'New Chat';
+				if (request.userMessage) {
+					title = this.truncateTitle(request.userMessage.content);
+				}
+				thread = {
+					id: request.threadId,
+					title,
+					folderId: null,
+					systemPrompt: '',
+					meta: JSON.stringify({ serverId: request.serverId ?? null, tags: [] }),
+					totalPromptTokens: 0,
+					totalCompletionTokens: 0,
+					createdAt: now,
+					updatedAt: now,
+				};
+				await this.persistence.createThread(thread);
+				await this.persistence.setThreadConfig({
+					threadId: request.threadId,
+					presetId: request.presetId ?? null,
+					systemPrompt: request.systemPrompt ?? '',
+					params: JSON.stringify(request.inferenceParams ?? {}),
+				});
+				this.broadcaster.emit({ type: 'thread.created', thread });
+			}
+
+			// Stash inference URL for post-approval resume
+			threadInferenceUrls.set(request.threadId, inferenceUrl);
+
+			// Determine parent for the first assistant message
+			let parentForAssistant: string | null = request.parentId ?? null;
+
+			// If userMessage content provided, bridge generates ID and saves
+			let userMsg: IChatMessage | null = null;
+			if (request.userMessage) {
+				const userMessageId = crypto.randomUUID();
+				const content: IMessagePart[] = [{
+					id: crypto.randomUUID(),
+					type: EMessagePartType.TEXT,
+					orderIndex: 0,
+					text: request.userMessage.content,
+				}];
+
+				if (request.attachments?.length) {
+					for (const att of request.attachments) {
+						content.push({
+							id: crypto.randomUUID(),
+							type: EMessagePartType.ATTACHMENT,
+							orderIndex: content.length,
+							data: att.data,
+							mimeType: att.mimeType,
+							fileName: att.fileName,
+							fileSize: att.fileSize,
+							extractedText: att.extractedText,
+						});
+					}
+				}
+
+				const userActualTokens = content.reduce((acc, p) => {
+					if (p.type === EMessagePartType.TEXT || p.type === EMessagePartType.REASONING) return acc + (p.text ?? '').length;
+					if (p.type === EMessagePartType.ATTACHMENT) return acc + (p.data?.length ?? 0);
+					return acc;
+				}, 0);
+				userMsg = {
+					id: userMessageId,
+					parentId: request.parentId ?? null,
+					threadId: request.threadId,
+					role: EChatRole.USER,
+					content,
+					stats: { promptTokens: 0, completionTokens: 0, reasoningTokens: 0, actualTokens: Math.ceil(userActualTokens / 4) },
+					createdAt: Date.now(),
+				};
+				await this.persistence.createMessage(userMsg);
+				await this.persistence.incrementThreadTokens(request.threadId, userMsg.stats!.actualTokens ?? 0, 0);
+				this.broadcaster.emit({ type: 'message.created', message: userMsg });
+				parentForAssistant = userMessageId;
+			}
+			const enabledTools = await this.resolveEnabledTools(request);
+
+			// Build base messages for LLM context — V2: from persistence
+			let baseMessages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }> = [];
+
+			// Add system prompt if provided
+			if (request.systemPrompt) {
+				baseMessages.push({ role: 'system', content: request.systemPrompt });
+			}
+
+			// Load branch chain from persistence and convert to OpenAI format
+			const allMessages = await this.persistence.getMessages(request.threadId);
+			const allToolCalls = await this.persistence.getToolCallsForThread(request.threadId);
+			const toolCallsMap: Record<string, IToolCall> = {};
+			for (const tc of allToolCalls) toolCallsMap[tc.id] = tc;
+
+			const branchChain = this.buildBranchChain(allMessages, request.parentId ?? undefined);
+			const merged = mergeConsecutiveMessages(branchChain);
+			const openAIMessages = convertMessagesToOpenAIFormat(merged, toolCallsMap);
+			baseMessages.push(...(openAIMessages as any[]));
+
+			// Add the new user message
+			if (userMsg) {
+				const converted = convertMessagesToOpenAIFormat([userMsg], {});
+				baseMessages.push(...(converted as any[]));
+			}
+
+			await this.executePass(
+				inferenceUrl,
+				request,
+				parentForAssistant,
+				baseMessages,
+				enabledTools,
+				abortSignal,
+			);
+
+			// Fire title generation after response completes (fire-and-forget)
+			if (request.userMessage && !!request.generateTitle && isNewThread) {
+				this.generateTitle(inferenceUrl, request.userMessage.content)
+					.then(title => {
+						this.persistence.updateThread(request.threadId, { title });
+						this.broadcaster.emit({ type: 'thread.updated', threadId: request.threadId, updates: { title } });
+					})
+					.catch(() => {
+						// Title generation failed, keep truncated title
+					});
+			}
+		} catch (err) {
+			const errorMsg = err instanceof Error ? err.message : String(err);
+			if (abortSignal.aborted) {
+				this.broadcaster.emit({
+					type: 'inference.ended',
+					threadId: request.threadId,
+					messageId: request.parentId ?? crypto.randomUUID(),
+				});
+			} else {
+				console.error('[Orchestrator] handleCompletionV2 error:', errorMsg);
 				this.broadcaster.emit({
 					type: 'inference.error',
 					threadId: request.threadId,
@@ -836,8 +1009,135 @@ export class Orchestrator {
 		// Rebuild conversation context from thread history
 		const enabledTools = await this.resolveEnabledTools(request);
 		const baseMessages = request.systemPrompt
-			? [{ role: 'system' as const, content: request.systemPrompt }, ...request.messages, ...toolOpenAIMessages]
-			: [...request.messages, ...toolOpenAIMessages];
+			? [{ role: 'system' as const, content: request.systemPrompt }, ...(request.messages ?? []), ...toolOpenAIMessages]
+			: [...(request.messages ?? []), ...toolOpenAIMessages];
+
+		await this.executePass(
+			inferenceUrl,
+			request,
+			tc.messageId,
+			baseMessages,
+			enabledTools,
+			abortSignal,
+		);
+	}
+
+	// V2: builds message chain from persistence instead of receiving it from frontend
+	async resumeToolCallV2(
+		toolCallId: string,
+		decision: 'approve' | 'deny',
+		inferenceUrl: string,
+		request: ICompletionRequest,
+		abortSignal: AbortSignal,
+	): Promise<void> {
+		const tc = await this.persistence.getToolCall(toolCallId);
+		if (!tc) throw new Error('Tool call not found');
+		if (tc.status !== EToolCallStatus.PENDING) throw new Error(`Tool call is ${tc.status}, not PENDING`);
+
+		if (decision === 'deny') {
+			const deniedTc: IToolCall = {
+				...tc,
+				status: EToolCallStatus.DENIED,
+				result: JSON.stringify({ error: 'Tool call denied by user' }),
+				resolvedAt: Date.now(),
+			};
+			await this.persistence.updateToolCall(toolCallId, {
+				status: deniedTc.status,
+				result: deniedTc.result,
+				resolvedAt: deniedTc.resolvedAt,
+			});
+			this.broadcaster.emit({ type: 'tool_call.updated', toolCall: deniedTc });
+		} else {
+			const executingTc: IToolCall = { ...tc, status: EToolCallStatus.EXECUTING };
+			await this.persistence.updateToolCall(toolCallId, { status: EToolCallStatus.EXECUTING });
+			this.broadcaster.emit({ type: 'tool_call.updated', toolCall: executingTc });
+
+			try {
+				const args = JSON.parse(tc.arguments);
+				const mcpResult = await this.mcpClient.executeToolCall(tc.serverName, tc.toolName, args);
+				const resultStr = JSON.stringify(mcpResult.content);
+				const finalStatus = mcpResult.isError ? EToolCallStatus.ERROR : EToolCallStatus.COMPLETED;
+				const completedTc: IToolCall = {
+					...tc,
+					status: finalStatus,
+					result: resultStr,
+					error: mcpResult.isError ? resultStr : null,
+					resolvedAt: Date.now(),
+				};
+				await this.persistence.updateToolCall(toolCallId, {
+					status: finalStatus,
+					result: resultStr,
+					error: mcpResult.isError ? resultStr : null,
+					resolvedAt: completedTc.resolvedAt,
+				});
+				this.broadcaster.emit({ type: 'tool_call.updated', toolCall: completedTc });
+			} catch (err) {
+				const errorMsg = err instanceof Error ? err.message : String(err);
+				const erroredTc: IToolCall = {
+					...tc,
+					status: EToolCallStatus.ERROR,
+					error: errorMsg,
+					resolvedAt: Date.now(),
+				};
+				await this.persistence.updateToolCall(toolCallId, {
+					status: EToolCallStatus.ERROR,
+					error: errorMsg,
+					resolvedAt: erroredTc.resolvedAt,
+				});
+				this.broadcaster.emit({ type: 'tool_call.updated', toolCall: erroredTc });
+			}
+		}
+
+		// Check if any other tool calls in the same parent assistant message
+		// are still pending. If so, wait for them too.
+		const chainToolCallIds: string[] = [];
+		let cursorId: TMessageId | null = tc.messageId;
+		while (cursorId) {
+			const cursorMsg = await this.persistence.getMessage(cursorId);
+			if (!cursorMsg || cursorMsg.role !== EChatRole.TOOL) break;
+			const toolCallPart = cursorMsg.content.find(p => p.type === EMessagePartType.TOOL_CALL);
+			if (toolCallPart && 'toolCallId' in toolCallPart) {
+				chainToolCallIds.push(toolCallPart.toolCallId);
+			}
+			cursorId = cursorMsg.parentId;
+		}
+
+		const allInChain = await Promise.all(
+			chainToolCallIds.map(id => this.persistence.getToolCall(id))
+		);
+		const stillBlocking = allInChain.some(t =>
+			t && (t.status === EToolCallStatus.PENDING || t.status === EToolCallStatus.EXECUTING || t.status === EToolCallStatus.DENIED)
+		);
+		if (stillBlocking) return;
+
+		// Convert resolved tool calls to OpenAI format and append to messages
+		const toolOpenAIMessages = allInChain
+			.filter((tc): tc is IToolCall => tc !== null)
+			.map(tc => ({
+				role: 'tool' as const,
+				content: tc.result ?? JSON.stringify({ error: tc.error }),
+				tool_call_id: tc.id,
+			}));
+
+		// All tool calls resolved — trigger next inference pass
+		// V2: build conversation context from persistence
+		const enabledTools = await this.resolveEnabledTools(request);
+
+		const allMessages = await this.persistence.getMessages(request.threadId);
+		const allToolCalls = await this.persistence.getToolCallsForThread(request.threadId);
+		const toolCallsMap: Record<string, IToolCall> = {};
+		for (const t of allToolCalls) toolCallsMap[t.id] = t;
+
+		const branchChain = this.buildBranchChain(allMessages, tc.messageId);
+		const merged = mergeConsecutiveMessages(branchChain);
+		const openAIMessages = convertMessagesToOpenAIFormat(merged, toolCallsMap);
+
+		const baseMessages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>; tool_call_id?: string }> = [];
+		if (request.systemPrompt) {
+			baseMessages.push({ role: 'system', content: request.systemPrompt });
+		}
+		baseMessages.push(...(openAIMessages as any[]));
+		baseMessages.push(...(toolOpenAIMessages as any[]));
 
 		await this.executePass(
 			inferenceUrl,

@@ -297,7 +297,7 @@ chatRouter.put('/threads/:id/config', async (req, res) => {
 
 chatRouter.post('/completions', async (req, res) => {
 	const body = req.body as any;
-	if (!body.threadId || !Array.isArray(body.messages)) {
+	if (!body.threadId) {
 		res.status(400).json({ ok: false, data: null, error: 'Missing required fields' });
 		return;
 	}
@@ -318,7 +318,7 @@ chatRouter.post('/completions', async (req, res) => {
 	// Fire and forget — return immediately, all updates flow via broadcaster
 	res.json({ ok: true, data: null, error: null });
 
-	orchestrator.handleCompletion(inferenceUrl, body, abortController.signal) 
+	orchestrator.handleCompletionV2(inferenceUrl, body, abortController.signal)
 		.catch(err => {
 			console.error('[Completions] orchestrator error:', err);
 		})
@@ -436,11 +436,10 @@ chatRouter.put('/folders/reorder', async (req, res) => {
 });
 
 chatRouter.post('/tool-calls/:id/resume', async (req, res) => {
-	const { decision, threadId, serverId, messages, systemPrompt, inferenceParams } = req.body as {
+	const { decision, threadId, serverId, systemPrompt, inferenceParams } = req.body as {
 		decision: 'approve' | 'deny';
 		threadId: string;
 		serverId: string;
-		messages: Array<{ role: string; content: string }>;
 		systemPrompt?: string;
 		inferenceParams: Record<string, unknown>;
 	};
@@ -465,7 +464,6 @@ chatRouter.post('/tool-calls/:id/resume', async (req, res) => {
 	const completionRequest: ICompletionRequest = {
 		threadId,
 		serverId,
-		messages,
 		systemPrompt,
 		inferenceParams: inferenceParams as any,
 	};
@@ -479,7 +477,7 @@ chatRouter.post('/tool-calls/:id/resume', async (req, res) => {
 	// Fire-and-forget — return immediately, all updates flow via broadcaster
 	res.json({ ok: true, data: null, error: null });
 
-	orchestrator.resumeToolCall(req.params.id, decision, inferenceUrl, completionRequest, abortController.signal)
+	orchestrator.resumeToolCallV2(req.params.id, decision, inferenceUrl, completionRequest, abortController.signal)
 		.catch(err => {
 			console.error('[Resume] orchestrator error:', err);
 		})

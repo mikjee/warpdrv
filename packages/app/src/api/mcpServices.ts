@@ -122,9 +122,9 @@ export function decideMcpToolCall(
 	decision: 'approve' | 'deny',
 	threadId: string,
 	serverId: string,
-	messages?: TOpenAIMessage[],
 	systemPrompt?: string,
 	inferenceParams?: Record<string, unknown>,
+	messages?: TOpenAIMessage[],
 ) {
 	return json<null>(`/api/chat/tool-calls/${toolCallId}/resume`, {
 		method: 'POST',
@@ -132,9 +132,9 @@ export function decideMcpToolCall(
 			decision,
 			threadId,
 			serverId,
-			messages,
 			systemPrompt,
 			inferenceParams,
+			...(messages ? { messages } : {}),
 		}),
 	});
 }

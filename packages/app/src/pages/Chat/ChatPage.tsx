@@ -369,6 +369,124 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 		});
 	}, [currentThreadId, currentSystemPrompt, currentInferenceParams, toolCallsById, currentServerId, isValidServer, attachAllTools, attachedTools]);
 
+	// V2: no message chain sent to backend — backend builds from persistence
+	const onNewV2 = useCallback(async (message: any) => {
+		if (!isValidServer) return;
+		const text = (message.content as any[]).filter((p: any) => p.type === 'text').map((p: any) => p.text).join('');
+
+		// Generate new thread ID if none exists - orchestrator will auto-create the thread
+		const threadId = currentThreadId ?? globalThis.crypto.randomUUID();
+		if (!currentThreadId) {
+			setCurrentThreadId(threadId);
+		}
+
+		// Process attachments - convert File objects to base64
+		const attachments = message.attachments || [];
+		const attachmentParts: any[] = [];
+
+		for (const att of attachments) {
+			if (att.file instanceof File) {
+				const isImage = att.file.type.startsWith('image/');
+				if (isImage) {
+					const base64 = await new Promise<string>((resolve, reject) => {
+						const reader = new FileReader();
+						reader.onload = () => resolve(reader.result as string);
+						reader.onerror = reject;
+						reader.readAsDataURL(att.file);
+					});
+					attachmentParts.push({
+						id: att.id || crypto.randomUUID(),
+						type: 'attachment',
+						orderIndex: 0,
+						data: base64,
+						mimeType: att.file.type || 'application/octet-stream',
+						fileName: att.file.name,
+						fileSize: att.file.size,
+					});
+				} else {
+					let extractedText = '';
+					try {
+						extractedText = await extractTextFromFile(att.file);
+					} catch (err) {
+						console.error('[onNewV2] failed to extract text from', att.file.name, err);
+					}
+					if (extractedText) {
+						attachmentParts.push({
+							id: att.id || crypto.randomUUID(),
+							type: 'attachment',
+							orderIndex: 0,
+							data: '',
+							mimeType: att.file.type || 'application/octet-stream',
+							fileName: att.file.name,
+							fileSize: att.file.size,
+							extractedText,
+						});
+					}
+				}
+			} else if (att.content) {
+				const imagePart = att.content.find((p: any) => p.type === 'image');
+				if (imagePart) {
+					const base64 = imagePart.image.startsWith('data:')
+						? imagePart.image.split(',')[1]
+						: imagePart.image;
+					attachmentParts.push({
+						id: att.id || crypto.randomUUID(),
+						type: 'attachment',
+						orderIndex: 0,
+						data: base64,
+						mimeType: att.contentType || 'image/*',
+						fileName: att.name,
+						fileSize: 0,
+					});
+				}
+			}
+		}
+
+		const body: any = {
+			threadId,
+			userMessage: { content: text },
+			parentId: headMessageId,
+			serverId: currentServerId,
+			systemPrompt: currentSystemPrompt,
+			inferenceParams: currentInferenceParams,
+			presetId: selectedPresetId,
+			generateTitle,
+			attachAllTools,
+			attachedTools: attachAllTools ? undefined : attachedTools,
+		};
+
+		if (attachmentParts.length > 0) {
+			body.attachments = attachmentParts;
+		}
+
+		await fetch('/api/chat/completions', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(body),
+		});
+	}, [currentThreadId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, currentServerId, isValidServer, attachAllTools, attachedTools]);
+
+	const onReloadV2 = useCallback(async (parentId: string | null) => {
+		if (!isValidServer || !parentId) return;
+		if (!currentThreadId) return;
+
+		await fetch('/api/chat/completions', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				threadId: currentThreadId,
+				parentId,
+				serverId: currentServerId,
+				systemPrompt: currentSystemPrompt,
+				inferenceParams: currentInferenceParams,
+				presetId: selectedPresetId,
+				generateTitle,
+				attachAllTools,
+				attachedTools: attachAllTools ? undefined : attachedTools,
+			}),
+		});
+	}, [currentThreadId, currentSystemPrompt, currentInferenceParams, currentServerId, isValidServer, attachAllTools, attachedTools]);
+
 	const onCancel = useCallback(async () => {
 		if (currentThreadId && isValidServer) {
 			await fetch(`/api/chat/cancel/${currentThreadId}`, { method: 'POST' });
@@ -404,9 +522,9 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 	const runtime = useExternalStoreRuntime<ThreadMessage>({
 		messageRepository: msgRepo,
 		isRunning,
-		onNew,
+		onNew: onNewV2,
 		onEdit,
-		onReload,
+		onReload: onReloadV2,
 		onCancel,
 		// Called by assistant-ui when messages update (including branch switches)
 		setMessages: (newMessages: any) => {
