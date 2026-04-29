@@ -476,7 +476,7 @@ const AssistantMessage: FC = React.memo(() => {
 
 			<div className="aui-assistant-message-footer mt-1 ml-2 flex min-h-6 items-center gap-1">
 				 <StatsTooltip />
-				 <BranchPickerWrapper />
+				 <BranchPicker />
 				 <AssistantActionBar />
 			 </div>
 		 </MessagePrimitive.Root>
@@ -548,7 +548,6 @@ const AssistantActionBar: FC = () => {
 	
 	return (
 		<ActionBarPrimitive.Root
-			hideWhenRunning
 			className="aui-assistant-action-bar-root col-start-3 row-start-2 -ml-1"
 			style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
 		>
@@ -634,11 +633,11 @@ const EditComposer: FC = () => {
 	);
 };
 
-const BranchPickerWrapper: FC = () => {
-	const { isValidServer } = useContext(ServerStatusContext);
-	if (!isValidServer) return null;
-	return <BranchPicker />;
-};
+// const BranchPickerWrapper: FC = () => {
+// 	const { isValidServer } = useContext(ServerStatusContext);
+// 	if (!isValidServer) return null;
+// 	return <BranchPicker />;
+// };
 
 const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({
 	className,
