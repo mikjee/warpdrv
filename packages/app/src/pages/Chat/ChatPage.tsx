@@ -90,7 +90,6 @@ export const BranchTokensContext = React.createContext(0);
 // ============================================================
 const emptyMsgs = {};
 const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: boolean }) => {
-	console.log("inner")
 	const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
 	const generateTitle = useStore(s => !s.settings.disableTitleGen);
 

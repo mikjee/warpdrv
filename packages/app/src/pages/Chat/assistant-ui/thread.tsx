@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { VscTools } from "react-icons/vsc";
-import { Box, Image } from '@chakra-ui/react';
+import { Box, Image, Popover, Switch, AccordionRoot, AccordionItem as AccordionItemComp, AccordionItemTrigger, AccordionItemContent, HStack, VStack, Text } from '@chakra-ui/react';
 import {
 	ActionBarMorePrimitive,
 	ActionBarPrimitive,
@@ -53,6 +53,7 @@ import { deleteMessage } from "@/api/services";
 import { useMessageTiming } from "@assistant-ui/react";
 import { BrainCircuitIcon, ClockIcon } from "lucide-react";
 import { EReasoningEffort, EServerStatus, TServerId } from "@warpcore/shared";
+import { EMcpServerStatus, IToolAttachment } from "@warpcore/bridge";
 import { encodingForModel } from 'js-tiktoken';
 import { IconButton } from '@chakra-ui/react';
 
@@ -309,7 +310,7 @@ const ReasoningEffortToggle: FC = () => {
 	);
 };
 
-const ToolsToggle: FC = () => {
+const ToolsToggle: FC = React.memo(() => {
 	const attachAllTools = useStore(s => s.attachAllTools);
 	const setAttachedTools = useStore(s => s.setAttachedTools);
 	const toggle = () => {
@@ -337,7 +338,157 @@ const ToolsToggle: FC = () => {
 			<span style={{ fontSize: "12px" }}>{label}</span>
 		</IconButton>
 	);
-};
+});
+
+const ToolsSelector: FC = React.memo(() => {
+	const attachAllTools = useStore(s => s.attachAllTools);
+	const attachedTools = useStore(s => s.attachedTools);
+	const setAttachedTools = useStore(s => s.setAttachedTools);
+	const mcpServers = useStore(s => s.mcpServers);
+
+	const connectedServers = useMemo(() => {
+		const entries = Object.entries(mcpServers).filter(([, state]) => state.status === EMcpServerStatus.CONNECTED);
+		return entries as [string, { status: EMcpServerStatus; tools: { name: string; description: string; serverName: string }[] }][];
+	}, [mcpServers]);
+
+	const totalCount = useMemo(() => connectedServers.reduce((sum, [, s]) => sum + s.tools.length, 0), [connectedServers]);
+
+	const color = (attachAllTools || attachedTools.length > 0) ? '#4aa1ff' : 'grey';
+	const label = attachAllTools ? 'All Tools' : attachedTools.length > 0 ? `${String(attachedTools.length)} Tool(s)` : 'Off';
+
+	const handleAllToolsChange = useCallback((checked: boolean) => {
+		if (checked) {
+			setAttachedTools(true, []);
+		} else {
+			setAttachedTools(false, attachedTools);
+		}
+	}, [attachedTools]);
+
+	const handleToolChange = useCallback((serverName: string, toolName: string, checked: boolean) => {
+		if (attachAllTools) return;
+		const tool: IToolAttachment = { serverName, toolName };
+		let next: IToolAttachment[];
+		if (checked) {
+			next = [...attachedTools, tool];
+		} else {
+			next = attachedTools.filter(t => !(t.serverName === serverName && t.toolName === toolName));
+		}
+		setAttachedTools(false, next);
+	}, [
+		attachAllTools,
+		attachedTools
+	]);
+
+	return (
+		<Popover.Root lazyMount unmountOnExit>
+			<Popover.Trigger unstyled asChild>
+				<IconButton
+					variant="outline"
+					size="md"
+					px="3"
+					ml="1"
+					borderRadius={"lg"}
+					borderWidth="1px"
+					borderColor={(attachAllTools || attachedTools.length > 0) ? color : "rgba(255,255,255,0.08)"}
+					_hover={{ bg: 'rgba(255,255,255,0.05)' }}
+					color={color}
+					className="flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors hover:bg-accent"
+					title={`Tools: ${label}`}
+				>
+					<VscTools className={`${(attachAllTools || attachedTools.length > 0) ? '' : 'opacity-40'}`} />
+					<span style={{ fontSize: "12px" }}>{label}</span>
+				</IconButton>
+			</Popover.Trigger>
+			<Popover.Positioner>
+				<Popover.Content
+					w="280px"
+					maxH="70vh"
+					overflow="auto"
+					bg="#18181b"
+					borderWidth="1px"
+					borderColor="rgba(255,255,255,0.1)"
+					borderRadius="lg"
+					shadow="0 8px 32px rgba(0, 0, 0, 0.5)"
+				>
+					<Popover.Body p="3">
+						{totalCount === 0 ? (
+							<Text fontSize="12px" color="rgba(255,255,255,0.3)" textAlign="center" py="4">No tools available</Text>
+						) : (
+							<VStack gap="3" align="stretch">
+								<HStack gap="2">
+									<Switch.Root
+										label="All tools"
+										checked={attachAllTools}
+										onCheckedChange={(details) => handleAllToolsChange(details.checked)}
+									>
+										<Switch.HiddenInput />
+										<Switch.Control css={{ bg: attachAllTools ? '#4aa1ff' : 'rgba(255,255,255,0.1)' }}>
+											<Switch.Thumb css={{ bg: '#18181b' }} />
+										</Switch.Control>
+										<Switch.Label ml="2" fontSize="12px" color={attachAllTools ? '#4aa1ff' : 'rgba(255,255,255,0.5)'} userSelect="none">
+											All tools
+										</Switch.Label>
+									</Switch.Root>
+								</HStack>
+								<AccordionRoot collapsible defaultValue={[]}>
+									{connectedServers.map(([serverName, state]) => (
+										<AccordionItemComp key={serverName} value={serverName}>
+											<AccordionItemTrigger
+												style={{
+													padding: '8px',
+													borderRadius: '6px',
+													background: 'rgba(255,255,255,0.03)',
+													border: 'none',
+													cursor: 'pointer',
+													display: 'flex',
+													justifyContent: 'space-between',
+													alignItems: 'center',
+													width: '100%',
+												}}
+											>
+												<Text fontSize="11px" fontWeight="600" color="rgba(255,255,255,0.5)" textTransform="uppercase" letterSpacing="0.05em">
+													{serverName}
+												</Text>
+												<Text fontSize="10px" color="rgba(255,255,255,0.3)">{state.tools.length}</Text>
+											</AccordionItemTrigger>
+											<AccordionItemContent pt="1" pb="2" px="2">
+												<VStack gap="1.5" align="stretch">
+													{state.tools.map(tool => {
+														const isSelected = attachAllTools || attachedTools.some(t => t.serverName === serverName && t.toolName === tool.name);
+														return (
+															<HStack key={tool.name} gap="2" opacity={attachAllTools ? 0.4 : 1}>
+																<Switch.Root
+																	label={tool.name}
+																	checked={isSelected}
+																	disabled={attachAllTools}
+																	onCheckedChange={(details) => {
+																		if (!attachAllTools) handleToolChange(serverName, tool.name, details.checked);
+																	}}
+																>
+																	<Switch.HiddenInput />
+																	<Switch.Control css={{ bg: isSelected && !attachAllTools ? '#4aa1ff' : 'rgba(255,255,255,0.1)' }}>
+																		<Switch.Thumb css={{ bg: '#18181b'}} />
+																	</Switch.Control>
+																	<Switch.Label ml="0" fontSize="12px" color={isSelected ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.4)'} userSelect="none">
+																		{tool.name}
+																	</Switch.Label>
+																</Switch.Root>
+															</HStack>
+														);
+													})}
+												</VStack>
+											</AccordionItemContent>
+										</AccordionItemComp>
+									))}
+								</AccordionRoot>
+							</VStack>
+						)}
+					</Popover.Body>
+				</Popover.Content>
+			</Popover.Positioner>
+		</Popover.Root>
+	);
+});
 
 const ComposerAction: FC = () => {
 	const { isValidServer, supportsMultiModal } = useContext(ServerStatusContext);
@@ -349,7 +500,8 @@ const ComposerAction: FC = () => {
 			<div className="flex items-center gap-1">
 				<ComposerAddAttachment disabled={!canAttach} tooltip={canAttach ? "Add Attachment" : "Multimodal not supported"} />
 				<ReasoningEffortToggle />
-				<ToolsToggle />
+				{/* <ToolsToggle /> */}
+				<ToolsSelector />
 			</div>
 			<div className="flex items-center gap-2">
 				<ThreadServerSelector threadId={currentThreadId} />

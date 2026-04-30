@@ -154,7 +154,7 @@ export class Orchestrator {
 				this.broadcaster.emit({ type: 'message.created', message: userMsg });
 				parentForAssistant = userMessageId;
 			}
-		const enabledTools = await this.resolveEnabledTools(request);
+			const enabledTools = await this.resolveEnabledTools(request);
 			
 			// Build base messages for LLM context
 			let baseMessages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }> = [];
