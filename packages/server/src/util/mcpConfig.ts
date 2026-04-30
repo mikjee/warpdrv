@@ -8,7 +8,7 @@ import path from 'path';
 import os from 'os';
 import type { IMcpConfigFile, IMcpServerEntry } from '@warpcore/shared';
 
-function getDataDir(): string {
+export function getDataDir(): string {
 	const platform = os.platform();
 	if (platform === 'win32') return path.join(os.homedir(), 'AppData', 'Roaming', 'warpcore');
 	if (platform === 'darwin') return path.join(os.homedir(), 'Library', 'Application Support', 'warpcore');

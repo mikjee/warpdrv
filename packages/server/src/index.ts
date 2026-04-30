@@ -84,7 +84,8 @@ async function main() {
 	await reconcileServers();
 
 	// Initialize bridge persistence
-	const dataDir = path.join(os.homedir(), '.config', 'warpcore');
+	const { getDataDir } = await import('./util/mcpConfig');
+	const dataDir = getDataDir();
 	persistence = new SqlitePersistence(path.join(dataDir, 'chat.db'));
 	await persistence.init();
 
