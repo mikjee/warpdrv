@@ -11,7 +11,7 @@ export function AboutPage() {
 				title="warpdrv"
 				icon={<Github size={20} />}
 			/>
-			<Box p="4" display="flex" justifyContent="center" alignItems="center" minH="calc(100vh - 100px)" overflow="auto">
+			<Box pt="76px" px="4" pb="4" display="flex" justifyContent="center" alignItems="center" minH="calc(100vh - 100px)" overflow="auto">
 				<VStack align="center" gap="6" w="full" maxW="480px">
 					{/* Logo */}
 					<Box textAlign="center" py="4">

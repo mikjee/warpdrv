@@ -265,7 +265,7 @@ export function BackendsPage() {
 				}
 			/>
 
-			<Box p="4">
+			<Box pt="76px" px="4" pb="4">
 				<VStack align="stretch" gap="4">
 				{/* Backends Section */}
 				<Box borderWidth="1px" borderColor="rgba(255,255,255,0.06)" borderRadius="xl" bg="rgba(255,255,255,0.015)" overflow="hidden">

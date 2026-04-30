@@ -119,7 +119,7 @@ export const Thread: FC<{
 				)}
 
 				{!isLoading && (
-					<div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,#0e0e0e_35%,#0e0e0e_100%)]">
+					<div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,#131313_35%,#131313_100%)]">
 						<ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer w-full max-w-(--thread-max-width) flex flex-col gap-4 overflow-visible">
 							<ThreadScrollToBottom />
 							<Composer />
@@ -251,8 +251,8 @@ const Composer: FC = () => {
 					data-slot="composer-shell"
 					className="flex w-full flex-col gap-2 rounded-xl border p-(--composer-padding) transition-shadow focus-within:border-ring/75 focus-within:ring-2 focus-within:ring-ring/20 data-[dragging=true]:border-ring data-[dragging=true]:border-dashed data-[dragging=true]:bg-accent/50"
 					style={{
-						background: "#111",
-						boxShadow: "0px 10px 10px 10px rgba(0,0,0,0.15)"
+						background: "#181818",
+						boxShadow: "0px 10px 10px 10px rgba(0,0,0,0.15)",
 					}}
 				>
 					<ComposerAttachments />
@@ -782,7 +782,7 @@ const UserActionBar: FC = () => {
 const EditComposer: FC = () => {
 	return (
 		<MessagePrimitive.Root className="aui-edit-composer-wrapper mx-auto flex w-full flex-col px-2 py-3">
-			<ComposerPrimitive.Root className="aui-edit-composer-root ml-auto flex w-full max-w-[85%] flex-col bg-muted">
+			<ComposerPrimitive.Root className="aui-edit-composer-root ml-auto flex w-full max-w-[85%] flex-col bg-muted" >
 				<ComposerPrimitive.Input
 					className="aui-edit-composer-input min-h-14 w-full resize-none bg-transparent p-4 text-foreground text-sm outline-none rounded-sm"
 					autoFocus

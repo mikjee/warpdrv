@@ -264,7 +264,7 @@ export const ServersPage = React.memo(() => {
 				}
 			/>
 
-			<Box p="4">
+			<Box pt="76px" px="4" pb="4">
 				{filteredServers.length === 0 ? (
 					<Flex
 						h="300px" alignItems="center" justifyContent="center"

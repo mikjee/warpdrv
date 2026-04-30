@@ -221,7 +221,7 @@ export function HubPage() {
 			/>
 
 			{/* Results + Detail */}
-			<Flex h="calc(100vh - 75px)" borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" overflow="hidden">
+			<Flex pt="60px" h="calc(100vh - 10px)" borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" overflow="hidden">
 				<Box w="400px" minW="400px" borderRightWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" display="flex" flexDirection="column">
 					{!searchExecuted ? (
 						<Flex flex="1" alignItems="center" justifyContent="center">

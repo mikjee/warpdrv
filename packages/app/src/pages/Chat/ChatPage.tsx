@@ -559,7 +559,7 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 		<ChatConfigContext.Provider value={chatConfigValue}>
 			<TooltipProvider>
 				<AssistantRuntimeProvider runtime={runtime}>
-				<Flex flex="1" h="100%" overflow="hidden" className="dark">
+				<Flex flex="1" h="100%" overflow="hidden" className="dark" style={{ background: "#131313" }}>
 						{!threadsListCollapsed && (
 						<Box
 							w="280px"
@@ -645,7 +645,7 @@ export const ChatPage = React.memo(() => {
 					</>
 				}
 			/>
-			<Flex flex="1" overflow="hidden">
+			<Flex flex="1" overflow="hidden" pt="60px">
 				<Flex flex="1" overflow="hidden">
 					<ChatInner threadsListCollapsed={threadsListCollapsed} />
 				</Flex>

@@ -316,19 +316,19 @@ export const Shell = React.memo(() => {
 			<Flex flex="1" overflow="hidden">
 				{/* Sidebar */}
 				<Flex
-					bg={"#050505"}
+					bg={"#030303"}
 					direction="column"
 					w={isCollapsed ? '60px' : '220px'}
 					minW={isCollapsed ? '60px' : '220px'}
 					// borderRightWidth="1px"
-					// borderColor="rgba(255, 255, 255, 0.06)"
+					// borderColor="rgba(255, 255, 255, 0.065)"
 					px={isCollapsed ? '2' : '4'}
 					pt={'3'}
 					pb={("0")}
 					gap="0"
 					transition="all 0.2s ease"
 					zIndex={100}
-					boxShadow={"0px 0px 10px #050505"}
+					boxShadow={"0px 0px 10px rgba(0,0,0,0.5)"}
 					style={{
 						userSelect: 'none',
 						userDrag: 'none',
@@ -366,7 +366,7 @@ export const Shell = React.memo(() => {
 				</Flex>
 
 				{/* Main content */}
-				<Box flex="1" overflow="auto" bg="#0e0e0e">
+				<Box flex="1" overflow="auto">
 					<UpdateBanner />
 					{Object.entries(PAGE_REGISTRY).map(([path, config]) => {
 						const isActive = currentPath === path || (currentPath === '/' && path === '/servers');

@@ -129,7 +129,7 @@ export function McpPage() {
 				}
 			/>
 
-			<Flex flex="1" overflow="hidden">
+			<Flex flex="1" overflow="hidden" pt="60px">
 				<Box flex="1" overflow="auto" p="4">
 					{showAddForm && (
 						<AddServerForm

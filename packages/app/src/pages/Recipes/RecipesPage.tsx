@@ -175,7 +175,7 @@ export function RecipesPage() {
 				}
 			/>
 
-			<Box p="4">
+			<Box pt="76px" px="4" pb="4">
 						<VStack align="stretch" gap="4">
 							{/* Active run banner */}
 					{isAnyRunActive && activeRunRecipe && (

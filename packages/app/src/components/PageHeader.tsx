@@ -73,21 +73,27 @@ export const PageHeader = React.memo(({ title, subtitle, icon, actions, actionsR
 
 	return (
 		<Flex
-			position={"sticky"}
-			top="0"
-			left="-5px"
+			position={"absolute"}
+			top="0px"
+			// left={ collapsed ? "60px" : "220px" }
 			zIndex={"99"}
 			justify="space-between"
 			align="center"
 			px="4"
 			height="60px"
-			// borderBottomWidth="1px"
-			// borderColor="rgba(255, 255, 255, 0.06)"
-			bg="#050505"
+			width={`calc(100% - ${collapsed ? "60px" : "220px"})`}
+			boxSizing={"border-box"}
+			borderBottomWidth="1px"
+			borderColor="rgba(255, 255, 255, 0.05)"
+			bg="rgba(30,30,30,0.5)"
+			boxShadow={"0px 0px 10px rgba(0,0,0,0.3)"}
 			className='drag'
 			onDoubleClick={handleDoubleClick}
-			style={{ userSelect: 'none', WebkitUserSelect: 'none', userDrag: 'none' }}
-			boxShadow={"0px 0px 10px #050505"}
+			style={{ userSelect: 'none', WebkitUserSelect: 'none', userDrag: 'none',
+				backdropFilter: "blur(10px)",
+				WebkitBackdropFilter: "blur(10px)",
+			 }}
+			// boxShadow={"0px 0px 10px #050505"}
 		>
 			<HStack gap="4" ml="2">
 				<Flex

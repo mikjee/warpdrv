@@ -300,7 +300,7 @@ export function ModelsPage() {
 				}
 			/>
 
-			<Box p="3">
+			<Box pt="75px" px="3" pb="3">
 				{/* Table header */}
 				<Flex
 					px="4"

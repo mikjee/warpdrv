@@ -315,7 +315,7 @@ export function CheckpointsPage() {
 					</HStack>
 				}
 			/>
-			<Box p="4">
+			<Box pt="76px" px="4" pb="4">
 
 				<VStack
 					gap="1"
