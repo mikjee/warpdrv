@@ -109,7 +109,7 @@ export const PageHeader = React.memo(({ title, subtitle, icon, actions, actionsR
 					{collapsed ? <RiMenuFold4Line size={20} /> : <RiMenuFold3Line size={20} />}
 				</Flex>
 				<Box mr="1" ml="-1">
-					<Text fontSize="16px" fontWeight="500" letterSpacing="-0.02em" color="rgb(180,180,180)">
+					<Text fontSize="14px" fontWeight="500" letterSpacing="-0.02em" color="rgb(180,180,180)">
 						{title}
 					</Text>
 					{subtitle && (
