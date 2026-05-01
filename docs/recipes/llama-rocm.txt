@@ -1,0 +1,38 @@
+#!input REPO_URL string default=https://github.com/ggml-org/llama.cpp
+#!input BRANCH string default=master
+#!input BUILD_DIR string default=~/llama-rocm
+#!input AMDGPU_TARGET choice options=gfx900,gfx906,gfx908,gfx90a,gfx940,gfx942,gfx1030,gfx1100,gfx1101,gfx1151 default=gfx1151 description="gfx1151=Strix Halo, gfx1100=RX 7900, gfx90a=MI200"
+#!input UNROLL_THRESHOLD number default=600 description="AMDGPU loop unroll threshold (Strix Halo: 600)"
+#!input JOBS number default=8 description="Parallel build jobs"
+
+#!step Pre-flight checks
+if [ ! -e /usr/lib/x86_64-linux-gnu/libxml2.so.2 ]; then
+    echo "ERROR: libxml2.so.2 symlink missing."
+    echo "Fix: sudo ln -s /usr/lib/x86_64-linux-gnu/libxml2.so.16 /usr/lib/x86_64-linux-gnu/libxml2.so.2"
+    exit 1
+fi
+echo "[OK] libxml2.so.2 present"
+
+if [ ! -d /opt/rocm ]; then
+    echo "ERROR: /opt/rocm not found. Install ROCm first."
+    exit 1
+fi
+echo "[OK] ROCm: $(readlink -f /opt/rocm)"
+
+#!step Clone repository cwd=~
+git clone -b "$BRANCH" "$REPO_URL" "$BUILD_DIR" 2>/dev/null || (cd "$BUILD_DIR" && git fetch && git checkout "$BRANCH" && git pull)
+
+#!step Configure cmake
+cd "$BUILD_DIR"
+cmake -B build \
+    -DGGML_HIP=ON \
+    -DAMDGPU_TARGETS="$AMDGPU_TARGET" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_HIP_FLAGS="-mllvm --amdgpu-unroll-threshold-local=$UNROLL_THRESHOLD"
+
+#!step Build
+cd "$BUILD_DIR"
+cmake --build build --config Release -j "$JOBS"
+
+#!step Verify
+"$BUILD_DIR/build/bin/llama-server" --version

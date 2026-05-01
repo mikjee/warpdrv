@@ -31,8 +31,9 @@ export function App() {
 	return (
 		<Routes>
 			<Route element={<Shell />}>
-				<Route index element={<Navigate to="/servers" replace />} />
+				<Route index element={<Navigate to="/home" replace />} />
 				{/* Routes exist for URL matching/navigation; Shell handles rendering via PAGE_REGISTRY */}
+				<Route path="/home" />
 				<Route path="/about" />
 				<Route path="/models" />
 				<Route path="/backends" />

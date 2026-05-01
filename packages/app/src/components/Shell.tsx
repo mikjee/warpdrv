@@ -12,6 +12,7 @@ import {
 	Info,
 	Server,
 	ScrollText,
+	Home,
 } from 'lucide-react';
 import { BsRouter } from 'react-icons/bs';
 import { MessageSquare, Save } from 'lucide-react';
@@ -23,6 +24,7 @@ import type { ISummaryData } from '../api/summary-services';
 import { Plug } from 'lucide-react';
 
 // Page imports for registry
+import { HomePage } from '../pages/Home/HomePage';
 import { AboutPage } from '../pages/About/AboutPage';
 import { ModelsPage } from '../pages/Models/ModelsPage';
 import { BackendsPage } from '../pages/Backends/BackendsPage';
@@ -44,6 +46,7 @@ type TPageConfig = {
 
 const PAGE_REGISTRY: Record<string, TPageConfig> = {
 	'/chat': { component: ChatPage, closeOnSwitch: false },
+	'/home': { component: HomePage, closeOnSwitch: false },
 	'/servers': { component: ServersPage, closeOnSwitch: false },
 	'/proxy': { component: ProxyPage, closeOnSwitch: false },
 	'/hub': { component: HubPage, closeOnSwitch: false },
@@ -117,6 +120,8 @@ function StatusDot({ online, hasError }: { online: boolean; hasError?: boolean }
 }
 
 const NAV_ITEMS: INavItem[] = [
+	{ path: '/home', label: 'Home', icon: <Home size={18} /> },
+	{ isSeparator: true },
 	{
 		path: '/servers',
 		label: 'Servers',
@@ -251,7 +256,7 @@ function SidebarLink({
 	}
 
 	const location = useLocation();
-	const isActive = location.pathname === item.path || (location.pathname === '/' && item.path === '/servers');
+	const isActive = location.pathname === item.path || (location.pathname === '/' && item.path === '/home');
 	const badgeNode = item.badge ? item.badge(summary) : null;
 
 	return (
@@ -369,7 +374,7 @@ export const Shell = React.memo(() => {
 				<Box flex="1" overflow="auto">
 					<UpdateBanner />
 					{Object.entries(PAGE_REGISTRY).map(([path, config]) => {
-						const isActive = currentPath === path || (currentPath === '/' && path === '/servers');
+						const isActive = currentPath === path || (currentPath === '/' && path === '/home');
 
 						if (!config.closeOnSwitch) {
 							// Persistent: always mounted, toggle visibility with display

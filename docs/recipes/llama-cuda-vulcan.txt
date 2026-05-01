@@ -1,0 +1,26 @@
+#!input REPO_URL string default=https://github.com/ggml-org/llama.cpp
+#!input BRANCH string default=master
+#!input BUILD_DIR string default=~/llama-cuda-vulkan
+#!input CUDA_ARCH choice options=75,80,86,89,90,120 default=120 description="GPU compute capability (75=Turing, 86=Ampere, 89=Ada, 90=Hopper, 120=Blackwell)"
+#!input ENABLE_VULKAN bool default=true
+#!input JOBS number default=8 description="Parallel build jobs"
+
+#!step Clone repository cwd=~
+git clone -b "$BRANCH" "$REPO_URL" "$BUILD_DIR" 2>/dev/null || (cd "$BUILD_DIR" && git fetch && git checkout "$BRANCH" && git pull)
+
+#!step Configure cmake
+VULKAN_FLAG=""
+if [ "$ENABLE_VULKAN" = "true" ]; then VULKAN_FLAG="-DGGML_VULKAN=ON"; fi
+cd "$BUILD_DIR"
+cmake -B build \
+    -DGGML_CUDA=ON \
+    -DCMAKE_CUDA_ARCHITECTURES="$CUDA_ARCH" \
+    -DCMAKE_BUILD_TYPE=Release \
+    $VULKAN_FLAG
+
+#!step Build
+cd "$BUILD_DIR"
+cmake --build build --config Release -j "$JOBS"
+
+#!step Verify
+"$BUILD_DIR/build/bin/llama-server" --version
