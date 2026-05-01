@@ -36,7 +36,7 @@ export const ServersTile = React.memo(() => {
 				const bTime = b.startedAt ?? 0;
 				return bTime - aTime;
 			})
-			.slice(0, 2);
+			.slice(0, 3);
 	}, [serversArr]);
 
 	const { mutate: restartMut, loading } = useMutation<string, IServer | null>(
@@ -59,11 +59,11 @@ export const ServersTile = React.memo(() => {
 					No servers configured
 				</Text>
 			) : (
-				<VStack align="stretch" gap="2">
+				<VStack align="stretch" gap="2" w="100%">
 					{lastUsed.map((srv) => {
 						const isRunning = srv.status === EServerStatus.RUNNING || srv.status === EServerStatus.LOADING;
 						return (
-							<Flex key={srv.id} align="center" justify="space-between" gap="2">
+							<Flex key={srv.id} align="center" justify="space-between" gap="2" h="28px">
 								<HStack gap="2" flex="1" minWidth={0}>
 									<StatusDot state={statusToState(srv.status)} />
 									<Box overflow="hidden">

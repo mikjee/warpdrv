@@ -30,6 +30,7 @@ export const McpTile = React.memo(() => {
 			statusDot={state}
 			onClick={() => navigate('/mcp')}
 		>
+			<span style={{ color: "#777", fontSize: "12px" }}>MCP Servers Connected</span>
 			<Text fontSize="24px" fontWeight="600" color="rgba(255,255,255,0.85)">
 				{mcpConnected}/{mcpTotal}
 			</Text>

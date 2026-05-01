@@ -18,6 +18,7 @@ export const StatusDot = React.memo(({ state }: { state: 'online' | 'loading' | 
 			bg={bg}
 			boxShadow={shadow}
 			flexShrink={0}
+			animation={state === 'loading' ? 'pulse 1.5s ease infinite' : undefined}
 		/>
 	);
 });

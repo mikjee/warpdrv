@@ -96,14 +96,18 @@ export const HomePage = React.memo(() => {
 					<Box w="100%" h="1px" bg="rgba(255,255,255,0.06)" />
 
 					{/* Overview Tiles */}
-					<Flex wrap="wrap" gap="4" justifyContent={"center"}>
+					<Box
+						display="grid"
+						gridTemplateColumns="repeat(auto-fill, minmax(250px, 1fr))"
+						gap="4"
+					>
 						<ServersTile />
 						<BackendsTile />
 						<ModelsTile />
 						<ProxyTile />
 						<McpTile />
 						<AppServerTile />
-					</Flex>
+					</Box>
 				</VStack>
 			</Box>
 		</Box>

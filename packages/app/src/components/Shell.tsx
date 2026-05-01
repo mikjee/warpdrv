@@ -331,7 +331,6 @@ export const Shell = React.memo(() => {
 					pt={'3'}
 					pb={("0")}
 					gap="0"
-					transition="all 0.2s ease"
 					zIndex={100}
 					boxShadow={"0px 0px 10px rgba(0,0,0,0.5)"}
 					style={{

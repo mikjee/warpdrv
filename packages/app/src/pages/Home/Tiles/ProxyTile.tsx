@@ -20,6 +20,7 @@ export const ProxyTile = React.memo(() => {
 			statusDot={state}
 			onClick={() => navigate('/proxy')}
 		>
+			<span style={{ color: "#777", fontSize: "12px" }}>OpenAI Compatible Chat Endpoint</span>
 			<Text fontSize="24px" fontWeight="600" color="rgba(255,255,255,0.85)">
 				{proxyStatus?.port ?? settings.proxyPort}
 			</Text>

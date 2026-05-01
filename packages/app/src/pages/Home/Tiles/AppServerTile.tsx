@@ -17,6 +17,7 @@ export const AppServerTile = React.memo(() => {
 			statusDot={sseConnected ? 'online' : 'offline'}
 			onClick={() => navigate('/settings')}
 		>
+			<span style={{ color: "#777", fontSize: "12px" }}>Remote Port</span>
 			<Text fontSize="24px" fontWeight="600" color="rgba(255,255,255,0.85)">
 				{settings.apiPort}
 			</Text>

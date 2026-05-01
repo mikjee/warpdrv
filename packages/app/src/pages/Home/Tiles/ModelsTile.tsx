@@ -15,8 +15,9 @@ export const ModelsTile = React.memo(() => {
 			label="Models"
 			onClick={() => navigate('/models')}
 		>
+			<span style={{ color: "#777", fontSize: "12px" }}>LLMs</span>
 			<Text fontSize="24px" fontWeight="600" color="rgba(255,255,255,0.85)">
-				{Object.values(models).length} models
+				{Object.values(models).length}
 			</Text>
 		</TileContainer>
 	);

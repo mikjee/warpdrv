@@ -18,7 +18,7 @@ export const TileContainer = React.memo(({
 	const isClickable = !!onClick;
 
 	return (
-		<Box flex="0 1 280px" aspectRatio="4/3" overflowY="auto">
+		<Box minW="250px" maxW="400px" h="200px" overflowY="auto">
 			<Box
 				h="full"
 				w="full"
@@ -40,18 +40,18 @@ export const TileContainer = React.memo(({
 				} : undefined}
 				onClick={onClick}
 			>
-				<VStack align="stretch" gap="4" flex="1">
-					<Flex align="center" justify="space-between">
-						<HStack gap="2">
-							<Box color="rgba(255,255,255,0.4)">{icon}</Box>
-							<Text fontSize="12px" fontWeight="600" color="rgba(255,255,255,0.5)" textTransform="uppercase" letterSpacing="0.05em">
-								{label}
-							</Text>
-						</HStack>
-						{statusDot && <StatusDot state={statusDot} />}
-					</Flex>
-					{children}
-				</VStack>
+			<Flex align="center" justify="space-between">
+				<HStack gap="2">
+					<Box color="rgba(255,255,255,0.4)">{icon}</Box>
+					<Text fontSize="12px" fontWeight="600" color="rgba(255,255,255,0.5)" textTransform="uppercase" letterSpacing="0.05em">
+						{label}
+					</Text>
+				</HStack>
+				{statusDot && <StatusDot state={statusDot} />}
+			</Flex>
+			<Box flex="1" display="flex" flexDir="column" justifyContent="flex-end" alignItems={"end"}>
+				{children}
+			</Box>
 			</Box>
 		</Box>
 	);
