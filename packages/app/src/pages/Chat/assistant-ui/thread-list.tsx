@@ -733,7 +733,7 @@ export const ThreadList: FC = React.memo(() => {
 			</Box>
 
 			{/* Fixed footer */}
-			<Box flexShrink={0} mt="2" pt="2" borderTopWidth="1px" borderColor="rgba(255,255,255,0.04)">
+			{/* <Box flexShrink={0} mt="2" pt="2" borderTopWidth="1px" borderColor="rgba(255,255,255,0.04)">
 				<ThreadListPrimitive.New asChild>
 					<Box
 						as="button"
@@ -750,7 +750,7 @@ export const ThreadList: FC = React.memo(() => {
 						<Text>New Chat</Text>
 					</Box>
 				</ThreadListPrimitive.New>
-			</Box>
+			</Box> */}
 
 			{confirmDelete && (
 				<Portal>

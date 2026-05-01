@@ -156,7 +156,7 @@ warpdrv checks for updates on startup and shows a banner if a new version is ava
 
 1. **Install warpdrv** — see [Install](#install)
 2. **Onboarding** — pick a models folder, optionally add a llama.cpp build
-3. **Scan models** — warpdrv parses every GGUF in your folder
+3. **Scan models** — warpdrv parses every GGUF in your folder. Alternately navigate to the Hub page to download a model.
 4. **Add a backend** — point warpdrv at a `llama-server` binary; it auto-detects devices
 5. **Launch a server** — pick a model, set GPU layers + context, hit Launch
 6. **Open Chat** — pick the running server, start a thread, test the model
@@ -165,10 +165,11 @@ warpdrv checks for updates on startup and shows a banner if a new version is ava
 
 ## How-To Guides
 
-- **Adding a custom llama.cpp build** — TODO
-- **Writing a build recipe** — TODO
-- **Multi-GPU setup (CUDA + Vulkan)** — TODO
-- **Accessing warpdrv UI remotely** - TODO
+- [Recipes](docs/guides/recipes.md) — automating llama.cpp builds and other LLM-related bash tasks
+- [Aliases](docs/guides/aliases.md) — routing addresses for servers behind the OpenAI-compatible proxy
+- [Backend Groups](docs/guides/backend-groups.md) — swapping llama.cpp builds without re-configuring servers
+- [Proxy, Remote Access, and Authentication](docs/guides/proxy-auth.md) — direct vs proxied access, bearer tokens, accessing warpdrv from another machine
+- [KV Cache Checkpoints](docs/guides/kv-checkpoints.md) — saving and restoring slot state to skip prompt prefill
 
 ---
 

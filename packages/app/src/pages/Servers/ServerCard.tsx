@@ -191,7 +191,7 @@ export const ServerCard = React.memo(({
 								)}
 								<Popover.Root lazyMount unmountOnExit open={addingAliasOpen} onOpenChange={(details) => { if (!details.open) { setAddingAliasOpen(false); setNewAliasValue(''); } }}>
 									<Popover.Trigger asChild>
-										<Badge px="1.5" py="0.25" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="rgba(99, 102, 241, 0.1)" color="#a5b4fc" borderWidth="1px" borderColor="rgba(99, 102, 241, 0.25)" cursor="pointer" onClick={(e) => { e.stopPropagation(); setAddingAliasOpen(true); }}>
+										<Badge px="1.5" py="0.25" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="rgba(99, 102, 241, 0.1)" color="#a5b4fc" borderWidth="1px" borderColor="rgba(99, 102, 241, 0.25)" cursor="pointer" onClick={(e) => { e.stopPropagation(); setAddingAliasOpen(true); }}  title="Add Alias">
 											<Plus size={10} />
 										</Badge>
 									</Popover.Trigger>
@@ -242,13 +242,13 @@ export const ServerCard = React.memo(({
 								<HStack gap="1">
 									<StatPill icon={<FaBrain size={12} />} label="Model" value={model?.name ?? "Model Not Found!"} />
 									{model?.mmprojFile && server.useMultiModal && (
-										<Icon color="#ecbf42" boxSize="14px" ml="1" mr="1"><FaRegEye /></Icon>
+										<Icon color="#ecbf42" boxSize="14px" ml="1" mr="1"><FaRegEye title="Vision"/></Icon>
 									)}
 									{model?.mmprojFile && !server.useMultiModal && (
-										<Icon color="#ec4242" boxSize="14px" ml="1" mr="1"><GoEyeClosed /></Icon>
+										<Icon color="#ec4242" boxSize="14px" ml="1" mr="1"><GoEyeClosed  title="Multi-modal disabled"/></Icon>
 									)}
 									{model?.mmprojFile && server.useMultiModal && (
-										<Icon color="#ec4242" boxSize="14px" ml="1" mr="1"><LuSaveOff /></Icon>
+										<Icon color="#ec4242" boxSize="14px" ml="1" mr="1"><LuSaveOff title="Cannot save checkpoints when multi-modal is enabled" /></Icon>
 									)}
 									{model?.primaryFile?.metadata?.quantType && (
 										<Badge
@@ -277,38 +277,38 @@ export const ServerCard = React.memo(({
 					</HStack>
 
 					<HStack gap="1" my="auto" pl="3">
-						{showCheckpointButtons && <Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }} borderRadius="md" onClick={() => onLoadCheckpoint(serverId)}>
+						{showCheckpointButtons && <Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }} borderRadius="md" onClick={() => onLoadCheckpoint(serverId)} title="Load KV Checkpoint">
 							<Zap size={14} />
 						</Button>}
 						{isRunning && showCheckpointButtons && (
-							<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }} borderRadius="md" onClick={() => onSaveCheckpoint(serverId)}>
+							<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }} borderRadius="md" onClick={() => onSaveCheckpoint(serverId)} title="Save KV Checkpoint">
 								<Save size={14} />
 							</Button>
 						)}
 						<Box w="1px" h="16px" bg="rgba(255, 255, 255, 0.08)" my="auto" />
 						{!isRunning && !isLoading && (
-							<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' }} borderRadius="md" onClick={handleRestart}>
+							<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' }} borderRadius="md" onClick={handleRestart} title="Launch Server">
 								<Play size={14} />
 							</Button>
 						)}
 						{(isRunning || isLoading) && (
-							<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' }} borderRadius="md" onClick={handleRestart}>
+							<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' }} borderRadius="md" onClick={handleRestart} title="Restart Server">
 								<RotateCcw size={14} />
 							</Button>
 						)}
-						<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#22d3ee', bg: 'rgba(34, 211, 238, 0.08)' }} borderRadius="md" onClick={() => onShowLogs(serverId)}>
+						<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#22d3ee', bg: 'rgba(34, 211, 238, 0.08)' }} borderRadius="md" onClick={() => onShowLogs(serverId)} title="Server logs">
 							<Terminal size={14} />
 						</Button>
-						<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }} borderRadius="md" onClick={() => onEdit(serverId)}>
+						<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }} borderRadius="md" onClick={() => onEdit(serverId)} title="Edit Server">
 							<Edit size={14} />
 						</Button>
 						<Box w="1px" h="16px" bg="rgba(255, 255, 255, 0.08)" my="auto" />
 						{(isRunning || isLoading) ? (
-							<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fb7185', bg: 'rgba(251, 113, 133, 0.08)' }} borderRadius="md" onClick={handleStop}>
+							<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fb7185', bg: 'rgba(251, 113, 133, 0.08)' }} borderRadius="md" onClick={handleStop}  title="Stop Server">
 								<Square size={14} />
 							</Button>
 						) : (
-							<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fb7185', bg: 'rgba(251, 113, 133, 0.08)' }} borderRadius="md" onClick={() => onConfirmDelete(serverId)}>
+							<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fb7185', bg: 'rgba(251, 113, 133, 0.08)' }} borderRadius="md" onClick={() => onConfirmDelete(serverId)} title="Delete Server">
 								<Trash2 size={14} />
 							</Button>
 						)}
