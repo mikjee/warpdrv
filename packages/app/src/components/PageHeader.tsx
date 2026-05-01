@@ -75,7 +75,7 @@ export const PageHeader = React.memo(({ title, subtitle, icon, actions, actionsR
 		<Flex
 			position={"absolute"}
 			top="0px"
-			// left={ collapsed ? "60px" : "220px" }
+			left={ collapsed ? "60px" : "220px" }
 			zIndex={"99"}
 			justify="space-between"
 			align="center"
