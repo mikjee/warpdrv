@@ -1,4 +1,4 @@
-import { Box, Text, HStack, VStack, Flex, Badge, Button, Input, Collapsible, InputGroup, Combobox, createListCollection, Portal } from '@chakra-ui/react';
+import { Box, Text, HStack, VStack, Flex, Badge, Button, Input, Collapsible, InputGroup, Combobox, createListCollection, Portal, Link as ChakraLink } from '@chakra-ui/react';
 import { Blocks, Plus, Terminal, Layers, ChevronDown, ChevronRight, Search, ArrowUpAZ, ArrowDownZA } from 'lucide-react';
 import { useState, useCallback, useMemo } from 'react';
 import { useDependantState } from '../../hooks/useDependantState';
@@ -13,6 +13,7 @@ import { ConfirmDialog } from '../../components/dialogs/ConfirmDialog';
 import { ActivateBackendDialog } from './ActivateBackendDialog';
 import { BackendRow } from './BackendRow';
 import { BackendGroupCard } from './BackendGroupCard';
+import { openExternal } from '../../utils/openExternal';
 import type { IBackend, IBackendGroup, IServer, TBackendSortField } from '@warpcore/shared';
 import { EServerStatus } from '@warpcore/shared';
 
@@ -288,6 +289,17 @@ export function BackendsPage() {
 								<VStack gap="3" color="rgba(255, 255, 255, 0.2)">
 									<Blocks size={40} />
 									<Text fontSize="14px">No backends registered</Text>
+								<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)" textAlign="center">
+									Download a llama.cpp build from{' '}
+									<ChakraLink href="https://github.com/ggml-org/llama.cpp/releases" color="#3381ff" _hover={{ color: '#5a98ff' }} onClick={(e) => { e.preventDefault(); openExternal('https://github.com/ggml-org/llama.cpp/releases'); }}>
+										Official releases
+									</ChakraLink>.
+									<br />
+									Or build llama.cpp from source following the{' '}
+									<ChakraLink href="https://github.com/mikjee/warpdrv/blob/master/docs/guides/recipes.md" color="#3381ff" _hover={{ color: '#5a98ff' }} onClick={(e) => { e.preventDefault(); openExternal('https://github.com/mikjee/warpdrv/blob/master/docs/guides/recipes.md'); }}>
+										guide for Recipes
+									</ChakraLink>.
+								</Text>
 								</VStack>
 							</Flex>
 						) : filteredAndSortedBackends.length === 0 && searchQuery.trim() ? (
@@ -336,6 +348,13 @@ export function BackendsPage() {
 								<VStack gap="3" color="rgba(255, 255, 255, 0.2)">
 									<Layers size={40} />
 									<Text fontSize="14px">No backend groups</Text>
+								<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)" textAlign="center">
+									Read the{' '}
+									<ChakraLink href="https://github.com/mikjee/warpdrv/blob/master/docs/guides/backend-groups.md" color="#3381ff" _hover={{ color: '#5a98ff' }} onClick={(e) => { e.preventDefault(); openExternal('https://github.com/mikjee/warpdrv/blob/master/docs/guides/backend-groups.md'); }}>
+										guide
+									</ChakraLink>{' '}
+									on how to use backend groups.
+								</Text>
 								</VStack>
 							</Flex>
 						) : filteredAndSortedGroups.length === 0 && searchQuery.trim() ? (

@@ -243,11 +243,10 @@ export const ServersPage = React.memo(() => {
 				actionsRight={
 					<Button
 						size="sm"
-						bgGradient="to-r"
-						gradientFrom="#3381ff"
-						gradientTo="#5b6af5"
-						color="white"
-						_hover={{ opacity: 0.9, transform: 'translateY(-1px)', shadow: '0 4px 20px rgba(51, 129, 255, 0.3)' }}
+						bg="rgba(51, 129, 255, 0.15)"
+						color="#60a5fa"
+						borderWidth="1px" borderColor="rgba(51, 129, 255, 0.25)"
+						_hover={{ bg: 'rgba(51, 129, 255, 0.25)' }}
 						borderRadius="lg"
 						fontSize="13px"
 						fontWeight="600"

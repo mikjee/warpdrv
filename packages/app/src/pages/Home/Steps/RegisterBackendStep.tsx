@@ -1,6 +1,7 @@
 import { Text, VStack, Link as ChakraLink } from '@chakra-ui/react';
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { openExternal } from '../../../utils/openExternal';
 import { StepCollapsible } from '../StepCollapsible';
 
 export const RegisterBackendStep = React.memo(({ done, isOpenDefault, isHighlighted }: { done: boolean; isOpenDefault: boolean; isHighlighted?: boolean }) => (
@@ -13,7 +14,7 @@ export const RegisterBackendStep = React.memo(({ done, isOpenDefault, isHighligh
 		<VStack align="stretch" gap="3">
 			<Text fontSize="13px" color="rgba(255,255,255,0.5)" lineHeight="1.6">
 				1. Visit{' '}
-				<ChakraLink href="https://github.com/ggml-org/llama.cpp/releases" isExternal color="#3381ff" _hover={{ color: '#5a98ff' }}>
+				<ChakraLink href="https://github.com/ggml-org/llama.cpp/releases" isExternal color="#3381ff" _hover={{ color: '#5a98ff' }} onClick={(e) => { e.preventDefault(); openExternal('https://github.com/ggml-org/llama.cpp/releases'); }}>
 					LlaMA.cpp releases
 				</ChakraLink>{' '}
 				and download a prebuilt binary for your hardware.
@@ -22,7 +23,7 @@ export const RegisterBackendStep = React.memo(({ done, isOpenDefault, isHighligh
 					background: "#3a3a3a",
 					fontFamily: "mono",
 				}}>&nbsp;git clone https://github.com/ggml-org/llama.cpp.git&nbsp;</span> into a folder and build from source. See{' '}
-				<ChakraLink href="https://github.com/mikjee/warpdrv/blob/master/docs/guides/recipes.md" isExternal color="#3381ff" _hover={{ color: '#5a98ff' }}>
+				<ChakraLink href="https://github.com/mikjee/warpdrv/blob/master/docs/guides/recipes.md" isExternal color="#3381ff" _hover={{ color: '#5a98ff' }} onClick={(e) => { e.preventDefault(); openExternal('https://github.com/mikjee/warpdrv/blob/master/docs/guides/recipes.md'); }}>
 					Recipes Guide
 				</ChakraLink>.
 				<br />

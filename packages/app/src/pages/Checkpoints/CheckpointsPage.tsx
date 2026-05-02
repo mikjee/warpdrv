@@ -1,4 +1,4 @@
-import { Box, Text, HStack, VStack, Flex, Input, Button, InputGroup, Combobox, createListCollection, Portal } from '@chakra-ui/react';
+import { Box, Text, HStack, VStack, Flex, Input, Button, InputGroup, Combobox, createListCollection, Portal, Link as ChakraLink } from '@chakra-ui/react';
 import { Database, Trash2, Edit, ChevronDown, ChevronRight, Search, ArrowUpAZ, ArrowDownZA } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 import { useDependantState } from '../../hooks/useDependantState';
@@ -7,6 +7,7 @@ import { updateSettings } from '../../api/services';
 
 import { useStore } from '../../store';
 import { deleteCheckpoint, updateCheckpoint } from '../../api/services';
+import { openExternal } from '../../utils/openExternal';
 import { ConfirmDialog } from '../../components/dialogs/ConfirmDialog';
 import { useToast } from '../../components/ToastProvider';
 import type { ICheckpoint, TCheckpointId, TCheckpointSortField, TSortOrder } from '@warpcore/shared';
@@ -330,6 +331,12 @@ export function CheckpointsPage() {
 					{grouped.bundles.length === 0 && grouped.standalone.length === 0 && (
 						<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)" textAlign="center" py="8">
 							No checkpoints yet
+							<br />
+							Read the{' '}
+							<ChakraLink href="https://github.com/mikjee/warpdrv/blob/master/docs/guides/checkpoints.md" color="#3381ff" _hover={{ color: '#5a98ff' }} onClick={(e) => { e.preventDefault(); openExternal('https://github.com/mikjee/warpdrv/blob/master/docs/guides/checkpoints.md'); }}>
+								guide
+							</ChakraLink>{' '}
+							on how to use checkpoints.
 						</Text>
 					)}
 

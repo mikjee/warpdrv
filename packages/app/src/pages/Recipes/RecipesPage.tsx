@@ -1,4 +1,4 @@
-import { Box, Text, HStack, VStack, Flex, Badge, Button, Input, InputGroup, Combobox, createListCollection, Portal } from '@chakra-ui/react';
+import { Box, Text, HStack, VStack, Flex, Badge, Button, Input, InputGroup, Combobox, createListCollection, Portal, Link as ChakraLink } from '@chakra-ui/react';
 import { Play, Plus, Edit, Trash2, ScrollText, Lock, AlertCircle, CheckCircle, XCircle, Search, ChevronDown, ArrowUpAZ, ArrowDownZA } from 'lucide-react';
 import { useState, useCallback, useMemo } from 'react';
 import { useDependantState } from '../../hooks/useDependantState';
@@ -6,6 +6,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { useMutation } from '../../hooks/useQuery';
 import { useStore } from '../../store';
 import { deleteRecipe, updateSettings } from '../../api/services';
+import { openExternal } from '../../utils/openExternal';
 import { ConfirmDialog } from '../../components/dialogs/ConfirmDialog';
 import { RecipeEditorDialog } from './RecipeEditorDialog';
 import { RunRecipeDialog } from './RunRecipeDialog';
@@ -209,6 +210,19 @@ export function RecipesPage() {
 									<VStack gap="3" color="rgba(255, 255, 255, 0.2)">
 										<ScrollText size={40} />
 										<Text fontSize="14px">No recipes yet</Text>
+										<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)" textAlign="center" mb="4">
+											Read the{' '}
+											<ChakraLink href="https://github.com/mikjee/warpdrv/blob/master/docs/guides/recipes.md" color="#3381ff" _hover={{ color: '#5a98ff' }} onClick={(e) => { e.preventDefault(); openExternal('https://github.com/mikjee/warpdrv/blob/master/docs/guides/recipes.md'); }}>
+												guide
+											</ChakraLink>{' '}
+											on how to use Recipes.
+											<br />
+											Or add a{' '}
+											<ChakraLink href="https://github.com/mikjee/warpdrv/tree/master/docs/recipes" color="#3381ff" _hover={{ color: '#5a98ff' }} onClick={(e) => { e.preventDefault(); openExternal('https://github.com/mikjee/warpdrv/tree/master/docs/recipes'); }}>
+												sample
+											</ChakraLink>{' '}
+											recipe from the docs.
+										</Text>
 										<Button size="xs" bg="rgba(51, 129, 255, 0.15)" color="#60a5fa" _hover={{ bg: 'rgba(51, 129, 255, 0.25)' }} onClick={() => setShowAddDialog(true)}>
 											<Plus size={13} />
 											<Text ml="1.5">Create your first recipe</Text>
