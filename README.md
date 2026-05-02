@@ -4,7 +4,7 @@
 
 # warpdrv
 
-**LLMs + Server + Chat + More**
+**Local LLM Server Manager + LlaMA.cpp + Chat + More**
 
 😎 **Built for Local AI Master Race!** 😎
 
@@ -33,15 +33,13 @@
 
 warpdrv is a desktop toolkit for running local language models. It manages llama.cpp server instances across multiple GPU backends, parses GGUF models, and ships a built-in chat UI with full sampling controls — all in a single Tauri desktop app.
 
-It's a **workshop bench** for cutting-edge LLM testing: try beta models the day they release, swap between custom llama.cpp builds, run speculative decoding setups across multiple GPUs, automate build recipes. Not a polished daily-driver chat app — that's a different category.
-
 ## Why use this?
 
-- **Try new models as soon as they are released** - Bring your own llama.cpp builds; not wait for vendor's release cycle.
-- **Multi-backend, multi-GPU** - CUDA, ROCm, Vulkan; mix devices in one inference session.
-- **Your daily driver** - Integrates with your favorite tools with a customizable router. batteries included.
-- **Workshop tools** - Speculative decoding config, MCP integration, bash-based build recipes, KV cache checkpointing.
-- **Open source** - No hidden code. No analytics.
+- ⭐ **Try new models as soon as they are released** - Bring your own llama.cpp builds; not wait for vendor's release cycle.
+- ⭐ **Multi-backend, multi-GPU** - CUDA, ROCm, Vulkan; mix devices in one inference session.
+- ⭐ **Your daily driver** - Integrates with your favorite tools with a customizable router. batteries included.
+- ⭐ **Workshop tools** - Speculative decoding config, MCP integration, bash-based build recipes, KV cache checkpointing.
+- ⭐ **Open source** - No hidden code. No analytics.
 
 ---
 
