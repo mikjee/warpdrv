@@ -100,6 +100,14 @@ export function buildArgs(
 			argsSet.delete('-fa');
 		}
 	}
+	// Remove -ngl and its value from defaultArgs if present (slider controls gpuLayers)
+	if (argsSet.has('-ngl')) {
+		const idx = args.indexOf('-ngl');
+		if (idx !== -1) {
+			args.splice(idx, 2); // remove -ngl and its following value
+			argsSet.delete('-ngl');
+		}
+	}
 	args.push('-m', modelPath);
 	if (mmprojPath) args.push('--mmproj', mmprojPath);
 	if (params.gpuLayersAuto !== true && params.gpuLayers > 0 && !argsSet.has('-ngl')) args.push('-ngl', String(params.gpuLayers));
