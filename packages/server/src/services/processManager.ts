@@ -126,7 +126,7 @@ export function buildArgs(
 	if (params.kvQuantK !== EKvQuantType.F16) args.push('--cache-type-k', params.kvQuantK);
 	if (params.kvQuantV !== EKvQuantType.F16) args.push('--cache-type-v', params.kvQuantV);
 	if (params.chatTemplate) args.push('--chat-template', params.chatTemplate);
-	if (params.device) args.push('--device', params.device);
+	if (params.device && !params.multiGpu) args.push('--device', params.device);
 	// Multi-GPU tensor split — preserve zeros to maintain device index alignment
 	if (params.multiGpu && params.gpuSplitValues && params.gpuSplitValues.length > 1) {
 		args.push('-ts', params.gpuSplitValues.join(','));
