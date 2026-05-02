@@ -240,7 +240,7 @@ export const BackendPickerCard = React.memo(({
 			setDevice('');
 			onParamChange('device', '');
 		}
-	}, [devices]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [devices, device]);
 
 	// Backend defaults -- apply when backend first selected (new server)
 	const appliedRef = React.useRef(false);
@@ -258,6 +258,15 @@ export const BackendPickerCard = React.memo(({
 			if (defaults.noWarmup !== undefined) onParamChange('noWarmup', defaults.noWarmup);
 			if (defaults.jinja !== undefined) onParamChange('jinja', defaults.jinja);
 			if (defaults.swaFull !== undefined) onParamChange('swaFull', defaults.swaFull);
+			// Apply -ngl from backend defaults to gpuLayers slider
+			const nglIdx = selectedBackend.defaultArgs.indexOf('-ngl');
+			if (nglIdx !== -1 && nglIdx + 1 < selectedBackend.defaultArgs.length) {
+				const val = parseInt(selectedBackend.defaultArgs[nglIdx + 1] || "999", 10);
+				if (!isNaN(val)) {
+					onParamChange('gpuLayers', val);
+					onParamChange('gpuLayersAuto', false);
+				}
+			}
 		}
 	}, [selectedBackendId, selectedBackend]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -283,6 +292,7 @@ export const BackendPickerCard = React.memo(({
 
 	const handleDeviceChange = (v: string) => {
 		setDevice(v);
+		onParamChange('device', v);
 		const idx = devices.findIndex(d => d.id === v);
 		if (idx >= 0) onParamChange('mainGpu', idx);
 	};
