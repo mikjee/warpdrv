@@ -23,7 +23,7 @@ export async function parseGgufMetadata(filePath: string): Promise<IGgufMetadata
 		const fileStat = await stat(filePath);
 
 		// Infer quant type from filename (more reliable than file_type enum)
-		const quantMatch = filePath.match(/[-_](Q\d[\w_]*|IQ\d[\w_]*|MXFP\d+|F16|F32|BF16)/i);
+		const quantMatch = filePath.match(/[-_](Q\d[\w_]*|IQ\d[\w_]*|MXFP\d+|NVFP\d+|F16|F32|BF16)/i);
 		const quantType = quantMatch ? quantMatch[1]!.toUpperCase() : 'unknown';
 
 		// Infer param count from general.name

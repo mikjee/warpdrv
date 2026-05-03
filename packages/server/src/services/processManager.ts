@@ -643,6 +643,10 @@ export async function launchServer(server: IServer): Promise<void> {
 	if (server.useRecommendedInferenceParams && model?.recommendedInferenceParams) {
 		launchParams.extraArgs = mergeCliFlags(model.recommendedInferenceParams, server.params.extraArgs);
 	}
+	// Use -ngl 999 when all layers are offloaded (GGUF parser may miss output layers)
+	if (model?.primaryFile?.metadata?.nLayers && launchParams.gpuLayers >= model.primaryFile.metadata.nLayers) {
+		launchParams.gpuLayers = 999;
+	}
 
 	// Auto-assign port if not yet determined
 	if (server.port === 0) {

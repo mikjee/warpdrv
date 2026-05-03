@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
 	Box, Text, HStack, VStack, Flex, Input, Button, Spinner, Badge,
 } from '@chakra-ui/react';
@@ -41,7 +41,7 @@ const SORT_FIELD_OPTIONS: { value: EHubSortField; label: string }[] = [
 
 const PARAM_STEPS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 17, 20, 24, 27, 30, 36, 45, 90, 140, 280, 560, 1000];
 
-export function HubPage() {
+export const HubPage = React.memo(() => {
 	const { toast } = useToast();
 	const navigate = useNavigate();
 	const settings = useStore(s => s.settings);
@@ -315,4 +315,4 @@ export function HubPage() {
 			{showDownloads && <DownloadManager onClose={() => setShowDownloads(false)} />}
 		</Box>
 	);
-}
+});

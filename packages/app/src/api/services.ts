@@ -134,6 +134,10 @@ export async function updateModel(id: string, data: { recommendedInferenceParams
 	return api.put<IModel>(`/models/${id}`, data);
 }
 
+export async function reparseModel(id: string) {
+	return api.post<IModel>(`/models/${id}/reparse`);
+}
+
 // ============================================================
 // Servers
 // ============================================================

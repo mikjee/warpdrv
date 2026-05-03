@@ -14,6 +14,7 @@ interface IReleaseInfo {
 function getLocalRelease(): IReleaseInfo {
 	// Walk up from server/src/routes to repo root
 	const candidates = [
+		...(process.env.WARPCORE_RESOURCE_DIR ? [path.join(process.env.WARPCORE_RESOURCE_DIR, 'release.json')] : []),
 		path.join(process.cwd(), 'release.json'),
 		path.join(process.cwd(), '..', 'release.json'),
 		path.join(process.cwd(), '..', '..', 'release.json'),

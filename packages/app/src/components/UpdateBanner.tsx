@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Box, Text, HStack, Flex, Button } from '@chakra-ui/react';
 import { ArrowUpCircle, X, ExternalLink } from 'lucide-react';
 import { openExternal } from '../utils/openExternal';
+import { useStore } from '@/store';
 
 interface IUpdateInfo {
 	currentVersion: string;
@@ -9,11 +10,12 @@ interface IUpdateInfo {
 	updateAvailable: boolean;
 	downloadUrl: string;
 	notes: string;
-}
+};
 
 export function UpdateBanner() {
 	const [update, setUpdate] = useState<IUpdateInfo | null>(null);
 	const [dismissed, setDismissed] = useState(false);
+	const collapsed = useStore(s => s.settings.sidebarCollapsed);
 
 	useEffect(() => {
 		// Check once on mount, then every 6 hours
@@ -39,6 +41,10 @@ export function UpdateBanner() {
 	return (
 		<Flex
 			px="4" py="2.5"
+			position={"absolute"}
+			bottom="0px"
+			right="0px"
+			left={ collapsed ? "60px" : "220px" }
 			bg="rgba(51, 129, 255, 0.06)"
 			borderBottomWidth="1px" borderColor="rgba(51, 129, 255, 0.15)"
 			align="center" justify="space-between"

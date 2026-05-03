@@ -16,6 +16,7 @@ import { ModelsTile } from './Tiles/ModelsTile';
 import { ProxyTile } from './Tiles/ProxyTile';
 import { McpTile } from './Tiles/McpTile';
 import { AppServerTile } from './Tiles/AppServerTile';
+import { UpdateBanner } from '@/components/UpdateBanner';
 
 export const HomePage = React.memo(() => {
 	const servers = useStore((s) => s.servers);
@@ -38,7 +39,11 @@ export const HomePage = React.memo(() => {
 	const [showSteps, setShowSteps] = useState(false);
 
 	return (
-		<Box>
+		<Box
+			style={{
+				height: "100%"
+			}}
+		>
 			<PageHeader
 				title="Home"
 				icon={<HomeIcon size={20} />}
@@ -108,8 +113,13 @@ export const HomePage = React.memo(() => {
 						<McpTile />
 						<AppServerTile />
 					</Box>
+
+
+
 				</VStack>
 			</Box>
+
+			<UpdateBanner />
 		</Box>
 	);
 });

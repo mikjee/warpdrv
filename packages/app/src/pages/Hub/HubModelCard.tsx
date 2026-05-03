@@ -1,6 +1,7 @@
 import { Box, Text, HStack, VStack, Flex, Badge } from '@chakra-ui/react';
 import { Download, Heart, Clock } from 'lucide-react';
 import type { IHubModel } from '@warpcore/shared';
+import React from 'react';
 
 function formatCount(n: number): string {
 	if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
@@ -31,7 +32,7 @@ interface IHubModelCardProps {
 	onClick: () => void;
 }
 
-export function HubModelCard({ model, selected, onClick }: IHubModelCardProps) {
+export const HubModelCard = React.memo(({ model, selected, onClick }: IHubModelCardProps)  => {
 	const topTags = model.tags.filter(t =>
 		!t.startsWith('license:') && !t.startsWith('region:') && t !== 'gguf'
 	).slice(0, 3);
@@ -94,4 +95,4 @@ export function HubModelCard({ model, selected, onClick }: IHubModelCardProps) {
 			</VStack>
 		</Box>
 	);
-}
+});

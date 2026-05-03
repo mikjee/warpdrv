@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
 	Box, Text, HStack, VStack, Flex, Button, Badge, Spinner,
 } from '@chakra-ui/react';
@@ -47,7 +47,7 @@ interface IDownloadManagerProps {
 	onClose: () => void;
 }
 
-export function DownloadManager({ onClose }: IDownloadManagerProps) {
+export const DownloadManager = React.memo(({ onClose }: IDownloadManagerProps) => {
 	const { toast } = useToast();
 	const [incompleteOnly, setIncompleteOnly] = useState(false);
 
@@ -274,4 +274,4 @@ export function DownloadManager({ onClose }: IDownloadManagerProps) {
 			</Box>
 		</Box>
 	);
-}
+});

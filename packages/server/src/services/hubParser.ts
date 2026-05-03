@@ -10,7 +10,7 @@ import type { IHubFile } from '@warpcore/shared';
 const SHARD_REGEX = /-(\d{5})-of-(\d{5})\.gguf$/i;
 
 // Pattern to extract quant type from filename
-const QUANT_REGEX = /[-_](Q\d[\w_]*|IQ\d[\w_]*|MXFP\d+|F16|F32|BF16)/i;
+const QUANT_REGEX = /[-_](Q\d[\w_]*|IQ\d[\w_]*|MXFP\d+|NVFP\d+|F16|F32|BF16)/i;
 
 interface IHubRawFile {
 	path: string;

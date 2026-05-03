@@ -1,13 +1,7 @@
 import { Box, HStack, Text } from '@chakra-ui/react';
 import React from 'react';
 
-export const QUANT_COLORS: Record<string, string> = {
-	Q5_K_XL: '#34d399', Q6_K_XL: '#34d399', Q6_K: '#34d399', Q4_K_M: '#34d399',
-	Q5_K_M: '#34d399', Q5_K_S: '#34d399', Q4_K_S: '#34d399', Q3_K_M: '#fbbf24',
-	IQ3_XXS: '#fbbf24', IQ3_M: '#fbbf24', IQ3_XS: '#fbbf24',
-	IQ4_XS: '#fbbf24', MXFP4: '#a78bfa', NVFP4: '#a78bfa',
-	F32: 'rgba(255, 255, 255, 0.4)', BF16: 'rgba(255, 255, 255, 0.4)', F16: 'rgba(255, 255, 255, 0.4)',
-};
+export { QUANT_COLORS } from '@/lib/constants';
 
 export function formatUptime(startedAt: number | null): string {
 	if (!startedAt) return '-';

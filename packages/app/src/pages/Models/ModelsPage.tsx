@@ -1,13 +1,13 @@
 import { Box, Text, HStack, Flex, Badge, Button, Spinner, Input } from '@chakra-ui/react';
 import {
-	FolderOpen, Search, MoreVertical, ExternalLink, Eye,
+	FolderOpen, Search, MoreVertical, ExternalLink, Eye, RefreshCw,
 	FolderOpen as FolderIcon, Trash2, ChevronUp, ChevronDown,
 } from 'lucide-react';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { PageHeader } from '../../components/PageHeader';
 import { useMutation } from '../../hooks/useQuery';
 import { useStore } from '../../store';
-import { scanModels } from '../../api/services';
+import { scanModels, reparseModel } from '../../api/services';
 import { openExternal } from '../../utils/openExternal';
 import type { IModel } from '@warpcore/shared';
 
@@ -15,13 +15,7 @@ import type { IModel } from '@warpcore/shared';
 // Helpers
 // ============================================================
 
-const QUANT_COLORS: Record<string, string> = {
-	Q5_K_XL: '#34d399', Q6_K_XL: '#34d399', Q6_K: '#34d399', Q4_K_M: '#34d399',
-	Q5_K_M: '#34d399', Q5_K_S: '#34d399', Q4_K_S: '#34d399', Q3_K_M: '#fbbf24',
-	Q8_0: '#22d3ee', IQ3_XXS: '#fbbf24', IQ3_M: '#fbbf24', IQ3_XS: '#fbbf24',
-	IQ4_XS: '#fbbf24', MXFP4: '#a78bfa', NVFP4: '#a78bfa',
-	F32: 'rgba(255, 255, 255, 0.4)', BF16: 'rgba(255, 255, 255, 0.4)', F16: 'rgba(255, 255, 255, 0.4)',
-};
+import { QUANT_COLORS } from '@/lib/constants';
 
 function formatSize(mb: number): string {
 	if (mb >= 1024) return (mb / 1024).toFixed(1) + ' GB';
@@ -77,7 +71,7 @@ function sortModels(models: IModel[], sort: ISortState): IModel[] {
 // Row Menu
 // ============================================================
 
-function RowMenu({ model, onClose }: { model: IModel; onClose: () => void }) {
+function RowMenu({ model, onClose, onReparse }: { model: IModel; onClose: () => void; onReparse: (id: string) => void }) {
 	const menuRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -137,6 +131,22 @@ function RowMenu({ model, onClose }: { model: IModel; onClose: () => void }) {
 			>
 				<FolderIcon size={14} />
 				<Text fontSize="12px">Copy folder path</Text>
+			</HStack>
+			<HStack
+				gap="2"
+				px="3"
+				py="2"
+				cursor="pointer"
+				color="rgba(255, 255, 255, 0.6)"
+				_hover={{ bg: 'rgba(255, 255, 255, 0.04)', color: 'rgba(255, 255, 255, 0.9)' }}
+				transition="all 0.1s ease"
+				onClick={() => {
+					onReparse(model.id);
+					onClose();
+				}}
+			>
+				<RefreshCw size={14} />
+				<Text fontSize="12px">Re-parse Metadata</Text>
 			</HStack>
 			<Box h="1px" bg="rgba(255, 255, 255, 0.06)" my="1" />
 			<HStack
@@ -201,6 +211,9 @@ export function ModelsPage() {
 	const models = useMemo(() => Object.values(modelsRecord), [modelsRecord]);
 	const scanMut = useMutation<void, IModel[]>(
 		useCallback(() => scanModels() as Promise<any>, [])
+	);
+	const reparseMut = useMutation<string, IModel>(
+		useCallback((id: string) => reparseModel(id) as Promise<any>, [])
 	);
 
 	const [search, setSearch] = useState('');
@@ -449,7 +462,7 @@ export function ModelsPage() {
 										<MoreVertical size={14} />
 									</Flex>
 									{openMenuId === model.id && (
-										<RowMenu model={model} onClose={() => setOpenMenuId(null)} />
+										<RowMenu model={model} onClose={() => setOpenMenuId(null)} onReparse={(id) => reparseMut.mutate(id)} />
 									)}
 								</Box>
 							</Flex>

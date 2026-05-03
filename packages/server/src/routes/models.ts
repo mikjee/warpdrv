@@ -4,6 +4,8 @@ import { scanAllModelRoots } from '../services/modelScanner';
 import { sseManager } from '../services/sseManagerInstance';
 import type { ISettings, IModel } from '@warpcore/shared';
 import { DEFAULT_SETTINGS } from '@warpcore/shared';
+import { parseGgufMetadata } from '../services/ggufParser';
+import type { IGgufFile } from '@warpcore/shared';
 
 const SETTINGS_KEY = 'settings:general';
 const MODELS_KEY = 'models:cache';
@@ -109,6 +111,25 @@ modelsRouter.put('/:id', async (req, res) => {
 		res.json({ ok: true, data: updatedModel, error: null });
 	} catch (err) {
 		console.error('[models] Failed to save updated model:', err);
+		res.json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+modelsRouter.post('/:id/reparse', async (req, res) => {
+	const modelId = req.params.id;
+	const model = cachedModels.find(m => m.id === modelId);
+	if (!model || !model.primaryFile) {
+		res.status(404).json({ ok: false, data: null, error: 'Model or primary file not found' });
+		return;
+	}
+
+	model.primaryFile.metadata = await parseGgufMetadata(model.primaryFile.filePath);
+
+	try {
+		await store.put(MODELS_KEY, cachedModels);
+		sseManager.emit('models:update', [model]);
+		res.json({ ok: true, data: model, error: null });
+	} catch (err) {
 		res.json({ ok: false, data: null, error: String(err) });
 	}
 });

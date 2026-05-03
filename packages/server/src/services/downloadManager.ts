@@ -19,7 +19,7 @@ function makeDownloadId(): TDownloadId {
 }
 
 function quantFromFilename(filename: string): string {
-	const match = filename.match(/[-_](Q\d[\w_]*|IQ\d[\w_]*|MXFP\d+|F16|F32|BF16)/i);
+	const match = filename.match(/[-_](Q\d[\w_]*|IQ\d[\w_]*|MXFP\d+|NVFP\d+|F16|F32|BF16)/i);
 	return match ? match[1]!.toUpperCase() : '';
 }
 

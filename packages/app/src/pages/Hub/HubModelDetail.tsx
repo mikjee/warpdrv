@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Text, HStack, VStack, Flex, Badge, Button, Spinner, AccordionRoot, AccordionItem as AccordionItemComp, AccordionItemTrigger, AccordionItemContent } from '@chakra-ui/react';
 import {
 	Download, Heart, Clock, Calendar, CheckCircle,
@@ -98,25 +98,21 @@ function formatCount(n: number): string {
 	return String(n);
 }
 
-const QUANT_COLORS: Record<string, string> = {
-	Q5_K_XL: '#34d399', Q6_K_XL: '#34d399', Q6_K: '#34d399', Q4_K_M: '#34d399', Q6_K_L: '#34d399',
-	Q8_0: '#22d3ee', IQ3_XXS: '#fbbf24', IQ3_M: '#fbbf24', IQ3_XS: '#fbbf24', IQ2_XS: '#fbbf24',
-	MXFP4: '#a78bfa', F32: 'rgba(255, 255, 255, 0.4)', BF16: 'rgba(255, 255, 255, 0.4)', F16: 'rgba(255, 255, 255, 0.4)',
-};
+import { QUANT_COLORS } from '@/lib/constants';
 
 interface IHubModelDetailProps {
 	modelId: string;
 	modelRoots: string[];
 }
 
-function FileRow({ file, modelRoots, author, modelName, allFiles, existsInRoot }: {
+const FileRow = React.memo(({ file, modelRoots, author, modelName, allFiles, existsInRoot }: {
 	file: IHubFile;
 	modelRoots: string[];
 	author: string;
 	modelName: string;
 	allFiles: IHubFile[];
 	existsInRoot: string | null;
-}) {
+}) => {
 	const { toast } = useToast();
 	const [showDirPicker, setShowDirPicker] = useState(false);
 	const [downloading, setDownloading] = useState(false);
@@ -253,9 +249,9 @@ function FileRow({ file, modelRoots, author, modelName, allFiles, existsInRoot }
 			</Flex>
 		</Card>
 	);
-}
+});
 
-export function HubModelDetail({ modelId, modelRoots }: IHubModelDetailProps) {
+export const HubModelDetail = React.memo(({ modelId, modelRoots }: IHubModelDetailProps) => {
 	const [detail, setDetail] = useState<IHubModelDetail | null>(null);
 	const [loading, setLoading] = useState(true);
 
@@ -306,7 +302,9 @@ export function HubModelDetail({ modelId, modelRoots }: IHubModelDetailProps) {
 	}
 
 	// Sort display files by size
-	displayFiles.sort((a, b) => a.size - b.size);
+	const displayWithSize = displayFiles.map(f => ({ file: f, totalSize: getTotalSizeForModel(allGgufFiles, f) }));
+	displayWithSize.sort((a, b) => a.totalSize - b.totalSize);
+	const sortedFiles = displayWithSize.map(d => d.file);
 
 	// Count fully downloaded models (all parts must be downloaded)
 	let downloadedCount = 0;
@@ -415,7 +413,7 @@ export function HubModelDetail({ modelId, modelRoots }: IHubModelDetailProps) {
 
 							<AccordionItemContent pt="0" pb="4" px="2">
 								<VStack align="stretch" gap="2">
-									{displayFiles.map((file: IHubFile) => (
+									{sortedFiles.map((file: IHubFile) => (
 										<FileRow
 											key={file.filename}
 											file={file}
@@ -492,4 +490,4 @@ export function HubModelDetail({ modelId, modelRoots }: IHubModelDetailProps) {
 			</VStack>
 		</Box>
 	);
-}
+});

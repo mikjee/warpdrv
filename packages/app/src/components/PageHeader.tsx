@@ -53,8 +53,8 @@ function WindowButton({ onClick, children, isClose }: {
 }
 
 export const PageHeader = React.memo(({ title, subtitle, icon, actions, actionsRight }: IPageHeaderProps) => {
-	const settings = useStore(s => s.settings);
-	const [collapsed, setCollapsed] = useDependantState(settings.sidebarCollapsed);
+	const isCollapsedSetting = useStore(s => s.settings.sidebarCollapsed);
+	const [collapsed, setCollapsed] = useDependantState(isCollapsedSetting);
 
 	const handleCollapseChange = useCallback((newCollapsed: boolean) => {
 		setCollapsed(newCollapsed);
@@ -81,7 +81,7 @@ export const PageHeader = React.memo(({ title, subtitle, icon, actions, actionsR
 			align="center"
 			px="4"
 			height="60px"
-			width={`calc(100% - ${collapsed ? "60px" : "220px"})`}
+			right={"0px"}
 			boxSizing={"border-box"}
 			borderBottomWidth="1px"
 			borderColor="rgba(255, 255, 255, 0.05)"

@@ -371,7 +371,6 @@ export const Shell = React.memo(() => {
 
 				{/* Main content */}
 				<Box flex="1" overflow="auto">
-					<UpdateBanner />
 					{Object.entries(PAGE_REGISTRY).map(([path, config]) => {
 						const isActive = currentPath === path || (currentPath === '/' && path === '/home');
 

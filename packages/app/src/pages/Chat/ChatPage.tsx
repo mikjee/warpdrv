@@ -640,7 +640,7 @@ export const ChatPage = React.memo(() => {
 							fontSize: "13px",
 							color: "grey",
 							position: "fixed",
-							left: `calc(50vw - (${title.length * 3.5}px - ${threadsListCollapsed ? "0" : "135"}px)`
+							left: `calc(50% - (${title.length * 3.5}px - ${threadsListCollapsed ? "-20" : "100"}px)`
 						}}>{title}</span>
 					</>
 				}
