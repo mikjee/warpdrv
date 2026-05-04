@@ -103,11 +103,11 @@ export function SaveCheckpointDialog({ server, isOpen, onClose }: ISaveCheckpoin
 	const tabButtonStyle = (active: boolean) => ({
 		flex: '1',
 		size: 'sm' as const,
-		bg: active ? 'rgba(51, 129, 255, 0.12)' : 'transparent',
-		color: active ? '#3381ff' : 'rgba(255, 255, 255, 0.5)',
+		bg: active ? 'var(--w-servers-checkpoint-tab-activebg)' : 'var(--w-servers-checkpoint-tab-inactivebg)',
+		color: active ? 'var(--w-servers-checkpoint-tab-activecolor)' : 'var(--w-servers-checkpoint-tab-inactivecolor)',
 		borderWidth: '1px',
-		borderColor: active ? 'rgba(51, 129, 255, 0.25)' : 'rgba(255, 255, 255, 0.08)',
-		_hover: { bg: active ? 'rgba(51, 129, 255, 0.18)' : 'rgba(255, 255, 255, 0.04)' },
+		borderColor: active ? 'var(--w-servers-checkpoint-tab-activeborder)' : 'var(--w-servers-checkpoint-tab-inactiveborder)',
+		_hover: { bg: active ? 'var(--w-servers-checkpoint-tab-activehover)' : 'var(--w-servers-checkpoint-tab-inactivehover)' },
 		borderRadius: 'lg',
 		fontSize: '12px',
 		fontWeight: '500',
@@ -122,18 +122,18 @@ export function SaveCheckpointDialog({ server, isOpen, onClose }: ISaveCheckpoin
 						<Dialog.Positioner position="absolute">
 							<Dialog.Content
 								maxW="480px"
-								bg="#0f0f12"
-								borderColor="rgba(255, 255, 255, 0.08)"
+								bg="var(--w-servers-launch-dialog-bg)"
+								borderColor="var(--w-servers-launch-dialog-border)"
 								borderRadius="2xl"
 								shadow="0 24px 80px rgba(0, 0, 0, 0.6)"
 							>
 							<Box position="relative">
 								<VStack gap="4" px="6" py="5" align="stretch" style={{ opacity: isSaving ? 0.5 : 1 }}>
 								<HStack gap="2">
-									<Box w="8" h="8" borderRadius="lg" display="flex" alignItems="center" justifyContent="center" bg="rgba(51, 129, 255, 0.12)">
-										<Save size={16} color="#3381ff" />
+									<Box w="8" h="8" borderRadius="lg" display="flex" alignItems="center" justifyContent="center" bg="var(--w-servers-checkpoint-icon-bg)">
+										<Save size={16} color="var(--w-servers-checkpoint-icon-color)" />
 									</Box>
-									<Dialog.Title fontSize="15px" fontWeight="700" color="#e4e4e7">
+									<Dialog.Title fontSize="15px" fontWeight="700" color="var(--w-servers-checkpoint-title)">
 										Save Checkpoint
 									</Dialog.Title>
 								</HStack>
@@ -155,10 +155,10 @@ export function SaveCheckpointDialog({ server, isOpen, onClose }: ISaveCheckpoin
 								</HStack>
 
 								{tab === 'REPLACE_LATEST' && latestForServer && (
-									<Box px="3" py="2.5" borderRadius="lg" bg="rgba(255, 255, 255, 0.03)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.05)">
-										<Text fontSize="11px" color="rgba(255, 255, 255, 0.4)">Overwriting</Text>
-										<Text fontSize="13px" color="#e4e4e7" mt="0.5">{latestForServer.name}</Text>
-										<Text fontSize="11px" color="rgba(255, 255, 255, 0.4)" mt="0.5">
+									<Box px="3" py="2.5" borderRadius="lg" bg="var(--w-servers-checkpoint-overwrite-bg)" borderWidth="1px" borderColor="var(--w-servers-checkpoint-overwrite-border)">
+										<Text fontSize="11px" color="var(--w-servers-checkpoint-overwrite-text)">Overwriting</Text>
+										<Text fontSize="13px" color="var(--w-servers-checkpoint-overwrite-name)" mt="0.5">{latestForServer.name}</Text>
+										<Text fontSize="11px" color="var(--w-servers-checkpoint-overwrite-text)" mt="0.5">
 											{new Date(latestForServer.createdAt).toLocaleString()}
 										</Text>
 									</Box>
@@ -166,22 +166,22 @@ export function SaveCheckpointDialog({ server, isOpen, onClose }: ISaveCheckpoin
 
 								{tab === 'NEW' && (
 									<VStack gap="1.5" align="stretch">
-										<Text fontSize="11px" color="rgba(255, 255, 255, 0.5)">Name</Text>
+										<Text fontSize="11px" color="var(--w-servers-launch-model-label)">Name</Text>
 										<Input
 											size="sm"
 											value={name}
 											onChange={(e) => setName(e.target.value)}
 											placeholder="Checkpoint name"
-											bg="rgba(255, 255, 255, 0.03)"
-											borderColor="rgba(255, 255, 255, 0.08)"
-											color="#e4e4e7"
+											bg="var(--w-servers-checkpoint-input-bg)"
+											borderColor="var(--w-servers-checkpoint-input-border)"
+											color="var(--w-servers-checkpoint-input-color)"
 											fontSize="13px"
 										/>
 									</VStack>
 								)}
 
 								<VStack gap="1.5" align="stretch" style={{ display: "none" }}>
-									<Text fontSize="11px" color="rgba(255, 255, 255, 0.5)">Select slots</Text>
+									<Text fontSize="11px" color="var(--w-servers-launch-model-label)">Select slots</Text>
 									<HStack gap="2">
 										<Button {...tabButtonStyle(slotMode === 'ALL')} onClick={() => setSlotMode('ALL')}>All</Button>
 										<Button {...tabButtonStyle(slotMode === 'LATEST')} onClick={() => setSlotMode('LATEST')}>Latest</Button>
@@ -207,23 +207,23 @@ export function SaveCheckpointDialog({ server, isOpen, onClose }: ISaveCheckpoin
 								)}
 
 								{previewSlot && (
-									<Box px="3" py="2.5" borderRadius="lg" bg="rgba(255, 255, 255, 0.03)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.05)">
+									<Box px="3" py="2.5" borderRadius="lg" bg="var(--w-servers-checkpoint-preview-bg)" borderWidth="1px" borderColor="var(--w-servers-checkpoint-preview-border)">
 										<HStack justify="space-between">
-											<Text fontSize="11px" color="rgba(255, 255, 255, 0.4)">Context</Text>
-											<Text fontSize="12px" color="#e4e4e7" fontFamily='"Geist Mono", monospace'>
+											<Text fontSize="11px" color="var(--w-servers-checkpoint-preview-label)">Context</Text>
+											<Text fontSize="12px" color="var(--w-servers-checkpoint-preview-value)" fontFamily='"Geist Mono", monospace'>
 												{previewSlot.cachedTokens.toLocaleString()} / {previewSlot.nCtx.toLocaleString()}
 											</Text>
 										</HStack>
 										{previewMeta && (
 											<>
 												<HStack justify="space-between" mt="1">
-													<Text fontSize="11px" color="rgba(255, 255, 255, 0.4)">Messages</Text>
-													<Text fontSize="12px" color="#e4e4e7">{previewMeta.messageCount}</Text>
+													<Text fontSize="11px" color="var(--w-servers-checkpoint-preview-label)">Messages</Text>
+													<Text fontSize="12px" color="var(--w-servers-checkpoint-preview-value)">{previewMeta.messageCount}</Text>
 												</HStack>
 												{previewMeta.lastUserMessagePreview && (
 													<Box mt="2">
-														<Text fontSize="11px" color="rgba(255, 255, 255, 0.4)">Last message</Text>
-														<Text fontSize="12px" color="rgba(255, 255, 255, 0.7)" mt="0.5" lineHeight="1.4">
+														<Text fontSize="11px" color="var(--w-servers-checkpoint-preview-label)">Last message</Text>
+														<Text fontSize="12px" color="var(--w-servers-checkpoint-preview-message)" mt="0.5" lineHeight="1.4">
 															{previewMeta.lastUserMessagePreview}
 														</Text>
 													</Box>
@@ -238,8 +238,8 @@ export function SaveCheckpointDialog({ server, isOpen, onClose }: ISaveCheckpoin
 										flex="1"
 										size="sm"
 										variant="ghost"
-										color="rgba(255, 255, 255, 0.4)"
-										_hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }}
+										color="var(--w-servers-launch-cancel-btn)"
+										_hover={{ color: 'var(--w-servers-launch-cancel-hover)', bg: 'var(--w-servers-launch-cancel-hoverbg)' }}
 										borderRadius="lg"
 										fontSize="13px"
 										onClick={onClose}
@@ -250,11 +250,11 @@ export function SaveCheckpointDialog({ server, isOpen, onClose }: ISaveCheckpoin
 									<Button
 										flex="1"
 										size="sm"
-										bg="rgba(51, 129, 255, 0.12)"
-										color="#3381ff"
+										bg="var(--w-servers-launch-confirm-bg)"
+										color="var(--w-servers-launch-confirm-color)"
 										borderWidth="1px"
-										borderColor="rgba(51, 129, 255, 0.25)"
-										_hover={{ bg: 'rgba(51, 129, 255, 0.2)' }}
+										borderColor="var(--w-servers-launch-confirm-border)"
+										_hover={{ bg: 'var(--w-servers-launch-confirm-hover)' }}
 										borderRadius="lg"
 										fontSize="13px"
 										fontWeight="500"
@@ -273,14 +273,14 @@ export function SaveCheckpointDialog({ server, isOpen, onClose }: ISaveCheckpoin
 									left="0"
 									right="0"
 									bottom="0"
-									bg="rgba(0, 0, 0, 0.3)"
+									bg="var(--w-servers-checkpoint-overlay)"
 									display="flex"
 									alignItems="center"
 									justifyContent="center"
 									borderRadius="2xl"
 									zIndex={1}
 								>
-									<Spinner size="md" color="#3381ff" />
+									<Spinner size="md" color="var(--w-servers-checkpoint-spinner)" />
 								</Box>
 							)}
 						</Box>

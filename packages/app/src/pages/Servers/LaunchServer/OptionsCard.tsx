@@ -14,7 +14,7 @@ export const OptionsCard = React.memo(({
 	return (
 		<Card>
 			<VStack align="stretch" gap="3">
-				<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">Options</Text>
+				<Text fontSize="11px" color="var(--w-servers-launch-text-label)" textTransform="uppercase" letterSpacing="0.05em">Options</Text>
 				<HStack gap="2" flexWrap="wrap">
 					<ToggleChip label="Flash Attention" active={params.flashAttn} onClick={() => onParamChange('flashAttn', !params.flashAttn)} />
 					<ToggleChip label="MLock" active={params.mlock} onClick={() => onParamChange('mlock', !params.mlock)} />
@@ -33,12 +33,12 @@ export const OptionsCard = React.memo(({
 					<NumberField label="Threads (Batch)" value={params.threadsBatch} onChange={v => onParamChange('threadsBatch', v)} min={0} suffix="0 = auto" />
 				</Flex>
 				<Box>
-					<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Chat Template</Text>
-					<Input placeholder="Auto-detect" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={params.chatTemplate} onChange={e => onParamChange('chatTemplate', e.target.value)} />
+					<Text fontSize="11px" color="var(--w-servers-launch-text-label)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Chat Template</Text>
+					<Input placeholder="Auto-detect" size="sm" bg="var(--w-servers-launch-input-bg)" borderColor="var(--w-servers-launch-input-border)" color="var(--w-servers-launch-input-color)" fontSize="12px" borderRadius="lg" _placeholder={{ color: 'var(--w-servers-launch-input-placeholder)' }} _focus={{ borderColor: 'var(--w-servers-launch-input-focus)', outline: 'none' }} value={params.chatTemplate} onChange={e => onParamChange('chatTemplate', e.target.value)} />
 				</Box>
 				<Box>
-					<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Custom Flags</Text>
-					<Input placeholder="--some-flag value" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={params.extraArgs} onChange={e => onParamChange('extraArgs', e.target.value)} />
+					<Text fontSize="11px" color="var(--w-servers-launch-text-label)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Custom Flags</Text>
+					<Input placeholder="--some-flag value" size="sm" bg="var(--w-servers-launch-input-bg)" borderColor="var(--w-servers-launch-input-border)" color="var(--w-servers-launch-input-color)" fontFamily='"Geist Mono", monospace' fontSize="12px" borderRadius="lg" _placeholder={{ color: 'var(--w-servers-launch-input-placeholder)' }} _focus={{ borderColor: 'var(--w-servers-launch-input-focus)', outline: 'none' }} value={params.extraArgs} onChange={e => onParamChange('extraArgs', e.target.value)} />
 				</Box>
 			</VStack>
 		</Card>

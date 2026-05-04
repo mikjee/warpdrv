@@ -1,6 +1,8 @@
 div#root.theme-dark {
 	background: #111;
+}
 
+:root {
 	--w-about-attribution-title: #e4e4e7;
 	--w-about-attribution-builtwith: rgba(255, 255, 255, 0.7);
 	--w-about-attribution-heart: #fb7185;
@@ -184,5 +186,221 @@ div#root.theme-dark {
 	--w-servers-empty-border: rgba(255, 255, 255, 0.06);
 	--w-servers-empty-text: rgba(255, 255, 255, 0.2);
 	--w-servers-empty-subtext: rgba(255, 255, 255, 0.15);
+
+	--w-servers-launch-overlay: rgba(0, 0, 0, 0.7);
+	--w-servers-launch-dialog-bg: #0f0f12;
+	--w-servers-launch-dialog-border: rgba(255, 255, 255, 0.08);
+	--w-servers-launch-dialog-headerbg: rgba(255, 255, 255, 0.01);
+	--w-servers-launch-dialog-headerborder: rgba(255, 255, 255, 0.06);
+	--w-servers-launch-icon-edit-from: rgba(251, 191, 36, 0.2);
+	--w-servers-launch-icon-edit-to: rgba(245, 158, 11, 0.2);
+	--w-servers-launch-icon-edit-border: rgba(251, 191, 36, 0.2);
+	--w-servers-launch-icon-edit-color: #fbbf24;
+	--w-servers-launch-icon-new-from: rgba(51, 129, 255, 0.2);
+	--w-servers-launch-icon-new-to: rgba(167, 139, 250, 0.2);
+	--w-servers-launch-icon-new-border: rgba(51, 129, 255, 0.2);
+	--w-servers-launch-icon-new-color: #3381ff;
+	--w-servers-launch-title: #e4e4e7;
+	--w-servers-launch-subtitle: rgba(255, 255, 255, 0.35);
+	--w-servers-launch-close-btn: rgba(255, 255, 255, 0.3);
+	--w-servers-launch-close-hover: #e4e4e7;
+	--w-servers-launch-close-hoverbg: rgba(255, 255, 255, 0.06);
+
+	--w-servers-launch-input-bg: rgba(255, 255, 255, 0.03);
+	--w-servers-launch-input-border: rgba(255, 255, 255, 0.08);
+	--w-servers-launch-input-color: rgba(255, 255, 255, 0.7);
+	--w-servers-launch-input-placeholder: rgba(255, 255, 255, 0.2);
+	--w-servers-launch-input-focus: rgba(51, 129, 255, 0.4);
+	--w-servers-launch-input-focus-purple: rgba(167, 139, 250, 0.4);
+
+	--w-servers-launch-combobox-content-bg: #18181b;
+	--w-servers-launch-combobox-content-border: rgba(255, 255, 255, 0.1);
+	--w-servers-launch-combobox-item-hover: rgba(255, 255, 255, 0.06);
+	--w-servers-launch-combobox-item-highlight: rgba(51, 129, 255, 0.08);
+	--w-servers-launch-combobox-item-highlight-purple: rgba(167, 139, 250, 0.08);
+	--w-servers-launch-combobox-item-text: #e4e4e7;
+	--w-servers-launch-combobox-empty: rgba(255, 255, 255, 0.25);
+	--w-servers-launch-combobox-device: rgba(255, 255, 255, 0.3);
+	--w-servers-launch-combobox-vram: rgba(255, 255, 255, 0.5);
+
+	--w-servers-launch-text-label: rgba(255, 255, 255, 0.35);
+	--w-servers-launch-text-subtitle: rgba(255, 255, 255, 0.3);
+	--w-servers-launch-text-hint: rgba(255, 255, 255, 0.2);
+	--w-servers-launch-text-optional: rgba(255, 255, 255, 0.25);
+
+	--w-servers-launch-tab-active-bg: rgba(167, 139, 250, 0.05);
+	--w-servers-launch-tab-active-border: rgba(167, 139, 250, 0.3);
+	--w-servers-launch-tab-active-color: #a78bfa;
+	--w-servers-launch-tab-active-hover: rgba(167, 139, 250, 0.5);
+	--w-servers-launch-tab-inactive-bg: rgba(255, 255, 255, 0.02);
+	--w-servers-launch-tab-inactive-border: rgba(255, 255, 255, 0.08);
+	--w-servers-launch-tab-inactive-color: rgba(255, 255, 255, 0.4);
+	--w-servers-launch-tab-inactive-hover: rgba(255, 255, 255, 0.15);
+
+	--w-servers-launch-switch-inactive: rgba(255, 255, 255, 0.4);
+	--w-servers-launch-switch-thumb: rgba(25, 25, 25);
+	--w-servers-launch-switch-active-blue: #3b86d6;
+	--w-servers-launch-switch-active-green: #34d399;
+	--w-servers-launch-switch-active-yellow: #fbbf24;
+	--w-servers-launch-switch-active-purple: #a78bfa;
+
+	--w-servers-launch-cancel-btn: rgba(255, 255, 255, 0.4);
+	--w-servers-launch-cancel-hover: #e4e4e7;
+	--w-servers-launch-cancel-hoverbg: rgba(255, 255, 255, 0.06);
+
+	--w-servers-launch-confirm-bg: rgba(51, 129, 255, 0.12);
+	--w-servers-launch-confirm-color: #3381ff;
+	--w-servers-launch-confirm-border: rgba(51, 129, 255, 0.25);
+	--w-servers-launch-confirm-hover: rgba(51, 129, 255, 0.2);
+
+	--w-servers-launch-gradient-from: #3381ff;
+	--w-servers-launch-gradient-to: #5b6af5;
+
+	--w-servers-launch-togglechip-active-bg: rgba(51, 129, 255, 0.12);
+	--w-servers-launch-togglechip-inactive-bg: rgba(255, 255, 255, 0.03);
+	--w-servers-launch-togglechip-active-color: #3381ff;
+	--w-servers-launch-togglechip-inactive-color: rgba(255, 255, 255, 0.4);
+	--w-servers-launch-togglechip-active-border: rgba(51, 129, 255, 0.3);
+	--w-servers-launch-togglechip-inactive-border: rgba(255, 255, 255, 0.06);
+	--w-servers-launch-togglechip-active-hover: rgba(51, 129, 255, 0.18);
+	--w-servers-launch-togglechip-inactive-hover: rgba(255, 255, 255, 0.06);
+	--w-servers-launch-togglechip-active-hovercolor: #3381ff;
+	--w-servers-launch-togglechip-inactive-hovercolor: rgba(255, 255, 255, 0.6);
+
+	--w-servers-launch-selectfield-dropdown-bg: #18181b;
+	--w-servers-launch-selectfield-dropdown-border: rgba(255, 255, 255, 0.1);
+	--w-servers-launch-selectfield-option-selected: #3381ff;
+	--w-servers-launch-selectfield-option-default: rgba(255, 255, 255, 0.6);
+	--w-servers-launch-selectfield-option-selectedbg: rgba(51, 129, 255, 0.08);
+	--w-servers-launch-selectfield-option-hover: rgba(255, 255, 255, 0.06);
+
+	--w-servers-launch-slider-track: rgba(255, 255, 255, 0.06);
+	--w-servers-launch-slider-range: rgba(51, 129, 255, 0.5);
+	--w-servers-launch-slider-thumb: #3381ff;
+	--w-servers-launch-slider-thumb-border: #0f0f12;
+	--w-servers-launch-slider-thumb-shadow: rgba(51, 129, 255, 0.3);
+
+	--w-servers-launch-model-label: rgba(255, 255, 255, 0.5);
+	--w-servers-launch-no-models: rgba(255, 255, 255, 0.25);
+	--w-servers-launch-model-meta-bg: rgba(51, 129, 255, 0.04);
+	--w-servers-launch-model-meta-border: rgba(51, 129, 255, 0.1);
+	--w-servers-launch-model-meta-icon: rgba(255, 255, 255, 0.35);
+	--w-servers-launch-model-meta-text: rgba(255, 255, 255, 0.5);
+	--w-servers-launch-model-ctx-text: rgba(255, 255, 255, 0.4);
+	--w-servers-launch-model-mmproj: #a78bfa;
+
+	--w-servers-launch-multimodal-bg-active: rgba(251, 191, 36, 0.03);
+	--w-servers-launch-multimodal-border-active: rgba(251, 191, 36, 0.12);
+	--w-servers-launch-multimodal-icon-bg-active: rgba(251, 191, 36, 0.15);
+	--w-servers-launch-multimodal-icon-bg-inactive: rgba(255, 255, 255, 0.04);
+
+	--w-servers-launch-spec-bg-active: rgba(167, 139, 250, 0.03);
+	--w-servers-launch-spec-border-active: rgba(167, 139, 250, 0.12);
+	--w-servers-launch-spec-icon-bg-active: rgba(167, 139, 250, 0.15);
+	--w-servers-launch-spec-icon-bg-inactive: rgba(255, 255, 255, 0.04);
+	--w-servers-launch-spec-draftlabel: rgba(167, 139, 250, 0.7);
+	--w-servers-launch-spec-draftinfo: rgba(255, 255, 255, 0.3);
+	--w-servers-launch-spec-draftmeta-bg: rgba(167, 139, 250, 0.04);
+	--w-servers-launch-spec-draftmeta-border: rgba(167, 139, 250, 0.1);
+	--w-servers-launch-spec-draftmeta-icon: rgba(167, 139, 250, 0.5);
+	--w-servers-launch-spec-draftmeta-text: rgba(167, 139, 250, 0.7);
+	--w-servers-launch-spec-thresholdlabel: rgba(167, 139, 250, 0.7);
+	--w-servers-launch-spec-draftparamslabel: rgba(167, 139, 250, 0.7);
+
+	--w-servers-launch-groupinfo-bg: rgba(167, 139, 250, 0.04);
+	--w-servers-launch-groupinfo-border: rgba(167, 139, 250, 0.1);
+	--w-servers-launch-groupinfo-icon: rgba(167, 139, 250, 0.5);
+	--w-servers-launch-groupinfo-text: rgba(167, 139, 250, 0.7);
+	--w-servers-launch-groupinfo-backendlabel: rgba(255, 255, 255, 0.35);
+	--w-servers-launch-groupinfo-backendcount: rgba(255, 255, 255, 0.5);
+	--w-servers-launch-group-combo-active: rgba(167, 139, 250, 0.6);
+	--w-servers-launch-group-combo-separator: rgba(255, 255, 255, 0.25);
+	--w-servers-launch-no-backends: rgba(255, 255, 255, 0.25);
+	--w-servers-launch-no-groups: rgba(255, 255, 255, 0.25);
+	--w-servers-launch-multigpu-divider: rgba(255, 255, 255, 0.06);
+	--w-servers-launch-multigpu-icon-active: rgba(52, 211, 153, 0.15);
+	--w-servers-launch-multigpu-icon-inactive: rgba(255, 255, 255, 0.04);
+	--w-servers-launch-device-checkbox: #34d399;
+	--w-servers-launch-device-checkbox-active: #34d399;
+	--w-servers-launch-device-checkbox-inactive: rgba(255, 255, 255, 0.06);
+	--w-servers-launch-device-name: rgba(255, 255, 255, 0.5);
+	--w-servers-launch-device-backend: rgba(255, 255, 255, 0.25);
+	--w-servers-launch-device-gpuindex: rgba(255, 255, 255, 0.25);
+	--w-servers-launch-equaldist-btn: rgba(255, 255, 255, 0.3);
+	--w-servers-launch-equaldist-hover: #34d399;
+	--w-servers-launch-equaldist-hoverbg: rgba(52, 211, 153, 0.08);
+
+	--w-servers-launch-footer-border: rgba(255, 255, 255, 0.06);
+	--w-servers-launch-footer-bg: rgba(255, 255, 255, 0.01);
+	--w-servers-launch-footer-save-bg: rgba(255, 255, 255, 0.08);
+	--w-servers-launch-footer-save-color: #e4e4e7;
+	--w-servers-launch-footer-save-border: rgba(255, 255, 255, 0.15);
+	--w-servers-launch-footer-save-hoverbg: rgba(255, 255, 255, 0.12);
+	--w-servers-launch-footer-save-hoverborder: rgba(255, 255, 255, 0.25);
+	--w-servers-launch-footer-relaunch-from: #fbbf24;
+	--w-servers-launch-footer-relaunch-to: #f59e0b;
+	--w-servers-launch-footer-relaunch-color: #18181b;
+	--w-servers-launch-footer-relaunch-border: rgba(251, 191, 36, 0.3);
+	--w-servers-launch-footer-relaunch-shadow: rgba(251, 191, 36, 0.3);
+	--w-servers-launch-footer-launch-from: #3381ff;
+	--w-servers-launch-footer-launch-to: #5b6af5;
+	--w-servers-launch-footer-launch-shadow: rgba(51, 129, 255, 0.3);
+
+	--w-servers-launch-recommended-textarea-edit: rgb(30,30,30);
+	--w-servers-launch-recommended-cancel: rgba(255, 255, 255, 0.6);
+	--w-servers-launch-recommended-cancel-hover: #f43f5e;
+	--w-servers-launch-recommended-cancel-hoverbg: rgba(244, 63, 94, 0.1);
+	--w-servers-launch-recommended-editborder: rgba(255, 255, 255, 0.2);
+	--w-servers-launch-recommended-editcolor: rgba(255, 255, 255, 0.6);
+	--w-servers-launch-recommended-edithover: #3b86d6;
+	--w-servers-launch-recommended-edithoverbg: rgba(51, 129, 255, 0.05);
+
+	--w-servers-checkpoint-overlay: rgba(0, 0, 0, 0.3);
+	--w-servers-checkpoint-spinner: #3381ff;
+	--w-servers-checkpoint-tab-activebg: rgba(51, 129, 255, 0.12);
+	--w-servers-checkpoint-tab-activecolor: #3381ff;
+	--w-servers-checkpoint-tab-activeborder: rgba(51, 129, 255, 0.25);
+	--w-servers-checkpoint-tab-inactivebg: transparent;
+	--w-servers-checkpoint-tab-inactivecolor: rgba(255, 255, 255, 0.5);
+	--w-servers-checkpoint-tab-inactiveborder: rgba(255, 255, 255, 0.08);
+	--w-servers-checkpoint-tab-activehover: rgba(51, 129, 255, 0.18);
+	--w-servers-checkpoint-tab-inactivehover: rgba(255, 255, 255, 0.04);
+	--w-servers-checkpoint-overwrite-bg: rgba(255, 255, 255, 0.03);
+	--w-servers-checkpoint-overwrite-border: rgba(255, 255, 255, 0.05);
+	--w-servers-checkpoint-overwrite-text: rgba(255, 255, 255, 0.4);
+	--w-servers-checkpoint-overwrite-name: #e4e4e7;
+	--w-servers-checkpoint-input-bg: rgba(255, 255, 255, 0.03);
+	--w-servers-checkpoint-input-border: rgba(255, 255, 255, 0.08);
+	--w-servers-checkpoint-input-color: #e4e4e7;
+	--w-servers-checkpoint-preview-bg: rgba(255, 255, 255, 0.03);
+	--w-servers-checkpoint-preview-border: rgba(255, 255, 255, 0.05);
+	--w-servers-checkpoint-preview-label: rgba(255, 255, 255, 0.4);
+	--w-servers-checkpoint-preview-value: #e4e4e7;
+	--w-servers-checkpoint-preview-message: rgba(255, 255, 255, 0.7);
+	--w-servers-checkpoint-list-bg: rgba(255, 255, 255, 0.02);
+	--w-servers-checkpoint-list-border: rgba(255, 255, 255, 0.05);
+	--w-servers-checkpoint-list-empty: rgba(255, 255, 255, 0.4);
+	--w-servers-checkpoint-row-selectedbg: rgba(51, 129, 255, 0.06);
+	--w-servers-checkpoint-row-selectedhover: rgba(51, 129, 255, 0.1);
+	--w-servers-checkpoint-row-inactivehover: rgba(255, 255, 255, 0.03);
+	--w-servers-checkpoint-checkbox-active: #3381ff;
+	--w-servers-checkpoint-checkbox-inactive: rgba(255, 255, 255, 0.2);
+	--w-servers-checkpoint-row-text: #e4e4e7;
+	--w-servers-checkpoint-row-tokens: rgba(255, 255, 255, 0.4);
+	--w-servers-checkpoint-row-arrow: rgba(255, 255, 255, 0.4);
+	--w-servers-checkpoint-select-bg: rgba(255, 255, 255, 0.05);
+	--w-servers-checkpoint-select-border: rgba(255, 255, 255, 0.1);
+	--w-servers-checkpoint-select-color: #e4e4e7;
+	--w-servers-checkpoint-bundle-bg: rgba(255, 255, 255, 0.02);
+	--w-servers-checkpoint-bundle-hover: rgba(255, 255, 255, 0.04);
+	--w-servers-checkpoint-bundle-partial-border: rgba(51, 129, 255, 0.5);
+	--w-servers-checkpoint-bundle-partial-bg: rgba(51, 129, 255, 0.3);
+	--w-servers-checkpoint-bundle-text: #e4e4e7;
+	--w-servers-checkpoint-bundle-meta: rgba(255, 255, 255, 0.4);
+	--w-servers-checkpoint-status-error: #fb7185;
+	--w-servers-checkpoint-status-ok: rgba(255, 255, 255, 0.5);
+	--w-servers-checkpoint-icon-bg: rgba(51, 129, 255, 0.12);
+	--w-servers-checkpoint-icon-color: #3381ff;
+	--w-servers-checkpoint-title: #e4e4e7;
 	
 }
