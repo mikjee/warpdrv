@@ -1,9 +1,9 @@
-import { Text } from '@chakra-ui/react';
 import { Blocks } from 'lucide-react';
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '@/store';
 import { TileContainer } from '../TileContainer';
+import { TileValueDisplay } from '../TileValueDisplay';
 
 export const BackendsTile = React.memo(() => {
 	const navigate = useNavigate();
@@ -16,10 +16,7 @@ export const BackendsTile = React.memo(() => {
 			label="Backends"
 			onClick={() => navigate('/backends')}
 		>
-			<span style={{ color: "#777", fontSize: "12px" }}>llama.cpp Builds</span>
-			<Text fontSize="24px" fontWeight="600" color="rgba(255,255,255,0.85)">
-				{backendsCount}
-			</Text>
+			<TileValueDisplay label="llama.cpp Builds" value={backendsCount} />
 		</TileContainer>
 	);
 });

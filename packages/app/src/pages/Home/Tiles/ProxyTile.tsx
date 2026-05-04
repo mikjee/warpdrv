@@ -1,9 +1,9 @@
-import { Text } from '@chakra-ui/react';
 import { BsRouter } from 'react-icons/bs';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '@/store';
 import { TileContainer } from '../TileContainer';
+import { TileValueDisplay } from '../TileValueDisplay';
 
 export const ProxyTile = React.memo(() => {
 	const navigate = useNavigate();
@@ -20,10 +20,7 @@ export const ProxyTile = React.memo(() => {
 			statusDot={state}
 			onClick={() => navigate('/proxy')}
 		>
-			<span style={{ color: "#777", fontSize: "12px" }}>OpenAI Compatible Chat Endpoint</span>
-			<Text fontSize="24px" fontWeight="600" color="rgba(255,255,255,0.85)">
-				{proxyStatus?.port ?? settings.proxyPort}
-			</Text>
+			<TileValueDisplay label="OpenAI Compatible Chat Endpoint" value={proxyStatus?.port ?? settings.proxyPort} />
 		</TileContainer>
 	);
 });

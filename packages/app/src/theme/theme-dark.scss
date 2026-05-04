@@ -1,5 +1,66 @@
 div#root.theme-dark {
 	background: #111;
 
+	--w-about-attribution-title: #e4e4e7;
+	--w-about-attribution-builtwith: rgba(255, 255, 255, 0.7);
+	--w-about-attribution-heart: #fb7185;
+	--w-about-attribution-mikjee-link: #3381ff;
+	--w-about-attribution-mikjee-link-hover: #5b6af5;
+	--w-about-attribution-visitwrapper: rgba(255, 255, 255, 0.7);
+	--w-about-attribution-visit-link: #3381ff;
+	--w-about-attribution-visit-link-hover: #5b6af5;
+	--w-about-copyright-title: #e4e4e7;
+	--w-about-copyright-notice: rgba(255, 255, 255, 0.5);
+	--w-about-legal-title: #e4e4e7;
+	--w-about-legal-link: #3381ff;
+	--w-about-legal-link-hover: #5b6af5;
+	--w-about-footer-sponsor: rgba(255, 255, 255, 0.2);
+
+	--w-home-greeting-welcome: rgba(255, 255, 255, 0.5);
+	--w-home-greeting-status: rgba(255, 255, 255, 0.9);
+	--w-home-details-btn: rgba(255, 255, 255, 0.3);
+	--w-home-details-btn-hover-bg: rgba(255, 255, 255, 0.06);
+	--w-home-details-btn-hover-color: rgba(255, 255, 255, 0.6);
+	--w-home-separator-steps: rgba(255, 255, 255, 0.06);
+	--w-home-separator-tiles: rgba(255, 255, 255, 0.06);
+
+	--w-home-tiles-container-bg: #161616;
+	--w-home-tiles-container-border: rgba(255, 255, 255, 0.06);
+	--w-home-tiles-container-border-error: #7f1d1d;
+	--w-home-tiles-container-hover-border: rgba(255, 255, 255, 0.12);
+	--w-home-tiles-container-hover-bg: rgba(255, 255, 255, 0.035);
+	--w-home-tiles-container-icon: rgba(255, 255, 255, 0.4);
+	--w-home-tiles-container-label: rgba(255, 255, 255, 0.5);
+	--w-home-tiles-label: #777;
+	--w-home-tiles-value: rgba(255, 255, 255, 0.85);
+
+	--w-home-tiles-servers-empty: rgba(255, 255, 255, 0.2);
+	--w-home-tiles-servers-name: rgba(255, 255, 255, 0.5);
+	--w-home-tiles-servers-start-bg: rgba(51, 129, 255, 0.1);
+	--w-home-tiles-servers-start-color: #3381ff;
+	--w-home-tiles-servers-start-hover-bg: rgba(51, 129, 255, 0.2);
+
+	--w-home-steps-collapsible-border: rgba(255, 255, 255, 0.06);
+	--w-home-steps-collapsible-border-highlight: #f59e0b;
+	--w-home-steps-collapsible-bg: rgba(255, 255, 255, 0.015);
+	--w-home-steps-collapsible-header-hover: rgba(255, 255, 255, 0.02);
+	--w-home-steps-collapsible-icon-done: #22c55e;
+	--w-home-steps-collapsible-icon-highlight: #f59e0b;
+	--w-home-steps-collapsible-icon-pending: rgba(255, 255, 255, 0.25);
+	--w-home-steps-collapsible-title: rgba(255, 255, 255, 0.8);
+	--w-home-steps-collapsible-chevron: rgba(255, 255, 255, 0.3);
+
+	--w-home-steps-text: rgba(255, 255, 255, 0.5);
+	--w-home-steps-link: #3381ff;
+	--w-home-steps-link-hover: #5a98ff;
+	--w-home-steps-register-code-bg: #3a3a3a;
+
+	--w-home-statusdot-online-bg: #22c55e;
+	--w-home-statusdot-online-shadow: rgba(34, 197, 94, 0.5);
+	--w-home-statusdot-loading-bg: #f59e0b;
+	--w-home-statusdot-loading-shadow: rgba(245, 158, 11, 0.5);
+	--w-home-statusdot-error-bg: #ef4444;
+	--w-home-statusdot-error-shadow: rgba(239, 68, 68, 0.6);
+	--w-home-statusdot-offline-bg: rgba(255, 255, 255, 0.15);
 	
 }
