@@ -15,17 +15,19 @@ function OnboardingWrapper() {
 	return <OnboardingPage />;
 }
 
-createRoot(document.getElementById('root')!).render(
-	<StrictMode>
-		<ChakraProvider value={system}>
-			<BrowserRouter>
-				<ToastProvider>
-					<AuthProvider>
-						<App />
-						<OnboardingWrapper />
-					</AuthProvider>
-				</ToastProvider>
-			</BrowserRouter>
-		</ChakraProvider>
-	</StrictMode>,
+createRoot(document.getElementById('root-wrapper')!).render(
+	<div id="root" className="theme-dark">
+		<StrictMode>
+			<ChakraProvider value={system}>
+				<BrowserRouter>
+					<ToastProvider>
+						<AuthProvider>
+							<App />
+							<OnboardingWrapper />
+						</AuthProvider>
+					</ToastProvider>
+				</BrowserRouter>
+			</ChakraProvider>
+		</StrictMode>
+	</div>,
 );
