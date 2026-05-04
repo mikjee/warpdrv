@@ -610,11 +610,11 @@ export const ChatPage = React.memo(() => {
 				actionsRight={
 					<Button
 						size="sm"
-						bg="rgba(51, 129, 255, 0.12)"
-						color="#3381ff"
+						bg="var(--w-header-action-btn-bg)"
+						color="var(--w-header-action-btn-color)"
 						borderWidth="1px"
-						borderColor="rgba(51, 129, 255, 0.25)"
-						_hover={{ bg: 'rgba(51, 129, 255, 0.2)' }}
+						borderColor="var(--w-header-action-btn-border)"
+						_hover={{ bg: 'var(--w-header-action-btn-hover-bg)' }}
 						borderRadius="lg"
 						fontSize="13px"
 						fontWeight="500"

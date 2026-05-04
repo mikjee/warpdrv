@@ -62,5 +62,34 @@ div#root.theme-dark {
 	--w-home-statusdot-error-bg: #ef4444;
 	--w-home-statusdot-error-shadow: rgba(239, 68, 68, 0.6);
 	--w-home-statusdot-offline-bg: rgba(255, 255, 255, 0.15);
+
+	--w-header-search-icon: rgba(255, 255, 255, 0.3);
+	--w-header-search-bg: rgba(255, 255, 255, 0.03);
+	--w-header-search-border: rgba(255, 255, 255, 0.08);
+	--w-header-search-color: rgba(255, 255, 255, 0.7);
+	--w-header-search-placeholder: rgba(255, 255, 255, 0.2);
+	--w-header-search-focus-border: rgba(51, 129, 255, 0.4);
+	--w-header-filter-btn-bg: rgba(255, 255, 255, 0.03);
+	--w-header-filter-btn-border: rgba(255, 255, 255, 0.08);
+	--w-header-filter-btn-color: rgba(255, 255, 255, 0.7);
+	--w-header-combobox-bg: #181818;
+	--w-header-combobox-border: rgba(255, 255, 255, 0.1);
+	--w-header-combobox-item-hover: rgba(255, 255, 255, 0.06);
+	--w-header-combobox-item-highlight: rgba(51, 129, 255, 0.08);
+	--w-header-combobox-item-text: #e4e4e7;
+	--w-header-combobox-empty-text: rgba(255, 255, 255, 0.25);
+	--w-header-sortorder-btn-bg: rgba(255, 255, 255, 0.03);
+	--w-header-sortorder-btn-border: rgba(255, 255, 255, 0.08);
+	--w-header-sortorder-btn-color: rgba(255, 255, 255, 0.5);
+	--w-header-sortorder-btn-hover-border: rgba(255, 255, 255, 0.15);
+	--w-header-switch-active: #3b86d6;
+	--w-header-switch-inactive: rgba(255, 255, 255, 0.4);
+	--w-header-switch-thumb: rgba(25, 25, 25);
+	--w-header-action-btn-bg: rgba(51, 129, 255, 0.12);
+	--w-header-action-btn-color: #3381ff;
+	--w-header-action-btn-border: rgba(51, 129, 255, 0.25);
+	--w-header-action-btn-hover-bg: rgba(51, 129, 255, 0.2);
+	--w-header-gradient-btn-from: #3381ff;
+	--w-header-gradient-btn-to: #5b6af5;
 	
 }

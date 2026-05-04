@@ -271,7 +271,7 @@ export function ModelsPage() {
 								left: '10px',
 								top: '50%',
 								transform: 'translateY(-50%)',
-								color: 'rgba(255, 255, 255, 0.25)',
+								color: 'var(--w-header-search-icon)',
 								pointerEvents: 'none',
 							}}
 						/>
@@ -282,25 +282,25 @@ export function ModelsPage() {
 							size="sm"
 							pl="8"
 							w="220px"
-							bg="rgba(255, 255, 255, 0.03)"
-							borderColor="rgba(255, 255, 255, 0.08)"
+							bg="var(--w-header-search-bg)"
+							borderColor="var(--w-header-search-border)"
 							borderRadius="lg"
 							fontSize="13px"
-							color="#e4e4e7"
-							_placeholder={{ color: 'rgba(255, 255, 255, 0.25)' }}
+							color="var(--w-header-search-color)"
+							_placeholder={{ color: 'var(--w-header-search-placeholder)' }}
 							_hover={{ borderColor: 'rgba(255, 255, 255, 0.12)' }}
-							_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', boxShadow: 'none' }}
+							_focus={{ borderColor: 'var(--w-header-search-focus-border)', boxShadow: 'none' }}
 						/>
 					</Box>
 				}
 				actionsRight={
 					<Button
 						size="sm"
-						bg="rgba(51, 129, 255, 0.12)"
-						color="#3381ff"
+						bg="var(--w-header-action-btn-bg)"
+						color="var(--w-header-action-btn-color)"
 						borderWidth="1px"
-						borderColor="rgba(51, 129, 255, 0.25)"
-						_hover={{ bg: 'rgba(51, 129, 255, 0.2)' }}
+						borderColor="var(--w-header-action-btn-border)"
+						_hover={{ bg: 'var(--w-header-action-btn-hover-bg)' }}
 						borderRadius="lg"
 						fontSize="13px"
 						fontWeight="500"

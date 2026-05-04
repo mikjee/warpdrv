@@ -155,15 +155,15 @@ export const HubPage = React.memo(() => {
 						<Box position="relative">
 							<Input
 								placeholder="Search models or users..."
-								size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)"
-								color="rgba(255, 255, 255, 0.7)" fontSize="13px" borderRadius="lg" pl="9"
-								_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
-								_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
+								size="sm" bg="var(--w-header-search-bg)" borderColor="var(--w-header-search-border)"
+								color="var(--w-header-search-color)" fontSize="13px" borderRadius="lg" pl="9"
+								_placeholder={{ color: 'var(--w-header-search-placeholder)' }}
+								_focus={{ borderColor: 'var(--w-header-search-focus-border)', outline: 'none' }}
 								value={query} onChange={e => setQuery(e.target.value)}
 								onKeyDown={e => e.key === 'Enter' && handleSearch()}
 								w="200px"
 							/>
-							<Box position="absolute" left="3" top="50%" transform="translateY(-50%)" color="rgba(255, 255, 255, 0.25)">
+							<Box position="absolute" left="3" top="50%" transform="translateY(-50%)" color="var(--w-header-search-icon)">
 								<Search size={14} />
 							</Box>
 						</Box>
@@ -189,7 +189,7 @@ export const HubPage = React.memo(() => {
 							<Text fontSize="10px" color="rgba(255, 255, 255, 0.5)">{PARAM_STEPS[paramsRange[0]]}B - {PARAM_STEPS[paramsRange[1]]}B</Text>
 						</HStack>
 						<Button
-							size="sm" bgGradient="to-r" gradientFrom="#3381ff" gradientTo="#5b6af5"
+							size="sm" bgGradient="to-r" gradientFrom="var(--w-header-gradient-btn-from)" gradientTo="var(--w-header-gradient-btn-to)"
 							color="white" _hover={{ opacity: 0.9 }}
 							borderRadius="lg" fontSize="13px" fontWeight="600"
 							onClick={handleSearch} disabled={!query.trim() || searching} px="5"
