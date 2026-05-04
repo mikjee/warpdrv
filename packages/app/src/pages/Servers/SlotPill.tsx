@@ -37,16 +37,16 @@ function SlotPill({ slot, metadata }: ISlotPillProps) {
 	let progress: number;
 
 	if (isPrompt) {
-		color = '#fbb324';
+		color = 'var(--w-servers-slot-prompt)';
 		const pct = Math.round((slot.prefillProgress ?? 0) * 100);
 		label = pct >= 100 ? 'pp' : `pp ${pct}%`;
 		progress = slot.prefillProgress ?? 0;
 	} else if (isGen) {
-		color = '#1a98ff';
+		color = 'var(--w-servers-slot-gen)';
 		label = slot.generatedTokens > 0 ? `gen ${slot.generatedTokens}` : 'gen';
 		progress = 0;
 	} else {
-		color = 'rgba(255, 255, 255, 0.4)';
+		color = 'var(--w-servers-slot-idle)';
 		label = `idle`;
 		progress = 0;
 	}
@@ -69,7 +69,7 @@ function SlotPill({ slot, metadata }: ISlotPillProps) {
 				<Text fontWeight="600">S{slot?.slotId}</Text>
 				<Text>{label}</Text>
 				{msgCount !== null && (
-					<Text color="rgba(255, 255, 255, 0.4)" ml="auto">{msgCount} msg</Text>
+					<Text color="var(--w-servers-slot-msgcount)" ml="auto">{msgCount} msg</Text>
 				)}
 			</HStack>
 			<Box
@@ -78,7 +78,7 @@ function SlotPill({ slot, metadata }: ISlotPillProps) {
 				right="0"
 				bottom="0"
 				height="2px"
-				bg="rgba(255, 255, 255, 0.05)"
+				bg="var(--w-servers-slot-progress-bg)"
 			>
 				<Box
 					height="100%"

@@ -91,5 +91,98 @@ div#root.theme-dark {
 	--w-header-action-btn-hover-bg: rgba(51, 129, 255, 0.2);
 	--w-header-gradient-btn-from: #3381ff;
 	--w-header-gradient-btn-to: #5b6af5;
+
+	--w-servers-card-gradient-running: rgba(52, 211, 153, 0.05);
+	--w-servers-card-gradient-loading: rgba(251, 191, 36, 0.025);
+	--w-servers-card-border-running: rgba(52, 211, 153, 0.15);
+	--w-servers-card-border-loading: rgba(251, 191, 36, 0.3);
+	--w-servers-card-icon-bg-running: rgba(52, 211, 153, 0.06);
+	--w-servers-card-icon-bg-loading: rgba(251, 191, 36, 0.06);
+	--w-servers-card-icon-bg-idle: rgba(255, 255, 255, 0.04);
+	--w-servers-card-icon-border-running: rgba(52, 211, 153, 0.15);
+	--w-servers-card-icon-border-loading: rgba(251, 191, 36, 0.15);
+	--w-servers-card-icon-border-idle: rgba(255, 255, 255, 0.06);
+	--w-servers-card-icon-color-running: #34d399;
+	--w-servers-card-icon-color-loading: #fbbf24;
+	--w-servers-card-icon-color-idle: rgba(255, 255, 255, 0.3);
+	--w-servers-card-name: #d0d0d0;
+	--w-servers-card-hovercard-bg: #18181b;
+	--w-servers-card-hovercard-border: rgba(255, 255, 255, 0.1);
+	--w-servers-card-hovercard-text: rgba(255, 255, 255, 0.7);
+	--w-servers-card-hovercard-cmdbg: rgba(255, 255, 255, 0.03);
+	--w-servers-card-alias-bg: rgba(99, 102, 241, 0.15);
+	--w-servers-card-alias-color: #a5b4fc;
+	--w-servers-card-alias-border: rgba(99, 102, 241, 0.3);
+	--w-servers-card-alias-remove-color: #a5b4fc;
+	--w-servers-card-alias-remove-hover: #fb7185;
+	--w-servers-card-alias-remove-hoverbg: rgba(251, 113, 133, 0.1);
+	--w-servers-card-addalias-bg: rgba(99, 102, 241, 0.1);
+	--w-servers-card-addalias-color: #a5b4fc;
+	--w-servers-card-addalias-border: rgba(99, 102, 241, 0.25);
+	--w-servers-card-popover-bg: #18181b;
+	--w-servers-card-popover-border: rgba(255, 255, 255, 0.1);
+	--w-servers-card-popover-title: #e4e4e7;
+	--w-servers-card-popover-inputbg: rgba(255, 255, 255, 0.03);
+	--w-servers-card-popover-inputborder: rgba(255, 255, 255, 0.1);
+	--w-servers-card-popover-inputcolor: #e4e4e7;
+	--w-servers-card-popover-placeholder: rgba(255, 255, 255, 0.3);
+	--w-servers-card-addbtn-from: #3381ff;
+	--w-servers-card-addbtn-to: #5b6af5;
+	--w-servers-card-uptime: rgba(255, 255, 255, 0.35);
+	--w-servers-card-vision-enabled: #ecbf42;
+	--w-servers-card-vision-disabled: #ec4242;
+	--w-servers-card-checkpoint-warn: #ec4242;
+	--w-servers-card-error: #fb7185;
+	--w-servers-card-action-default: rgba(255, 255, 255, 0.4);
+	--w-servers-card-action-hover-blue: #3381ff;
+	--w-servers-card-action-hoverblue-bg: rgba(51, 129, 255, 0.08);
+	--w-servers-card-divider: rgba(255, 255, 255, 0.08);
+	--w-servers-card-action-hover-yellow: #fbbf24;
+	--w-servers-card-action-hoveryellow-bg: rgba(251, 191, 36, 0.08);
+	--w-servers-card-action-hover-cyan: #22d3ee;
+	--w-servers-card-action-hovercyan-bg: rgba(34, 211, 238, 0.08);
+	--w-servers-card-divider-2: rgba(255, 255, 255, 0.08);
+	--w-servers-card-action-hover-red: #fb7185;
+	--w-servers-card-action-hoverred-bg: rgba(251, 113, 133, 0.08);
+
+	--w-servers-logs-panel-bg: #0c0c0f;
+	--w-servers-logs-panel-border: rgba(255, 255, 255, 0.08);
+	--w-servers-logs-header-border: rgba(255, 255, 255, 0.06);
+	--w-servers-logs-header-bg: rgba(255, 255, 255, 0.02);
+	--w-servers-logs-icon: rgba(255, 255, 255, 0.4);
+	--w-servers-logs-title: rgba(255, 255, 255, 0.6);
+	--w-servers-logs-scroll-active: #3381ff;
+	--w-servers-logs-scroll-inactive: rgba(255, 255, 255, 0.3);
+	--w-servers-logs-btn-hover: rgba(255, 255, 255, 0.06);
+	--w-servers-logs-download: rgba(255, 255, 255, 0.3);
+	--w-servers-logs-download-hover: rgba(255, 255, 255, 0.6);
+	--w-servers-logs-clear: rgba(255, 255, 255, 0.3);
+	--w-servers-logs-clear-hover: #fb7185;
+	--w-servers-logs-clear-hoverbg: rgba(251, 113, 133, 0.08);
+	--w-servers-logs-close: rgba(255, 255, 255, 0.3);
+	--w-servers-logs-close-hover: #e4e4e7;
+	--w-servers-logs-empty: rgba(255, 255, 255, 0.15);
+	--w-servers-logs-line: rgba(255, 255, 255, 0.6);
+	--w-servers-logs-line-hover: rgba(255, 255, 255, 0.02);
+
+	--w-servers-status-running: #34d399;
+	--w-servers-status-loading: #fbbf24;
+	--w-servers-status-stopped: rgba(255, 255, 255, 0.3);
+	--w-servers-status-error: #fb7185;
+
+	--w-servers-slot-prompt: #fbb324;
+	--w-servers-slot-gen: #1a98ff;
+	--w-servers-slot-idle: rgba(255, 255, 255, 0.4);
+	--w-servers-slot-msgcount: rgba(255, 255, 255, 0.4);
+	--w-servers-slot-progress-bg: rgba(255, 255, 255, 0.05);
+
+	--w-servers-pill-bg: rgba(255, 255, 255, 0.03);
+	--w-servers-pill-border: rgba(255, 255, 255, 0.05);
+	--w-servers-pill-icon: rgba(255, 255, 255, 0.3);
+	--w-servers-pill-text: rgba(255, 255, 255, 0.75);
+
+	--w-servers-empty-border: rgba(255, 255, 255, 0.06);
+	--w-servers-empty-text: rgba(255, 255, 255, 0.2);
+	--w-servers-empty-subtext: rgba(255, 255, 255, 0.15);
 	
 }

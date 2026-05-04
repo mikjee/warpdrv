@@ -8,6 +8,7 @@ import { AuthProvider } from './components/AuthProvider';
 import { App } from './App';
 import { OnboardingPage } from './pages/Onboarding/OnboardingPage';
 import { useStore } from './store';
+import "./theme/theme-dark.scss";
 
 function OnboardingWrapper() {
 	const isOnboardingComplete = useStore(s => s.settings.isOnboardingComplete);
