@@ -305,6 +305,7 @@ export const Shell = React.memo(() => {
 	const location = useLocation();
 	const currentPath = location.pathname;
 	const settings = useStore(s => s.settings);
+	const sseConnected = useStore(s => s.sseConnected);
 	const [collapsed] = useDependantState(settings.sidebarCollapsed);
 
 	const isCollapsed = collapsed;
@@ -321,7 +322,7 @@ export const Shell = React.memo(() => {
 			<Flex flex="1" overflow="hidden">
 				{/* Sidebar */}
 				<Flex
-					bg={"#030303"}
+					bg={sseConnected ? '#030303' : '#7f1d1d'}
 					direction="column"
 					w={isCollapsed ? '60px' : '220px'}
 					minW={isCollapsed ? '60px' : '220px'}

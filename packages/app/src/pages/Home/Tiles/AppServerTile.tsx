@@ -14,7 +14,7 @@ export const AppServerTile = React.memo(() => {
 		<TileContainer
 			icon={<Server size={18} />}
 			label="App Server"
-			statusDot={sseConnected ? 'online' : 'offline'}
+			statusDot={sseConnected ? 'online' : 'error'}
 			onClick={() => navigate('/settings')}
 		>
 			<span style={{ color: "#777", fontSize: "12px" }}>Remote Port</span>

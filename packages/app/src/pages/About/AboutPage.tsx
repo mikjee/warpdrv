@@ -21,15 +21,20 @@ export function AboutPage() {
 					{/* Attribution */}
 					<Card>
 						<VStack gap="3" align="center">
-							<Text fontSize="14px" fontWeight="600" color="#e4e4e7">Attribution</Text>
-							<HStack gap="1.5" alignItems="center">
+							<Text fontSize="14px" fontWeight="600" color="#e4e4e7">warpdrv.ai</Text>
+							<VStack gap="1.5" alignItems="center">
 								<Text fontSize="13px" color="rgba(255, 255, 255, 0.7)">
 									Built with <Text as="span" color="#fb7185">❤</Text> by&nbsp;
 									<Link href="https://www.github.com/mikjee" color="#3381ff" _hover={{ color: '#5b6af5', textDecoration: 'underline', cursor: 'pointer' }} onClick={(e) => { e.preventDefault(); openExternal('https://www.github.com/mikjee'); }}>
 										<Text fontSize="13px" fontWeight="500">@mikjee</Text>
 									</Link>
 								</Text>
-							</HStack>
+								<Text fontSize="13px" color="rgba(255, 255, 255, 0.7)">
+									<Link href="https://warpdrv.ai" color="#3381ff" _hover={{ color: '#5b6af5', textDecoration: 'underline', cursor: 'pointer' }} onClick={(e) => { e.preventDefault(); openExternal('https://warpdrv.ai'); }}>
+										<Text fontSize="13px" fontWeight="500">Visit Website</Text>
+									</Link>
+								</Text>
+							</VStack>
 						</VStack>
 					</Card>
 

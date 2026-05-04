@@ -26,7 +26,7 @@ export const TileContainer = React.memo(({
 				bg="#161616"
 				borderRadius="xl"
 				borderWidth="1px"
-				borderColor="rgba(255, 255, 255, 0.06)"
+				borderColor={statusDot === 'error' ? '#7f1d1d' : 'rgba(255, 255, 255, 0.06)'}
 				p="6"
 				display="flex"
 				flexDir="column"

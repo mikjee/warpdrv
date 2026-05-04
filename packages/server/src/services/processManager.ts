@@ -577,6 +577,31 @@ export function mergeCliFlags(baseFlags: string, overrideFlags: string): string 
 	return parts.join(' ');
 }
 
+export async function findRandomAvailablePort(): Promise<number> {
+	const settings = await store.get<ISettings>(SETTINGS_KEY) ?? DEFAULT_SETTINGS;
+	const available: number[] = [];
+	for (let port = settings.portRangeStart; port <= settings.portRangeEnd; port++) {
+		if (!usedPorts.has(port)) {
+			available.push(port);
+		}
+	}
+	if (available.length === 0) {
+		throw new Error('No available ports in configured range');
+	}
+
+	for (let attempt = 0; attempt < 3; attempt++) {
+		const tier = Math.random() * 100;
+		const idx = Math.min(available.length - 1, Math.floor((tier / 100) * available.length));
+		const port = available[idx];
+		if (!usedPorts.has(port)) {
+			usedPorts.add(port);
+			return port;
+		}
+	}
+
+	return await findAvailablePort();
+}
+
 export async function findAvailablePort(): Promise<number> {
 	const settings = await store.get<ISettings>(SETTINGS_KEY) ?? DEFAULT_SETTINGS;
 	for (let port = settings.portRangeStart; port <= settings.portRangeEnd; port++) {
@@ -648,14 +673,17 @@ export async function launchServer(server: IServer): Promise<void> {
 		launchParams.gpuLayers = 999;
 	}
 
-	// Auto-assign port if not yet determined
-	if (server.port === 0) {
-		server.port = await findAvailablePort();
+	// Auto-assign port if user didn't pick one (0 = new port every launch)
+	if (server.params.port === 0) {
+		if (server.port > 0) {
+			usedPorts.delete(server.port);
+		}
+		server.port = await findRandomAvailablePort();
 	}
 	if (launchParams.port === 0) {
 		launchParams.port = server.port;
 	}
-	if (server.params.port > 0) {
+	if (server.port > 0) {
 		usedPorts.add(server.port);
 	}
 
