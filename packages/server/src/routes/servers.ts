@@ -9,7 +9,7 @@ import {
 	getServerLogs,
 	clearServerLogs,
 	SERVERS_PREFIX,
-	findAvailablePort,
+	findRandomAvailablePort,
 	usedPorts,
 	launchServer,
 } from '../services/processManager';
@@ -55,7 +55,7 @@ serversRouter.post('/', async (req, res) => {
 	// Assign port for server.port, but keep params.port as-is (0 = auto-assign on every launch)
 	const serverPort = payload.params.port > 0
 		? payload.params.port
-		: await findAvailablePort();
+		: await findRandomAvailablePort();
 
 	// Track user-assigned port
 	if (payload.params.port > 0) {
