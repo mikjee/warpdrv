@@ -115,19 +115,19 @@ export function BackendGroupDialog({ onClose, editGroupId }: IBackendGroupDialog
 	return (
 		<>
 			<Box position="fixed" inset="6px" zIndex="modal" display="flex" alignItems="center" justifyContent="center" borderRadius="12px" overflow="hidden">
-				<Box position="absolute" inset="0" bg="rgba(0, 0, 0, 0.7)" backdropFilter="blur(8px)" onClick={() => !saving && !showActivateDialog && onClose()} />
-				<Box position="relative" w="580px" maxH="90vh" bg="#0f0f12" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.08)" borderRadius="2xl" shadow="0 24px 80px rgba(0, 0, 0, 0.6)" overflow="hidden" display="flex" flexDirection="column">
-					<Flex px="6" py="4" justify="space-between" align="center" borderBottomWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" bg="rgba(255, 255, 255, 0.01)">
+				<Box position="absolute" inset="0" bg="var(--w-backends-groupdialog-overlay)" backdropFilter="blur(8px)" onClick={() => !saving && !showActivateDialog && onClose()} />
+				<Box position="relative" w="580px" maxH="90vh" bg="var(--w-backends-groupdialog-bg)" borderWidth="1px" borderColor="var(--w-backends-groupdialog-border)" borderRadius="2xl" shadow="0 24px 80px rgba(0, 0, 0, 0.6)" overflow="hidden" display="flex" flexDirection="column">
+					<Flex px="6" py="4" justify="space-between" align="center" borderBottomWidth="1px" borderColor="var(--w-backends-groupdialog-header-border)" bg="var(--w-backends-groupdialog-header-bg)">
 						<HStack gap="3">
-							<Flex w="9" h="9" borderRadius="lg" alignItems="center" justifyContent="center" bg="rgba(167, 139, 250, 0.1)" borderWidth="1px" borderColor="rgba(167, 139, 250, 0.2)">
-								<Layers size={18} color="#a78bfa" />
+							<Flex w="9" h="9" borderRadius="lg" alignItems="center" justifyContent="center" bg="var(--w-backends-groupdialog-icon-bg)" borderWidth="1px" borderColor="var(--w-backends-groupdialog-icon-border)">
+								<Layers size={18} color="var(--w-backends-groupdialog-icon-color)" />
 							</Flex>
 							<Box>
-								<Text fontSize="16px" fontWeight="700" color="#e4e4e7">{isEdit ? 'Edit Backend Group' : 'Create Backend Group'}</Text>
-								<Text fontSize="12px" color="rgba(255, 255, 255, 0.35)">{isEdit ? 'Modify group settings and members' : 'Group multiple backends for easy switching'}</Text>
+								<Text fontSize="16px" fontWeight="700" color="var(--w-backends-groupdialog-title)">{isEdit ? 'Edit Backend Group' : 'Create Backend Group'}</Text>
+								<Text fontSize="12px" color="var(--w-backends-groupdialog-subtitle)">{isEdit ? 'Modify group settings and members' : 'Group multiple backends for easy switching'}</Text>
 							</Box>
 						</HStack>
-						<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.3)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="md" onClick={() => !saving && !showActivateDialog && onClose()} minW="8" px="0" disabled={saving || showActivateDialog}>
+						<Button size="sm" variant="ghost" color="var(--w-backends-groupdialog-close-color)" _hover={{ color: 'var(--w-backends-groupdialog-close-hover-color)', bg: 'var(--w-backends-groupdialog-close-hover-bg)' }} borderRadius="md" onClick={() => !saving && !showActivateDialog && onClose()} minW="8" px="0" disabled={saving || showActivateDialog}>
 							<X size={16} />
 						</Button>
 					</Flex>
@@ -135,29 +135,29 @@ export function BackendGroupDialog({ onClose, editGroupId }: IBackendGroupDialog
 					<Box flex="1" overflowY="auto" p="6">
 						<VStack align="stretch" gap="5">
 							<Box>
-								<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Group Name</Text>
-								<Input placeholder="e.g. ROCm Backends" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontSize="13px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={name} onChange={e => setName(e.target.value)} disabled={saving || showActivateDialog} />
+								<Text fontSize="11px" color="var(--w-backends-groupdialog-label)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Group Name</Text>
+								<Input placeholder="e.g. ROCm Backends" size="sm" bg="var(--w-backends-groupdialog-input-bg)" borderColor="var(--w-backends-groupdialog-input-border)" color="var(--w-backends-groupdialog-input-color)" fontSize="13px" borderRadius="lg" _placeholder={{ color: 'var(--w-backends-groupdialog-input-placeholder)' }} _focus={{ borderColor: 'var(--w-backends-groupdialog-input-focus)', outline: 'none' }} value={name} onChange={e => setName(e.target.value)} disabled={saving || showActivateDialog} />
 							</Box>
 
 							<Box>
-								<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Description (optional)</Text>
-								<Input placeholder="Notes about this group..." size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={description} onChange={e => setDescription(e.target.value)} disabled={saving || showActivateDialog} />
+								<Text fontSize="11px" color="var(--w-backends-groupdialog-label)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Description (optional)</Text>
+								<Input placeholder="Notes about this group..." size="sm" bg="var(--w-backends-groupdialog-input-bg)" borderColor="var(--w-backends-groupdialog-input-border)" color="var(--w-backends-groupdialog-input-color)" fontSize="12px" borderRadius="lg" _placeholder={{ color: 'var(--w-backends-groupdialog-input-placeholder)' }} _focus={{ borderColor: 'var(--w-backends-groupdialog-input-focus)', outline: 'none' }} value={description} onChange={e => setDescription(e.target.value)} disabled={saving || showActivateDialog} />
 							</Box>
 
 							<Box>
-								<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Select Backends</Text>
+								<Text fontSize="11px" color="var(--w-backends-groupdialog-label)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Select Backends</Text>
 								<VStack align="stretch" gap="2" maxH="200px" overflowY="auto">
 									{backendList.map(backend => {
 										const isSelected = selectedBackendIds.includes(backend.id);
 										const isCurrentActive = originalActiveBackendId === backend.id;
 										return (
-											<HStack key={backend.id} px="3" py="2" borderRadius="md" cursor="pointer" bg={isSelected ? 'rgba(167, 139, 250, 0.08)' : 'rgba(255, 255, 255, 0.02)'} borderWidth="1px" borderColor={isSelected ? 'rgba(167, 139, 250, 0.25)' : 'rgba(255, 255, 255, 0.06)'} onClick={() => !saving && !showActivateDialog && handleToggleBackend(backend.id)}>
-												<Flex w="5" h="5" borderRadius="md" bg={isSelected ? '#a78bfa' : 'rgba(255, 255, 255, 0.1)'} alignItems="center" justifyContent="center">
-													{isSelected && <CheckCircle size={10} color="white" />}
+											<HStack key={backend.id} px="3" py="2" borderRadius="md" cursor="pointer" bg={isSelected ? 'var(--w-backends-groupdialog-select-bg)' : 'var(--w-backends-groupdialog-select-inactive-bg)'} borderWidth="1px" borderColor={isSelected ? 'var(--w-backends-groupdialog-select-border)' : 'var(--w-backends-groupdialog-select-inactive-border)'} onClick={() => !saving && !showActivateDialog && handleToggleBackend(backend.id)}>
+												<Flex w="5" h="5" borderRadius="md" bg={isSelected ? 'var(--w-backends-groupdialog-check-bg)' : 'var(--w-backends-groupdialog-check-inactive-bg)'} alignItems="center" justifyContent="center">
+													{isSelected && <CheckCircle size={10} color="var(--w-backends-groupdialog-checkmark)" />}
 												</Flex>
-												<Text fontSize="12px" color="rgba(255, 255, 255, 0.7)" flex="1">{backend.name}</Text>
+												<Text fontSize="12px" color="var(--w-backends-groupdialog-select-name)" flex="1">{backend.name}</Text>
 												{isCurrentActive && (
-													<Text fontSize="10px" color="#a78bfa" fontWeight="500">CURRENT ACTIVE</Text>
+													<Text fontSize="10px" color="var(--w-backends-groupdialog-current-active)" fontWeight="500">CURRENT ACTIVE</Text>
 												)}
 											</HStack>
 										);
@@ -167,7 +167,7 @@ export function BackendGroupDialog({ onClose, editGroupId }: IBackendGroupDialog
 
 							{selectedBackendIds.length > 0 && (
 								<Box>
-									<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Select Active Backend</Text>
+									<Text fontSize="11px" color="var(--w-backends-groupdialog-label)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Select Active Backend</Text>
 									<VStack align="stretch" gap="2">
 										{selectedBackendIds.map(backendId => {
 											const backend = backends[backendId];
@@ -175,16 +175,16 @@ export function BackendGroupDialog({ onClose, editGroupId }: IBackendGroupDialog
 											const isSelected = activeBackendId === backendId;
 											const isCurrentActive = originalActiveBackendId === backendId;
 											return (
-												<HStack key={backendId} px="3" py="2" borderRadius="md" cursor="pointer" bg={isSelected ? 'rgba(52, 211, 153, 0.08)' : 'rgba(255, 255, 255, 0.02)'} borderWidth="1px" borderColor={isSelected ? 'rgba(52, 211, 153, 0.25)' : 'rgba(255, 255, 255, 0.06)'} onClick={() => !saving && !showActivateDialog && setActiveBackendId(backendId)}>
-													<Flex w="5" h="5" borderRadius="md" bg={isSelected ? '#34d399' : 'rgba(255, 255, 255, 0.1)'} alignItems="center" justifyContent="center">
-														{isSelected && <CheckCircle size={10} color="white" />}
+												<HStack key={backendId} px="3" py="2" borderRadius="md" cursor="pointer" bg={isSelected ? 'var(--w-backends-groupdialog-active-bg)' : 'var(--w-backends-groupdialog-active-inactive-bg)'} borderWidth="1px" borderColor={isSelected ? 'var(--w-backends-groupdialog-active-border)' : 'var(--w-backends-groupdialog-active-inactive-border)'} onClick={() => !saving && !showActivateDialog && setActiveBackendId(backendId)}>
+													<Flex w="5" h="5" borderRadius="md" bg={isSelected ? 'var(--w-backends-groupdialog-activecheck-bg)' : 'var(--w-backends-groupdialog-activecheck-inactive-bg)'} alignItems="center" justifyContent="center">
+														{isSelected && <CheckCircle size={10} color="var(--w-backends-groupdialog-checkmark)" />}
 													</Flex>
-													<Text fontSize="12px" color="rgba(255, 255, 255, 0.7)" flex="1">{backend.name}</Text>
+													<Text fontSize="12px" color="var(--w-backends-groupdialog-active-name)" flex="1">{backend.name}</Text>
 													{isCurrentActive && !isSelected && (
-														<Text fontSize="10px" color="#a78bfa" fontWeight="500">CURRENT</Text>
+														<Text fontSize="10px" color="var(--w-backends-groupdialog-current-label)" fontWeight="500">CURRENT</Text>
 													)}
 													{isSelected && hasActiveChange && (
-														<Text fontSize="10px" color="#34d399" fontWeight="500">NEW ACTIVE</Text>
+														<Text fontSize="10px" color="var(--w-backends-groupdialog-new-active)" fontWeight="500">NEW ACTIVE</Text>
 													)}
 												</HStack>
 											);
@@ -195,9 +195,9 @@ export function BackendGroupDialog({ onClose, editGroupId }: IBackendGroupDialog
 						</VStack>
 					</Box>
 
-					<Flex px="6" py="4" justify="flex-end" gap="2" borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" bg="rgba(255, 255, 255, 0.01)">
-						<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="lg" fontSize="13px" onClick={() => !saving && !showActivateDialog && onClose()} disabled={saving || showActivateDialog}>Cancel</Button>
-						<Button size="sm" disabled={!canSave} bg="rgba(167, 139, 250, 0.15)" color="#a78bfa" borderWidth="1px" borderColor="rgba(167, 139, 250, 0.3)" _hover={{ bg: 'rgba(167, 139, 250, 0.25)' }} _disabled={{ opacity: 0.3, cursor: 'not-allowed' }} borderRadius="lg" fontSize="13px" fontWeight="600" px="5" onClick={handleSave}>
+					<Flex px="6" py="4" justify="flex-end" gap="2" borderTopWidth="1px" borderColor="var(--w-backends-groupdialog-footer-border)" bg="var(--w-backends-groupdialog-footer-bg)">
+						<Button size="sm" variant="ghost" color="var(--w-backends-groupdialog-cancel-color)" _hover={{ color: 'var(--w-backends-groupdialog-cancel-hover-color)', bg: 'var(--w-backends-groupdialog-cancel-hover-bg)' }} borderRadius="lg" fontSize="13px" onClick={() => !saving && !showActivateDialog && onClose()} disabled={saving || showActivateDialog}>Cancel</Button>
+						<Button size="sm" disabled={!canSave} bg="var(--w-backends-groupdialog-save-bg)" color="var(--w-backends-groupdialog-save-color)" borderWidth="1px" borderColor="var(--w-backends-groupdialog-save-border)" _hover={{ bg: 'var(--w-backends-groupdialog-save-hover)' }} _disabled={{ opacity: 0.3, cursor: 'not-allowed' }} borderRadius="lg" fontSize="13px" fontWeight="600" px="5" onClick={handleSave}>
 							{saving ? <Spinner size="xs" /> : <Layers size={14} />}
 							{isEdit ? 'Save Changes' : 'Create Group'}
 						</Button>
