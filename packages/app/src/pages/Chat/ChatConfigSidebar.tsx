@@ -381,15 +381,19 @@ export function ChatConfigContentPanel({
 						onValueChange={(details) => setSettings({ showRawJSONChatConfig: details.value === 'json' })}
 						size={"sm"}
 						w="full"
+						css={{
+							bg: 'var(--wc-bg-subtle)',
+							'--segment-indicator-bg': 'var(--wc-bg-active)',
+						}}
 					>
-						<SegmentGroup.Indicator />
+						<SegmentGroup.Indicator css={{ bg: 'var(--wc-bg-active)' }} />
 						<SegmentGroup.Items
 							flex={"content"}
 							items={[
 								{
 									value: 'ui',
 									label: (
-										<HStack gap="1.5">
+										<HStack gap="1.5" color={showRawJSON ? 'var(--wc-text-muted)' : 'var(--wc-text-heading)'}>
 											<LuLayoutGrid size={14} />
 											<Text fontSize="12px">Controls</Text>
 										</HStack>
@@ -398,7 +402,7 @@ export function ChatConfigContentPanel({
 								{
 									value: 'json',
 									label: (
-										<HStack gap="1.5">
+										<HStack gap="1.5" color={showRawJSON ? 'var(--wc-text-heading)' : 'var(--wc-text-muted)'}>
 											<LuCode size={14} />
 											<Text fontSize="12px">Raw</Text>
 										</HStack>

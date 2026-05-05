@@ -93,7 +93,7 @@ export function ToolListSidebar({ serverNames, mcpServers, serverPermissions, to
 							onClick={() => toggleExpand(name)}
 							opacity={serverEnabled ? 1 : 0.4}
 						>
-							{isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+							{isExpanded ? <ChevronDown size={12} color="var(--wc-text-muted)" /> : <ChevronRight size={12} color="var(--wc-text-muted)" />}
 							<McpStatusDot status={state?.status ?? EMcpServerStatus.DISCONNECTED} />
 							<Text flex="1" fontSize="13px" color="var(--wc-text-heading)" fontWeight="500">
 								{name}

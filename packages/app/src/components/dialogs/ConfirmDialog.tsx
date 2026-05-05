@@ -24,21 +24,21 @@ export function ConfirmDialog({ title, message, isOpen, onConfirm, onCancel, isL
 					<Dialog.Positioner position="absolute">
 						<Dialog.Content
 							maxW="420px"
-							bg="#0f0f12"
-							borderColor="rgba(255, 255, 255, 0.08)"
+							bg="var(--wc-bg-dialog)"
+							borderColor="var(--wc-border-default)"
 							borderRadius="2xl"
 							shadow="0 24px 80px rgba(0, 0, 0, 0.6)"
 						>
 						<VStack gap="4" px="6" py="5">
-							<Box w="10" h="10" borderRadius="lg" display="flex" alignItems="center" justifyContent="center" bg="rgba(251, 113, 133, 0.12)">
-								<AlertTriangle size={20} color="#fb7185" />
+							<Box w="10" h="10" borderRadius="lg" display="flex" alignItems="center" justifyContent="center" bg="var(--wc-accent-red-bg-8)">
+								<AlertTriangle size={20} color="var(--wc-accent-red)" />
 							</Box>
 
 							<VStack gap="1.5">
-								<Dialog.Title fontSize="16px" fontWeight="700" color="#e4e4e7">
+								<Dialog.Title fontSize="16px" fontWeight="700" color="var(--wc-text-heading)">
 									{title}
 								</Dialog.Title>
-								<Text fontSize="13px" color="rgba(255, 255, 255, 0.5)" textAlign="center">
+								<Text fontSize="13px" color="var(--wc-text-tertiary)" textAlign="center">
 									{message}
 								</Text>
 							</VStack>
@@ -48,8 +48,8 @@ export function ConfirmDialog({ title, message, isOpen, onConfirm, onCancel, isL
 									flex="1"
 									size="sm"
 									variant="ghost"
-									color="rgba(255, 255, 255, 0.4)"
-									_hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }}
+									color="var(--wc-text-muted)"
+									_hover={{ color: 'var(--wc-text-heading)', bg: 'var(--wc-bg-hover)' }}
 									borderRadius="lg"
 									fontSize="13px"
 									onClick={onCancel}
@@ -60,11 +60,11 @@ export function ConfirmDialog({ title, message, isOpen, onConfirm, onCancel, isL
 								<Button
 									flex="1"
 									size="sm"
-									bg="rgba(251, 113, 133, 0.12)"
-									color="#fb7185"
-									borderWidth="1px"
-									borderColor="rgba(251, 113, 133, 0.25)"
-									_hover={{ bg: 'rgba(251, 113, 133, 0.2)' }}
+bg="var(--wc-accent-red-bg-8)"
+								color="var(--wc-accent-red)"
+								borderWidth="1px"
+								borderColor="var(--wc-accent-red-border)"
+								_hover={{ bg: 'var(--wc-accent-red-hover)' }}
 									borderRadius="lg"
 									fontSize="13px"
 									fontWeight="500"

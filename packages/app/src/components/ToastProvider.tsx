@@ -23,9 +23,9 @@ export function useToast() {
 let nextId = 0;
 
 const TOAST_COLORS: Record<TToastType, { bg: string; border: string; icon: string }> = {
-	success: { bg: 'rgba(52, 211, 153, 0.08)', border: 'rgba(52, 211, 153, 0.2)', icon: '#34d399' },
-	error: { bg: 'rgba(251, 113, 133, 0.08)', border: 'rgba(251, 113, 133, 0.2)', icon: '#fb7185' },
-	info: { bg: 'rgba(51, 129, 255, 0.08)', border: 'rgba(51, 129, 255, 0.2)', icon: '#3381ff' },
+	success: { bg: 'var(--wc-accent-green-bg-8)', border: 'var(--wc-accent-green-border)', icon: 'var(--wc-accent-green)' },
+	error: { bg: 'var(--wc-accent-red-bg-8)', border: 'var(--wc-accent-red-border)', icon: 'var(--wc-accent-red)' },
+	info: { bg: 'var(--wc-accent-blue-bg-8)', border: 'var(--wc-accent-blue-border)', icon: 'var(--wc-accent-blue)' },
 };
 
 const TOAST_ICONS: Record<TToastType, ReactNode> = {
@@ -80,11 +80,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 							animation="slideUp 0.2s ease"
 						>
 							<Box color={colors.icon} flexShrink={0}>{TOAST_ICONS[t.type]}</Box>
-							<Text fontSize="12px" color="#e4e4e7" flex="1">{t.message}</Text>
+							<Text fontSize="12px" color="var(--wc-text-primary)" flex="1">{t.message}</Text>
 							<Box
 								as="button"
-								color="rgba(255, 255, 255, 0.3)"
-								_hover={{ color: '#e4e4e7' }}
+								color="var(--wc-text-muted)"
+								_hover={{ color: 'var(--wc-text-heading)' }}
 								onClick={() => dismiss(t.id)}
 								cursor="pointer"
 								flexShrink={0}

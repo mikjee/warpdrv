@@ -172,10 +172,10 @@ const ThreadWelcome: FC = () => {
 						objectFit="cover"
 						className="fade-in slide-in-from-bottom-1 animate-in fill-mode-both duration-200"
 					/>
-					<h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both font-semibold text-2xl duration-200">
+					<h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both font-semibold text-2xl duration-200" style={{ color: 'var(--wc-text-heading)' }}>
 						Hello there!
 					</h1>
-					<p className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-muted-foreground text-xl delay-75 duration-200">
+					<p className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-xl delay-75 duration-200" style={{ color: 'var(--wc-text-secondary)' }}>
 						How can I help you today?
 					</p>
 				</div>
@@ -201,10 +201,12 @@ const ThreadSuggestionItem: FC = () => {
 			<SuggestionPrimitive.Trigger send asChild>
 				<Button
 					variant="ghost"
-					className="aui-thread-welcome-suggestion h-auto w-full @md:flex-col flex-wrap items-start justify-start gap-1 rounded-3xl border bg-background px-4 py-3 text-left text-sm transition-colors hover:bg-muted"
+					className="aui-thread-welcome-suggestion h-auto w-full @md:flex-col flex-wrap items-start justify-start gap-1 rounded-3xl border px-4 py-3 text-left text-sm transition-colors"
+					style={{ backgroundColor: 'var(--wc-bg-card)', color: 'var(--wc-text-primary)' }}
+					_hover={{ bg: 'var(--wc-bg-hover)' }}
 				>
 					<SuggestionPrimitive.Title className="aui-thread-welcome-suggestion-text-1 font-medium" />
-					<SuggestionPrimitive.Description className="aui-thread-welcome-suggestion-text-2 text-muted-foreground empty:hidden" />
+					<SuggestionPrimitive.Description className="aui-thread-welcome-suggestion-text-2 empty:hidden" style={{ color: 'var(--wc-text-secondary)' }} />
 				</Button>
 			</SuggestionPrimitive.Trigger>
 		</div>
@@ -249,7 +251,7 @@ const Composer: FC = () => {
 			<ComposerPrimitive.AttachmentDropzone asChild>
 				<div
 					data-slot="composer-shell"
-					className="flex w-full flex-col gap-2 rounded-xl border p-(--composer-padding) transition-shadow focus-within:border-ring/75 focus-within:ring-2 focus-within:ring-ring/20 data-[dragging=true]:border-ring data-[dragging=true]:border-dashed data-[dragging=true]:bg-accent/50"
+					className="flex w-full flex-col gap-2 rounded-xl border p-(--composer-padding) transition-shadow focus-within:border-[var(--wc-border-default)] data-[dragging=true]:border-dashed data-[dragging=true]:bg-accent/50"
 					style={{
 						background: "var(--wc-bg-elevated)",
 						boxShadow: "0px 10px 10px 10px var(--wc-overlay-dim)",
@@ -258,7 +260,8 @@ const Composer: FC = () => {
 					<ComposerAttachments />
 				 <ComposerPrimitive.Input
 						placeholder="Send a message..."
-						className="aui-composer-input max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-sm outline-none placeholder:text-muted-foreground/80"
+						className="aui-composer-input max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-sm outline-none aui-composer-input"
+						style={{ color: 'var(--wc-text-primary)' }}
 						rows={1}
 						autoFocus
 						aria-label="Message input"
@@ -432,7 +435,7 @@ const ToolsSelector: FC = React.memo(() => {
 								</HStack>
 								<AccordionRoot collapsible defaultValue={[]}>
 									{connectedServers.map(([serverName, state]) => (
-										<AccordionItemComp key={serverName} value={serverName}>
+										<AccordionItemComp key={serverName} value={serverName} style={{ border: 'none' }}>
 											<AccordionItemTrigger
 												style={{
 													padding: '8px',
@@ -451,7 +454,7 @@ const ToolsSelector: FC = React.memo(() => {
 												</Text>
 												<Text fontSize="10px" color="var(--wc-text-faint)">{state.tools.length}</Text>
 											</AccordionItemTrigger>
-											<AccordionItemContent pt="1" pb="2" px="2">
+											<AccordionItemContent pt="1" pb="2" px="2" style={{ border: 'none' }}>
 												<VStack gap="1.5" align="stretch">
 													{state.tools.map(tool => {
 														const isSelected = attachAllTools || attachedTools.some(t => t.serverName === serverName && t.toolName === tool.name);
@@ -540,7 +543,7 @@ const ComposerAction: FC = () => {
 const MessageError: FC = () => {
 	return (
 		<MessagePrimitive.Error>
-			<ErrorPrimitive.Root className="aui-message-error-root mt-2 rounded-md border border-destructive bg-destructive/10 p-3 text-destructive text-sm dark:bg-destructive/5 dark:text-red-200">
+			<ErrorPrimitive.Root className="aui-message-error-root mt-2 rounded-md border p-3 text-sm" style={{ borderColor: 'var(--wc-accent-red)', backgroundColor: 'var(--wc-accent-red-bg-8)', color: 'var(--wc-accent-red)' }}>
 				<ErrorPrimitive.Message className="aui-message-error-message line-clamp-2" />
 			</ErrorPrimitive.Root>
 		</MessagePrimitive.Error>
@@ -636,7 +639,7 @@ const AssistantMessage: FC = React.memo(() => {
 			className="aui-assistant-message-root fade-in slide-in-from-bottom-1 relative mx-auto w-full  animate-in py-3 duration-150"
 			data-role="assistant"
 		>
-			<div className="aui-assistant-message-content wrap-break-word px-2 text-foreground text-[14px] leading-relaxed">
+			<div className="aui-assistant-message-content wrap-break-word px-2 text-[14px] leading-relaxed" style={{ color: 'var(--wc-text-primary)' }}>
 				<MessagePrimitive.Parts
 					components={componentsMap}
 				/>
@@ -662,18 +665,19 @@ const ReasoningBlock: FC = React.memo(() => {
 
 	return (
 		
-		<div className="mb-3 rounded-lg border border-border/50 bg-muted/30">
+		<div className="mb-3 rounded-lg border" style={{ borderColor: 'var(--wc-border-subtle)', backgroundColor: 'var(--wc-bg-subtle)' }}>
 			<button
 				type="button"
 				onClick={() => setOpen(!open)}
-				className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+				className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors"
+					style={{ color: 'var(--wc-text-muted)' }}
 			>
 				<BrainCircuitIcon className="size-3.5" />
 				<span>Thinking{reasoning.length > 100 ? ` (${Math.ceil(reasoning.length / 4)} tokens est.)` : ''}</span>
 				<ChevronDownIcon className={`size-3.5 ml-auto transition-transform ${open ? 'rotate-180' : ''}`} />
 			</button>
 			{open && (
-				<div className="px-3 pb-3 text-xs text-muted-foreground/80 whitespace-pre-wrap max-h-64 overflow-y-auto">
+				<div className="px-3 pb-3 text-xs whitespace-pre-wrap max-h-64 overflow-y-auto" style={{ color: 'var(--wc-text-secondary)' }}>
 					{reasoning}
 				</div>
 			)}

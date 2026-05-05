@@ -630,8 +630,9 @@ export const ThreadList: FC = React.memo(() => {
 						placeholder="Search threads..."
 						value={search}
 						onChange={(e) => setSearch(e.target.value)}
-						size="2xs"
-color="var(--wc-text-primary)"
+size="2xs"
+						bg="var(--wc-bg-card)"
+						color="var(--wc-text-primary)"
 						_focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }}
 					/>
 					{search && (
@@ -678,7 +679,7 @@ color="var(--wc-text-primary)"
 			</HStack>
 
 			{/* Scrollable thread list */}
-			<Box flex="1" overflowY="auto" css={{ '&::-webkit-scrollbar': { width: '4px' }, '&::-webkit-scrollbar-thumb': { background: 'var(--wc-text-disabled)', borderRadius: '2px' } }} borderTop="1px solid rgb(25,25,25)" pt="2" >
+			<Box flex="1" overflowY="auto" css={{ '&::-webkit-scrollbar': { width: '4px' }, '&::-webkit-scrollbar-thumb': { background: 'var(--wc-text-disabled)', borderRadius: '2px' } }} borderTop="1px solid var(--wc-border-subtle)" pt="2" >
 				<VStack align="start" gap="0" w="full">
 				{threadsAPI.folders.map((f) => (
 					<FolderSection
