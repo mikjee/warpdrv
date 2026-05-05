@@ -269,15 +269,15 @@ export function BackendsPage() {
 			<Box pt="76px" px="4" pb="4">
 				<VStack align="stretch" gap="4">
 				{/* Backends Section */}
-				<Box borderWidth="1px" borderColor="var(--w-backends-section-border)" borderRadius="xl" bg="var(--w-backends-section-bg)" overflow="hidden">
-					<Flex mb="4" px="4" py="3" align="center" justify="space-between" cursor="pointer" onClick={() => setBackendsExpanded(!backendsExpanded)} _hover={{ bg: 'var(--w-backends-section-header-hover)' }} transition="background 0.15s ease">
+				<Box borderWidth="1px" borderColor="var(--wc-border-subtle)" borderRadius="xl" bg="var(--wc-bg-surface)" overflow="hidden">
+					<Flex mb="4" px="4" py="3" align="center" justify="space-between" cursor="pointer" onClick={() => setBackendsExpanded(!backendsExpanded)} _hover={{ bg: 'var(--wc-bg-surface)' }} transition="background 0.15s ease">
 						<HStack gap="3">
-							<Box color="var(--w-backends-section-chevron)">{backendsExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</Box>
-							<Terminal size={16} color="var(--w-backends-section-icon)" />
-							<Text fontSize="13px" fontWeight="600" color="var(--w-backends-section-title)">Backends</Text>
-							<Badge size="sm" px="1.5" borderRadius="full" bg="var(--w-backends-section-badge-bg)" color="var(--w-backends-section-badge-color)" fontSize="10px" fontWeight="600">{filteredAndSortedBackends.length}</Badge>
+							<Box color="var(--wc-text-muted)">{backendsExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</Box>
+							<Terminal size={16} color="var(--wc-text-tertiary)" />
+							<Text fontSize="13px" fontWeight="600" color="var(--wc-text-heading)">Backends</Text>
+							<Badge size="sm" px="1.5" borderRadius="full" bg="var(--wc-bg-hover)" color="var(--wc-text-muted)" fontSize="10px" fontWeight="600">{filteredAndSortedBackends.length}</Badge>
 						</HStack>
-						<Button size="xs" variant="ghost" color="var(--w-backends-add-btn-color)" _hover={{ bg: 'var(--w-backends-add-btn-backends-hover-bg)', color: 'var(--w-backends-add-btn-backends-hover-color)' }} onClick={(e) => { e.stopPropagation(); setShowAddDialog(true); }}>
+						<Button size="xs" variant="ghost" color="var(--wc-text-tertiary)" _hover={{ bg: 'var(--wc-accent-blue-bg-15)', color: 'var(--wc-accent-blue-hover)' }} onClick={(e) => { e.stopPropagation(); setShowAddDialog(true); }}>
 							<Plus size={15} />
 						</Button>
 					</Flex>
@@ -286,17 +286,17 @@ export function BackendsPage() {
 							<Box px="4" pb="3">
 							{filteredAndSortedBackends.length === 0 && backendsArr.length === 0 ? (
 							<Flex h="200px" alignItems="center" justifyContent="center">
-								<VStack gap="3" color="var(--w-backends-empty-icon)">
+								<VStack gap="3" color="var(--wc-text-faint)">
 									<Blocks size={40} />
 									<Text fontSize="14px">No backends registered</Text>
-								<Text fontSize="12px" color="var(--w-backends-empty-subtitle)" textAlign="center">
+								<Text fontSize="12px" color="var(--wc-text-faint)" textAlign="center">
 									Download a llama.cpp build from{' '}
-									<ChakraLink href="https://github.com/ggml-org/llama.cpp/releases" color="var(--w-backends-empty-link)" _hover={{ color: 'var(--w-backends-empty-link-hover)' }} onClick={(e) => { e.preventDefault(); openExternal('https://github.com/ggml-org/llama.cpp/releases'); }}>
+									<ChakraLink href="https://github.com/ggml-org/llama.cpp/releases" color="var(--wc-accent-blue)" _hover={{ color: 'var(--wc-accent-blue-hover)' }} onClick={(e) => { e.preventDefault(); openExternal('https://github.com/ggml-org/llama.cpp/releases'); }}>
 										Official releases
 									</ChakraLink>.
 									<br />
 									Or build llama.cpp from source following the{' '}
-									<ChakraLink href="https://github.com/mikjee/warpdrv/blob/master/docs/guides/recipes.md" color="var(--w-backends-empty-link)" _hover={{ color: 'var(--w-backends-empty-link-hover)' }} onClick={(e) => { e.preventDefault(); openExternal('https://github.com/mikjee/warpdrv/blob/master/docs/guides/recipes.md'); }}>
+									<ChakraLink href="https://github.com/mikjee/warpdrv/blob/master/docs/guides/recipes.md" color="var(--wc-accent-blue)" _hover={{ color: 'var(--wc-accent-blue-hover)' }} onClick={(e) => { e.preventDefault(); openExternal('https://github.com/mikjee/warpdrv/blob/master/docs/guides/recipes.md'); }}>
 										guide for Recipes
 									</ChakraLink>.
 								</Text>
@@ -304,10 +304,10 @@ export function BackendsPage() {
 							</Flex>
 						) : filteredAndSortedBackends.length === 0 && searchQuery.trim() ? (
 							<Flex h="200px" alignItems="center" justifyContent="center">
-								<VStack gap="3" color="var(--w-backends-empty-icon)">
+								<VStack gap="3" color="var(--wc-text-faint)">
 									<Blocks size={40} />
 									<Text fontSize="14px">No matching backends</Text>
-									<Text fontSize="12px" color="var(--w-backends-empty-search-hint)">Try adjusting your search query</Text>
+									<Text fontSize="12px" color="var(--wc-text-disabled)">Try adjusting your search query</Text>
 								</VStack>
 							</Flex>
 						) : (
@@ -328,15 +328,15 @@ export function BackendsPage() {
 				</Box>
 
 				{/* Backend Groups Section */}
-				<Box borderWidth="1px" borderColor="var(--w-backends-section-border)" borderRadius="xl" bg="var(--w-backends-section-bg)" overflow="hidden">
-					<Flex px="4" py="3" mb="4" align="center" justify="space-between" cursor="pointer" onClick={() => setGroupsExpanded(!groupsExpanded)} _hover={{ bg: 'var(--w-backends-section-header-hover)' }} transition="background 0.15s ease">
+				<Box borderWidth="1px" borderColor="var(--wc-border-subtle)" borderRadius="xl" bg="var(--wc-bg-surface)" overflow="hidden">
+					<Flex px="4" py="3" mb="4" align="center" justify="space-between" cursor="pointer" onClick={() => setGroupsExpanded(!groupsExpanded)} _hover={{ bg: 'var(--wc-bg-surface)' }} transition="background 0.15s ease">
 						<HStack gap="3">
-							<Box color="var(--w-backends-section-chevron)">{groupsExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</Box>
-							<Layers size={16} color="var(--w-backends-section-icon)" />
-							<Text fontSize="13px" fontWeight="600" color="var(--w-backends-section-title)">Groups</Text>
-							<Badge size="sm" px="1.5" borderRadius="full" bg="var(--w-backends-section-badge-bg)" color="var(--w-backends-section-badge-color)" fontSize="10px" fontWeight="600">{filteredAndSortedGroups.length}</Badge>
+							<Box color="var(--wc-text-muted)">{groupsExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</Box>
+							<Layers size={16} color="var(--wc-text-tertiary)" />
+							<Text fontSize="13px" fontWeight="600" color="var(--wc-text-heading)">Groups</Text>
+							<Badge size="sm" px="1.5" borderRadius="full" bg="var(--wc-bg-hover)" color="var(--wc-text-muted)" fontSize="10px" fontWeight="600">{filteredAndSortedGroups.length}</Badge>
 						</HStack>
-						<Button size="xs" variant="ghost" color="var(--w-backends-add-btn-color)" _hover={{ bg: 'var(--w-backends-add-btn-groups-hover-bg)', color: 'var(--w-backends-add-btn-groups-hover-color)' }} onClick={(e) => { e.stopPropagation(); setShowAddGroup(true); }}>
+						<Button size="xs" variant="ghost" color="var(--wc-text-tertiary)" _hover={{ bg: 'var(--wc-accent-purple-bg-15)', color: 'var(--wc-accent-purple)' }} onClick={(e) => { e.stopPropagation(); setShowAddGroup(true); }}>
 							<Plus size={15} />
 						</Button>
 					</Flex>
@@ -345,12 +345,12 @@ export function BackendsPage() {
 							<Box px="4" pb="3">
 						{filteredAndSortedGroups.length === 0 && groupsArr.length === 0 ? (
 							<Flex h="200px" alignItems="center" justifyContent="center">
-								<VStack gap="3" color="var(--w-backends-empty-icon)">
+								<VStack gap="3" color="var(--wc-text-faint)">
 									<Layers size={40} />
 									<Text fontSize="14px">No backend groups</Text>
-								<Text fontSize="12px" color="var(--w-backends-empty-subtitle)" textAlign="center">
+								<Text fontSize="12px" color="var(--wc-text-faint)" textAlign="center">
 									Read the{' '}
-									<ChakraLink href="https://github.com/mikjee/warpdrv/blob/master/docs/guides/backend-groups.md" color="var(--w-backends-empty-link)" _hover={{ color: 'var(--w-backends-empty-link-hover)' }} onClick={(e) => { e.preventDefault(); openExternal('https://github.com/mikjee/warpdrv/blob/master/docs/guides/backend-groups.md'); }}>
+									<ChakraLink href="https://github.com/mikjee/warpdrv/blob/master/docs/guides/backend-groups.md" color="var(--wc-accent-blue)" _hover={{ color: 'var(--wc-accent-blue-hover)' }} onClick={(e) => { e.preventDefault(); openExternal('https://github.com/mikjee/warpdrv/blob/master/docs/guides/backend-groups.md'); }}>
 										guide
 									</ChakraLink>{' '}
 									on how to use backend groups.
@@ -359,10 +359,10 @@ export function BackendsPage() {
 							</Flex>
 						) : filteredAndSortedGroups.length === 0 && searchQuery.trim() ? (
 							<Flex h="200px" alignItems="center" justifyContent="center">
-								<VStack gap="3" color="var(--w-backends-empty-icon)">
+								<VStack gap="3" color="var(--wc-text-faint)">
 									<Layers size={40} />
 									<Text fontSize="14px">No matching groups</Text>
-									<Text fontSize="12px" color="var(--w-backends-empty-search-hint)">Try adjusting your search query</Text>
+									<Text fontSize="12px" color="var(--wc-text-disabled)">Try adjusting your search query</Text>
 								</VStack>
 							</Flex>
 						) : (
