@@ -280,11 +280,11 @@ export function ActivateBackendDialog({ isOpen, onClose, groupId, newBackendId, 
 								<Button
 									flex="1"
 									size="sm"
-									bg="var(--wc-accent-blue-bg-12)"
-									color="var(--wc-accent-blue)"
+									bg="var(--wc-accent-purple-bg-12)"
+									color="var(--wc-accent-purple)"
 									borderWidth="1px"
-									borderColor="var(--wc-accent-blue-border)"
-									_hover={{ bg: 'var(--wc-accent-blue-hover-bg)' }}
+									borderColor="var(--wc-accent-purple-border)"
+									_hover={{ bg: 'var(--wc-accent-purple-hover-bg)' }}
 									borderRadius="lg"
 									fontSize="13px"
 									fontWeight="500"

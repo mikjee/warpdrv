@@ -103,11 +103,11 @@ export function SaveCheckpointDialog({ server, isOpen, onClose }: ISaveCheckpoin
 	const tabButtonStyle = (active: boolean) => ({
 		flex: '1',
 		size: 'sm' as const,
-		bg: active ? 'var(--wc-accent-yellow-bg-8)' : 'var(--wc-bg-subtle)',
-		color: active ? 'var(--wc-accent-yellow-strong)' : 'var(--wc-text-secondary)',
+		bg: active ? 'var(--wc-accent-blue-bg-8)' : 'var(--wc-bg-subtle)',
+		color: active ? 'var(--wc-accent-blue)' : 'var(--wc-text-secondary)',
 		borderWidth: '1px',
-		borderColor: active ? 'var(--wc-accent-yellow-border)' : 'var(--wc-border-subtle)',
-		_hover: { bg: active ? 'var(--wc-accent-yellow-hover-bg)' : 'var(--wc-bg-hover)' },
+		borderColor: active ? 'var(--wc-accent-blue-border)' : 'var(--wc-border-subtle)',
+		_hover: { bg: active ? 'var(--wc-accent-blue-hover-bg)' : 'var(--wc-bg-hover)' },
 		borderRadius: 'lg',
 		fontSize: '12px',
 		fontWeight: '500',
@@ -130,8 +130,8 @@ export function SaveCheckpointDialog({ server, isOpen, onClose }: ISaveCheckpoin
 							<Box position="relative">
 								<VStack gap="4" px="6" py="5" align="stretch" style={{ opacity: isSaving ? 0.5 : 1 }}>
 								<HStack gap="2">
-									<Box w="8" h="8" borderRadius="lg" display="flex" alignItems="center" justifyContent="center" bg="var(--wc-accent-yellow-bg-8)">
-										<Save size={16} color="var(--wc-accent-yellow)" />
+									<Box w="8" h="8" borderRadius="lg" display="flex" alignItems="center" justifyContent="center" bg="var(--wc-accent-blue-bg-8)">
+										<Save size={16} color="var(--wc-accent-blue)" />
 									</Box>
 									<Dialog.Title fontSize="15px" fontWeight="700" color="var(--wc-text-primary)">
 										Save Checkpoint

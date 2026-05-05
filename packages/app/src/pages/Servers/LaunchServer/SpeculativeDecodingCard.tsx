@@ -124,19 +124,19 @@ export const SpeculativeDecodingCard = React.memo(({
 				<VStack align="stretch" gap="4" mt="4">
 					<HStack gap="2">
 						<Button size="sm" variant="outline" flex="1" justifyContent="center"
-							borderColor={specDecode.mode === 'ngram' ? 'var(--wc-border-subtle)' : 'var(--wc-accent-blue)'}
+							borderColor={specDecode.mode === 'ngram' ? 'var(--wc-border-subtle)' : 'var(--wc-accent-purple-border)'}
 							borderWidth={specDecode.mode === 'ngram' ? '1px' : '2px'}
-							color={specDecode.mode === 'ngram' ? 'var(--wc-text-secondary)' : 'var(--wc-accent-blue)'}
-							bg={specDecode.mode === 'ngram' ? 'var(--wc-bg-subtle)' : 'var(--wc-accent-blue-bg-8)'}
-							_hover={{ borderColor: specDecode.mode === 'ngram' ? 'var(--wc-border-hover)' : 'var(--wc-accent-blue-hover)' }}
+							color={specDecode.mode === 'ngram' ? 'var(--wc-text-secondary)' : 'var(--wc-accent-purple)'}
+							bg={specDecode.mode === 'ngram' ? 'var(--wc-bg-subtle)' : 'var(--wc-accent-purple-bg-8)'}
+							_hover={{ borderColor: specDecode.mode === 'ngram' ? 'var(--wc-border-hover)' : 'var(--wc-accent-purple-hover)' }}
 							onClick={() => onSpecParamChange('mode', 'draft')}
 						><Text fontSize="13px" fontWeight="500">Draft Model</Text></Button>
 						<Button size="sm" variant="outline" flex="1" justifyContent="center"
-borderColor={specDecode.mode === 'ngram' ? 'var(--wc-accent-blue)' : 'var(--wc-border-subtle)'}
+borderColor={specDecode.mode === 'ngram' ? 'var(--wc-accent-purple-border)' : 'var(--wc-border-subtle)'}
 						borderWidth={specDecode.mode === 'ngram' ? '2px' : '1px'}
-						color={specDecode.mode === 'ngram' ? 'var(--wc-accent-blue)' : 'var(--wc-text-secondary)'}
-						bg={specDecode.mode === 'ngram' ? 'var(--wc-accent-blue-bg-8)' : 'var(--wc-bg-subtle)'}
-						_hover={{ borderColor: specDecode.mode === 'ngram' ? 'var(--wc-accent-blue-hover)' : 'var(--wc-border-hover)' }}
+						color={specDecode.mode === 'ngram' ? 'var(--wc-accent-purple)' : 'var(--wc-text-secondary)'}
+						bg={specDecode.mode === 'ngram' ? 'var(--wc-accent-purple-bg-8)' : 'var(--wc-bg-subtle)'}
+						_hover={{ borderColor: specDecode.mode === 'ngram' ? 'var(--wc-accent-purple-hover)' : 'var(--wc-border-hover)' }}
 							onClick={() => onSpecParamChange('mode', 'ngram')}
 						><Text fontSize="13px" fontWeight="500">Ngram</Text></Button>
 					</HStack>
