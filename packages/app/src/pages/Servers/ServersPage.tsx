@@ -142,17 +142,17 @@ export const ServersPage = React.memo(() => {
 				icon={<Server size={20} />}
 				actions={
 					<HStack gap="3">
-						<InputGroup startElement={<Search size={14} color="var(--w-header-search-icon)" />} w="200px">
+						<InputGroup startElement={<Search size={14} color="var(--wc-text-tertiary)" />} w="200px">
 							<Input
 								placeholder="Search servers..."
 								size="sm"
-								bg="var(--w-header-search-bg)"
-								borderColor="var(--w-header-search-border)"
-								color="var(--w-header-search-color)"
+								bg="var(--wc-bg-subtle)"
+								borderColor="var(--wc-border-default)"
+								color="var(--wc-text-primary)"
 								fontSize="13px"
 								borderRadius="lg"
-								_placeholder={{ color: 'var(--w-header-search-placeholder)' }}
-								_focus={{ borderColor: 'var(--w-header-search-focus-border)', outline: 'none' }}
+								_placeholder={{ color: 'var(--wc-text-placeholder)' }}
+								_focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }}
 								value={searchQuery}
 								onChange={e => setSearchQuery(e.target.value)}
 							/>
@@ -179,9 +179,9 @@ export const ServersPage = React.memo(() => {
 													size="sm"
 													w="150px"
 													justifyContent="space-between"
-													bg="var(--w-header-filter-btn-bg)"
-													borderColor="var(--w-header-filter-btn-border)"
-													color="var(--w-header-filter-btn-color)"
+													bg="var(--wc-bg-subtle)"
+													borderColor="var(--wc-border-default)"
+													color="var(--wc-text-secondary)"
 													fontSize="13px"
 													borderRadius="lg"
 												>
@@ -194,7 +194,7 @@ export const ServersPage = React.memo(() => {
 											<Combobox.Positioner>
 												<Combobox.Content
 													maxH="200px" overflowY="auto"
-													bg="var(--w-header-combobox-bg)" borderWidth="1px" borderColor="var(--w-header-combobox-border)"
+													bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-default)"
 													borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
 												>
 													{sortCollection.items.map((item) => (
@@ -202,10 +202,10 @@ export const ServersPage = React.memo(() => {
 															key={item.value}
 															item={item}
 															px="3" py="2" borderRadius="md" cursor="pointer"
-															_hover={{ bg: 'var(--w-header-combobox-item-hover)' }}
-															_highlighted={{ bg: 'var(--w-header-combobox-bg)' }}
+															_hover={{ bg: 'var(--wc-bg-hover)' }}
+															_highlighted={{ bg: 'var(--wc-bg-elevated)' }}
 														>
-															<Text fontSize="12px" color="var(--w-header-combobox-item-text)">{item.label}</Text>
+															<Text fontSize="12px" color="var(--wc-text-secondary)">{item.label}</Text>
 															<Combobox.ItemIndicator />
 														</Combobox.Item>
 													))}
@@ -218,23 +218,23 @@ export const ServersPage = React.memo(() => {
 							<Button
 								size="sm"
 								variant="outline"
-								bg="var(--w-header-sortorder-btn-bg)"
-								borderColor="var(--w-header-sortorder-btn-border)"
-								color="var(--w-header-sortorder-btn-color)"
+								bg="var(--wc-bg-subtle)"
+								borderColor="var(--wc-border-default)"
+								color="var(--wc-text-secondary)"
 								borderRadius="md"
-								_hover={{ borderColor: 'var(--w-header-sortorder-btn-hover-border)' }}
+								_hover={{ borderColor: 'var(--wc-border-hover)' }}
 								title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
 								onClick={() => handleSortChange(sortField, sortOrder === 'asc' ? 'desc' : 'asc')}
 							>
 								{sortOrder === 'asc' ? <ArrowUpAZ size={14} /> : <ArrowDownZA size={14} />}
 							</Button>
 						</HStack>
-						<Switch.Root label="Show only running servers" checked={runningOnly} onCheckedChange={(details) => setRunningOnly(details.checked)} color={runningOnly ? 'var(--w-header-switch-active)' : 'var(--w-header-switch-inactive)'}>
+						<Switch.Root label="Show only running servers" checked={runningOnly} onCheckedChange={(details) => setRunningOnly(details.checked)} color={runningOnly ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)'}>
 							<Switch.HiddenInput />
-							<Switch.Control css={{ bg: runningOnly ? 'var(--w-header-switch-active)' : 'surface.4' }}>
-								<Switch.Thumb css={{ bg: 'var(--w-header-switch-thumb)' }} />
+							<Switch.Control css={{ bg: runningOnly ? 'var(--wc-accent-blue)' : 'surface.4' }}>
+								<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 							</Switch.Control>
-							<Switch.Label ml="2" fontSize="13px" color={runningOnly ? 'var(--w-header-switch-active)' : 'var(--w-header-switch-inactive)'} userSelect="none">
+							<Switch.Label ml="2" fontSize="13px" color={runningOnly ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)'} userSelect="none">
 								Running only
 							</Switch.Label>
 						</Switch.Root>
@@ -243,10 +243,10 @@ export const ServersPage = React.memo(() => {
 				actionsRight={
 					<Button
 						size="sm"
-						bg="var(--w-header-action-btn-bg)"
-						color="var(--w-header-action-btn-color)"
-						borderWidth="1px" borderColor="var(--w-header-action-btn-border)"
-						_hover={{ bg: 'var(--w-header-action-btn-hover-bg)' }}
+						bg="var(--wc-accent-blue-bg-12)"
+						color="var(--wc-accent-blue)"
+						borderWidth="1px" borderColor="var(--wc-accent-blue-border)"
+						_hover={{ bg: 'var(--wc-accent-blue-hover-bg)' }}
 						borderRadius="lg"
 						fontSize="13px"
 						fontWeight="600"
