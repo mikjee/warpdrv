@@ -11,6 +11,7 @@ export function useChatEventsStream() {
 	const applyMessagePatched = useStore(s => s.applyMessagePatched);
 	const applyMessageDeleted = useStore(s => s.applyMessageDeleted);
 	const applyMessageChunk = useStore(s => s.applyMessageChunk);
+	const applyToolCallStarting = useStore(s => s.applyToolCallStarting);
 	const applyToolCallCreated = useStore(s => s.applyToolCallCreated);
 	const applyToolCallUpdated = useStore(s => s.applyToolCallUpdated);
 	const applyInferenceStarted = useStore(s => s.applyInferenceStarted);
@@ -49,6 +50,9 @@ export function useChatEventsStream() {
 			case 'message.chunk':
 				applyMessageChunk(event.messageId, event.threadId, event.partId, event.deltaText);
 				break;
+			case 'tool_call.starting':
+				applyToolCallStarting(event.messageId, event.name);
+				break;
 			case 'tool_call.created':
 				applyToolCallCreated(event.toolCall);
 				break;
@@ -78,6 +82,7 @@ export function useChatEventsStream() {
 		es.addEventListener('message.patched', handleEvent);
 		es.addEventListener('message.deleted', handleEvent);
 		es.addEventListener('message.chunk', handleEvent);
+		es.addEventListener('tool_call.starting', handleEvent);
 		es.addEventListener('tool_call.created', handleEvent);
 		es.addEventListener('tool_call.updated', handleEvent);
 		es.addEventListener('inference.started', handleEvent);
@@ -100,6 +105,7 @@ export function useChatEventsStream() {
 		applyMessagePatched,
 		applyMessageDeleted,
 		applyMessageChunk,
+		applyToolCallStarting,
 		applyToolCallCreated,
 		applyToolCallUpdated,
 		applyInferenceStarted,

@@ -76,6 +76,7 @@ export interface AppState {
 	messagesByThread: Record<TThreadId, Record<TMessageId, IChatMessage>>;
 	headMessageIdByThread: Record<TThreadId, TMessageId>;
 	toolCallsById: Record<TToolCallId, IToolCall>;
+	startingToolsByMessage: Record<TMessageId, string[]>;
 	isRunningByThread: Record<TThreadId, boolean>;
 	activeThreadId: TThreadId | null;
 
@@ -90,6 +91,7 @@ export interface AppState {
 	applyMessagePatched: (messageId: TMessageId, threadId: TThreadId, updates: IMessagePatch) => void;
 	applyMessageDeleted: (messageId: TMessageId, threadId: TThreadId) => void;
 	applyMessageChunk: (messageId: TMessageId, threadId: TThreadId, partId: TMessagePartId, deltaText: string) => void;
+	applyToolCallStarting: (messageId: TMessageId, name: string) => void;
 	applyToolCallCreated: (toolCall: IToolCall) => void;
 	applyToolCallUpdated: (toolCall: IToolCall) => void;
 	applyInferenceStarted: (threadId: TThreadId, messageId: TMessageId) => void;

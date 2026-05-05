@@ -638,7 +638,19 @@ export class Orchestrator {
 
 				if (delta?.tool_calls) {
 					for (const tc of delta.tool_calls) {
+						const hadName = !!toolCallAccumulators[tc.index]?.name;
 						accumulateToolCallDelta(toolCallAccumulators, tc);
+						if (!hadName) {
+							const name = toolCallAccumulators[tc.index]?.name;
+							if (name) {
+								this.broadcaster.emit({
+									type: 'tool_call.starting',
+									threadId: request.threadId,
+									messageId: turn.assistantMessageId,
+									name,
+								});
+							}
+						}
 					}
 				}
 

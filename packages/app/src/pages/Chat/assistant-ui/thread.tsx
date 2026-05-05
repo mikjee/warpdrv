@@ -638,7 +638,8 @@ const componentsMap = {
 const AssistantMessage: FC = React.memo(() => {
 	const parts = useAuiState((s) => s.message.content);
 	const status = useAuiState((s) => s.message.status?.type);
-
+	const messageId = useAuiState((s) => s.message.id);
+	const startingTools = useStore((s) => s.startingToolsByMessage[messageId]);
 	// Skip rendering empty assistant messages (converted TOOL messages)
 	// BUT render if status is "running" so the loading indicator appears during prompt processing
 	if (parts.length === 0 && status !== 'running') return null;
@@ -652,6 +653,11 @@ const AssistantMessage: FC = React.memo(() => {
 				<MessagePrimitive.Parts
 					components={componentsMap}
 				/>
+				{startingTools && startingTools.length > 0 && (
+					<div className="mt-2 text-md italic" style={{ color: 'var(--wc-text-tertiary)' }}>
+						calling: {startingTools.join(', ')}...
+					</div>
+				)}
 				<MessageError />
 			</div>
 

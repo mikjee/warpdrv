@@ -51,6 +51,7 @@ export interface IChatStoreState {
 
 	// Tool calls - global flat map (these are the records from conversations)
 	toolCallsById: Record<TToolCallId, IToolCall>;
+	startingToolsByMessage: Record<TMessageId, string[]>;
 
 	// Inference state per thread
 	isRunningByThread: Record<TThreadId, boolean>;
@@ -81,6 +82,7 @@ export interface IChatStoreState {
 	applyMessagePatched: (messageId: TMessageId, threadId: TThreadId, updates: IMessagePatch) => void;
 	applyMessageDeleted: (messageId: TMessageId, threadId: TThreadId) => void;
 	applyMessageChunk: (messageId: TMessageId, threadId: TThreadId, partId: TMessagePartId, deltaText: string) => void;
+	applyToolCallStarting: (messageId: TMessageId, name: string) => void;
 	applyToolCallCreated: (toolCall: IToolCall) => void;
 	applyToolCallUpdated: (toolCall: IToolCall) => void;
 	applyInferenceStarted: (threadId: TThreadId, messageId: TMessageId) => void;
@@ -118,6 +120,7 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 ): IChatStoreState {
 	const initialState = {
 		threads: {} as Record<TThreadId, IChatThread>,
+		startingToolsByMessage: {} as Record<TMessageId, string[]>,
 		activeThreadId: null as TThreadId | null,
 		messagesByThread: {} as Record<TThreadId, Record<TMessageId, IChatMessage>>,
 		chunksByMessageId: {},
@@ -350,6 +353,13 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 			}),
 
 		// Tool call actions
+		applyToolCallStarting: (messageId: TMessageId, name: string) =>
+			set((draft) => {
+				if (!draft.startingToolsByMessage[messageId]) {
+					draft.startingToolsByMessage[messageId] = [];
+				}
+				draft.startingToolsByMessage[messageId]!.push(name);
+			}),
 		applyToolCallCreated: (toolCall: IToolCall) =>
 			set((draft) => {
 				draft.toolCallsById[toolCall.id] = toolCall;
@@ -368,15 +378,17 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 				draft.isRunningByThread[threadId] = true;
 			}),
 
-		applyInferenceEnded: (threadId: TThreadId, _messageId: TMessageId) =>
+		applyInferenceEnded: (threadId: TThreadId, messageId: TMessageId) =>
 			set((draft) => {
 				draft.isRunningByThread[threadId] = false;
+				delete draft.startingToolsByMessage[messageId];
 			}),
 
 		applyInferenceError: (threadId: TThreadId, messageId: TMessageId, error: string) =>
 			set((draft) => {
 				draft.isRunningByThread[threadId] = false;
 				draft.inferenceError = { threadId, messageId, error };
+				delete draft.startingToolsByMessage[messageId];
 			}),
 
 		// Initial seeding from API fetch

@@ -343,6 +343,7 @@ export type IBridgeEvent =
 	| { type: 'message.patched'; messageId: TMessageId; threadId: TThreadId; updates: IMessagePatch }
 	| { type: 'message.deleted'; messageId: TMessageId; threadId: TThreadId }
 	| { type: 'message.chunk'; messageId: TMessageId; threadId: TThreadId; partId: TMessagePartId; partType: EMessagePartType.TEXT | EMessagePartType.REASONING; deltaText: string }
+	| { type: 'tool_call.starting'; threadId: TThreadId; messageId: TMessageId; name: string }
 	| { type: 'tool_call.created'; toolCall: IToolCall }
 	| { type: 'tool_call.updated'; toolCall: IToolCall }
 	| { type: 'inference.started'; threadId: TThreadId; messageId: TMessageId }

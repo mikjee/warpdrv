@@ -1,6 +1,6 @@
 {
-	"version": "0.4.5",
+	"version": "0.4.7",
 	"updateCheckUrl": "https://raw.githubusercontent.com/mikjee/warpdrv/master/release.json",
 	"downloadUrl": "https://github.com/mikjee/warpdrv/releases/latest",
-	"notes": "Multiple fixes - fix -device flag, model scanner fix for quant directory, update banner fix, ngl layer offload, UI fixes"
+	"notes": "\u001b[A"
 }

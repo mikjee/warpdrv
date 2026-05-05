@@ -61,6 +61,7 @@ export const useStore = create<AppState>()(
 
 					headMessageIdByThread: bridge.headMessageIdByThread,
 					toolCallsById: bridge.toolCallsById,
+					startingToolsByMessage: bridge.startingToolsByMessage,
 					isRunningByThread: bridge.isRunningByThread,
 					activeThreadId: bridge.activeThreadId,
 					inferenceError: bridge.inferenceError,
@@ -82,6 +83,7 @@ export const useStore = create<AppState>()(
 					applyMessagePatched: bridge.applyMessagePatched,
 					applyMessageDeleted: bridge.applyMessageDeleted,
 					applyMessageChunk: bridge.applyMessageChunk,
+					applyToolCallStarting: bridge.applyToolCallStarting,
 					applyToolCallCreated: bridge.applyToolCallCreated,
 					applyToolCallUpdated: bridge.applyToolCallUpdated,
 					applyInferenceStarted: bridge.applyInferenceStarted,
