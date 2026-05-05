@@ -55,7 +55,7 @@ export const ServersTile = React.memo(() => {
 			onClick={() => navigate('/servers')}
 		>
 			{lastUsed.length === 0 ? (
-				<Text fontSize="13px" color="var(--w-home-tiles-servers-empty)">
+				<Text fontSize="13px" color="var(--wc-text-muted)">
 					No servers configured
 				</Text>
 			) : (
@@ -67,7 +67,7 @@ export const ServersTile = React.memo(() => {
 								<HStack gap="2" flex="1" minWidth={0}>
 									<StatusDot state={statusToState(srv.status)} />
 									<Box overflow="hidden">
-										<Text fontSize="13px" color="var(--w-home-tiles-servers-name)" noOfLines={1}>
+										<Text fontSize="13px" color="var(--wc-text-tertiary)" noOfLines={1}>
 											{srv.serverName}
 										</Text>
 									</Box>
@@ -76,14 +76,14 @@ export const ServersTile = React.memo(() => {
 									<Button
 										size="xs"
 										variant="ghost"
-										bg="var(--w-home-tiles-servers-start-bg)"
-										color="var(--w-home-tiles-servers-start-color)"
+bg="var(--wc-accent-blue-bg-8)"
+									color="var(--wc-accent-blue)"
 										borderRadius="md"
 										p="1.5"
 										minW="auto"
 										h="26px"
 										fontSize="11px"
-										_hover={{ bg: 'var(--w-home-tiles-servers-start-hover-bg)' }}
+										_hover={{ bg: 'var(--wc-accent-blue-hover-bg)' }}
 										onClick={(e) => {
 											e.stopPropagation();
 											handleStart(srv.id);

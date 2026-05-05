@@ -23,10 +23,10 @@ export const TileContainer = React.memo(({
 				h="full"
 				w="full"
 				position="relative"
-				bg="var(--w-home-tiles-container-bg)"
+				bg="var(--wc-bg-surface)"
 				borderRadius="xl"
 				borderWidth="1px"
-				borderColor={statusDot === 'error' ? 'var(--w-home-tiles-container-border-error)' : 'var(--w-home-tiles-container-border)'}
+				borderColor={statusDot === 'error' ? 'var(--wc-accent-red-alt-bg)' : 'var(--wc-border-subtle)'}
 				p="6"
 				display="flex"
 				flexDir="column"
@@ -34,16 +34,16 @@ export const TileContainer = React.memo(({
 				cursor={isClickable ? 'pointer' : 'default'}
 				transition="all 0.2s ease"
 				_hover={isClickable ? {
-					borderColor: 'var(--w-home-tiles-container-hover-border)',
-					bg: 'var(--w-home-tiles-container-hover-bg)',
+					borderColor: 'var(--wc-border-hover)',
+					bg: 'var(--wc-bg-hover)',
 					transform: 'translateY(-1px)',
 				} : undefined}
 				onClick={onClick}
 			>
 			<Flex align="center" justify="space-between">
 				<HStack gap="2">
-					<Box color="var(--w-home-tiles-container-icon)">{icon}</Box>
-					<Text fontSize="12px" fontWeight="600" color="var(--w-home-tiles-container-label)" textTransform="uppercase" letterSpacing="0.05em">
+					<Box color="var(--wc-text-muted)">{icon}</Box>
+					<Text fontSize="12px" fontWeight="600" color="var(--wc-text-tertiary)" textTransform="uppercase" letterSpacing="0.05em">
 						{label}
 					</Text>
 				</HStack>

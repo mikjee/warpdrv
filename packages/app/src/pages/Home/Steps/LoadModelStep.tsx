@@ -11,16 +11,16 @@ export const LoadModelStep = React.memo(({ done, isOpenDefault, isHighlighted }:
 		isHighlighted={isHighlighted}
 	>
 		<VStack align="stretch" gap="3">
-			<Text fontSize="13px" color="var(--w-home-steps-text)" lineHeight="1.6">
+			<Text fontSize="13px" color="var(--wc-text-tertiary)" lineHeight="1.6">
 				1. Go to{' '}
-				<ChakraLink as={NavLink} to="/settings" style={{ textDecoration: 'none' }} color="var(--w-home-steps-link)" _hover={{ color: 'var(--w-home-steps-link-hover)' }}>
+				<ChakraLink as={NavLink} to="/settings" style={{ textDecoration: 'none' }} color="var(--wc-accent-blue)" _hover={{ color: 'var(--wc-accent-blue-hover)' }}>
 					Settings
 				</ChakraLink>{' '}
 				and select the folder where you want to keep your GGUF model files (if not already chosen).
 				<br />
 				<br />
 				2. Navigate to the{' '}
-				<ChakraLink as={NavLink} to="/hub" style={{ textDecoration: 'none' }} color="var(--w-home-steps-link)" _hover={{ color: 'var(--w-home-steps-link-hover)' }}>
+				<ChakraLink as={NavLink} to="/hub" style={{ textDecoration: 'none' }} color="var(--wc-accent-blue)" _hover={{ color: 'var(--wc-accent-blue-hover)' }}>
 					Hub
 				</ChakraLink>{' '}
 				page.
@@ -39,7 +39,7 @@ export const LoadModelStep = React.memo(({ done, isOpenDefault, isHighlighted }:
 				<br />
 				<br />
 				7. Once download finishes, navigate to the{' '}
-				<ChakraLink as={NavLink} to="/models" style={{ textDecoration: 'none' }} color="var(--w-home-steps-link)" _hover={{ color: 'var(--w-home-steps-link-hover)' }}>
+				<ChakraLink as={NavLink} to="/models" style={{ textDecoration: 'none' }} color="var(--wc-accent-blue)" _hover={{ color: 'var(--wc-accent-blue-hover)' }}>
 					Models
 				</ChakraLink>{' '}
 				page and click Rescan Models button to add the model.
