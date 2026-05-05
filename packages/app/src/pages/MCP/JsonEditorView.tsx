@@ -31,7 +31,7 @@ export function JsonEditorView({ config, onSave }: { config: IMcpConfigFile; onS
 				onChange={(e) => { setText(e.target.value); setError(null); }}
 				fontFamily="mono"
 				fontSize="12px"
-				bg="var(--wc-bg-page)"
+				bg="var(--wc-bg-interactive)"
 				borderColor="var(--wc-border-default)"
 				color="var(--wc-text-heading)"
 				flex="1"

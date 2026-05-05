@@ -408,7 +408,7 @@ const ToolsSelector: FC = React.memo(() => {
 					borderWidth="1px"
 					borderColor="var(--wc-border-overlay)"
 					borderRadius="lg"
-					shadow="0 8px 32px var(--wc-overlay-strong)"
+					shadow="0 8px 32px var(--wc-overlay-modal)"
 				>
 					<Popover.Body p="3">
 						{totalCount === 0 ? (

@@ -22,21 +22,21 @@ export const Footer = React.memo(({
 			<HStack gap="4">
 <Switch.Root label="Auto-launch at startup" checked={autoLaunch} onCheckedChange={(d) => onAutoLaunchChange(d.checked)} color={autoLaunch ? 'var(--wc-accent-blue)' : 'var(--wc-text-tertiary)'}>
 				<Switch.HiddenInput />
-				<Switch.Control css={{ bg: autoLaunch ? 'var(--wc-accent-blue)' : 'surface.4' }}>
+				<Switch.Control css={{ bg: autoLaunch ? 'var(--wc-accent-blue)' : 'var(--wc-bg-card)' }}>
 					<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 				</Switch.Control>
 				<Switch.Label ml="2" fontSize="13px" color={autoLaunch ? 'var(--wc-accent-blue)' : 'var(--wc-text-tertiary)'} userSelect="none">Auto-launch at startup</Switch.Label>
 				</Switch.Root>
 				<Switch.Root label="Auto-load latest checkpoint on start" checked={autoLoadCheckpoint} onCheckedChange={(d) => onAutoLoadCheckpointChange(d.checked)} color={autoLoadCheckpoint ? 'var(--wc-accent-blue)' : 'var(--wc-text-tertiary)'}>
 					<Switch.HiddenInput />
-					<Switch.Control css={{ bg: autoLoadCheckpoint ? 'var(--wc-accent-blue)' : 'surface.4' }}>
+					<Switch.Control css={{ bg: autoLoadCheckpoint ? 'var(--wc-accent-blue)' : 'var(--wc-bg-card)' }}>
 						<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 					</Switch.Control>
 					<Switch.Label ml="2" fontSize="13px" color={autoLoadCheckpoint ? 'var(--wc-accent-blue)' : 'var(--wc-text-tertiary)'} userSelect="none">Auto-load latest checkpoint on start</Switch.Label>
 				</Switch.Root>
 <Switch.Root label="Auto-save checkpoint on stop" checked={autoSaveCheckpoint} onCheckedChange={(d) => onAutoSaveCheckpointChange(d.checked)} color={autoSaveCheckpoint ? 'var(--wc-accent-blue)' : 'var(--wc-text-tertiary)'}>
 				<Switch.HiddenInput />
-				<Switch.Control css={{ bg: autoSaveCheckpoint ? 'var(--wc-accent-blue)' : 'surface.4' }}>
+				<Switch.Control css={{ bg: autoSaveCheckpoint ? 'var(--wc-accent-blue)' : 'var(--wc-bg-card)' }}>
 					<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 				</Switch.Control>
 				<Switch.Label ml="2" fontSize="13px" color={autoSaveCheckpoint ? 'var(--wc-accent-blue)' : 'var(--wc-text-tertiary)'} userSelect="none">Auto-save all slots on stop</Switch.Label>

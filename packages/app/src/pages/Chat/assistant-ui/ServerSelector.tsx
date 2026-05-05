@@ -131,7 +131,7 @@ export const ThreadServerSelector = React.memo(({
 							px="3"
 							py="2"
 							cursor="pointer"
-bg={assignedServerId === s.id ? 'var(--wc-bg-hover)' : 'transparent'}
+					bg={assignedServerId === s.id ? 'var(--wc-bg-selected)' : 'transparent'}
 						_hover={{ bg: 'var(--wc-bg-card)' }}
 							onClick={() => handleSelect(s.id)}
 							fontSize="12px"

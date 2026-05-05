@@ -360,7 +360,7 @@ borderColor={isGroup ? 'var(--wc-accent-purple-border)' : 'var(--wc-border-subtl
 						</VStack>
 						<Switch.Root label="Autofit GPU layers" checked={gpuLayersAuto} onCheckedChange={(d) => handleSelect('gpuLayersAuto', d.checked)} color={gpuLayersAuto ? 'var(--wc-accent-blue)' : 'var(--wc-text-tertiary)'}>
 							<Switch.HiddenInput />
-							<Switch.Control css={{ bg: gpuLayersAuto ? 'var(--wc-accent-blue)' : 'surface.4' }}>
+							<Switch.Control css={{ bg: gpuLayersAuto ? 'var(--wc-accent-blue)' : 'var(--wc-bg-card)' }}>
 								<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 							</Switch.Control>
 						</Switch.Root>
@@ -388,7 +388,7 @@ bg={(params.multiGpu ?? false) ? 'var(--wc-accent-green-bg-8)' : 'var(--wc-bg-su
 							</HStack>
 							<Switch.Root label="Enable multi-GPU split" checked={params.multiGpu ?? false} onCheckedChange={(d) => handleSelect('multiGpu', d.checked)} color={(params.multiGpu ?? false) ? 'var(--wc-accent-green)' : 'var(--wc-text-tertiary)'}>
 								<Switch.HiddenInput />
-								<Switch.Control css={{ bg: (params.multiGpu ?? false) ? 'var(--wc-accent-green)' : 'surface.4' }}>
+								<Switch.Control css={{ bg: (params.multiGpu ?? false) ? 'var(--wc-accent-green)' : 'var(--wc-bg-card)' }}>
 									<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 								</Switch.Control>
 							</Switch.Root>

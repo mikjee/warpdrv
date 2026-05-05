@@ -171,7 +171,7 @@ function ConfirmDialog({ message, onConfirm, onCancel }: { message: string; onCo
 	return (
 		<Box
 			position="fixed" top="0" left="0" right="0" bottom="0"
-			bg="var(--wc-overlay-strong)" zIndex={100}
+			bg="var(--wc-overlay-modal)" zIndex={100}
 			display="flex" alignItems="center" justifyContent="center"
 			onClick={onCancel}
 		>
@@ -307,7 +307,7 @@ bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-overla
 								<Text>Rename</Text>
 							</HStack>
 							<HStack
-								px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="var(--wc-accent-red-hover)"
+								px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="var(--wc-accent-red)"
 								_hover={{ bg: 'var(--wc-accent-red-bg-8)' }}
 								onClick={() => { onDelete(thread.id); setMenuOpen(false); }}
 							>
@@ -447,7 +447,7 @@ function FolderSection({
 							<Text>Rename</Text>
 						</HStack>
 						<HStack
-							px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="var(--wc-accent-red-hover)"
+							px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="var(--wc-accent-red)"
 							_hover={{ bg: 'var(--wc-accent-red-bg-8)' }}
 							onClick={() => { onDelete(folder.id); setMenuOpen(false); }}
 						>

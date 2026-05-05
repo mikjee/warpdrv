@@ -39,14 +39,14 @@ export function InputFormGenerator({ inputs, values, onChange, disabled = false 
 								value={String(value)}
 								onChange={(e) => onChange(input.name, e.target.value)}
 								disabled={disabled}
-								bg="var(--wc-bg-surface)"
-								borderColor="var(--wc-border-default)"
-								color="var(--wc-text-primary)"
-								fontSize="13px"
-								fontFamily='"Geist Mono", monospace'
-								_hover={{ borderColor: 'var(--wc-border-hover)' }}
-								_focus={{ borderColor: 'var(--wc-accent-blue)' }}
-							/>
+			bg="var(--wc-bg-interactive)"
+				borderColor="var(--wc-border-default)"
+				color="var(--wc-text-primary)"
+				fontSize="13px"
+				fontFamily='"Geist Mono", monospace'
+				_hover={{ borderColor: 'var(--wc-border-hover)' }}
+				_focus={{ borderColor: 'var(--wc-accent-blue)' }}
+			/>
 						)}
 
 						{input.type === ERecipeInputType.NUMBER && (
@@ -59,7 +59,7 @@ export function InputFormGenerator({ inputs, values, onChange, disabled = false 
 									if (!Number.isNaN(n)) onChange(input.name, n);
 								}}
 								disabled={disabled}
-								bg="var(--wc-bg-surface)"
+								bg="var(--wc-bg-interactive)"
 								borderColor="var(--wc-border-default)"
 								color="var(--wc-text-primary)"
 								fontSize="13px"
@@ -89,14 +89,14 @@ export function InputFormGenerator({ inputs, values, onChange, disabled = false 
 								<NativeSelect.Field
 									value={String(value)}
 									onChange={(e) => onChange(input.name, e.target.value)}
-									bg="var(--wc-bg-surface)"
+									bg="var(--wc-bg-interactive)"
 									borderColor="var(--wc-border-default)"
 									color="var(--wc-text-primary)"
 									fontSize="13px"
 									fontFamily='"Geist Mono", monospace'
 								>
 									{input.options.map((opt) => (
-										<option key={opt} value={opt} style={{ background: 'var(--wc-bg-page)' }}>{opt}</option>
+										<option key={opt} value={opt} style={{ background: 'var(--wc-bg-dialog)' }}>{opt}</option>
 									))}
 								</NativeSelect.Field>
 								<NativeSelect.Indicator />

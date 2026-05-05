@@ -16,7 +16,7 @@ import { AccessTokensSection } from './AccessTokensSection';
 
 function StatPill({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
 	return (
-		<HStack gap="1.5" px="2.5" py="1.5" borderRadius="lg" bg="var(--wc-bg-subtle)" borderWidth="1px" borderColor="var(--wc-bg-interactive)">
+		<HStack gap="1.5" px="2.5" py="1.5" borderRadius="lg" bg="var(--wc-bg-subtle)" borderWidth="1px" borderColor="var(--wc-border-subtle)">
 			<Box color="var(--wc-text-faint)">{icon}</Box>
 			<Text fontSize="11px" color="var(--wc-text-muted)">{label}</Text>
 			<Text fontSize="12px" fontWeight="600" color="var(--wc-text-secondary)" fontFamily='"Geist Mono", monospace'>{value}</Text>
@@ -278,7 +278,7 @@ color="var(--wc-text-muted)"
 									</Box>
 									<Switch.Root checked={proxyAuthEnabled} onCheckedChange={handleProxyAuthToggle}>
 										<Switch.HiddenInput />
-										<Switch.Control css={{ bg: proxyAuthEnabled ? 'var(--wc-switch-active)' : 'surface.4' }}>
+										<Switch.Control css={{ bg: proxyAuthEnabled ? 'var(--wc-switch-active)' : 'var(--wc-bg-card)' }}>
 											<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 										</Switch.Control>
 									</Switch.Root>
@@ -290,7 +290,7 @@ color="var(--wc-text-muted)"
 									</Box>
 									<Switch.Root checked={apiAuthEnabled} onCheckedChange={handleApiAuthToggle}>
 										<Switch.HiddenInput />
-										<Switch.Control css={{ bg: apiAuthEnabled ? 'var(--wc-switch-active)' : 'surface.4' }}>
+										<Switch.Control css={{ bg: apiAuthEnabled ? 'var(--wc-switch-active)' : 'var(--wc-bg-card)' }}>
 											<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 										</Switch.Control>
 									</Switch.Root>
@@ -302,7 +302,7 @@ color="var(--wc-text-muted)"
 									</Box>
 									<Switch.Root checked={authRequireForLocalhost} onCheckedChange={handleAuthRequireForLocalhostToggle}>
 										<Switch.HiddenInput />
-										<Switch.Control css={{ bg: authRequireForLocalhost ? 'var(--wc-switch-active)' : 'surface.4' }}>
+										<Switch.Control css={{ bg: authRequireForLocalhost ? 'var(--wc-switch-active)' : 'var(--wc-bg-card)' }}>
 											<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 										</Switch.Control>
 									</Switch.Root>
