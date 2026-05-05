@@ -12,8 +12,8 @@
 	--wc-bg-hover: rgba(0,0,0,0.03);
 	--wc-bg-active: rgba(0,0,0,0.08);
 	--wc-bg-selected: rgba(0,116,141,0.08);
-	--wc-bg-dialog: #ffffff;
-	--wc-bg-elevated: #ffffff;
+	--wc-bg-dialog: #fef9ec;
+	--wc-bg-elevated: #fef9ec;
 
 	--wc-border-subtle: rgba(0,0,0,0.05);
 	--wc-border-default: rgba(0,0,0,0.1);
@@ -22,14 +22,14 @@
 	--wc-border-strong: rgba(0,0,0,0.2);
 	--wc-border-focus: rgba(7,54,66,0.3);
 
-	--wc-text-heading: #657b83;
-	--wc-text-primary: #586e75;
-	--wc-text-secondary: rgba(88,110,117,0.6);
-	--wc-text-tertiary: rgba(88,110,117,0.45);
-	--wc-text-muted: rgba(88,110,117,0.3);
-	--wc-text-faint: rgba(88,110,117,0.2);
-	--wc-text-placeholder: rgba(88,110,117,0.15);
-	--wc-text-disabled: rgba(88,110,117,0.1);
+	--wc-text-heading: #2c3e50;
+	--wc-text-primary: #34495e;
+	--wc-text-secondary: rgba(52,73,94,0.85);
+	--wc-text-tertiary: rgba(52,73,94,0.65);
+	--wc-text-muted: rgba(52,73,94,0.55);
+	--wc-text-faint: rgba(52,73,94,0.5);
+	--wc-text-placeholder: rgba(52,73,94,0.4);
+	--wc-text-disabled: rgba(52,73,94,0.35);
 
 	--wc-overlay-modal: rgba(253,246,227,0.7);
 	--wc-overlay-dim: rgba(253,246,227,0.4);
@@ -99,12 +99,12 @@
 	--wc-switch-active: #268bd2;
 
 	// Header
-	--wc-text-header-muted: rgba(88,110,117,0.4);
-	--wc-text-header-hover: #657b83;
+	--wc-text-header-muted: rgba(52,73,94,0.6);
+	--wc-text-header-hover: #2c3e50;
 	--wc-text-header-hover-bg: rgba(0,0,0,0.03);
-	--wc-text-header-title: #586e75;
-	--wc-text-header-subtitle: rgba(88,110,117,0.5);
-	--wc-text-header-toggle: rgba(88,110,117,0.35);
+	--wc-text-header-title: #34495e;
+	--wc-text-header-subtitle: rgba(52,73,94,0.7);
+	--wc-text-header-toggle: rgba(52,73,94,0.55);
 	--wc-text-header-close-bg: rgba(220,50,47,0.1);
 	--wc-text-header-close: #dc322f;
 	--wc-bg-header: rgba(253,246,227,0.8);

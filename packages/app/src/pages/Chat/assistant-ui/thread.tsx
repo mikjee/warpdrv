@@ -254,7 +254,8 @@ const Composer: FC = () => {
 					className="flex w-full flex-col gap-2 rounded-xl border p-(--composer-padding) transition-shadow focus-within:border-[var(--wc-border-default)] data-[dragging=true]:border-dashed data-[dragging=true]:bg-accent/50"
 					style={{
 						background: "var(--wc-bg-elevated)",
-						boxShadow: "0px 10px 10px 10px var(--wc-overlay-dim)",
+						boxShadow: "0px 10px 10px 10px rgba(0,0,0,0.15)",
+						borderColor: "var(--wc-border-subtle)",
 					}}
 				>
 					<ComposerAttachments />
