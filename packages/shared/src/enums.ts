@@ -78,4 +78,16 @@ export enum EReasoningEffort {
 export enum ETheme {
 	DARK = 'dark',
 	LIGHT = 'light',
+	GITHUB_DARK = 'github-dark',
+	GITHUB_LIGHT = 'github-light',
+	ONE_DARK = 'one-dark',
+	ONE_LIGHT = 'one-light',
+	DRACULA_DARK = 'dracula-dark',
+	DRACULA_LIGHT = 'dracula-light',
+	CATPPUCCIN_MOCHA = 'catppuccin-mocha',
+	CATPPUCCIN_LATTE = 'catppuccin-latte',
+	NORD = 'nord',
+	NORD_LIGHT = 'nord-light',
+	TOKYO_NIGHT = 'tokyo-night',
+	TOKYO_NIGHT_LIGHT = 'tokyo-night-light',
 }

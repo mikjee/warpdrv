@@ -11,6 +11,18 @@ import { useStore } from './store';
 
 import "./theme/theme-dark.scss";
 import "./theme/theme-light.scss";
+import "./theme/theme-github-dark.scss";
+import "./theme/theme-github-light.scss";
+import "./theme/theme-one-dark.scss";
+import "./theme/theme-one-light.scss";
+import "./theme/theme-dracula-dark.scss";
+import "./theme/theme-dracula-light.scss";
+import "./theme/theme-catppuccin-mocha.scss";
+import "./theme/theme-catppuccin-latte.scss";
+import "./theme/theme-nord.scss";
+import "./theme/theme-nord-light.scss";
+import "./theme/theme-tokyo-night.scss";
+import "./theme/theme-tokyo-night-light.scss";
 
 function OnboardingWrapper() {
 	const isOnboardingComplete = useStore(s => s.settings.isOnboardingComplete);

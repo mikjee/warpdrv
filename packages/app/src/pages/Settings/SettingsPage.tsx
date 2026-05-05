@@ -51,6 +51,18 @@ export function SettingsPage() {
 		items: [
 			{ label: 'Dark', value: ETheme.DARK },
 			{ label: 'Light', value: ETheme.LIGHT },
+			{ label: 'GitHub Dark', value: ETheme.GITHUB_DARK },
+			{ label: 'GitHub Light', value: ETheme.GITHUB_LIGHT },
+			{ label: 'One Dark', value: ETheme.ONE_DARK },
+			{ label: 'One Light', value: ETheme.ONE_LIGHT },
+			{ label: 'Dracula', value: ETheme.DRACULA_DARK },
+			{ label: 'Dracula Light', value: ETheme.DRACULA_LIGHT },
+			{ label: 'Catppuccin (Mocha)', value: ETheme.CATPPUCCIN_MOCHA },
+			{ label: 'Catppuccin (Latte)', value: ETheme.CATPPUCCIN_LATTE },
+			{ label: 'Nord', value: ETheme.NORD },
+			{ label: 'Nord Light', value: ETheme.NORD_LIGHT },
+			{ label: 'Tokyo Night', value: ETheme.TOKYO_NIGHT },
+			{ label: 'Tokyo Night Light', value: ETheme.TOKYO_NIGHT_LIGHT },
 		],
 		itemToString: (item) => item.label,
 		itemToValue: (item) => item.value,
@@ -233,14 +245,12 @@ const handleSave = async () => {
 											shadow="0 8px 32px rgba(0, 0, 0, 0.5)"
 											p="1"
 										>
-											<Combobox.Item key={ETheme.DARK} item={ETheme.DARK} px="3" py="2" borderRadius="md" cursor="pointer" _hover={{ bg: 'var(--wc-bg-hover)' }} _highlighted={{ bg: 'var(--wc-bg-active)' }}>
-												<Text fontSize="12px" color="var(--wc-text-primary)">Dark</Text>
-												<Combobox.ItemIndicator />
-											</Combobox.Item>
-											<Combobox.Item key={ETheme.LIGHT} item={ETheme.LIGHT} px="3" py="2" borderRadius="md" cursor="pointer" _hover={{ bg: 'var(--wc-bg-hover)' }} _highlighted={{ bg: 'var(--wc-bg-active)' }}>
-												<Text fontSize="12px" color="var(--wc-text-primary)">Light</Text>
-												<Combobox.ItemIndicator />
-											</Combobox.Item>
+											{themeCollection.items.map((item) => (
+												<Combobox.Item key={item.value} item={item} px="3" py="2" borderRadius="md" cursor="pointer" _hover={{ bg: 'var(--wc-bg-hover)' }} _highlighted={{ bg: 'var(--wc-bg-active)' }}>
+													<Text fontSize="12px" color="var(--wc-text-primary)">{item.label}</Text>
+													<Combobox.ItemIndicator />
+												</Combobox.Item>
+											))}
 										</Combobox.Content>
 									</Combobox.Positioner>
 								</Portal>
