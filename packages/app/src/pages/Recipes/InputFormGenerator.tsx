@@ -12,7 +12,7 @@ export function InputFormGenerator({ inputs, values, onChange, disabled = false 
 	if (inputs.length === 0) {
 		return (
 			<Box px="3" py="4" textAlign="center">
-				<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">This recipe has no inputs.</Text>
+				<Text fontSize="12px" color="var(--wc-text-faint)">This recipe has no inputs.</Text>
 			</Box>
 		);
 	}
@@ -25,12 +25,12 @@ export function InputFormGenerator({ inputs, values, onChange, disabled = false 
 				return (
 					<Box key={input.name}>
 						<HStack gap="2" mb="1.5">
-							<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.8)" fontFamily='"Geist Mono", monospace'>{input.name}</Text>
-							<Text fontSize="10px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">{input.type.toLowerCase()}</Text>
+							<Text fontSize="12px" fontWeight="600" color="var(--wc-text-secondary)" fontFamily='"Geist Mono", monospace'>{input.name}</Text>
+							<Text fontSize="10px" color="var(--wc-text-faint)" textTransform="uppercase" letterSpacing="0.05em">{input.type.toLowerCase()}</Text>
 						</HStack>
 
 						{input.description && (
-							<Text fontSize="11px" color="rgba(255, 255, 255, 0.4)" mb="1.5">{input.description}</Text>
+							<Text fontSize="11px" color="var(--wc-text-muted)" mb="1.5">{input.description}</Text>
 						)}
 
 						{input.type === ERecipeInputType.STRING && (
@@ -39,13 +39,13 @@ export function InputFormGenerator({ inputs, values, onChange, disabled = false 
 								value={String(value)}
 								onChange={(e) => onChange(input.name, e.target.value)}
 								disabled={disabled}
-								bg="rgba(255, 255, 255, 0.02)"
-								borderColor="rgba(255, 255, 255, 0.08)"
-								color="#e4e4e7"
+								bg="var(--wc-bg-surface)"
+								borderColor="var(--wc-border-default)"
+								color="var(--wc-text-primary)"
 								fontSize="13px"
 								fontFamily='"Geist Mono", monospace'
-								_hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
-								_focus={{ borderColor: '#3381ff' }}
+								_hover={{ borderColor: 'var(--wc-border-hover)' }}
+								_focus={{ borderColor: 'var(--wc-accent-blue)' }}
 							/>
 						)}
 
@@ -59,13 +59,13 @@ export function InputFormGenerator({ inputs, values, onChange, disabled = false 
 									if (!Number.isNaN(n)) onChange(input.name, n);
 								}}
 								disabled={disabled}
-								bg="rgba(255, 255, 255, 0.02)"
-								borderColor="rgba(255, 255, 255, 0.08)"
-								color="#e4e4e7"
+								bg="var(--wc-bg-surface)"
+								borderColor="var(--wc-border-default)"
+								color="var(--wc-text-primary)"
 								fontSize="13px"
 								fontFamily='"Geist Mono", monospace'
-								_hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
-								_focus={{ borderColor: '#3381ff' }}
+								_hover={{ borderColor: 'var(--wc-border-hover)' }}
+								_focus={{ borderColor: 'var(--wc-accent-blue)' }}
 							/>
 						)}
 
@@ -76,11 +76,11 @@ export function InputFormGenerator({ inputs, values, onChange, disabled = false 
 									onCheckedChange={(d: { checked: boolean }) => onChange(input.name, !!d.checked)}
 								>
 									<Switch.HiddenInput />
-									<Switch.Control css={{ bg: Boolean(value) ? '#3b86d6' : 'surface.4' }}>
-										<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+									<Switch.Control css={{ bg: Boolean(value) ? 'var(--wc-accent-blue)' : 'var(--wc-bg-surface)' }}>
+										<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 									</Switch.Control>
 								</Switch.Root>
-								<Text fontSize="12px" color="rgba(255, 255, 255, 0.6)">{Boolean(value) ? 'true' : 'false'}</Text>
+								<Text fontSize="12px" color="var(--wc-text-secondary)">{Boolean(value) ? 'true' : 'false'}</Text>
 							</HStack>
 						)}
 
@@ -89,14 +89,14 @@ export function InputFormGenerator({ inputs, values, onChange, disabled = false 
 								<NativeSelect.Field
 									value={String(value)}
 									onChange={(e) => onChange(input.name, e.target.value)}
-									bg="rgba(255, 255, 255, 0.02)"
-									borderColor="rgba(255, 255, 255, 0.08)"
-									color="#e4e4e7"
+									bg="var(--wc-bg-surface)"
+									borderColor="var(--wc-border-default)"
+									color="var(--wc-text-primary)"
 									fontSize="13px"
 									fontFamily='"Geist Mono", monospace'
 								>
 									{input.options.map((opt) => (
-										<option key={opt} value={opt} style={{ background: '#0e0e0e' }}>{opt}</option>
+										<option key={opt} value={opt} style={{ background: 'var(--wc-bg-page)' }}>{opt}</option>
 									))}
 								</NativeSelect.Field>
 								<NativeSelect.Indicator />
