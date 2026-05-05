@@ -98,4 +98,16 @@ div#root.theme-dark {
 
 	--wc-switch-active: #3b86d6;
 
+	// Header
+	--wc-text-header-muted: rgba(255,255,255,0.5);
+	--wc-text-header-hover: rgba(255,255,255,0.9);
+	--wc-text-header-hover-bg: rgba(255,255,255,0.08);
+	--wc-text-header-title: rgb(180,180,180);
+	--wc-text-header-subtitle: rgba(255,255,255,0.35);
+	--wc-text-header-toggle: rgba(255,255,255,0.4);
+	--wc-text-header-close-bg: rgba(255,60,60,0.3);
+	--wc-text-header-close: #ff6b6b;
+	--wc-bg-header: rgba(30,30,30,0.6);
+	--wc-border-header: rgba(255,255,255,0.05);
+
 }
