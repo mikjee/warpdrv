@@ -23,6 +23,20 @@ import "./theme/theme-nord.scss";
 import "./theme/theme-nord-light.scss";
 import "./theme/theme-tokyo-night.scss";
 import "./theme/theme-tokyo-night-light.scss";
+import "./theme/theme-amoled.scss";
+import "./theme/theme-vesper.scss";
+import "./theme/theme-min.scss";
+import "./theme/theme-gruvbox-hard.scss";
+import "./theme/theme-rose-pine.scss";
+import "./theme/theme-kanagawa.scss";
+import "./theme/theme-obsidian.scss";
+import "./theme/theme-monokai-pro.scss";
+import "./theme/theme-palenight.scss";
+import "./theme/theme-solarized-dark.scss";
+import "./theme/theme-gruvbox.scss";
+import "./theme/theme-kimbie-dark.scss";
+import "./theme/theme-everforest-hard.scss";
+import "./theme/theme-solarized-light.scss";
 
 function OnboardingWrapper() {
 	const isOnboardingComplete = useStore(s => s.settings.isOnboardingComplete);
