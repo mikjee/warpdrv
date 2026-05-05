@@ -36,11 +36,11 @@ function formatEta(remainingBytes: number, speedBps: number): string {
 }
 
 const STATUS_CONFIG: Record<EDownloadStatus, { color: string; icon: React.ReactNode; label: string }> = {
-	[EDownloadStatus.DOWNLOADING]: { color: '#3381ff', icon: <Download size={11} />, label: 'Downloading' },
-	[EDownloadStatus.PAUSED]: { color: '#fbbf24', icon: <Pause size={11} />, label: 'Paused' },
-	[EDownloadStatus.COMPLETED]: { color: '#34d399', icon: <CheckCircle size={11} />, label: 'Completed' },
-	[EDownloadStatus.FAILED]: { color: '#fb7185', icon: <AlertCircle size={11} />, label: 'Failed' },
-	[EDownloadStatus.CANCELLED]: { color: 'rgba(255, 255, 255, 0.3)', icon: <XCircle size={11} />, label: 'Cancelled' },
+	[EDownloadStatus.DOWNLOADING]: { color: 'var(--wc-accent-blue)', icon: <Download size={11} />, label: 'Downloading' },
+	[EDownloadStatus.PAUSED]: { color: 'var(--wc-accent-yellow)', icon: <Pause size={11} />, label: 'Paused' },
+	[EDownloadStatus.COMPLETED]: { color: 'var(--wc-accent-green)', icon: <CheckCircle size={11} />, label: 'Completed' },
+	[EDownloadStatus.FAILED]: { color: 'var(--wc-accent-red)', icon: <AlertCircle size={11} />, label: 'Failed' },
+	[EDownloadStatus.CANCELLED]: { color: 'var(--wc-text-tertiary)', icon: <XCircle size={11} />, label: 'Cancelled' },
 };
 
 interface IDownloadManagerProps {
@@ -79,25 +79,25 @@ export const DownloadManager = React.memo(({ onClose }: IDownloadManagerProps) =
 	return (
 		<Box
 			position="fixed" bottom="20px" right="20px"  w="600px" h="420px"
-			bg="#0c0c0f" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.08)"
+			bg="var(--wc-bg-dialog)" borderWidth="1px" borderColor="var(--wc-border-default)"
 			borderTopLeftRadius="xl" shadow="0 -8px 40px rgba(0, 0, 0, 0.5)"
 			zIndex="popover" display="flex" flexDirection="column" overflow="hidden"
 		>
 			{/* Header */}
 			<Flex
 				px="4" py="3" justify="space-between" align="center"
-				borderBottomWidth="1px" borderColor="rgba(255, 255, 255, 0.06)"
-				bg="rgba(255, 255, 255, 0.02)" flexShrink={0}
+				borderBottomWidth="1px" borderColor="var(--wc-border-subtle)"
+				bg="var(--wc-bg-surface)" flexShrink={0}
 			>
 				<HStack gap="2.5">
-					<Download size={14} color="rgba(255, 255, 255, 0.4)" />
-					<Text fontSize="13px" fontWeight="600" color="rgba(255, 255, 255, 0.6)">
+					<Download size={14} color="var(--wc-text-tertiary)" />
+					<Text fontSize="13px" fontWeight="600" color="var(--wc-text-secondary)">
 						Downloads
 					</Text>
 					{activeCount > 0 && (
 						<Badge
 							px="1.5" py="0" borderRadius="full" fontSize="10px"
-							bg="rgba(51, 129, 255, 0.15)" color="#3381ff"
+							bg="var(--wc-accent-blue-bg-15)" color="var(--wc-accent-blue)"
 						>
 							{activeCount}
 						</Badge>
@@ -108,25 +108,25 @@ export const DownloadManager = React.memo(({ onClose }: IDownloadManagerProps) =
 					{/* Incomplete only toggle */}
 					<Button
 						size="xs" px="2.5" borderRadius="md" fontSize="11px"
-						bg={incompleteOnly ? 'rgba(51, 129, 255, 0.1)' : 'rgba(255, 255, 255, 0.03)'}
-						color={incompleteOnly ? '#3381ff' : 'rgba(255, 255, 255, 0.3)'}
+						bg={incompleteOnly ? 'var(--wc-accent-blue-bg-10)' : 'var(--wc-bg-subtle)'}
+						color={incompleteOnly ? 'var(--wc-accent-blue)' : 'var(--wc-text-tertiary)'}
 						borderWidth="1px"
-						borderColor={incompleteOnly ? 'rgba(51, 129, 255, 0.2)' : 'rgba(255, 255, 255, 0.06)'}
-						_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
+						borderColor={incompleteOnly ? 'var(--wc-accent-blue-border)' : 'var(--wc-border-subtle)'}
+						_hover={{ bg: 'var(--wc-bg-hover)' }}
 						onClick={() => setIncompleteOnly(!incompleteOnly)}
 					>
 						Incomplete only
 					</Button>
 					<Button
-						size="xs" variant="ghost" color="rgba(255, 255, 255, 0.25)"
-						_hover={{ color: '#fb7185', bg: 'rgba(251, 113, 133, 0.08)' }}
+						size="xs" variant="ghost" color="var(--wc-text-faint)"
+						_hover={{ color: 'var(--wc-accent-red)', bg: 'var(--wc-accent-red-bg-8)' }}
 						borderRadius="md" onClick={handleClearHistory} fontSize="10px"
 					>
 						Clear history
 					</Button>
 					<Button
-						size="xs" variant="ghost" color="rgba(255, 255, 255, 0.3)"
-						_hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }}
+						size="xs" variant="ghost" color="var(--wc-text-tertiary)"
+						_hover={{ color: 'var(--wc-text-primary)', bg: 'var(--wc-bg-hover)' }}
 						borderRadius="md" onClick={onClose}
 					>
 						<X size={14} />
@@ -138,7 +138,7 @@ export const DownloadManager = React.memo(({ onClose }: IDownloadManagerProps) =
 			<Box flex="1" overflowY="auto" p="3">
 				{filtered.length === 0 ? (
 					<Flex h="100%" alignItems="center" justifyContent="center">
-						<VStack gap="2" color="rgba(255, 255, 255, 0.15)">
+						<VStack gap="2" color="var(--wc-text-disabled)">
 							<Download size={28} />
 							<Text fontSize="12px">{incompleteOnly ? 'No active downloads' : 'No downloads yet'}</Text>
 						</VStack>
@@ -154,21 +154,21 @@ export const DownloadManager = React.memo(({ onClose }: IDownloadManagerProps) =
 							return (
 								<Box
 									key={dl.id} px="3" py="3" borderRadius="lg"
-									bg="rgba(255, 255, 255, 0.02)"
-									borderWidth="1px" borderColor="rgba(255, 255, 255, 0.06)"
+									bg="var(--wc-bg-surface)"
+									borderWidth="1px" borderColor="var(--wc-border-subtle)"
 								>
 									<Flex justify="space-between" align="start" mb="2">
 										<Box flex="1" minW="0">
-											<Text fontSize="12px" fontWeight="500" color="#e4e4e7" lineClamp={1} fontFamily='"Geist Mono", monospace'>
+											<Text fontSize="12px" fontWeight="500" color="var(--wc-text-primary)" lineClamp={1} fontFamily='"Geist Mono", monospace'>
 												{dl.filename}
 											</Text>
 											<HStack gap="2" mt="0.5">
-												<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)">
+												<Text fontSize="10px" color="var(--wc-text-faint)">
 													{dl.author}/{dl.modelName}
 												</Text>
 												{dl.quantType && (
 													<Badge px="1.5" py="0" borderRadius="sm" fontSize="9px"
-														bg="rgba(167, 139, 250, 0.1)" color="#a78bfa"
+														bg="var(--wc-accent-purple-bg-10)" color="var(--wc-accent-purple)"
 													>
 														{dl.quantType}
 													</Badge>
@@ -189,24 +189,24 @@ export const DownloadManager = React.memo(({ onClose }: IDownloadManagerProps) =
 
 											{/* Actions */}
 											{isActive && (
-												<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.3)"
-													_hover={{ color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.08)' }}
+												<Button size="xs" variant="ghost" color="var(--wc-text-tertiary)"
+													_hover={{ color: 'var(--wc-accent-yellow)', bg: 'var(--wc-accent-yellow-bg-8)' }}
 													borderRadius="md" onClick={() => handlePause(dl.id)} minW="6" px="0"
 												>
 													<Pause size={12} />
 												</Button>
 											)}
 											{isPaused && (
-												<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.3)"
-													_hover={{ color: '#34d399', bg: 'rgba(52, 211, 153, 0.08)' }}
+												<Button size="xs" variant="ghost" color="var(--wc-text-tertiary)"
+													_hover={{ color: 'var(--wc-accent-green)', bg: 'var(--wc-accent-green-bg-8)' }}
 													borderRadius="md" onClick={() => handleResume(dl.id)} minW="6" px="0"
 												>
 													<Play size={12} />
 												</Button>
 											)}
 											{(isActive || isPaused) && (
-												<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.2)"
-													_hover={{ color: '#fb7185', bg: 'rgba(251, 113, 133, 0.08)' }}
+												<Button size="xs" variant="ghost" color="var(--wc-text-faint)"
+													_hover={{ color: 'var(--wc-accent-red)', bg: 'var(--wc-accent-red-bg-8)' }}
 													borderRadius="md" onClick={() => handleCancel(dl.id)} minW="6" px="0"
 												>
 													<X size={12} />
@@ -218,10 +218,10 @@ export const DownloadManager = React.memo(({ onClose }: IDownloadManagerProps) =
 									{/* Progress bar */}
 									{(isActive || isPaused) && (
 										<Box>
-											<Box h="4px" bg="rgba(255, 255, 255, 0.06)" borderRadius="full" overflow="hidden" mb="1.5">
+											<Box h="4px" bg="var(--wc-bg-hover)" borderRadius="full" overflow="hidden" mb="1.5">
 												<Box
 													h="100%" w={`${dl.progress}%`}
-													bg={isActive ? '#3381ff' : '#fbbf24'}
+													bg={isActive ? 'var(--wc-accent-blue)' : 'var(--wc-accent-yellow)'}
 													borderRadius="full"
 													transition="width 0.3s ease"
 													shadow={isActive ? '0 0 8px rgba(51, 129, 255, 0.4)' : 'none'}
@@ -229,21 +229,21 @@ export const DownloadManager = React.memo(({ onClose }: IDownloadManagerProps) =
 											</Box>
 											<HStack justify="space-between">
 												<HStack gap="3">
-													<Text fontSize="10px" color="rgba(255, 255, 255, 0.35)" fontFamily='"Geist Mono", monospace'>
-														{formatBytes(dl.downloadedBytes)} / {dl.fileSizeBytes > 0 ? formatBytes(dl.fileSizeBytes) : '?'}
-													</Text>
-													<Text fontSize="10px" color="rgba(255, 255, 255, 0.35)" fontFamily='"Geist Mono", monospace'>
-														{dl.progress.toFixed(1)}%
-													</Text>
+<Text fontSize="10px" color="var(--wc-text-muted)" fontFamily='"Geist Mono", monospace'>
+													{formatBytes(dl.downloadedBytes)} / {dl.fileSizeBytes > 0 ? formatBytes(dl.fileSizeBytes) : '?'}
+												</Text>
+												<Text fontSize="10px" color="var(--wc-text-muted)" fontFamily='"Geist Mono", monospace'>
+													{dl.progress.toFixed(1)}%
+												</Text>
 												</HStack>
 												<HStack gap="3">
 													{isActive && dl.speedBps > 0 && (
-														<Text fontSize="10px" color="rgba(51, 129, 255, 0.7)" fontFamily='"Geist Mono", monospace'>
+														<Text fontSize="10px" color="var(--wc-accent-blue-hover)" fontFamily='"Geist Mono", monospace'>
 															{formatSpeed(dl.speedBps)}
 														</Text>
 													)}
 													{isActive && dl.speedBps > 0 && (
-														<HStack gap="1" color="rgba(255, 255, 255, 0.25)">
+														<HStack gap="1" color="var(--wc-text-faint)">
 															<Clock size={9} />
 															<Text fontSize="10px" fontFamily='"Geist Mono", monospace'>
 																{formatEta(remainingBytes, dl.speedBps)}
@@ -257,12 +257,12 @@ export const DownloadManager = React.memo(({ onClose }: IDownloadManagerProps) =
 
 									{/* Completed/failed info */}
 									{dl.status === EDownloadStatus.COMPLETED && (
-										<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)" fontFamily='"Geist Mono", monospace'>
+										<Text fontSize="10px" color="var(--wc-text-disabled)" fontFamily='"Geist Mono", monospace'>
 											{formatBytes(dl.fileSizeBytes)} — {dl.destPath}
 										</Text>
 									)}
 									{dl.status === EDownloadStatus.FAILED && dl.error && (
-										<Text fontSize="10px" color="rgba(251, 113, 133, 0.6)" lineClamp={1}>
+										<Text fontSize="10px" color="var(--wc-accent-red-icon)" lineClamp={1}>
 											{dl.error}
 										</Text>
 									)}

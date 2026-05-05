@@ -127,14 +127,14 @@ export const HubPage = React.memo(() => {
 				<PageHeader title="Hub" subtitle="Browse and download models from HuggingFace" icon={<Globe size={20} />} />
 				<Flex h="calc(100vh - 89px)" alignItems="center" justifyContent="center">
 					<VStack gap="4" maxW="400px" textAlign="center">
-						<Flex w="14" h="14" borderRadius="xl" alignItems="center" justifyContent="center" bg="rgba(251, 191, 36, 0.08)" borderWidth="1px" borderColor="rgba(251, 191, 36, 0.15)">
-							<AlertCircle size={28} color="#fbbf24" />
+						<Flex w="14" h="14" borderRadius="xl" alignItems="center" justifyContent="center" bg="var(--wc-accent-yellow-bg-8)" borderWidth="1px" borderColor="var(--wc-accent-yellow-border)">
+							<AlertCircle size={28} color="var(--wc-accent-yellow)" />
 						</Flex>
-						<Text fontSize="16px" fontWeight="600" color="#e4e4e7">No model directory configured</Text>
-						<Text fontSize="13px" color="rgba(255, 255, 255, 0.4)">
+						<Text fontSize="16px" fontWeight="600" color="var(--wc-text-primary)">No model directory configured</Text>
+						<Text fontSize="13px" color="var(--wc-text-muted)">
 							Add a model directory in Settings first to enable downloading.
 						</Text>
-						<Button size="sm" bg="rgba(51, 129, 255, 0.12)" color="#3381ff" borderWidth="1px" borderColor="rgba(51, 129, 255, 0.25)" _hover={{ bg: 'rgba(51, 129, 255, 0.2)' }} borderRadius="lg" fontSize="13px" fontWeight="500" onClick={() => navigate('/settings')}>
+						<Button size="sm" bg="var(--wc-accent-blue-bg-12)" color="var(--wc-accent-blue)" borderWidth="1px" borderColor="var(--wc-accent-blue-border)" _hover={{ bg: 'var(--wc-accent-blue-hover-bg)' }} borderRadius="lg" fontSize="13px" fontWeight="500" onClick={() => navigate('/settings')}>
 							<Settings size={14} /> Go to Settings
 						</Button>
 					</VStack>
@@ -168,7 +168,7 @@ export const HubPage = React.memo(() => {
 							</Box>
 						</Box>
 						<HStack gap="3" alignItems="center">
-							<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">Params</Text>
+							<Text fontSize="11px" color="var(--wc-text-faint)">Params</Text>
 							<Slider.Root
 								w="150px"
 								size="sm"
@@ -186,7 +186,7 @@ export const HubPage = React.memo(() => {
 									<Slider.Thumbs />
 								</Slider.Control>
 							</Slider.Root>
-							<Text fontSize="10px" color="rgba(255, 255, 255, 0.5)">{PARAM_STEPS[paramsRange[0]]}B - {PARAM_STEPS[paramsRange[1]]}B</Text>
+							<Text fontSize="10px" color="var(--wc-text-tertiary)">{PARAM_STEPS[paramsRange[0]]}B - {PARAM_STEPS[paramsRange[1]]}B</Text>
 						</HStack>
 						<Button
 							size="sm" bgGradient="to-r" gradientFrom="var(--w-header-gradient-btn-from)" gradientTo="var(--w-header-gradient-btn-to)"
@@ -202,17 +202,17 @@ export const HubPage = React.memo(() => {
 				actionsRight={
 					<Button
 						size="sm" variant="outline"
-						bg={activeDownloadCount > 0 ? 'rgba(51, 129, 255, 0.08)' : 'rgba(255, 255, 255, 0.03)'}
-						borderColor={activeDownloadCount > 0 ? 'rgba(51, 129, 255, 0.2)' : 'rgba(255, 255, 255, 0.08)'}
-						color={activeDownloadCount > 0 ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'}
-						_hover={{ bg: 'rgba(51, 129, 255, 0.12)' }}
+						bg={activeDownloadCount > 0 ? 'var(--wc-accent-blue-bg-8)' : 'var(--wc-bg-surface)'}
+						borderColor={activeDownloadCount > 0 ? 'var(--wc-accent-blue-border)' : 'var(--wc-border-default)'}
+						color={activeDownloadCount > 0 ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)'}
+						_hover={{ bg: 'var(--wc-accent-blue-bg-12)' }}
 						borderRadius="lg" fontSize="12px"
 						onClick={() => setShowDownloads(!showDownloads)}
 					>
 						<Download size={14} />
 						Downloads
 						{activeDownloadCount > 0 && (
-							<Badge px="1.5" py="0" borderRadius="full" fontSize="10px" bg="rgba(51, 129, 255, 0.2)" color="#3381ff" ml="1">
+							<Badge px="1.5" py="0" borderRadius="full" fontSize="10px" bg="var(--wc-accent-blue-bg-10)" color="var(--wc-accent-blue)" ml="1">
 								{activeDownloadCount}
 							</Badge>
 						)}
@@ -221,34 +221,34 @@ export const HubPage = React.memo(() => {
 			/>
 
 			{/* Results + Detail */}
-			<Flex pt="60px" h="calc(100vh - 10px)" borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" overflow="hidden">
-				<Box w="400px" minW="400px" borderRightWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" display="flex" flexDirection="column">
+			<Flex pt="60px" h="calc(100vh - 10px)" borderTopWidth="1px" borderColor="var(--wc-border-subtle)" overflow="hidden">
+				<Box w="400px" minW="400px" borderRightWidth="1px" borderColor="var(--wc-border-subtle)" display="flex" flexDirection="column">
 					{!searchExecuted ? (
 						<Flex flex="1" alignItems="center" justifyContent="center">
-							<VStack gap="3" color="rgba(255, 255, 255, 0.15)">
+							<VStack gap="3" color="var(--wc-text-disabled)">
 								<Globe size={40} />
 								<Text fontSize="13px">Search HuggingFace for GGUF models</Text>
 							</VStack>
 						</Flex>
 					) : searching ? (
 						<Flex flex="1" alignItems="center" justifyContent="center">
-							<Spinner size="md" color="rgba(255, 255, 255, 0.2)" />
+							<Spinner size="md" color="var(--wc-text-faint)" />
 						</Flex>
 					) : results.length === 0 ? (
 						<Flex flex="1" alignItems="center" justifyContent="center">
-							<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No results found</Text>
+							<Text fontSize="12px" color="var(--wc-text-faint)">No results found</Text>
 						</Flex>
 					) : (
 						<>
-							<Box px="4" py="3" borderBottomWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" bg="rgba(255, 255, 255, 0.01)">
+							<Box px="4" py="3" borderBottomWidth="1px" borderColor="var(--wc-border-subtle)" bg="var(--wc-bg-surface)">
 								<Flex justify="space-between" alignItems="center">
-									<Text fontSize="11px" color="rgba(255, 255, 255, 0.25)">{results.length} results</Text>
+									<Text fontSize="11px" color="var(--wc-text-faint)">{results.length} results</Text>
 									<HStack gap="1">
 										<Box position="relative">
 											<Button
-												size="sm" variant="outline" bg="rgba(255, 255, 255, 0.03)"
-												borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.5)"
-												fontSize="11px" borderRadius="lg" _hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
+												size="sm" variant="outline" bg="var(--wc-bg-subtle)"
+												borderColor="var(--wc-border-default)" color="var(--wc-text-tertiary)"
+												fontSize="11px" borderRadius="lg" _hover={{ borderColor: 'var(--wc-border-strong)' }}
 												onClick={() => setShowSortMenu(!showSortMenu)} px="2" py="1" h="auto"
 											>
 												<ArrowUpDown size={11} /> {selectedSortLabel} <ChevronDown size={10} />
@@ -256,12 +256,12 @@ export const HubPage = React.memo(() => {
 											{showSortMenu && (
 												<>
 													<Box position="fixed" inset="0" zIndex="dropdown" onClick={() => setShowSortMenu(false)} />
-													<Box position="absolute" top="100%" right="0" mt="1" bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)" borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" zIndex="dropdown" py="1" minW="140px">
+													<Box position="absolute" top="100%" right="0" mt="1" bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-overlay)" borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" zIndex="dropdown" py="1" minW="140px">
 														{SORT_FIELD_OPTIONS.map(opt => (
 															<Box key={opt.value} px="3" py="1.5" fontSize="11px"
-																color={sortField === opt.value ? '#3381ff' : 'rgba(255, 255, 255, 0.6)'}
-																bg={sortField === opt.value ? 'rgba(51, 129, 255, 0.08)' : 'transparent'}
-																cursor="pointer" _hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
+																color={sortField === opt.value ? 'var(--wc-accent-blue)' : 'var(--wc-text-secondary)'}
+																bg={sortField === opt.value ? 'var(--wc-accent-blue-bg-8)' : 'transparent'}
+																cursor="pointer" _hover={{ bg: 'var(--wc-bg-hover)' }}
 																onClick={() => { handleSortFieldChange(opt.value); setShowSortMenu(false); }}
 															>
 																{opt.label}
@@ -272,9 +272,9 @@ export const HubPage = React.memo(() => {
 											)}
 										</Box>
 										<Button
-											size="sm" variant="outline" bg="rgba(255, 255, 255, 0.03)"
-											borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.5)"
-											fontSize="11px" borderRadius="lg" _hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
+											size="sm" variant="outline" bg="var(--wc-bg-subtle)"
+											borderColor="var(--wc-border-default)" color="var(--wc-text-tertiary)"
+											fontSize="11px" borderRadius="lg" _hover={{ borderColor: 'var(--wc-border-strong)' }}
 											onClick={handleSortOrderToggle} px="1.5" py="1" h="auto" title={sortOrder === ESortOrder.DESC ? 'Descending' : 'Ascending'}
 										>
 											{sortOrder === ESortOrder.DESC ? <ArrowDownZA size={12} /> : <ArrowUpAZ size={12} />}
@@ -302,7 +302,7 @@ export const HubPage = React.memo(() => {
 						<HubModelDetail modelId={selectedModelId} modelRoots={settings?.modelRoots ?? []} />
 					) : (
 						<Flex h="100%" alignItems="center" justifyContent="center">
-							<VStack gap="3" color="rgba(255, 255, 255, 0.15)">
+							<VStack gap="3" color="var(--wc-text-disabled)">
 								<Package size={40} />
 								<Text fontSize="13px">Select a model to view details</Text>
 							</VStack>
