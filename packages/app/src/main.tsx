@@ -8,7 +8,7 @@ import { AuthProvider } from './components/AuthProvider';
 import { App } from './App';
 import { OnboardingPage } from './pages/Onboarding/OnboardingPage';
 import { useStore } from './store';
-import "./theme/theme-light.scss";
+import "./theme/theme-dark.scss";
 
 function OnboardingWrapper() {
 	const isOnboardingComplete = useStore(s => s.settings.isOnboardingComplete);
@@ -17,7 +17,7 @@ function OnboardingWrapper() {
 }
 
 createRoot(document.getElementById('root-wrapper')!).render(
-	<div id="root" className="theme-light">
+	<div id="root" className="theme-dark">
 		<StrictMode>
 			<ChakraProvider value={system}>
 				<BrowserRouter>

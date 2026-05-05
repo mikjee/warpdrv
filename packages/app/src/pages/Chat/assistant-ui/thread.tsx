@@ -518,6 +518,11 @@ const ComposerAction: FC = () => {
 							variant="outline"
 							className={`${!isValidServer ? 'opacity-50 cursor-not-allowed' : ''} aui-composer-send size-9`}
 							aria-label={!isValidServer ? "Send message - model not selected" : "Send message"}
+							style={!isValidServer
+								? { color: 'var(--wc-text-muted)', borderColor: 'var(--wc-border-default)', backgroundColor: 'transparent' }
+								: { color: 'var(--wc-accent-blue)', borderColor: 'var(--wc-accent-blue-border)', backgroundColor: 'var(--wc-accent-blue-bg-8)' }
+							}
+							_hover={!isValidServer ? undefined : { color: 'var(--wc-accent-blue-hover)', borderColor: 'var(--wc-accent-blue-border)', backgroundColor: 'var(--wc-accent-blue-bg-10)' }}
 						>
 							<SendHorizonal className="aui-composer-send-icon size-4" />
 						</TooltipIconButton>
@@ -530,6 +535,9 @@ const ComposerAction: FC = () => {
 							variant="outline"
 							className="aui-composer-cancel size-9"
 							aria-label="Stop generating"
+							color="var(--wc-text-primary)"
+							borderColor="var(--wc-border-default)"
+						style={{ borderColor: 'var(--wc-border-default)' }}
 						>
 							<SquareIcon className="aui-composer-cancel-icon size-4 fill-current" />
 						</Button>
