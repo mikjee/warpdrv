@@ -31,15 +31,15 @@ export function JsonEditorView({ config, onSave }: { config: IMcpConfigFile; onS
 				onChange={(e) => { setText(e.target.value); setError(null); }}
 				fontFamily="mono"
 				fontSize="12px"
-				bg="rgba(0,0,0,0.3)"
-				borderColor="rgba(255,255,255,0.08)"
-				color="rgba(255,255,255,0.8)"
+				bg="var(--wc-bg-page)"
+				borderColor="var(--wc-border-default)"
+				color="var(--wc-text-heading)"
 				flex="1"
 				minH="300px"
 				resize="vertical"
 			/>
 			{error && (
-				<Text fontSize="11px" color="rgba(239,68,68,0.8)">{error}</Text>
+				<Text fontSize="11px" color="var(--wc-accent-red-alt)">{error}</Text>
 			)}
 			<HStack justify="flex-end">
 				<Box
@@ -48,9 +48,9 @@ export function JsonEditorView({ config, onSave }: { config: IMcpConfigFile; onS
 					py="1.5"
 					fontSize="12px"
 					borderRadius="sm"
-					bg="rgba(255,255,255,0.1)"
-					color="rgba(255,255,255,0.8)"
-					_hover={{ bg: 'rgba(255,255,255,0.15)' }}
+					bg="var(--wc-bg-selected)"
+					color="var(--wc-text-heading)"
+					_hover={{ bg: 'var(--wc-bg-active)' }}
 					onClick={handleSave}
 				>
 					Save & Reload

@@ -21,9 +21,9 @@ export function AddServerForm({ onAdd, onCancel }: { onAdd: (name: string, entry
 		<Box
 			p="3"
 			borderWidth="1px"
-			borderColor="rgba(255,255,255,0.1)"
+			borderColor="var(--wc-border-overlay)"
 			borderRadius="md"
-			bg="rgba(255,255,255,0.02)"
+			bg="var(--wc-bg-surface)"
 			mb="3"
 		>
 			<VStack gap="2" align="stretch">
@@ -32,8 +32,8 @@ export function AddServerForm({ onAdd, onCancel }: { onAdd: (name: string, entry
 					value={name}
 					onChange={(e) => setName(e.target.value)}
 					size="sm"
-					bg="rgba(0,0,0,0.2)"
-					borderColor="rgba(255,255,255,0.1)"
+					bg="var(--wc-bg-page)"
+					borderColor="var(--wc-border-overlay)"
 					fontSize="13px"
 				/>
 				<HStack gap="2">
@@ -45,8 +45,8 @@ export function AddServerForm({ onAdd, onCancel }: { onAdd: (name: string, entry
 							py="1"
 							fontSize="12px"
 							borderRadius="sm"
-							bg={type === t ? 'rgba(255,255,255,0.1)' : 'transparent'}
-							color={type === t ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)'}
+							bg={type === t ? 'var(--wc-bg-selected)' : 'transparent'}
+							color={type === t ? 'var(--wc-text-heading)' : 'var(--wc-text-muted)'}
 							onClick={() => setType(t)}
 						>
 							{t.toUpperCase()}
@@ -60,8 +60,8 @@ export function AddServerForm({ onAdd, onCancel }: { onAdd: (name: string, entry
 							value={command}
 							onChange={(e) => setCommand(e.target.value)}
 							size="sm"
-							bg="rgba(0,0,0,0.2)"
-							borderColor="rgba(255,255,255,0.1)"
+							bg="var(--wc-bg-page)"
+							borderColor="var(--wc-border-overlay)"
 							fontSize="13px"
 						/>
 						<Input
@@ -69,8 +69,8 @@ export function AddServerForm({ onAdd, onCancel }: { onAdd: (name: string, entry
 							value={args}
 							onChange={(e) => setArgs(e.target.value)}
 							size="sm"
-							bg="rgba(0,0,0,0.2)"
-							borderColor="rgba(255,255,255,0.1)"
+							bg="var(--wc-bg-page)"
+							borderColor="var(--wc-border-overlay)"
 							fontSize="13px"
 						/>
 					</>
@@ -80,13 +80,13 @@ export function AddServerForm({ onAdd, onCancel }: { onAdd: (name: string, entry
 						value={url}
 						onChange={(e) => setUrl(e.target.value)}
 						size="sm"
-						bg="rgba(0,0,0,0.2)"
-						borderColor="rgba(255,255,255,0.1)"
+					bg="var(--wc-bg-page)"
+							borderColor="var(--wc-border-overlay)"
 						fontSize="13px"
 					/>
 				)}
 				<HStack gap="2" justify="flex-end">
-					<Box as="button" px="3" py="1" fontSize="12px" color="rgba(255,255,255,0.5)" onClick={onCancel}>
+					<Box as="button" px="3" py="1" fontSize="12px" color="var(--wc-text-tertiary)" onClick={onCancel}>
 						Cancel
 					</Box>
 					<Box
@@ -95,9 +95,9 @@ export function AddServerForm({ onAdd, onCancel }: { onAdd: (name: string, entry
 						py="1"
 						fontSize="12px"
 						borderRadius="sm"
-						bg="rgba(255,255,255,0.1)"
-						color="rgba(255,255,255,0.8)"
-						_hover={{ bg: 'rgba(255,255,255,0.15)' }}
+						bg="var(--wc-bg-selected)"
+						color="var(--wc-text-heading)"
+						_hover={{ bg: 'var(--wc-bg-active)' }}
 						onClick={handleSubmit}
 					>
 						Add
