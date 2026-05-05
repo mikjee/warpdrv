@@ -180,28 +180,28 @@ export const LaunchServerDialog = React.memo(({ onClose, serverId }: ILaunchServ
 	const canLaunch = selectedModelPath && (selectedBackendId || selectedBackendGroupId) && !launching;
 	return (
 		<Box position="fixed" inset="6px" zIndex="modal" display="flex" alignItems="center" justifyContent="center" borderRadius="12px" overflow="hidden">
-			<Box position="absolute" inset="0" bg="var(--w-servers-launch-overlay)" backdropFilter="blur(8px)" onClick={onClose} />
-			<Box position="relative" w="960px" maxH="90vh" bg="var(--w-servers-launch-dialog-bg)" borderWidth="1px"
-				borderColor="var(--w-servers-launch-dialog-border)" borderRadius="2xl"
+			<Box position="absolute" inset="0" bg="var(--wc-overlay-modal)" backdropFilter="blur(8px)" onClick={onClose} />
+			<Box position="relative" w="960px" maxH="90vh" bg="var(--wc-bg-dialog)" borderWidth="1px"
+				borderColor="var(--wc-border-default)" borderRadius="2xl"
 				shadow="0 24px 80px rgba(0, 0, 0, 0.6)" overflow="hidden" display="flex" flexDirection="column"
 			>
 				{/* Header */}
-				<Flex px="6" py="4" justify="space-between" align="center" borderBottomWidth="1px" borderColor="var(--w-servers-launch-dialog-headerborder)" bg="var(--w-servers-launch-dialog-headerbg)">
+				<Flex px="6" py="4" justify="space-between" align="center" borderBottomWidth="1px" borderColor="var(--wc-border-subtle)" bg="var(--wc-bg-surface)">
 					<HStack gap="3">
 						<Flex w="9" h="9" borderRadius="lg" alignItems="center" justifyContent="center"
 							bgGradient="to-br"
-							gradientFrom={server ? 'var(--w-servers-launch-icon-edit-from)' : 'var(--w-servers-launch-icon-new-from)'}
-							gradientTo={server ? 'var(--w-servers-launch-icon-edit-to)' : 'var(--w-servers-launch-icon-new-to)'}
-							borderWidth="1px" borderColor={server ? 'var(--w-servers-launch-icon-edit-border)' : 'var(--w-servers-launch-icon-new-border)'}
+							gradientFrom={server ? 'var(--wc-accent-yellow-bg-8)' : 'var(--wc-accent-blue-bg-8)'}
+							gradientTo={server ? 'var(--wc-accent-yellow-bg-8)' : 'var(--wc-accent-purple-bg-8)'}
+							borderWidth="1px" borderColor={server ? 'var(--wc-accent-yellow-border)' : 'var(--wc-accent-blue-border)'}
 						>
-							{server ? <RefreshCw size={18} color="var(--w-servers-launch-icon-edit-color)" /> : <Zap size={18} color="var(--w-servers-launch-icon-new-color)" />}
+							{server ? <RefreshCw size={18} color="var(--wc-accent-yellow)" /> : <Zap size={18} color="var(--wc-accent-blue)" />}
 						</Flex>
 						<Box>
-							<Text fontSize="16px" fontWeight="700" color="var(--w-servers-launch-title)" letterSpacing="-0.01em">{server ? 'Edit Server' : 'Launch Server'}</Text>
-							<Text fontSize="12px" color="var(--w-servers-launch-subtitle)">{server ? 'Modify launch parameters — requires relaunch' : 'Configure and start a llama-server instance'}</Text>
+<Text fontSize="16px" fontWeight="700" color="var(--wc-text-primary)" letterSpacing="-0.01em">{server ? 'Edit Server' : 'Launch Server'}</Text>
+						<Text fontSize="12px" color="var(--wc-text-tertiary)">{server ? 'Modify launch parameters — requires relaunch' : 'Configure and start a llama-server instance'}</Text>
 						</Box>
 					</HStack>
-					<Button size="sm" variant="ghost" color="var(--w-servers-launch-close-btn)" _hover={{ color: 'var(--w-servers-launch-close-hover)', bg: 'var(--w-servers-launch-close-hoverbg)' }} borderRadius="md" onClick={onClose} minW="8" px="0">
+					<Button size="sm" variant="ghost" color="var(--wc-text-tertiary)" _hover={{ color: 'var(--wc-text-secondary)', bg: 'var(--wc-bg-hover)' }} borderRadius="md" onClick={onClose} minW="8" px="0">
 						<X size={16} />
 					</Button>
 				</Flex>

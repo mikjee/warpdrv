@@ -60,13 +60,13 @@ const ModelCombobox = React.memo(({ entries, selectedPath, onSelect }: {
 			<Combobox.Control>
 				<Combobox.Input
 					placeholder="Search models..."
-					bg="var(--w-servers-launch-input-bg)"
-					borderColor="var(--w-servers-launch-input-border)"
-					color="var(--w-servers-launch-input-color)"
+					bg="var(--wc-bg-subtle)"
+					borderColor="var(--wc-border-default)"
+					color="var(--wc-text-secondary)"
 					fontSize="13px"
 					borderRadius="lg"
-					_placeholder={{ color: 'var(--w-servers-launch-input-placeholder)' }}
-					_focus={{ borderColor: 'var(--w-servers-launch-input-focus)', outline: 'none' }}
+					_placeholder={{ color: 'var(--wc-text-faint)' }}
+					_focus={{ borderColor: 'var(--wc-accent-blue)', outline: 'none' }}
 				/>
 				<Combobox.IndicatorGroup>
 					<Combobox.ClearTrigger />
@@ -77,11 +77,11 @@ const ModelCombobox = React.memo(({ entries, selectedPath, onSelect }: {
 				<Combobox.Positioner>
 					<Combobox.Content
 						maxH="280px" overflowY="auto"
-						bg="var(--w-servers-launch-combobox-content-bg)" borderWidth="1px" borderColor="var(--w-servers-launch-combobox-content-border)"
+						bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-default)"
 						borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
 					>
 						<Combobox.Empty>
-							<Text fontSize="12px" color="var(--w-servers-launch-combobox-empty)" py="4" textAlign="center">No matches</Text>
+							<Text fontSize="12px" color="var(--wc-text-disabled)" py="4" textAlign="center">No matches</Text>
 						</Combobox.Empty>
 						{collection.items.map((item) => {
 							const entry = (item as { entry: TModelEntry }).entry;
@@ -92,17 +92,17 @@ const ModelCombobox = React.memo(({ entries, selectedPath, onSelect }: {
 									key={item.value}
 									item={item}
 									px="3" py="2" borderRadius="md" cursor="pointer"
-									_hover={{ bg: 'var(--w-servers-launch-combobox-item-hover)' }}
-									_highlighted={{ bg: 'var(--w-servers-launch-combobox-item-highlight)' }}
+									_hover={{ bg: 'var(--wc-bg-hover)' }}
+									_highlighted={{ bg: 'var(--wc-bg-card)' }}
 								>
 									<HStack gap="3" w="100%">
 										<Box flex="1" minW="0">
-											<Text fontSize="12px" fontWeight="500" color="var(--w-servers-launch-combobox-item-text)" lineClamp={1}>{getModelDisplayName(entry.model.name, entry.file)}</Text>
-											<Text fontSize="10px" color="var(--w-servers-launch-combobox-device)" mt="0.5">{entry.model.user}</Text>
+<Text fontSize="12px" fontWeight="500" color="var(--wc-text-primary)" lineClamp={1}>{getModelDisplayName(entry.model.name, entry.file)}</Text>
+										<Text fontSize="10px" color="var(--wc-text-tertiary)" mt="0.5">{entry.model.user}</Text>
 										</Box>
 										<HStack gap="2" flexShrink={0}>
 											<Badge px="1.5" py="0" borderRadius="sm" fontSize="10px" fontWeight="600" bg={`color-mix(in srgb, ${quantColor} 12%, transparent)`} color={quantColor}>{qt}</Badge>
-											<Text fontSize="11px" color="var(--w-servers-launch-combobox-device)" fontFamily='"Geist Mono", monospace'>{formatSize(entry.model.totalSizeMb)}</Text>
+											<Text fontSize="11px" color="var(--wc-text-tertiary)" fontFamily='"Geist Mono", monospace'>{formatSize(entry.model.totalSizeMb)}</Text>
 										</HStack>
 										<Combobox.ItemIndicator />
 									</HStack>
@@ -131,22 +131,22 @@ export const ModelPicker = React.memo(({
 }) => {
 	return (
 		<Box>
-			<Text fontSize="12px" fontWeight="600" color="var(--w-servers-launch-model-label)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Model</Text>
+			<Text fontSize="12px" fontWeight="600" color="var(--wc-text-tertiary)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Model</Text>
 			{modelCount === 0 ? (
-				<Text fontSize="12px" color="var(--w-servers-launch-no-models)">No models scanned. Go to Settings and scan.</Text>
+				<Text fontSize="12px" color="var(--wc-text-muted)">No models scanned. Go to Settings and scan.</Text>
 			) : (
 				<ModelCombobox entries={modelEntries} selectedPath={selectedModelPath} onSelect={onSelectModel} />
 			)}
 			{selectedEntry?.file.metadata && (
-				<HStack mt="2" gap="4" px="3" py="2" bg="var(--w-servers-launch-model-meta-bg)" borderRadius="lg" borderWidth="1px" borderColor="var(--w-servers-launch-model-meta-border)">
-					<HStack gap="1.5"><Layers size={12} color="var(--w-servers-launch-model-meta-icon)" /><Text fontSize="11px" color="var(--w-servers-launch-model-meta-text)">{selectedEntry.file.metadata.nLayers} layers</Text></HStack>
-					<HStack gap="1.5"><Cpu size={12} color="var(--w-servers-launch-model-meta-icon)" /><Text fontSize="11px" color="var(--w-servers-launch-model-meta-text)">{selectedEntry.file.metadata.paramCount}</Text></HStack>
-					<HStack gap="1.5"><Package size={12} color="var(--w-servers-launch-model-meta-icon)" /><Text fontSize="11px" color="var(--w-servers-launch-model-meta-text)" fontFamily='"Geist Mono", monospace'>{formatSize(selectedEntry.model.totalSizeMb)}</Text></HStack>
+				<HStack mt="2" gap="4" px="3" py="2" bg="var(--wc-accent-blue-bg-8)" borderRadius="lg" borderWidth="1px" borderColor="var(--wc-accent-blue-border)">
+					<HStack gap="1.5"><Layers size={12} color="var(--wc-text-muted)" /><Text fontSize="11px" color="var(--wc-text-tertiary)">{selectedEntry.file.metadata.nLayers} layers</Text></HStack>
+					<HStack gap="1.5"><Cpu size={12} color="var(--wc-text-muted)" /><Text fontSize="11px" color="var(--wc-text-tertiary)">{selectedEntry.file.metadata.paramCount}</Text></HStack>
+					<HStack gap="1.5"><Package size={12} color="var(--wc-text-muted)" /><Text fontSize="11px" color="var(--wc-text-tertiary)" fontFamily='"Geist Mono", monospace'>{formatSize(selectedEntry.model.totalSizeMb)}</Text></HStack>
 					{selectedEntry.file.metadata.contextLength > 0 && (
-						<HStack gap="1.5"><Text fontSize="11px" color="var(--w-servers-launch-model-ctx-text)">{(selectedEntry.file.metadata.contextLength / 1024).toFixed(0)}k ctx</Text></HStack>
+						<HStack gap="1.5"><Text fontSize="11px" color="var(--wc-text-muted)">{(selectedEntry.file.metadata.contextLength / 1024).toFixed(0)}k ctx</Text></HStack>
 					)}
 					{selectedEntry.model.mmprojFile && (
-						<HStack gap="1.5"><Package size={12} color="var(--w-servers-launch-model-mmproj)" /><Text fontSize="11px" color="var(--w-servers-launch-model-mmproj)">mmproj</Text></HStack>
+						<HStack gap="1.5"><Package size={12} color="var(--wc-accent-purple)" /><Text fontSize="11px" color="var(--wc-accent-purple)">mmproj</Text></HStack>
 					)}
 				</HStack>
 			)}

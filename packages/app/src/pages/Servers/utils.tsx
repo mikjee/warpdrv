@@ -20,9 +20,9 @@ export function formatCount(n: number): string {
 
 export function StatPill({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
 	return (
-		<HStack gap="1.5" px="1.5" py="0.5" borderRadius="lg" bg="var(--w-servers-pill-bg)" borderWidth="1px" borderColor="var(--w-servers-pill-border)"  title={label}>
-			<Box color="var(--w-servers-pill-icon)">{icon}</Box>
-			<Text fontSize="11px" fontWeight="400" color="var(--w-servers-pill-text)" fontFamily='"Geist Mono", monospace'>{value}</Text>
+		<HStack gap="1.5" px="1.5" py="0.5" borderRadius="lg" bg="var(--wc-bg-card)" borderWidth="1px" borderColor="var(--wc-border-subtle)"  title={label}>
+			<Box color="var(--wc-text-muted)">{icon}</Box>
+			<Text fontSize="11px" fontWeight="400" color="var(--wc-text-secondary)" fontFamily='"Geist Mono", monospace'>{value}</Text>
 		</HStack>
 	);
 }

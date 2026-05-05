@@ -38,27 +38,27 @@ export const ServerLogs = React.memo(({ serverId, serverName, onClose }: IServer
 	}, [serverLogs]);
 
 	return (
-		<Box position="fixed" bottom="20px" right="20px" w="700px" h="400px" bg="var(--w-servers-logs-panel-bg)"
-			borderWidth="1px" borderColor="var(--w-servers-logs-panel-border)" borderTopLeftRadius="xl"
+		<Box position="fixed" bottom="20px" right="20px" w="700px" h="400px" bg="var(--wc-bg-dialog)"
+			borderWidth="1px" borderColor="var(--wc-border-default)" borderTopLeftRadius="xl"
 			shadow="0 -8px 40px rgba(0, 0, 0, 0.5)" zIndex="popover"
 			display="flex" flexDirection="column" overflow="hidden"
 		>
-			<Flex px="4" py="2.5" justify="space-between" align="center" borderBottomWidth="1px" borderColor="var(--w-servers-logs-header-border)" bg="var(--w-servers-logs-header-bg)" flexShrink={0}>
+			<Flex px="4" py="2.5" justify="space-between" align="center" borderBottomWidth="1px" borderColor="var(--wc-border-subtle)" bg="var(--wc-bg-surface)" flexShrink={0}>
 				<HStack gap="2">
-					<Terminal size={14} color="var(--w-servers-logs-icon)" />
-					<Text fontSize="12px" fontWeight="600" color="var(--w-servers-logs-title)">Logs — {serverName}</Text>
+					<Terminal size={14} color="var(--wc-text-muted)" />
+					<Text fontSize="12px" fontWeight="600" color="var(--wc-text-secondary)">Logs — {serverName}</Text>
 				</HStack>
 				<HStack gap="1">
-					<Button size="xs" variant="ghost" color={autoScroll ? 'var(--w-servers-logs-scroll-active)' : 'var(--w-servers-logs-scroll-inactive)'} _hover={{ bg: 'var(--w-servers-logs-btn-hover)' }} borderRadius="md" onClick={() => setAutoScroll(!autoScroll)}>
+					<Button size="xs" variant="ghost" color={autoScroll ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)' } _hover={{ bg: 'var(--wc-bg-hover)' }} borderRadius="md" onClick={() => setAutoScroll(!autoScroll)}>
 						<ArrowDown size={12} />
 					</Button>
-					<Button size="xs" variant="ghost" color="var(--w-servers-logs-download)" _hover={{ color: 'var(--w-servers-logs-download-hover)', bg: 'var(--w-servers-logs-btn-hover)' }} borderRadius="md" onClick={handleDownload}>
+					<Button size="xs" variant="ghost" color="var(--wc-text-tertiary)" _hover={{ color: 'var(--wc-text-secondary)', bg: 'var(--wc-bg-hover)' }} borderRadius="md" onClick={handleDownload}>
 						<Download size={12} />
 					</Button>
-					<Button size="xs" variant="ghost" color="var(--w-servers-logs-clear)" _hover={{ color: 'var(--w-servers-logs-clear-hover)', bg: 'var(--w-servers-logs-clear-hoverbg)' }} borderRadius="md" onClick={handleClear}>
+					<Button size="xs" variant="ghost" color="var(--wc-text-tertiary)" _hover={{ color: 'var(--wc-accent-red)', bg: 'var(--wc-accent-red-bg-8)' }} borderRadius="md" onClick={handleClear}>
 						<Trash2 size={12} />
 					</Button>
-					<Button size="xs" variant="ghost" color="var(--w-servers-logs-close)" _hover={{ color: 'var(--w-servers-logs-close-hover)', bg: 'var(--w-servers-logs-btn-hover)' }} borderRadius="md" onClick={onClose}>
+					<Button size="xs" variant="ghost" color="var(--wc-text-tertiary)" _hover={{ color: 'var(--wc-text-primary)', bg: 'var(--wc-bg-hover)' }} borderRadius="md" onClick={onClose}>
 						<X size={12} />
 					</Button>
 				</HStack>
@@ -67,11 +67,11 @@ export const ServerLogs = React.memo(({ serverId, serverName, onClose }: IServer
 			<Box flex="1" overflowY="auto" px="4" py="2" fontFamily='"Geist Mono", monospace' fontSize="11px" lineHeight="1.8">
 				{serverLogs.length === 0 ? (
 					<Flex h="100%" alignItems="center" justifyContent="center">
-						<Text color="var(--w-servers-logs-empty)">No logs yet...</Text>
+						<Text color="var(--wc-text-disabled)">No logs yet...</Text>
 					</Flex>
 				) : (
 					serverLogs.map((line: string, i: number) => (
-						<Text key={i} color="var(--w-servers-logs-line)" whiteSpace="pre-wrap" wordBreak="break-all" _hover={{ bg: 'var(--w-servers-logs-line-hover)' }} px="1" borderRadius="sm">
+						<Text key={i} color="var(--wc-text-secondary)" whiteSpace="pre-wrap" wordBreak="break-all" _hover={{ bg: 'var(--wc-bg-subtle)' }} px="1" borderRadius="sm">
 							{line}
 						</Text>
 					))

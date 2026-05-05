@@ -27,7 +27,7 @@ export const ContextKVCard = React.memo(({
 				) : (
 					<NumberField label="Context Size" value={params.contextSize} onChange={v => onParamChange('contextSize', v)} min={0} step={1024} suffix="0 = auto" />
 				)}
-				<Text fontSize="11px" color="var(--w-servers-launch-text-label)" textTransform="uppercase" letterSpacing="0.05em">KV Cache Quantization</Text>
+				<Text fontSize="11px" color="var(--wc-text-tertiary)" textTransform="uppercase" letterSpacing="0.05em">KV Cache Quantization</Text>
 				<Flex gap="4">
 					<SelectField label="K Type" value={params.kvQuantK} options={KV_QUANT_OPTIONS} onChange={v => onParamChange('kvQuantK', v)} mono />
 					<SelectField label="V Type" value={params.kvQuantV} options={KV_QUANT_OPTIONS} onChange={v => onParamChange('kvQuantV', v)} mono />

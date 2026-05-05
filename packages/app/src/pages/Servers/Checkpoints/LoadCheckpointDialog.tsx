@@ -192,11 +192,11 @@ export function LoadCheckpointDialog({ server, isOpen, onClose }: ILoadCheckpoin
 	const filterButtonStyle = (active: boolean) => ({
 		flex: '1',
 		size: 'sm' as const,
-		bg: active ? 'var(--w-servers-checkpoint-tab-activebg)' : 'var(--w-servers-checkpoint-tab-inactivebg)',
-		color: active ? 'var(--w-servers-checkpoint-tab-activecolor)' : 'var(--w-servers-checkpoint-tab-inactivecolor)',
+		bg: active ? 'var(--wc-accent-yellow-bg-8)' : 'var(--wc-bg-subtle)',
+		color: active ? 'var(--wc-accent-yellow-strong)' : 'var(--wc-text-secondary)',
 		borderWidth: '1px',
-		borderColor: active ? 'var(--w-servers-checkpoint-tab-activeborder)' : 'var(--w-servers-checkpoint-tab-inactiveborder)',
-		_hover: { bg: active ? 'var(--w-servers-checkpoint-tab-activehover)' : 'var(--w-servers-checkpoint-tab-inactivehover)' },
+		borderColor: active ? 'var(--wc-accent-yellow-border)' : 'var(--wc-border-subtle)',
+		_hover: { bg: active ? 'var(--wc-accent-yellow-hover-bg)' : 'var(--wc-bg-hover)' },
 		borderRadius: 'lg',
 		fontSize: '12px',
 		fontWeight: '500',
@@ -211,8 +211,8 @@ export function LoadCheckpointDialog({ server, isOpen, onClose }: ILoadCheckpoin
 				px="2"
 				py="1.5"
 				borderRadius="md"
-				bg={isSelected ? 'var(--w-servers-checkpoint-row-selectedbg)' : 'transparent'}
-				_hover={{ bg: isSelected ? 'var(--w-servers-checkpoint-row-selectedhover)' : 'var(--w-servers-checkpoint-row-inactivehover)' }}
+				bg={isSelected ? 'var(--wc-accent-blue-bg-8)' : 'transparent'}
+				_hover={{ bg: isSelected ? 'var(--wc-accent-blue-bg-10)' : 'transparent' }}
 				pl={indent ? '6' : '2'}
 				cursor="pointer"
 				onClick={() => toggleCheckpoint(cp)}
@@ -222,31 +222,30 @@ export function LoadCheckpointDialog({ server, isOpen, onClose }: ILoadCheckpoin
 					h="14px"
 					borderRadius="sm"
 					borderWidth="1px"
-					borderColor={isSelected ? 'var(--w-servers-checkpoint-checkbox-active)' : 'var(--w-servers-checkpoint-checkbox-inactive)'}
-					bg={isSelected ? 'var(--w-servers-checkpoint-checkbox-active)' : 'transparent'}
+					borderColor={isSelected ? 'var(--wc-accent-blue)' : 'var(--wc-text-disabled)'}
+					bg={isSelected ? 'var(--wc-accent-blue)' : 'transparent'}
 					flexShrink="0"
 				/>
 				<VStack gap="0" align="stretch" flex="1">
 					<HStack gap="2">
-						<Text fontSize="12px" color="var(--w-servers-checkpoint-row-text)" fontFamily='"Geist Mono", monospace'>
+						<Text fontSize="12px" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace'>
 							Slot {cp.slotIndex}
 						</Text>
-						<Text fontSize="11px" color="var(--w-servers-checkpoint-row-tokens)" fontFamily='"Geist Mono", monospace'>
+						<Text fontSize="11px" color="var(--wc-text-secondary)" fontFamily='"Geist Mono", monospace'>
 							{cp.tokens.toLocaleString()} tok
 						</Text>
 					</HStack>
 				</VStack>
 				{isSelected && (
 					<HStack gap="1" onClick={(e) => e.stopPropagation()}>
-						<Text fontSize="11px" color="var(--w-servers-checkpoint-row-arrow)">→</Text>
+						<Text fontSize="11px" color="var(--wc-accent-blue)">→</Text>
 						<select
 							value={target}
 							onChange={(e) => setTargetSlot(cp.id, parseInt(e.target.value, 10))}
 							style={{
-								background: 'var(--w-servers-checkpoint-select-bg)',
-								border: '1px solid var(--w-servers-checkpoint-select-border)',
-								borderRadius: '4px',
-								color: 'var(--w-servers-checkpoint-select-color)',
+background: 'var(--wc-bg-subtle)',
+								border: '1px solid var(--wc-border-default)',
+								color: 'var(--wc-text-primary)',
 								fontSize: '11px',
 								fontFamily: '"Geist Mono", monospace',
 								padding: '2px 4px',
@@ -273,23 +272,23 @@ export function LoadCheckpointDialog({ server, isOpen, onClose }: ILoadCheckpoin
 				px="2"
 				py="1.5"
 				borderRadius="md"
-				bg="var(--w-servers-checkpoint-bundle-bg)"
+				bg="var(--wc-bg-card)"
 				cursor="pointer"
 				onClick={() => toggleBundle(items)}
-				_hover={{ bg: 'var(--w-servers-checkpoint-bundle-hover)' }}
+				_hover={{ bg: 'var(--wc-bg-hover)' }}
 			>
 				<Box
 					w="14px"
 					h="14px"
 					borderRadius="sm"
 					borderWidth="1px"
-					borderColor={allSelected ? 'var(--w-servers-checkpoint-checkbox-active)' : someSelected ? 'var(--w-servers-checkpoint-bundle-partial-border)' : 'var(--w-servers-checkpoint-checkbox-inactive)'}
-					bg={allSelected ? 'var(--w-servers-checkpoint-checkbox-active)' : someSelected ? 'var(--w-servers-checkpoint-bundle-partial-bg)' : 'transparent'}
+					borderColor={allSelected ? 'var(--wc-accent-blue)' : someSelected ? 'var(--wc-accent-blue)' : 'var(--wc-text-disabled)'}
+					bg={allSelected ? 'var(--wc-accent-blue)' : someSelected ? 'var(--wc-accent-blue)' : 'transparent'}
 					flexShrink="0"
 				/>
 				<VStack gap="0" align="stretch" flex="1">
-					<Text fontSize="12px" color="var(--w-servers-checkpoint-bundle-text)" fontWeight="500">{first.name}</Text>
-					<Text fontSize="10px" color="var(--w-servers-checkpoint-bundle-meta)" fontFamily='"Geist Mono", monospace'>
+					<Text fontSize="12px" color="var(--wc-text-primary)" fontWeight="500">{first.name}</Text>
+					<Text fontSize="10px" color="var(--wc-text-tertiary)" fontFamily='"Geist Mono", monospace'>
 						{items.length} slots · {formatBytes(totalSize)} · {formatAge(first.createdAt)}
 					</Text>
 				</VStack>
@@ -306,18 +305,18 @@ export function LoadCheckpointDialog({ server, isOpen, onClose }: ILoadCheckpoin
 						<Dialog.Positioner position="absolute">
 							<Dialog.Content
 								maxW="520px"
-								bg="var(--w-servers-launch-dialog-bg)"
-								borderColor="var(--w-servers-launch-dialog-border)"
+								bg="var(--wc-bg-dialog)"
+								borderColor="var(--wc-border-default)"
 								borderRadius="2xl"
 								shadow="0 24px 80px rgba(0, 0, 0, 0.6)"
 							>
 							<Box position="relative">
 								<VStack gap="4" px="6" py="5" align="stretch" style={{ opacity: (isLaunching || isLoading) ? 0.5 : 1 }}>
 								<HStack gap="2">
-									<Box w="8" h="8" borderRadius="lg" display="flex" alignItems="center" justifyContent="center" bg="var(--w-servers-checkpoint-icon-bg)">
-										<Upload size={16} color="var(--w-servers-checkpoint-icon-color)" />
+									<Box w="8" h="8" borderRadius="lg" display="flex" alignItems="center" justifyContent="center" bg="var(--wc-accent-yellow-bg-8)">
+										<Upload size={16} color="var(--wc-accent-yellow)" />
 									</Box>
-									<Dialog.Title fontSize="15px" fontWeight="700" color="var(--w-servers-checkpoint-title)">
+									<Dialog.Title fontSize="15px" fontWeight="700" color="var(--wc-text-primary)">
 										Load Checkpoint
 									</Dialog.Title>
 								</HStack>
@@ -337,13 +336,13 @@ export function LoadCheckpointDialog({ server, isOpen, onClose }: ILoadCheckpoin
 									maxH="320px"
 									overflowY="auto"
 									borderRadius="lg"
-									bg="var(--w-servers-checkpoint-list-bg)"
-									borderWidth="1px"
-									borderColor="var(--w-servers-checkpoint-list-border)"
+bg="var(--wc-bg-subtle)"
+								borderWidth="1px"
+								borderColor="var(--wc-border-default)"
 									p="2"
 								>
 									{bundles.bundleGroups.length === 0 && bundles.standalone.length === 0 && (
-										<Text fontSize="12px" color="var(--w-servers-checkpoint-list-empty)" textAlign="center" py="4">
+										<Text fontSize="12px" color="var(--wc-text-disabled)" textAlign="center" py="4">
 											No checkpoints available
 										</Text>
 									)}
@@ -361,7 +360,7 @@ export function LoadCheckpointDialog({ server, isOpen, onClose }: ILoadCheckpoin
 								</VStack>
 
 								<HStack justify="space-between">
-									<Text fontSize="11px" color={hasDuplicateTargets ? 'var(--w-servers-checkpoint-status-error)' : 'var(--w-servers-checkpoint-status-ok)'}>
+									<Text fontSize="11px" color={hasDuplicateTargets ? 'var(--wc-accent-red)' : 'var(--wc-text-secondary)'}>
 										{hasDuplicateTargets
 											? 'Duplicate target slots - adjust assignments'
 											: `Loading ${mappings.length} slot(s) into target server`}
@@ -373,8 +372,8 @@ export function LoadCheckpointDialog({ server, isOpen, onClose }: ILoadCheckpoin
 										flex="1"
 										size="sm"
 										variant="ghost"
-										color="var(--w-servers-launch-cancel-btn)"
-										_hover={{ color: 'var(--w-servers-launch-cancel-hover)', bg: 'var(--w-servers-launch-cancel-hoverbg)' }}
+color="var(--wc-text-tertiary)"
+									_hover={{ color: 'var(--wc-text-secondary)', bg: 'var(--wc-bg-hover)' }}
 										borderRadius="lg"
 										fontSize="13px"
 										onClick={onClose}
@@ -385,11 +384,11 @@ export function LoadCheckpointDialog({ server, isOpen, onClose }: ILoadCheckpoin
 									<Button
 										flex="1"
 										size="sm"
-										bg="var(--w-servers-launch-confirm-bg)"
-										color="var(--w-servers-launch-confirm-color)"
-										borderWidth="1px"
-										borderColor="var(--w-servers-launch-confirm-border)"
-										_hover={{ bg: 'var(--w-servers-launch-confirm-hover)' }}
+bg="var(--wc-accent-blue-bg-12)"
+									color="var(--wc-accent-blue)"
+									borderWidth="1px"
+									borderColor="var(--wc-accent-blue-border)"
+									_hover={{ bg: 'var(--wc-accent-blue-hover-bg)' }}
 										borderRadius="lg"
 										fontSize="13px"
 										fontWeight="500"
@@ -408,14 +407,14 @@ export function LoadCheckpointDialog({ server, isOpen, onClose }: ILoadCheckpoin
 									left="0"
 									right="0"
 									bottom="0"
-									bg="var(--w-servers-checkpoint-overlay)"
-									display="flex"
-									alignItems="center"
-									justifyContent="center"
-									borderRadius="2xl"
-									zIndex={1}
-								>
-									<Spinner size="md" color="var(--w-servers-checkpoint-spinner)" />
+bg="rgba(0,0,0,0.3)"
+								display="flex"
+								alignItems="center"
+								justifyContent="center"
+								borderRadius="2xl"
+								zIndex={1}
+							>
+								<Spinner size="md" color="var(--wc-accent-blue)" />
 								</Box>
 							)}
 						</Box>

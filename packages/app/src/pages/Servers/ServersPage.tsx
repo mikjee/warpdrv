@@ -267,12 +267,12 @@ export const ServersPage = React.memo(() => {
 				{filteredServers.length === 0 ? (
 					<Flex
 						h="300px" alignItems="center" justifyContent="center"
-						borderWidth="1px" borderColor="var(--w-servers-empty-border)" borderRadius="xl" borderStyle="dashed"
+						borderWidth="1px" borderColor="var(--wc-border-subtle)" borderRadius="xl" borderStyle="dashed"
 					>
-						<VStack gap="3" color="var(--w-servers-empty-text)">
+						<VStack gap="3" color="var(--wc-text-muted)">
 							<Server size={40} />
 							<Text fontSize="14px">{serversArr.length === 0 ? 'No servers running' : 'No matching servers'}</Text>
-							<Text fontSize="12px" color="var(--w-servers-empty-subtext)">{serversArr.length === 0 ? 'Click "Launch Server" to get started' : 'Try adjusting your filters or search query'}</Text>
+							<Text fontSize="12px" color="var(--wc-text-disabled)">{serversArr.length === 0 ? 'Click "Launch Server" to get started' : 'Try adjusting your filters or search query'}</Text>
 						</VStack>
 					</Flex>
 				) : (

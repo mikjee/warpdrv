@@ -122,9 +122,9 @@ export const ServerCard = React.memo(({
 		<Card
 			p="3"
 			hasGradient={isRunning || isLoading}
-			gradientFrom={isRunning ? "var(--w-servers-card-gradient-running)" : "var(--w-servers-card-gradient-loading)"}
+			gradientFrom={isRunning ? "var(--wc-accent-green-bg-8)" : "var(--wc-accent-yellow-bg-8)"}
 			gradientTo="transparent"
-			borderColor={isRunning ? 'var(--w-servers-card-border-running)' : isLoading ? 'var(--w-servers-card-border-loading)' : undefined}
+			borderColor={isRunning ? 'var(--wc-accent-green-border)' : isLoading ? 'var(--wc-accent-yellow-border)' : undefined}
 		>
 			<VStack align="stretch" gap="2.5">
 				<Flex justify="space-between" align="start">
@@ -132,29 +132,29 @@ export const ServerCard = React.memo(({
 						<Flex
 							w="10" h="10" borderRadius="lg" alignItems="center" justifyContent="center"
 							position="relative"
-							bg={isRunning ? 'var(--w-servers-card-icon-bg-running)' : isLoading ? 'var(--w-servers-card-icon-bg-loading)' : 'var(--w-servers-card-icon-bg-idle)'}
+							bg={isRunning ? 'var(--wc-bg-card)' : isLoading ? 'var(--wc-accent-yellow-bg-8)' : 'var(--wc-bg-card)'}
 							borderWidth="1px"
-							borderColor={isRunning ? 'var(--w-servers-card-icon-border-running)' : isLoading ? 'var(--w-servers-card-icon-border-loading)' : 'var(--w-servers-card-icon-border-idle)'}
+							borderColor={isRunning ? 'var(--wc-accent-green-border)' : isLoading ? 'var(--wc-accent-yellow-border)' : 'var(--wc-border-subtle)'}
 						>
-							<Server size={18} color={isRunning ? 'var(--w-servers-card-icon-color-running)' : isLoading ? 'var(--w-servers-card-icon-color-loading)' : 'var(--w-servers-card-icon-color-idle)'} />
+							<Server size={18} color={isRunning ? 'var(--wc-accent-green)' : isLoading ? 'var(--wc-accent-yellow)' : 'var(--wc-text-muted)'} />
 						</Flex>
 						<Box>
 							<HStack gap="3" alignItems="center" flexWrap="wrap">
 								<HoverCard.Root size="sm" openDelay={150}>
 									<HoverCard.Trigger asChild>
-										<Text fontSize="13px" fontWeight="600" color="var(--w-servers-card-name)" cursor="help">{server.serverName}</Text>
+										<Text fontSize="13px" fontWeight="600" color="var(--wc-special-card-name)" cursor="help">{server.serverName}</Text>
 									</HoverCard.Trigger>
 									<Portal>
 										<HoverCard.Positioner>
 											<HoverCard.Content
-												bg="var(--w-servers-card-hovercard-bg)" borderWidth="1px" borderColor="var(--w-servers-card-hovercard-border)"
+												bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-overlay)"
 												borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="3"
 												maxW="500px"
 											>
 												<VStack align="stretch" gap="2">
 													<Box
-														fontSize="10px" fontFamily='"Geist Mono", monospace' color="var(--w-servers-card-hovercard-text)"
-														bg="var(--w-servers-card-hovercard-cmdbg)" borderRadius="md" p="2.5"
+														fontSize="10px" fontFamily='"Geist Mono", monospace' color="var(--wc-text-secondary)"
+														bg="var(--wc-bg-subtle)" borderRadius="md" p="2.5"
 														whiteSpace="pre-wrap" wordBreak="break-all" lineHeight="1.4"
 													>
 														{server.launchCommand}
@@ -168,7 +168,7 @@ export const ServerCard = React.memo(({
 								{server.serverAlias && server.serverAlias.length > 0 && (
 									<>
 										{server.serverAlias.map(alias => (
-											<Badge key={alias} px="1.5" py="0.25" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="var(--w-servers-card-alias-bg)" color="var(--w-servers-card-alias-color)" borderWidth="1px" borderColor="var(--w-servers-card-alias-border)">
+											<Badge key={alias} px="1.5" py="0.25" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="var(--wc-special-indigo-bg)" color="var(--wc-special-indigo)" borderWidth="1px" borderColor="var(--wc-special-indigo-border)">
 												{alias}
 												<Button
 													size="xs"
@@ -178,8 +178,8 @@ export const ServerCard = React.memo(({
 													h="14px"
 													w="14px"
 													ml="2"
-													color="var(--w-servers-card-alias-remove-color)"
-													_hover={{ color: 'var(--w-servers-card-alias-remove-hover)', bg: 'var(--w-servers-card-alias-remove-hoverbg)' }}
+color="var(--wc-special-indigo)"
+					_hover={{ color: 'var(--wc-accent-red)', bg: 'var(--wc-accent-red-bg-8)' }}
 													borderRadius="md"
 													onClick={(e) => { e.stopPropagation(); setRemovingAlias(alias); }}
 												>
@@ -191,16 +191,16 @@ export const ServerCard = React.memo(({
 								)}
 								<Popover.Root lazyMount unmountOnExit open={addingAliasOpen} onOpenChange={(details) => { if (!details.open) { setAddingAliasOpen(false); setNewAliasValue(''); } }}>
 									<Popover.Trigger asChild>
-										<Badge px="1.5" py="0.25" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="var(--w-servers-card-addalias-bg)" color="var(--w-servers-card-addalias-color)" borderWidth="1px" borderColor="var(--w-servers-card-addalias-border)" cursor="pointer" onClick={(e) => { e.stopPropagation(); setAddingAliasOpen(true); }}  title="Add Alias">
+										<Badge px="1.5" py="0.25" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="var(--wc-special-indigo-bg-subtle)" color="var(--wc-special-indigo)" borderWidth="1px" borderColor="var(--wc-special-indigo-border-subtle)" cursor="pointer" onClick={(e) => { e.stopPropagation(); setAddingAliasOpen(true); }}  title="Add Alias">
 											<Plus size={10} />
 										</Badge>
 									</Popover.Trigger>
 									<Portal>
 										<Popover.Positioner>
-											<Popover.Content maxW="320px" bg="var(--w-servers-card-popover-bg)" borderWidth="1px" borderColor="var(--w-servers-card-popover-border)" borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)">
+											<Popover.Content maxW="320px" bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-overlay)" borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)">
 												<Popover.Arrow />
 												<Popover.Body p="4">
-													<Text fontSize="12px" fontWeight="medium" color="var(--w-servers-card-popover-title)" mb="3">Add alias for "{server.serverName}"</Text>
+													<Text fontSize="12px" fontWeight="medium" color="var(--wc-text-primary)" mb="3">Add alias for "{server.serverName}"</Text>
 													<HStack gap="2">
 														<Input
 															value={newAliasValue}
@@ -208,17 +208,16 @@ export const ServerCard = React.memo(({
 															onKeyDown={(e) => { if (e.key === 'Enter') handleAddAlias(); }}
 															placeholder="Enter comma separated aliases..."
 															size="sm"
-															bg="var(--w-servers-card-popover-inputbg)"
-															borderColor="var(--w-servers-card-popover-inputborder)"
-															color="var(--w-servers-card-popover-inputcolor)"
-															fontSize="12px"
-															_placeholder={{ color: 'var(--w-servers-card-popover-placeholder)' }}
+bg="var(--wc-bg-subtle)"
+															borderColor="var(--wc-border-overlay)"
+															color="var(--wc-text-primary)"
+															_placeholder={{ color: 'var(--wc-text-faint)' }}
 														/>
 														<Button
 															size="sm"
 															bgGradient="to-r"
-															gradientFrom="var(--w-servers-card-addbtn-from)"
-															gradientTo="var(--w-servers-card-addbtn-to)"
+															gradientFrom="var(--wc-gradient-blue-from)"
+															gradientTo="var(--wc-gradient-blue-to)"
 															color="white"
 															fontSize="12px"
 															onClick={handleAddAlias}
@@ -232,7 +231,7 @@ export const ServerCard = React.memo(({
 									</Portal>
 								</Popover.Root>
 								{isRunning && (
-									<HStack gap="1" color="var(--w-servers-card-uptime)">
+									<HStack gap="1" color="var(--wc-text-muted)">
 										<Clock size={11} />
 										<Text fontSize="12px">{formatUptime(server.startedAt)}</Text>
 									</HStack>
@@ -242,13 +241,13 @@ export const ServerCard = React.memo(({
 								<HStack gap="1">
 									<StatPill icon={<FaBrain size={12} />} label="Model" value={model?.name ?? "Model Not Found!"} />
 									{model?.mmprojFile && server.useMultiModal && (
-										<Icon color="var(--w-servers-card-vision-enabled)" boxSize="14px" ml="1" mr="1"><FaRegEye title="Vision"/></Icon>
+										<Icon color="var(--wc-special-vision-yellow)" boxSize="14px" ml="1" mr="1"><FaRegEye title="Vision"/></Icon>
 									)}
 									{model?.mmprojFile && !server.useMultiModal && (
-										<Icon color="var(--w-servers-card-vision-disabled)" boxSize="14px" ml="1" mr="1"><GoEyeClosed  title="Multi-modal disabled"/></Icon>
+										<Icon color="var(--wc-special-vision-red)" boxSize="14px" ml="1" mr="1"><GoEyeClosed  title="Multi-modal disabled"/></Icon>
 									)}
 									{model?.mmprojFile && server.useMultiModal && (
-										<Icon color="var(--w-servers-card-checkpoint-warn)" boxSize="14px" ml="1" mr="1"><LuSaveOff title="Cannot save checkpoints when multi-modal is enabled" /></Icon>
+										<Icon color="var(--wc-special-vision-red)" boxSize="14px" ml="1" mr="1"><LuSaveOff title="Cannot save checkpoints when multi-modal is enabled" /></Icon>
 									)}
 									{model?.primaryFile?.metadata?.quantType && (
 										<Badge
@@ -271,44 +270,44 @@ export const ServerCard = React.memo(({
 								<StatPill icon={<FaBookOpen size={12} />} label="Context" value={`${displayCtx}`} />
 							</HStack>
 							{server.error && (
-								<Text fontSize="11px" color="var(--w-servers-card-error)" lineClamp={1} mt="0.5">{server.error}</Text>
+								<Text fontSize="11px" color="var(--wc-accent-red)" lineClamp={1} mt="0.5">{server.error}</Text>
 							)}
 						</Box>
 					</HStack>
 
 					<HStack gap="1" my="auto" pl="3">
-						{showCheckpointButtons && <Button size="xs" variant="ghost" color="var(--w-servers-card-action-default)" _hover={{ color: 'var(--w-servers-card-action-hover-blue)', bg: 'var(--w-servers-card-action-hoverblue-bg)' }} borderRadius="md" onClick={() => onLoadCheckpoint(serverId)} title="Load KV Checkpoint">
+						{showCheckpointButtons && <Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-blue)', bg: 'var(--wc-accent-blue-bg-8)' }} borderRadius="md" onClick={() => onLoadCheckpoint(serverId)} title="Load KV Checkpoint">
 							<Zap size={14} />
 						</Button>}
 						{isRunning && showCheckpointButtons && (
-							<Button size="xs" variant="ghost" color="var(--w-servers-card-action-default)" _hover={{ color: 'var(--w-servers-card-action-hover-blue)', bg: 'var(--w-servers-card-action-hoverblue-bg)' }} borderRadius="md" onClick={() => onSaveCheckpoint(serverId)} title="Save KV Checkpoint">
+							<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-blue)', bg: 'var(--wc-accent-blue-bg-8)' }} borderRadius="md" onClick={() => onSaveCheckpoint(serverId)} title="Save KV Checkpoint">
 								<Save size={14} />
 							</Button>
 						)}
-						<Box w="1px" h="16px" bg="var(--w-servers-card-divider)" my="auto" />
+						<Box w="1px" h="16px" bg="var(--wc-border-subtle)" my="auto" />
 						{!isRunning && !isLoading && (
-							<Button size="xs" variant="ghost" color="var(--w-servers-card-action-default)" _hover={{ color: 'var(--w-servers-card-action-hover-yellow)', bg: 'var(--w-servers-card-action-hoveryellow-bg)' }} borderRadius="md" onClick={handleRestart} title="Launch Server">
+							<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-yellow)', bg: 'var(--wc-accent-yellow-bg-8)' }} borderRadius="md" onClick={handleRestart} title="Launch Server">
 								<Play size={14} />
 							</Button>
 						)}
 						{(isRunning || isLoading) && (
-							<Button size="xs" variant="ghost" color="var(--w-servers-card-action-default)" _hover={{ color: 'var(--w-servers-card-action-hover-yellow)', bg: 'var(--w-servers-card-action-hoveryellow-bg)' }} borderRadius="md" onClick={handleRestart} title="Restart Server">
+							<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-yellow)', bg: 'var(--wc-accent-yellow-bg-8)' }} borderRadius="md" onClick={handleRestart} title="Restart Server">
 								<RotateCcw size={14} />
 							</Button>
 						)}
-						<Button size="xs" variant="ghost" color="var(--w-servers-card-action-default)" _hover={{ color: 'var(--w-servers-card-action-hover-cyan)', bg: 'var(--w-servers-card-action-hovercyan-bg)' }} borderRadius="md" onClick={() => onShowLogs(serverId)} title="Server logs">
+						<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-special-cyan)', bg: 'var(--wc-special-cyan-bg)' }} borderRadius="md" onClick={() => onShowLogs(serverId)} title="Server logs">
 							<Terminal size={14} />
 						</Button>
-						<Button size="xs" variant="ghost" color="var(--w-servers-card-action-default)" _hover={{ color: 'var(--w-servers-card-action-hover-blue)', bg: 'var(--w-servers-card-action-hoverblue-bg)' }} borderRadius="md" onClick={() => onEdit(serverId)} title="Edit Server">
+						<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-blue)', bg: 'var(--wc-accent-blue-bg-8)' }} borderRadius="md" onClick={() => onEdit(serverId)} title="Edit Server">
 							<Edit size={14} />
 						</Button>
-						<Box w="1px" h="16px" bg="var(--w-servers-card-divider-2)" my="auto" />
+						<Box w="1px" h="16px" bg="var(--wc-border-subtle)" my="auto" />
 						{(isRunning || isLoading) ? (
-							<Button size="xs" variant="ghost" color="var(--w-servers-card-action-default)" _hover={{ color: 'var(--w-servers-card-action-hover-red)', bg: 'var(--w-servers-card-action-hoverred-bg)' }} borderRadius="md" onClick={handleStop}  title="Stop Server">
+							<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-red)', bg: 'var(--wc-accent-red-bg-8)' }} borderRadius="md" onClick={handleStop}  title="Stop Server">
 								<Square size={14} />
 							</Button>
 						) : (
-							<Button size="xs" variant="ghost" color="var(--w-servers-card-action-default)" _hover={{ color: 'var(--w-servers-card-action-hover-red)', bg: 'var(--w-servers-card-action-hoverred-bg)' }} borderRadius="md" onClick={() => onConfirmDelete(serverId)} title="Delete Server">
+							<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-red)', bg: 'var(--wc-accent-red-bg-8)' }} borderRadius="md" onClick={() => onConfirmDelete(serverId)} title="Delete Server">
 								<Trash2 size={14} />
 							</Button>
 						)}

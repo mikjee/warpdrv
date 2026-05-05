@@ -48,27 +48,27 @@ const ModelCombobox = React.memo(({ entries, selectedPath, onSelect, placeholder
 		>
 			<Combobox.Control>
 				<Combobox.Input placeholder={placeholder}
-					bg="var(--w-servers-launch-input-bg)" borderColor="var(--w-servers-launch-input-border)" color="var(--w-servers-launch-input-color)"
+					bg="var(--wc-bg-subtle)" borderColor="var(--wc-border-default)" color="var(--wc-text-secondary)"
 					fontSize="13px" borderRadius="lg"
-					_placeholder={{ color: 'var(--w-servers-launch-input-placeholder)' }}
-					_focus={{ borderColor: 'var(--w-servers-launch-input-focus)', outline: 'none' }}
+					_placeholder={{ color: 'var(--wc-text-faint)' }}
+					_focus={{ borderColor: 'var(--wc-accent-blue)', outline: 'none' }}
 				/>
 				<Combobox.IndicatorGroup><Combobox.ClearTrigger /><Combobox.Trigger /></Combobox.IndicatorGroup>
 			</Combobox.Control>
 			<Portal>
 				<Combobox.Positioner>
-					<Combobox.Content maxH="280px" overflowY="auto" bg="var(--w-servers-launch-combobox-content-bg)" borderWidth="1px" borderColor="var(--w-servers-launch-combobox-content-border)"
+					<Combobox.Content maxH="280px" overflowY="auto" bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-default)"
 						borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1">
-						<Combobox.Empty><Text fontSize="12px" color="var(--w-servers-launch-combobox-empty)" py="4" textAlign="center">No matches</Text></Combobox.Empty>
+						<Combobox.Empty><Text fontSize="12px" color="var(--wc-text-disabled)" py="4" textAlign="center">No matches</Text></Combobox.Empty>
 						{collection.items.map((item) => {
 							const entry = (item as { entry: TModelEntry }).entry;
 							return (
 								<Combobox.Item key={item.value} item={item} px="3" py="2" borderRadius="md" cursor="pointer"
-									_hover={{ bg: 'var(--w-servers-launch-combobox-item-hover)' }} _highlighted={{ bg: 'var(--w-servers-launch-combobox-item-highlight-purple)' }}>
+									_hover={{ bg: 'var(--wc-bg-hover)' }} _highlighted={{ bg: 'var(--wc-accent-purple-bg-8)' }}>
 									<HStack gap="3" w="100%">
 										<Box flex="1" minW="0">
-											<Text fontSize="12px" fontWeight="500" color="var(--w-servers-launch-combobox-item-text)" lineClamp={1}>{entry.file.fileName}</Text>
-											<Text fontSize="10px" color="var(--w-servers-launch-combobox-device)">{entry.model.user}</Text>
+											<Text fontSize="12px" fontWeight="500" color="var(--wc-text-primary)" lineClamp={1}>{entry.file.fileName}</Text>
+											<Text fontSize="10px" color="var(--wc-text-tertiary)">{entry.model.user}</Text>
 										</Box>
 										<Combobox.ItemIndicator />
 									</HStack>
@@ -100,22 +100,22 @@ export const SpeculativeDecodingCard = React.memo(({
 	deviceIdToName: Record<string, string>;
 }) => {
 	return (
-		<Card bg={specDecode.enabled ? 'var(--w-servers-launch-spec-bg-active)' : undefined} borderColor={specDecode.enabled ? 'var(--w-servers-launch-spec-border-active)' : undefined}>
+		<Card bg={specDecode.enabled ? 'var(--wc-accent-purple-bg-8)' : undefined} borderColor={specDecode.enabled ? 'var(--wc-accent-purple-border)' : undefined}>
 			<HStack justify="space-between" align="center">
 				<HStack gap="3">
 					<Flex w="6" h="6" borderRadius="md" alignItems="center" justifyContent="center"
-						bg={specDecode.enabled ? 'var(--w-servers-launch-spec-icon-bg-active)' : 'var(--w-servers-launch-spec-icon-bg-inactive)'}>
-						<Sparkles size={14} color={specDecode.enabled ? 'var(--w-servers-launch-switch-active-purple)' : 'var(--w-servers-launch-text-subtitle)'} />
+						bg={specDecode.enabled ? 'var(--wc-accent-purple-bg-8)' : 'var(--wc-bg-subtle)'}>
+						<Sparkles size={14} color={specDecode.enabled ? 'var(--wc-accent-purple)' : 'var(--wc-text-tertiary)'} />
 					</Flex>
 					<VStack align="start" gap="0.5">
-						<Text fontSize="12px" fontWeight="600" color="var(--w-servers-launch-model-label)" textTransform="uppercase" letterSpacing="0.05em">Speculative Decoding</Text>
-						<Text fontSize="11px" color="var(--w-servers-launch-text-subtitle)">{specDecode.mode === 'ngram' ? 'Draftless n-gram speculation' : 'Use a smaller model as the draft driver'}</Text>
+<Text fontSize="12px" fontWeight="600" color="var(--wc-text-tertiary)" textTransform="uppercase" letterSpacing="0.05em">Speculative Decoding</Text>
+					<Text fontSize="11px" color="var(--wc-text-tertiary)">{specDecode.mode === 'ngram' ? 'Draftless n-gram speculation' : 'Use a smaller model as the draft driver'}</Text>
 					</VStack>
 				</HStack>
-				<Switch.Root label="Enable speculative decoding" checked={specDecode.enabled} onCheckedChange={(d) => onSpecParamChange('enabled', d.checked)} color={specDecode.enabled ? 'var(--w-servers-launch-switch-active-purple)' : 'var(--w-servers-launch-switch-inactive)'}>
+				<Switch.Root label="Enable speculative decoding" checked={specDecode.enabled} onCheckedChange={(d) => onSpecParamChange('enabled', d.checked)} color={specDecode.enabled ? 'var(--wc-accent-purple)' : 'var(--wc-text-tertiary)'}>
 					<Switch.HiddenInput />
-					<Switch.Control css={{ bg: specDecode.enabled ? 'var(--w-servers-launch-switch-active-purple)' : 'surface.4' }}>
-						<Switch.Thumb css={{ bg: 'var(--w-servers-launch-switch-thumb)' }} />
+					<Switch.Control css={{ bg: specDecode.enabled ? 'var(--wc-accent-purple)' : 'surface.4' }}>
+						<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 					</Switch.Control>
 				</Switch.Root>
 			</HStack>
@@ -124,19 +124,19 @@ export const SpeculativeDecodingCard = React.memo(({
 				<VStack align="stretch" gap="4" mt="4">
 					<HStack gap="2">
 						<Button size="sm" variant="outline" flex="1" justifyContent="center"
-							borderColor={specDecode.mode === 'ngram' ? 'var(--w-servers-launch-tab-inactive-border)' : 'var(--w-servers-launch-tab-active-border)'}
+							borderColor={specDecode.mode === 'ngram' ? 'var(--wc-border-subtle)' : 'var(--wc-accent-blue)'}
 							borderWidth={specDecode.mode === 'ngram' ? '1px' : '2px'}
-							color={specDecode.mode === 'ngram' ? 'var(--w-servers-launch-tab-inactive-color)' : 'var(--w-servers-launch-tab-active-color)'}
-							bg={specDecode.mode === 'ngram' ? 'var(--w-servers-launch-tab-inactive-bg)' : 'var(--w-servers-launch-tab-active-bg)'}
-							_hover={{ borderColor: specDecode.mode === 'ngram' ? 'var(--w-servers-launch-tab-inactive-hover)' : 'var(--w-servers-launch-tab-active-hover)' }}
+							color={specDecode.mode === 'ngram' ? 'var(--wc-text-secondary)' : 'var(--wc-accent-blue)'}
+							bg={specDecode.mode === 'ngram' ? 'var(--wc-bg-subtle)' : 'var(--wc-accent-blue-bg-8)'}
+							_hover={{ borderColor: specDecode.mode === 'ngram' ? 'var(--wc-border-hover)' : 'var(--wc-accent-blue-hover)' }}
 							onClick={() => onSpecParamChange('mode', 'draft')}
 						><Text fontSize="13px" fontWeight="500">Draft Model</Text></Button>
 						<Button size="sm" variant="outline" flex="1" justifyContent="center"
-							borderColor={specDecode.mode === 'ngram' ? 'var(--w-servers-launch-tab-active-border)' : 'var(--w-servers-launch-tab-inactive-border)'}
-							borderWidth={specDecode.mode === 'ngram' ? '2px' : '1px'}
-							color={specDecode.mode === 'ngram' ? 'var(--w-servers-launch-tab-active-color)' : 'var(--w-servers-launch-tab-inactive-color)'}
-							bg={specDecode.mode === 'ngram' ? 'var(--w-servers-launch-tab-active-bg)' : 'var(--w-servers-launch-tab-inactive-bg)'}
-							_hover={{ borderColor: specDecode.mode === 'ngram' ? 'var(--w-servers-launch-tab-active-hover)' : 'var(--w-servers-launch-tab-inactive-hover)' }}
+borderColor={specDecode.mode === 'ngram' ? 'var(--wc-accent-blue)' : 'var(--wc-border-subtle)'}
+						borderWidth={specDecode.mode === 'ngram' ? '2px' : '1px'}
+						color={specDecode.mode === 'ngram' ? 'var(--wc-accent-blue)' : 'var(--wc-text-secondary)'}
+						bg={specDecode.mode === 'ngram' ? 'var(--wc-accent-blue-bg-8)' : 'var(--wc-bg-subtle)'}
+						_hover={{ borderColor: specDecode.mode === 'ngram' ? 'var(--wc-accent-blue-hover)' : 'var(--wc-border-hover)' }}
 							onClick={() => onSpecParamChange('mode', 'ngram')}
 						><Text fontSize="13px" fontWeight="500">Ngram</Text></Button>
 					</HStack>
@@ -144,21 +144,21 @@ export const SpeculativeDecodingCard = React.memo(({
 					{specDecode.mode !== 'ngram' && (
 						<VStack align="stretch" gap="4">
 							<Box>
-								<Text fontSize="11px" color="var(--w-servers-launch-spec-draftlabel)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Draft Model</Text>
+								<Text fontSize="11px" color="var(--wc-accent-purple-text)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Draft Model</Text>
 								{!targetArchitecture ? (
-									<Text fontSize="12px" color="var(--w-servers-launch-spec-draftinfo)">Select a target model first to see compatible draft models.</Text>
+									<Text fontSize="12px" color="var(--wc-text-muted)">Select a target model first to see compatible draft models.</Text>
 								) : draftModelEntries.length === 0 ? (
-									<Text fontSize="12px" color="var(--w-servers-launch-spec-draftinfo)">No compatible draft models found. Draft models must share the same architecture ({targetArchitecture}).</Text>
+									<Text fontSize="12px" color="var(--wc-text-muted)">No compatible draft models found. Draft models must share the same architecture ({targetArchitecture}).</Text>
 								) : (
 									<ModelCombobox entries={draftModelEntries} selectedPath={specDecode.draftModelPath || null}
 										onSelect={(path) => onSpecParamChange('draftModelPath', path)}
 										placeholder="Search compatible draft models..." />
 								)}
 								{selectedDraftEntry?.file.metadata && (
-									<HStack mt="2" gap="4" px="3" py="2" bg="var(--w-servers-launch-spec-draftmeta-bg)" borderRadius="lg" borderWidth="1px" borderColor="var(--w-servers-launch-spec-draftmeta-border)">
-										<HStack gap="1.5"><Layers size={12} color="var(--w-servers-launch-spec-draftmeta-icon)" /><Text fontSize="11px" color="var(--w-servers-launch-spec-draftmeta-text)">{selectedDraftEntry.file.metadata.nLayers} layers</Text></HStack>
-										<HStack gap="1.5"><Cpu size={12} color="var(--w-servers-launch-spec-draftmeta-icon)" /><Text fontSize="11px" color="var(--w-servers-launch-spec-draftmeta-text)">{selectedDraftEntry.file.metadata.paramCount}</Text></HStack>
-										<Text fontSize="11px" color="var(--w-servers-launch-spec-draftmeta-icon)" fontFamily='"Geist Mono", monospace'>{formatSize(selectedDraftEntry.model.totalSizeMb)}</Text>
+									<HStack mt="2" gap="4" px="3" py="2" bg="var(--wc-accent-purple-bg-8)" borderRadius="lg" borderWidth="1px" borderColor="var(--wc-accent-purple-border)">
+										<HStack gap="1.5"><Layers size={12} color="var(--wc-accent-purple-icon)" /><Text fontSize="11px" color="var(--wc-accent-purple-text)">{selectedDraftEntry.file.metadata.nLayers} layers</Text></HStack>
+										<HStack gap="1.5"><Cpu size={12} color="var(--wc-accent-purple-icon)" /><Text fontSize="11px" color="var(--wc-accent-purple-text)">{selectedDraftEntry.file.metadata.paramCount}</Text></HStack>
+										<Text fontSize="11px" color="var(--wc-accent-purple-icon)" fontFamily='"Geist Mono", monospace'>{formatSize(selectedDraftEntry.model.totalSizeMb)}</Text>
 									</HStack>
 								)}
 							</Box>
@@ -168,20 +168,20 @@ export const SpeculativeDecodingCard = React.memo(({
 									<SelectField label="Draft Device" value={specDecode.draftDevice} options={['', ...deviceOptions]}
 										onChange={v => onSpecParamChange('draftDevice', v)} mono
 										optionLabels={{ '': 'Same as target', ...deviceIdToName }} />
-									<Text fontSize="10px" color="var(--w-servers-launch-text-hint)" mt="1">Leave empty to use target device.</Text>
+									<Text fontSize="10px" color="var(--wc-text-muted)" mt="1">Leave empty to use target device.</Text>
 								</Box>
 							)}
 
 							<Flex gap="4">
 								{selectedDraftEntry?.file.metadata ? (
 									<Box flex="1">
-										<Text fontSize="11px" color="var(--w-servers-launch-text-label)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">
-											GPU Layers <Text as="span" color="var(--w-servers-launch-text-hint)">/ {selectedDraftEntry.file.metadata.nLayers}</Text>
+										<Text fontSize="11px" color="var(--wc-text-tertiary)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">
+											GPU Layers <Text as="span" color="var(--wc-text-muted)">/ {selectedDraftEntry.file.metadata.nLayers}</Text>
 										</Text>
 										<Input type="number" value={specDecode.draftGpuLayers} onChange={e => onSpecParamChange('draftGpuLayers', Number(e.target.value))} size="sm"
-											bg="var(--w-servers-launch-input-bg)" borderColor="var(--w-servers-launch-input-border)" color="var(--w-servers-launch-input-color)"
+											bg="var(--wc-bg-subtle)" borderColor="var(--wc-border-default)" color="var(--wc-text-secondary)"
 											fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
-											_focus={{ borderColor: 'var(--w-servers-launch-input-focus-purple)', outline: 'none' }} min={0} max={selectedDraftEntry.file.metadata.nLayers}
+											_focus={{ borderColor: 'var(--wc-accent-purple)', outline: 'none' }} min={0} max={selectedDraftEntry.file.metadata.nLayers}
 										/>
 									</Box>
 								) : (
@@ -191,12 +191,12 @@ export const SpeculativeDecodingCard = React.memo(({
 							</Flex>
 
 							<Box>
-								<Text fontSize="11px" color="var(--w-servers-launch-spec-thresholdlabel)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Accept Threshold</Text>
+								<Text fontSize="11px" color="var(--wc-accent-purple-text)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Accept Threshold</Text>
 								<Input type="number" value={specDecode.draftPMin} onChange={e => onSpecParamChange('draftPMin', Number(e.target.value))} size="sm"
-									bg="var(--w-servers-launch-input-bg)" borderColor="var(--w-servers-launch-input-border)" color="var(--w-servers-launch-input-color)"
+									bg="var(--wc-bg-subtle)" borderColor="var(--wc-border-default)" color="var(--wc-text-primary)"
 									fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
-									_focus={{ borderColor: 'var(--w-servers-launch-input-focus-purple)', outline: 'none' }} min={0} max={1} step={0.05} />
-								<Text fontSize="10px" color="var(--w-servers-launch-text-hint)" mt="1">0.0 - 1.0</Text>
+									_focus={{ borderColor: 'var(--wc-accent-purple)', outline: 'none' }} min={0} max={1} step={0.05} />
+								<Text fontSize="10px" color="var(--wc-text-muted)" mt="1">0.0 - 1.0</Text>
 							</Box>
 						</VStack>
 					)}
@@ -222,7 +222,7 @@ export const SpeculativeDecodingCard = React.memo(({
 					)}
 
 					<Box>
-						<Text fontSize="11px" color="var(--w-servers-launch-spec-draftparamslabel)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Drafting Parameters</Text>
+						<Text fontSize="11px" color="var(--wc-accent-purple-text)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Drafting Parameters</Text>
 						<Flex gap="4">
 							<NumberField label="Draft Max" value={specDecode.draftMax} onChange={v => onSpecParamChange('draftMax', v)} min={1} max={128} />
 							<NumberField label="Draft Min" value={specDecode.draftMin} onChange={v => onSpecParamChange('draftMin', v)} min={0} max={64} />
