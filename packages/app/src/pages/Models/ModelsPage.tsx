@@ -92,9 +92,9 @@ function RowMenu({ model, onClose, onReparse }: { model: IModel; onClose: () => 
 			top="100%"
 			mt="1"
 			zIndex={50}
-			bg="#1a1a1f"
+			bg="var(--wc-bg-dialog)"
 			borderWidth="1px"
-			borderColor="rgba(255, 255, 255, 0.08)"
+			borderColor="var(--wc-border-default)"
 			borderRadius="lg"
 			py="1"
 			minW="180px"
@@ -105,8 +105,8 @@ function RowMenu({ model, onClose, onReparse }: { model: IModel; onClose: () => 
 				px="3"
 				py="2"
 				cursor="pointer"
-				color="rgba(255, 255, 255, 0.6)"
-				_hover={{ bg: 'rgba(255, 255, 255, 0.04)', color: 'rgba(255, 255, 255, 0.9)' }}
+				color="var(--wc-text-secondary)"
+				_hover={{ bg: 'var(--wc-bg-card)', color: 'var(--wc-text-heading)' }}
 				transition="all 0.1s ease"
 				onClick={() => {
 					openExternal(hfUrl);
@@ -121,8 +121,8 @@ function RowMenu({ model, onClose, onReparse }: { model: IModel; onClose: () => 
 				px="3"
 				py="2"
 				cursor="pointer"
-				color="rgba(255, 255, 255, 0.6)"
-				_hover={{ bg: 'rgba(255, 255, 255, 0.04)', color: 'rgba(255, 255, 255, 0.9)' }}
+				color="var(--wc-text-secondary)"
+				_hover={{ bg: 'var(--wc-bg-card)', color: 'var(--wc-text-heading)' }}
 				transition="all 0.1s ease"
 				onClick={() => {
 					navigator.clipboard.writeText(model.dirPath);
@@ -137,8 +137,8 @@ function RowMenu({ model, onClose, onReparse }: { model: IModel; onClose: () => 
 				px="3"
 				py="2"
 				cursor="pointer"
-				color="rgba(255, 255, 255, 0.6)"
-				_hover={{ bg: 'rgba(255, 255, 255, 0.04)', color: 'rgba(255, 255, 255, 0.9)' }}
+				color="var(--wc-text-secondary)"
+				_hover={{ bg: 'var(--wc-bg-card)', color: 'var(--wc-text-heading)' }}
 				transition="all 0.1s ease"
 				onClick={() => {
 					onReparse(model.id);
@@ -148,13 +148,13 @@ function RowMenu({ model, onClose, onReparse }: { model: IModel; onClose: () => 
 				<RefreshCw size={14} />
 				<Text fontSize="12px">Re-parse Metadata</Text>
 			</HStack>
-			<Box h="1px" bg="rgba(255, 255, 255, 0.06)" my="1" />
-			<HStack
+			<Box h="1px" bg="var(--wc-border-subtle)" my="1" />
+			<	HStack
 				gap="2"
 				px="3"
 				py="2"
 				cursor="not-allowed"
-				color="rgba(255, 255, 255, 0.2)"
+				color="var(--wc-text-disabled)"
 			>
 				<Trash2 size={14} />
 				<Text fontSize="12px">Delete</Text>
@@ -185,8 +185,8 @@ function SortHeader({
 		<HStack
 			gap="1"
 			cursor="pointer"
-			color={isActive ? 'rgba(255, 255, 255, 0.7)' : 'rgba(255, 255, 255, 0.35)'}
-			_hover={{ color: 'rgba(255, 255, 255, 0.6)' }}
+			color={isActive ? 'var(--wc-text-secondary)' : 'var(--wc-text-muted)'}
+			_hover={{ color: 'var(--wc-text-secondary)' }}
 			transition="color 0.1s ease"
 			onClick={() => onSort(sortKey)}
 			userSelect="none"
@@ -288,7 +288,7 @@ export function ModelsPage() {
 							fontSize="13px"
 							color="var(--w-header-search-color)"
 							_placeholder={{ color: 'var(--w-header-search-placeholder)' }}
-							_hover={{ borderColor: 'rgba(255, 255, 255, 0.12)' }}
+							_hover={{ borderColor: 'var(--wc-border-hover)' }}
 							_focus={{ borderColor: 'var(--w-header-search-focus-border)', boxShadow: 'none' }}
 						/>
 					</Box>
@@ -320,7 +320,7 @@ export function ModelsPage() {
 					py="2.5"
 					gap="4"
 					borderBottomWidth="1px"
-					borderColor="rgba(255, 255, 255, 0.06)"
+					borderColor="var(--wc-border-subtle)"
 				>
 					<Box flex={cols.name}><SortHeader label="Model" sortKey="name" sort={sort} onSort={handleSort} /></Box>
 					<Box w={cols.user}><SortHeader label="User" sortKey="user" sort={sort} onSort={handleSort} /></Box>
@@ -336,7 +336,7 @@ export function ModelsPage() {
 				{/* Empty state */}
 				{models.length === 0 && (
 					<Flex h="200px" alignItems="center" justifyContent="center">
-						<Text fontSize="13px" color="rgba(255, 255, 255, 0.25)">
+						<Text fontSize="13px" color="var(--wc-text-faint)">
 							No models found. Configure a directory in Settings, then scan.
 						</Text>
 					</Flex>
@@ -345,7 +345,7 @@ export function ModelsPage() {
 				{/* No results */}
 				{models.length > 0 && filtered.length === 0 && (
 					<Flex h="200px" alignItems="center" justifyContent="center">
-						<Text fontSize="13px" color="rgba(255, 255, 255, 0.25)">
+						<Text fontSize="13px" color="var(--wc-text-faint)">
 							No models match "{search}"
 						</Text>
 					</Flex>
@@ -366,8 +366,8 @@ export function ModelsPage() {
 								gap="4"
 								alignItems="center"
 								borderBottomWidth="1px"
-								borderColor="rgba(255, 255, 255, 0.03)"
-								_hover={{ bg: 'rgba(255, 255, 255, 0.02)' }}
+borderColor="var(--wc-border-subtle)"
+				_hover={{ bg: 'var(--wc-bg-surface)' }}
 								transition="background 0.1s ease"
 							>
 								{/* Model name */}
@@ -375,13 +375,13 @@ export function ModelsPage() {
 									<Text
 										fontSize="14px"
 										fontWeight="500"
-										color="#e4e4e7"
+										color="var(--wc-text-primary)"
 										lineClamp={1}
 									>
 										{model.name}
 									</Text>
 									{meta?.architecture && (
-										<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" mt="0.5">
+										<Text fontSize="11px" color="var(--wc-text-muted)" mt="0.5">
 											{meta.architecture}
 										</Text>
 									)}
@@ -389,7 +389,7 @@ export function ModelsPage() {
 
 								{/* User */}
 								<Box w={cols.user}>
-									<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)" lineClamp={1}>
+									<Text fontSize="12px" color="var(--wc-text-muted)" lineClamp={1}>
 										{model.user}
 									</Text>
 								</Box>
@@ -413,33 +413,33 @@ export function ModelsPage() {
 
 								{/* Vision */}
 								<Box w={cols.vision} display="flex" justifyContent="center">
-									{model.mmprojFile && <Eye size={16} color="#fbbf24" />}
+									{model.mmprojFile && <Eye size={16} color="var(--wc-accent-yellow)" />}
 								</Box>
 
 								{/* Params */}
 								<Box w={cols.params}>
-									<Text fontSize="12px" color="rgba(255, 255, 255, 0.5)" fontFamily='"Geist Mono", monospace'>
+									<Text fontSize="12px" color="var(--wc-text-tertiary)" fontFamily='"Geist Mono", monospace'>
 										{meta?.paramCount ?? '-'}
 									</Text>
 								</Box>
 
 								{/* Size */}
 								<Box w={cols.size} textAlign="right">
-									<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)" fontFamily='"Geist Mono", monospace'>
+									<Text fontSize="12px" color="var(--wc-text-muted)" fontFamily='"Geist Mono", monospace'>
 										{formatSize(model.totalSizeMb)}
 									</Text>
 								</Box>
 
 								{/* Context */}
 								<Box w={cols.context} textAlign="right">
-									<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)" fontFamily='"Geist Mono", monospace'>
+									<Text fontSize="12px" color="var(--wc-text-muted)" fontFamily='"Geist Mono", monospace'>
 										{formatContext(meta?.contextLength ?? 0)}
 									</Text>
 								</Box>
 
 								{/* Files */}
 								<Box w={cols.files} textAlign="right">
-									<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">
+									<Text fontSize="12px" color="var(--wc-text-faint)">
 										{model.files.length}
 									</Text>
 								</Box>
@@ -454,8 +454,8 @@ export function ModelsPage() {
 										justifyContent="center"
 										borderRadius="md"
 										cursor="pointer"
-										color="rgba(255, 255, 255, 0.25)"
-										_hover={{ color: 'rgba(255, 255, 255, 0.6)', bg: 'rgba(255, 255, 255, 0.04)' }}
+										color="var(--wc-text-faint)"
+										_hover={{ color: 'var(--wc-text-secondary)', bg: 'var(--wc-bg-card)' }}
 										transition="all 0.1s ease"
 										onClick={() => setOpenMenuId(openMenuId === model.id ? null : model.id)}
 									>
