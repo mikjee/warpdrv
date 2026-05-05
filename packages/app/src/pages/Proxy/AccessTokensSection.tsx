@@ -18,8 +18,8 @@ function RoleBadge({ token }: { token: IAccessTokenInfo }) {
 				px="2"
 				py="0.5"
 				borderRadius="md"
-				bg="rgba(239, 68, 68, 0.12)"
-				color="#f87171"
+				bg="var(--wc-accent-red-bg-8)"
+				color="var(--wc-accent-red)"
 				fontSize="11px"
 				fontWeight="600"
 			>
@@ -43,8 +43,8 @@ function RoleBadge({ token }: { token: IAccessTokenInfo }) {
 					px="2"
 					py="0.5"
 					borderRadius="md"
-					bg="rgba(59, 130, 246, 0.12)"
-					color="#60a5fa"
+					bg="var(--wc-accent-blue-bg-12)"
+					color="var(--wc-accent-blue-hover)"
 					fontSize="11px"
 					fontWeight="600"
 				>
@@ -60,8 +60,8 @@ function RoleBadge({ token }: { token: IAccessTokenInfo }) {
 					px="2"
 					py="0.5"
 					borderRadius="md"
-					bg="rgba(168, 85, 247, 0.12)"
-					color="#a78bfa"
+					bg="var(--wc-accent-purple-bg-8)"
+					color="var(--wc-accent-purple)"
 					fontSize="11px"
 					fontWeight="600"
 				>
@@ -77,8 +77,8 @@ function RoleBadge({ token }: { token: IAccessTokenInfo }) {
 					px="2"
 					py="0.5"
 					borderRadius="md"
-					bg="rgba(168, 85, 247, 0.12)"
-					color="#a78bfa"
+					bg="var(--wc-accent-purple-bg-8)"
+					color="var(--wc-accent-purple)"
 					fontSize="11px"
 					fontWeight="600"
 				>
@@ -95,7 +95,7 @@ function RoleBadge({ token }: { token: IAccessTokenInfo }) {
 function ScopePills({ value }: { value: true | string[] }) {
 	if (value === true) {
 		return (
-			<Text fontSize="11px" color="rgba(255,255,255,0.35)" fontStyle="italic">
+			<Text fontSize="11px" color="var(--wc-text-muted)" fontStyle="italic">
 				All
 			</Text>
 		);
@@ -111,8 +111,8 @@ function ScopePills({ value }: { value: true | string[] }) {
 					px="1.5"
 					py="0"
 					borderRadius="sm"
-					bg="rgba(255,255,255,0.06)"
-					color="rgba(255,255,255,0.5)"
+					bg="var(--wc-bg-hover)"
+					color="var(--wc-text-tertiary)"
 					fontSize="10px"
 					fontWeight="500"
 					fontFamily="mono"
@@ -168,9 +168,9 @@ export function AccessTokensSection() {
 	return (
 		<Box
 			borderWidth="1px"
-			borderColor="rgba(255,255,255,0.06)"
+			borderColor="var(--wc-border-subtle)"
 			borderRadius="xl"
-			bg="rgba(255,255,255,0.015)"
+			bg="var(--wc-bg-subtle)"
 			overflow="hidden"
 		>
 			{/* Header */}
@@ -181,24 +181,24 @@ export function AccessTokensSection() {
 				justify="space-between"
 				cursor="pointer"
 				onClick={() => setExpanded(!expanded)}
-				_hover={{ bg: 'rgba(255,255,255,0.02)' }}
+				_hover={{ bg: 'var(--wc-bg-surface)' }}
 				transition="background 0.15s ease"
 				mb="2"
 			>
 				<HStack gap="3">
-					<Box color="rgba(255,255,255,0.4)">
+					<Box color="var(--wc-text-muted)">
 						{expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
 					</Box>
-					<Key size={16} color="rgba(255,255,255,0.5)" />
-					<Text fontSize="13px" fontWeight="600" color="rgba(255,255,255,0.8)">
+					<Key size={16} color="var(--wc-text-tertiary)" />
+					<Text fontSize="13px" fontWeight="600" color="var(--wc-text-primary)">
 						Access Tokens
 					</Text>
 					<Badge
 						size="sm"
 						px="1.5"
 						borderRadius="full"
-						bg="rgba(255,255,255,0.06)"
-						color="rgba(255,255,255,0.4)"
+						bg="var(--wc-bg-hover)"
+						color="var(--wc-text-muted)"
 						fontSize="10px"
 						fontWeight="600"
 					>
@@ -209,8 +209,8 @@ export function AccessTokensSection() {
 					aria-label="Create token"
 					size="xs"
 					variant="ghost"
-					color="rgba(255,255,255,0.5)"
-					_hover={{ bg: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' }}
+					color="var(--wc-text-tertiary)"
+					_hover={{ bg: 'var(--wc-accent-blue-bg-12)', color: 'var(--wc-accent-blue-hover)' }}
 					onClick={(e) => {
 						e.stopPropagation();
 						handleCreate();
@@ -232,11 +232,11 @@ export function AccessTokensSection() {
 								direction="column"
 								gap="2"
 							>
-								<Key size={20} color="rgba(255,255,255,0.15)" />
-								<Text fontSize="12px" color="rgba(255,255,255,0.3)">
+								<Key size={20} color="var(--wc-text-disabled)" />
+								<Text fontSize="12px" color="var(--wc-text-faint)">
 									No access tokens created yet
 								</Text>
-								<Text fontSize="11px" color="rgba(255,255,255,0.2)">
+								<Text fontSize="11px" color="var(--wc-text-placeholder)">
 									Tokens are required when authentication is enabled for remote access
 								</Text>
 							</Flex>
@@ -248,21 +248,21 @@ export function AccessTokensSection() {
 									py="1.5"
 									gap="3"
 									borderBottomWidth="1px"
-									borderColor="rgba(255,255,255,0.04)"
+									borderColor="var(--wc-border-subtle)"
 								>
-									<Text flex="1.2" fontSize="10px" fontWeight="600" color="rgba(255,255,255,0.25)" textTransform="uppercase" letterSpacing="0.05em">
+									<Text flex="1.2" fontSize="10px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em">
 										Name
 									</Text>
-									<Text flex="0.8" fontSize="10px" fontWeight="600" color="rgba(255,255,255,0.25)" textTransform="uppercase" letterSpacing="0.05em">
+									<Text flex="0.8" fontSize="10px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em">
 										Token
 									</Text>
-									<Text flex="1" fontSize="10px" fontWeight="600" color="rgba(255,255,255,0.25)" textTransform="uppercase" letterSpacing="0.05em">
+									<Text flex="1" fontSize="10px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em">
 										Role
 									</Text>
-									<Text flex="1.5" fontSize="10px" fontWeight="600" color="rgba(255,255,255,0.25)" textTransform="uppercase" letterSpacing="0.05em">
+									<Text flex="1.5" fontSize="10px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em">
 										Scope
 									</Text>
-									<Text flex="0.6" fontSize="10px" fontWeight="600" color="rgba(255,255,255,0.25)" textTransform="uppercase" letterSpacing="0.05em">
+									<Text flex="0.6" fontSize="10px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em">
 										Created
 									</Text>
 									<Box w="60px" />
@@ -276,13 +276,13 @@ export function AccessTokensSection() {
 										py="2"
 										gap="3"
 										borderRadius="lg"
-										_hover={{ bg: 'rgba(255,255,255,0.02)' }}
+_hover={{ bg: 'var(--wc-bg-surface)' }}
 										transition="background 0.15s ease"
 									>
-										<Text flex="1.2" fontSize="12px" color="rgba(255,255,255,0.7)" fontWeight="500" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+										<Text flex="1.2" fontSize="12px" color="var(--wc-text-secondary)" fontWeight="500" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
 											{token.name}
 										</Text>
-										<Text flex="0.8" fontSize="11px" color="rgba(255,255,255,0.3)" fontFamily="mono">
+										<Text flex="0.8" fontSize="11px" color="var(--wc-text-faint)" fontFamily="mono">
 											{token.tokenPrefix}...
 										</Text>
 										<Box flex="1">
@@ -290,7 +290,7 @@ export function AccessTokensSection() {
 										</Box>
 										<Box flex="1.5">
 											{token.admin ? (
-												<Text fontSize="11px" color="rgba(255,255,255,0.35)" fontStyle="italic">
+<Text fontSize="11px" color="var(--wc-text-muted)" fontStyle="italic">
 													Unrestricted
 												</Text>
 											) : (
@@ -300,20 +300,20 @@ export function AccessTokensSection() {
 													)}
 													{(token.mcp_labelled === true || (Array.isArray(token.mcp_labelled) && token.mcp_labelled.length > 0)) && (
 														<HStack gap="1">
-															<Text fontSize="9px" color="rgba(168,85,247,0.5)" fontWeight="600">L:</Text>
+															<Text fontSize="9px" color="var(--wc-accent-purple-icon)" fontWeight="600">L:</Text>
 															<ScopePills value={token.mcp_labelled} />
 														</HStack>
 													)}
 													{(token.mcp_inline === true || (Array.isArray(token.mcp_inline) && token.mcp_inline.length > 0)) && (
 														<HStack gap="1">
-															<Text fontSize="9px" color="rgba(168,85,247,0.5)" fontWeight="600">I:</Text>
+															<Text fontSize="9px" color="var(--wc-accent-purple-icon)" fontWeight="600">I:</Text>
 															<ScopePills value={token.mcp_inline} />
 														</HStack>
 													)}
 												</VStack>
 											)}
 										</Box>
-										<Text flex="0.6" fontSize="11px" color="rgba(255,255,255,0.3)">
+										<Text flex="0.6" fontSize="11px" color="var(--wc-text-faint)">
 											{formatDate(token.createdAt)}
 										</Text>
 										<HStack gap="0.5" w="60px" justify="flex-end">
@@ -321,8 +321,8 @@ export function AccessTokensSection() {
 												aria-label="Edit token"
 												size="xs"
 												variant="ghost"
-												color="rgba(255,255,255,0.3)"
-												_hover={{ bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.7)' }}
+												color="var(--wc-text-faint)"
+												_hover={{ bg: 'var(--wc-bg-hover)', color: 'var(--wc-text-secondary)' }}
 												onClick={() => handleEdit(token)}
 											>
 												<Pencil size={13} />
@@ -331,8 +331,8 @@ export function AccessTokensSection() {
 												aria-label="Delete token"
 												size="xs"
 												variant="ghost"
-												color="rgba(255,255,255,0.3)"
-												_hover={{ bg: 'rgba(239, 68, 68, 0.1)', color: '#f87171' }}
+												color="var(--wc-text-faint)"
+												_hover={{ bg: 'var(--wc-accent-red-alt-bg)', color: 'var(--wc-accent-red)' }}
 												onClick={() => setDeleteTarget(token)}
 											>
 												<Trash2 size={13} />
