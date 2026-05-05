@@ -64,7 +64,7 @@ export function RecipeEditorDialog({ editData, onClose }: IRecipeEditorDialogPro
 
 	return (
 <Box position="fixed" inset="6px" bg="var(--wc-overlay-modal)" zIndex="modal" display="flex" alignItems="center" justifyContent="center" borderRadius="12px" overflow="hidden" onClick={onClose}>
-		<Box w="1100px" maxW="95vw" h="80vh" bg="var(--wc-bg-page)" borderRadius="xl" borderWidth="1px" borderColor="var(--wc-border-default)" shadow="0 20px 80px rgba(0, 0, 0, 0.6)" display="flex" flexDirection="column" overflow="hidden" onClick={(e) => e.stopPropagation()}>
+		<Box w="1100px" maxW="95vw" h="80vh" bg="var(--wc-bg-dialog)" borderRadius="xl" borderWidth="1px" borderColor="var(--wc-border-default)" shadow="0 20px 80px rgba(0, 0, 0, 0.6)" display="flex" flexDirection="column" overflow="hidden" onClick={(e) => e.stopPropagation()}>
 				{/* Header */}
 				<Flex px="5" py="3" justify="space-between" align="center" borderBottomWidth="1px" borderColor="var(--wc-border-subtle)" flexShrink={0}>
 					<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)">{editData ? 'Edit Recipe' : 'New Recipe'}</Text>
@@ -122,7 +122,7 @@ export function RecipeEditorDialog({ editData, onClose }: IRecipeEditorDialogPro
 							flex="1"
 							value={source}
 							onChange={(e) => setSource(e.target.value)}
-							bg="var(--wc-bg-page)"
+							bg="var(--wc-bg-dialog)"
 							border="none"
 							borderRadius="0"
 							color="var(--wc-text-heading)"
@@ -138,7 +138,7 @@ export function RecipeEditorDialog({ editData, onClose }: IRecipeEditorDialogPro
 					</Box>
 
 					<Box w="380px" display="flex" flexDirection="column" overflow="hidden">
-						<Flex px="4" py="2" align="center" justify="space-between" borderBottomWidth="1px" borderColor="var(--wc-border-subtle)" bg="var(--wc-bg-subtle)">
+			<Flex px="4" py="2" align="center" justify="space-between" borderBottomWidth="1px" borderColor="var(--wc-border-subtle)" bg="var(--wc-bg-surface)">
 							<Text fontSize="11px" fontWeight="600" color="var(--wc-text-tertiary)" textTransform="uppercase" letterSpacing="0.05em">Preview</Text>
 						</Flex>
 						<Box flex="1" overflowY="auto" px="4" py="3">

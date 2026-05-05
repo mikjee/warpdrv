@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import {
 	Box, Text, HStack, VStack, Flex, Badge, Input, IconButton,
 	DialogRoot, DialogContent, DialogHeader, DialogBody, DialogFooter,
-	DialogTitle, DialogCloseTrigger,
+	DialogTitle, DialogCloseTrigger, Portal, DialogBackdrop, DialogPositioner,
 	Button,
 } from '@chakra-ui/react';
 import { X, Copy, Check, Shield, Cpu, Wrench, AlertTriangle } from 'lucide-react';
@@ -444,13 +444,17 @@ export function TokenDialog({ open, onClose, editingToken }: ITokenDialogProps) 
 			onOpenChange={(details) => { if (!details.open) onClose(); }}
 			size="md"
 		>
-			<DialogContent
-				bg="var(--wc-bg-dialog)"
-				borderWidth="1px"
-				borderColor="var(--wc-border-subtle)"
-				borderRadius="xl"
-				boxShadow="0 25px 50px rgba(0,0,0,0.5)"
-			>
+			<Portal>
+				<Box position="fixed" inset="6px" borderRadius="12px" overflow="hidden" zIndex="modal">
+					<DialogBackdrop position="absolute" />
+					<DialogPositioner position="absolute">
+						<DialogContent
+							bg="var(--wc-bg-dialog)"
+							borderWidth="1px"
+							borderColor="var(--wc-border-subtle)"
+							borderRadius="xl"
+							boxShadow="0 25px 50px rgba(0,0,0,0.5)"
+						>
 				<DialogHeader pb="2">
 					<DialogTitle fontSize="15px" fontWeight="600" color="var(--wc-text-heading)">
 						{createdRawToken ? 'Token Created' : (isEditing ? 'Edit Token' : 'Create Access Token')}
@@ -611,7 +615,10 @@ color="var(--wc-accent-blue-hover)"
 						</HStack>
 					)}
 				</DialogFooter>
-			</DialogContent>
+						</DialogContent>
+					</DialogPositioner>
+				</Box>
+			</Portal>
 		</DialogRoot>
 	);
 }

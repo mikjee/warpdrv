@@ -333,7 +333,7 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 
 				// Same partId - check time delta
 				const timeDelta = now - buffer.lastUpdate.getTime();
-				if (timeDelta <= 300) {
+				if (timeDelta <= 100) {
 					// Within 100ms - append to buffer
 					buffer.chunk += deltaText;
 				} else {

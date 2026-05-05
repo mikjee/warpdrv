@@ -26,7 +26,7 @@ export const TileContainer = React.memo(({
 				bg="var(--wc-bg-surface)"
 				borderRadius="xl"
 				borderWidth="1px"
-				borderColor={statusDot === 'error' ? 'var(--wc-accent-red-alt-bg)' : 'var(--wc-border-subtle)'}
+				borderColor={statusDot === 'error' ? 'var(--wc-accent-red-hover)' : 'var(--wc-border-subtle)'}
 				p="6"
 				display="flex"
 				flexDir="column"

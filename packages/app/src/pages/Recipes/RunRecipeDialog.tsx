@@ -88,7 +88,7 @@ export function RunRecipeDialog({ recipe, onClose }: IRunRecipeDialogProps) {
 
 	return (
 <Box position="fixed" inset="6px" bg="var(--wc-overlay-modal)" zIndex="modal" display="flex" alignItems="center" justifyContent="center" borderRadius="12px" overflow="hidden" onClick={onClose}>
-		<Box w="900px" maxW="95vw" h="80vh" bg="var(--wc-bg-page)" borderRadius="xl" borderWidth="1px" borderColor="var(--wc-border-default)" shadow="0 20px 80px rgba(0, 0, 0, 0.6)" display="flex" flexDirection="column" overflow="hidden" onClick={(e) => e.stopPropagation()}>
+		<Box w="900px" maxW="95vw" h="80vh" bg="var(--wc-bg-dialog)" borderRadius="xl" borderWidth="1px" borderColor="var(--wc-border-default)" shadow="0 20px 80px rgba(0, 0, 0, 0.6)" display="flex" flexDirection="column" overflow="hidden" onClick={(e) => e.stopPropagation()}>
 				{/* Header */}
 				<Flex px="5" py="3" justify="space-between" align="center" borderBottomWidth="1px" borderColor="var(--wc-border-subtle)" flexShrink={0}>
 					<HStack gap="3">
