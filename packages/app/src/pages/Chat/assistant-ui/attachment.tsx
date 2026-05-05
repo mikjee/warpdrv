@@ -217,7 +217,7 @@ export const ComposerAddAttachment: FC<{ disabled?: boolean; tooltip?: string }>
         className="aui-composer-add-attachment size-9 p-1 font-semibold text-xs hover:bg-muted-foreground/15 dark:border-muted-foreground/15 dark:hover:bg-muted-foreground/30"
         aria-label="Add Attachment"
       >
-        <ImAttachment className="aui-attachment-add-icon size-4" color="grey" />
+        <ImAttachment className="aui-attachment-add-icon size-4" color="var(--wc-text-muted)" />
       </TooltipIconButton>
     </ComposerPrimitive.AddAttachment>
   );

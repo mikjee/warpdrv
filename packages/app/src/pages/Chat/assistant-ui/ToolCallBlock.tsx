@@ -31,11 +31,11 @@ interface IToolCallBlockProps {
 }
 
 const statusColors: Record<EToolCallStatus, string> = {
-	[EToolCallStatus.PENDING]: '#f59e0b',
-	[EToolCallStatus.DENIED]: '#ef4444',
-	[EToolCallStatus.EXECUTING]: '#3b82f6',
-	[EToolCallStatus.COMPLETED]: '#22c55e',
-	[EToolCallStatus.ERROR]: '#ef4444',
+	[EToolCallStatus.PENDING]: 'var(--wc-accent-yellow-strong)',
+	[EToolCallStatus.DENIED]: 'var(--wc-accent-red)',
+	[EToolCallStatus.EXECUTING]: 'var(--wc-accent-blue)',
+	[EToolCallStatus.COMPLETED]: 'var(--wc-accent-green-icon)',
+	[EToolCallStatus.ERROR]: 'var(--wc-accent-red)',
 };
 
 const statusLabels: Record<EToolCallStatus, string> = {
@@ -85,18 +85,18 @@ export function ToolCallBlock({
 		<Box
 			my="2"
 			borderWidth="1px"
-			borderColor="rgba(255,255,255,0.08)"
+			borderColor="var(--wc-border-default)"
 			borderRadius="md"
-			bg="rgba(255,255,255,0.02)"
+			bg="var(--wc-bg-surface)"
 			overflow="hidden"
 		>
 			{/* Header */}
-			<HStack gap="2" px="3" py="2" bg="rgba(255,255,255,0.02)">
-				<Wrench size={13} color="rgba(255,255,255,0.5)" />
-				<Text fontSize="12px" fontWeight="500" color="rgba(255,255,255,0.8)">
+			<HStack gap="2" px="3" py="2" bg="var(--wc-bg-surface)">
+				<Wrench size={13} color="var(--wc-text-secondary)" />
+				<Text fontSize="12px" fontWeight="500" color="var(--wc-text-primary)">
 					{toolName}
 				</Text>
-				<Text fontSize="11px" color="rgba(255,255,255,0.3)">
+				<Text fontSize="11px" color="var(--wc-text-faint)">
 					{serverName}
 				</Text>
 				<Box flex="1" />
@@ -148,18 +148,18 @@ export function ToolCallBlock({
 					py="1"
 				>
 					{argsExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-					<Text fontSize="11px" color="rgba(255,255,255,0.4)">Arguments</Text>
+					<Text fontSize="11px" color="var(--wc-text-muted)">Arguments</Text>
 				</HStack>
 				{argsExpanded && (
 					<Box
-						bg="rgba(0,0,0,0.3)"
+						bg="var(--wc-overlay-dim)"
 						borderRadius="sm"
 						p="2"
 						mb="1"
 						overflow="auto"
 						maxH="200px"
 					>
-						<Text fontSize="11px" fontFamily="mono" color="rgba(255,255,255,0.6)" whiteSpace="pre-wrap">
+						<Text fontSize="11px" fontFamily="mono" color="var(--wc-text-secondary)" whiteSpace="pre-wrap">
 							{formatJson(args)}
 						</Text>
 					</Box>
@@ -176,7 +176,7 @@ export function ToolCallBlock({
 						py="1"
 					>
 						{resultExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-						<Text fontSize="11px" color="rgba(255,255,255,0.4)">Result</Text>
+						<Text fontSize="11px" color="var(--wc-text-muted)">Result</Text>
 					</HStack>
 					{resultExpanded && (
 						<Box
@@ -187,7 +187,7 @@ export function ToolCallBlock({
 							overflow="auto"
 							maxH="300px"
 						>
-							<Text fontSize="11px" fontFamily="mono" color="rgba(255,255,255,0.6)" whiteSpace="pre-wrap">
+							<Text fontSize="11px" fontFamily="mono" color="var(--wc-text-secondary)" whiteSpace="pre-wrap">
 								{formatJson(result)}
 							</Text>
 						</Box>
@@ -197,16 +197,16 @@ export function ToolCallBlock({
 
 			{/* Approve / Deny buttons */}
 			{isPending && !deciding && (
-				<HStack gap="2" px="3" py="2" justify="flex-end" borderTopWidth="1px" borderColor="rgba(255,255,255,0.05)">
+				<HStack gap="2" px="3" py="2" justify="flex-end" borderTopWidth="1px" borderColor="var(--wc-border-subtle)">
 					<Box
 						as="button"
 						px="3"
 						py="1"
 						fontSize="12px"
 						borderRadius="sm"
-						bg="rgba(239,68,68,0.15)"
-						color="rgba(239,68,68,0.9)"
-						_hover={{ bg: 'rgba(239,68,68,0.25)' }}
+						bg="var(--wc-accent-red-bg-12)"
+						color="var(--wc-accent-red-alt)"
+						_hover={{ bg: 'var(--wc-accent-red-hover)' }}
 						onClick={() => handleDecision('deny')}
 					>
 						<HStack gap="1">
@@ -220,9 +220,9 @@ export function ToolCallBlock({
 						py="1"
 						fontSize="12px"
 						borderRadius="sm"
-						bg="rgba(34,197,94,0.15)"
-						color="rgba(34,197,94,0.9)"
-						_hover={{ bg: 'rgba(34,197,94,0.25)' }}
+						bg="var(--wc-accent-green-bg-15)"
+						color="var(--wc-accent-green)"
+						_hover={{ bg: 'var(--wc-accent-green-hover)' }}
 						onClick={() => handleDecision('approve')}
 					>
 						<HStack gap="1">
@@ -235,8 +235,8 @@ export function ToolCallBlock({
 
 			{deciding && (
 				<HStack gap="2" px="3" py="2" justify="center">
-					<Loader size={12} className="animate-spin" color="rgba(255,255,255,0.4)" />
-					<Text fontSize="11px" color="rgba(255,255,255,0.4)">Processing...</Text>
+<Loader size={12} className="animate-spin" color="var(--wc-text-muted)" />
+				<Text fontSize="11px" color="var(--wc-text-muted)">Processing...</Text>
 				</HStack>
 			)}
 		</Box>

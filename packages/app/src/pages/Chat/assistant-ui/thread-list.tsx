@@ -147,9 +147,9 @@ function RenamePopover({ value, onSave, onCancel }: { value: string; onSave: (v:
 				value={text}
 				onChange={(e) => setText(e.target.value)}
 				onKeyDown={(e) => { if (e.key === 'Enter') onSave(text); if (e.key === 'Escape') onCancel(); }}
-				bg="rgba(255,255,255,0.06)"
-				borderColor="rgba(255,255,255,0.12)"
-				color="rgba(255,255,255,0.8)"
+				bg="var(--wc-bg-card)"
+				borderColor="var(--wc-border-hover)"
+				color="var(--wc-text-primary)"
 				fontSize="12px"
 				h="26px"
 				px="2"
@@ -176,22 +176,22 @@ function ConfirmDialog({ message, onConfirm, onCancel }: { message: string; onCo
 			onClick={onCancel}
 		>
 			<Box
-				bg="#1e1e1e" borderWidth="1px" borderColor="rgba(255,255,255,0.1)"
+				bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-overlay)"
 				borderRadius="lg" p="5" maxW="360px" w="90%"
 				onClick={(e) => e.stopPropagation()}
 			>
-				<Text fontSize="13px" color="rgba(255,255,255,0.8)" mb="4">{message}</Text>
+				<Text fontSize="13px" color="var(--wc-text-primary)" mb="4">{message}</Text>
 				<HStack justify="flex-end" gap="2">
 					<Box
 						as="button" px="3" py="1.5" borderRadius="md" fontSize="12px"
-						bg="rgba(255,255,255,0.06)" color="rgba(255,255,255,0.6)"
-						_hover={{ bg: 'rgba(255,255,255,0.1)' }}
+						bg="var(--wc-bg-card)" color="var(--wc-text-secondary)"
+						_hover={{ bg: 'var(--wc-bg-active)' }}
 						onClick={onCancel}
 					>Cancel</Box>
 					<Box
 						as="button" px="3" py="1.5" borderRadius="md" fontSize="12px"
-						bg="rgba(220,50,50,0.8)" color="white"
-						_hover={{ bg: 'rgba(220,50,50,1)' }}
+						bg="var(--wc-accent-red-alt)" color="var(--wc-special-white)"
+						_hover={{ bg: 'var(--wc-accent-red)' }}
 						onClick={onConfirm}
 					>Delete</Box>
 				</HStack>
@@ -249,7 +249,7 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect, onDelet
 			borderRadius="lg"
 			px="3"
 			py="0"
-			_hover={{ bg: 'rgba(255,255,255,0.06)' }}
+			_hover={{ bg: 'var(--wc-bg-hover)' }}
 		>
 			{renaming ? (
 				<Box flex="1" px="2" py="1">
@@ -263,10 +263,10 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect, onDelet
 				<>
 					<Box flex="1" display="flex" flexDirection="column" overflow="hidden">
 						<HStack>
-							<Text fontSize="13px" color="rgba(255,255,255,0.75)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+							<Text fontSize="13px" color="var(--wc-text-primary)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
 								{thread.title ?? 'New Chat'}
 							</Text>
-							<Text fontSize="12px" color="rgba(255,255,255,0.35)">
+							<Text fontSize="12px" color="var(--wc-text-faint)">
 								{(() => { const total = (thread.totalPromptTokens ?? 0) + (thread.totalCompletionTokens ?? 0); return total > 0 ? `${(total / 1000).toFixed(1)}k` : (thread.messageCount ?? 0) > 0 ? `${thread.messageCount ?? 0} msg` : 'empty'; })()}
 							</Text>
 							{/* <Text fontSize="12px" color="rgba(255,255,255,0.35)">
@@ -282,7 +282,7 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect, onDelet
 						borderRadius="sm"
 						opacity={0}
 						className="group-hover:!opacity-50"
-						_hover={{ bg: 'rgba(255,255,255,0.06)' }}
+_hover={{ bg: 'var(--wc-bg-hover)' }}
 						onClick={(e) => {
 							e.stopPropagation();
 							setMenuOpen(!menuOpen);
@@ -293,21 +293,21 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect, onDelet
 					{menuOpen && (
 						<Box
 							position="absolute" right="0" top="100%" zIndex={50}
-							bg="#1a1a1a" borderWidth="1px" borderColor="rgba(255,255,255,0.1)"
+bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-overlay)"
 							borderRadius="md" py="1" minW="120px"
 							onClick={(e) => e.stopPropagation()}
 						>
 							<HStack
-								px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="rgba(255,255,255,0.7)"
-								_hover={{ bg: 'rgba(255,255,255,0.05)' }}
+								px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="var(--wc-text-primary)"
+								_hover={{ bg: 'var(--wc-bg-hover)' }}
 								onClick={() => { setRenaming(true); setMenuOpen(false); }}
 							>
 								<PencilIcon size={12} />
 								<Text>Rename</Text>
 							</HStack>
 							<HStack
-								px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="rgba(220,80,80,0.8)"
-								_hover={{ bg: 'rgba(220,80,80,0.08)' }}
+								px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="var(--wc-accent-red-hover)"
+								_hover={{ bg: 'var(--wc-accent-red-bg-8)' }}
 								onClick={() => { onDelete(thread.id); setMenuOpen(false); }}
 							>
 								<TrashIcon size={12} />
@@ -382,16 +382,16 @@ function FolderSection({
 				onDragOver={handleDragOver}
 				onDragLeave={handleDragLeave}
 				onDrop={handleDrop}
-				bg={dragOver ? 'rgba(100,150,255,0.08)' : 'rgb(20,20,20)'}
+				bg={dragOver ? 'var(--wc-accent-blue-bg-10)' : 'var(--wc-bg-subtle)'}
 				my="1"
 				borderRadius="lg"
 				transition="background 0.15s"
-				border="1px solid rgb(50,50,50)"
+				border="1px solid var(--wc-border-default)"
 			>
 				<HStack
 					gap="1" px="2" py="1.5" cursor="grab"
 					borderRadius="md"
-					_hover={{ bg: 'rgba(255,255,255,0.04)' }}
+					_hover={{ bg: 'var(--wc-bg-card)' }}
 					onClick={() => setOpen(!open)}
 					position="relative"
 					draggable
@@ -415,17 +415,17 @@ function FolderSection({
 						onCancel={() => setRenaming(false)}
 					/>
 				) : (
-					<Text flex="1" fontSize="13px" fontWeight="500" color="rgba(255,255,255,0.5)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" ml="1">
+					<Text flex="1" fontSize="13px" fontWeight="500" color="var(--wc-text-secondary)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" ml="1">
 						{folder.name}
 					</Text>
 				)}
-				<Text fontSize="12px" color="rgba(255,255,255,0.35)" flexShrink={0}>{threads.length}</Text>
+				<Text fontSize="12px" color="var(--wc-text-faint)" flexShrink={0}>{threads.length}</Text>
 				<Box
 					onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
 					opacity={0.4}
 					cursor="pointer" p="0.5"
 					className="group-hover:!opacity-100"
-					_hover={{ opacity: 1, bg: 'rgba(255,255,255,0.06)' }}
+					_hover={{ opacity: 1, bg: 'var(--wc-bg-hover)' }}
 					borderRadius="sm"
 				>
 					<MoreHorizontalIcon size={12} />
@@ -433,21 +433,21 @@ function FolderSection({
 				{menuOpen && (
 					<Box
 						position="absolute" right="0" top="100%" zIndex={50}
-						bg="#1a1a1a" borderWidth="1px" borderColor="rgba(255,255,255,0.1)"
+						bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-overlay)"
 						borderRadius="md" py="1" minW="120px"
 						onClick={(e) => e.stopPropagation()}
 					>
 						<HStack
-							px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="rgba(255,255,255,0.7)"
-							_hover={{ bg: 'rgba(255,255,255,0.05)' }}
+							px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="var(--wc-text-primary)"
+							_hover={{ bg: 'var(--wc-bg-hover)' }}
 							onClick={() => { setRenaming(true); setMenuOpen(false); }}
 						>
 							<PencilIcon size={12} />
 							<Text>Rename</Text>
 						</HStack>
 						<HStack
-							px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="rgba(220,80,80,0.8)"
-							_hover={{ bg: 'rgba(220,80,80,0.08)' }}
+							px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="var(--wc-accent-red-hover)"
+							_hover={{ bg: 'var(--wc-accent-red-bg-8)' }}
 							onClick={() => { onDelete(folder.id); setMenuOpen(false); }}
 						>
 							<TrashIcon size={12} />
@@ -460,7 +460,7 @@ function FolderSection({
 				<Box pl="4" my="1">
 					{children}
 					{threads.length === 0 && (
-						<Text fontSize="11px" color="rgba(255,255,255,0.15)" px="2" py="1">Drop threads here</Text>
+						<Text fontSize="11px" color="var(--wc-text-disabled)" px="2" py="1">Drop threads here</Text>
 					)}
 				</Box>
 			)}
@@ -620,8 +620,8 @@ export const ThreadList: FC = React.memo(() => {
 				<HStack
 					gap="1" px="2" py="1"
 					borderRadius="md" borderWidth="1px"
-					borderColor="rgba(255,255,255,0.06)"
-					bg="rgba(255,255,255,0.03)"
+					borderColor="var(--wc-border-subtle)"
+					bg="var(--wc-bg-card)"
 				>
 					<SearchIcon size={13} style={{ opacity: 0.3, flexShrink: 0 }} />
 					<Input
@@ -630,7 +630,7 @@ export const ThreadList: FC = React.memo(() => {
 						value={search}
 						onChange={(e) => setSearch(e.target.value)}
 						size="2xs"
-						color="rgba(255,255,255,0.7)"
+color="var(--wc-text-primary)"
 					/>
 					{search && (
 						<Box cursor="pointer" onClick={() => setSearch('')} opacity={0.3} _hover={{ opacity: 0.6 }}>
@@ -644,8 +644,8 @@ export const ThreadList: FC = React.memo(() => {
 				<HStack gap="1">
 					<Box
 						as="button" px="2.5" py="1" borderRadius="md" fontSize="12px"
-						color="rgba(255,255,255,0.4)" bg="rgba(255,255,255,0.035)"
-						_hover={{ bg: 'rgba(255,255,255,0.06)' }}
+						color="var(--wc-text-muted)" bg="var(--wc-bg-subtle)"
+						_hover={{ bg: 'var(--wc-bg-hover)' }}
 						onClick={cycleSortField}
 						title="Click to change sort field"
 					>
@@ -653,8 +653,8 @@ export const ThreadList: FC = React.memo(() => {
 					</Box>
 					<Box
 						as="button" p="1" borderRadius="md"
-						color="rgba(255,255,255,0.3)"
-						_hover={{ color: 'rgba(255,255,255,0.6)' }}
+						color="var(--wc-text-faint)"
+						_hover={{ color: 'var(--wc-text-tertiary)' }}
 						onClick={() => setSortDir(sortDir === 'desc' ? 'asc' : 'desc')}
 						title={sortDir === 'desc' ? 'Newest first' : 'Oldest first'}
 					>
@@ -664,8 +664,8 @@ export const ThreadList: FC = React.memo(() => {
 				<HStack gap="1">
 					<Box
 						as="button" p="1" borderRadius="md"
-						color="rgba(255,255,255,0.3)"
-						_hover={{ color: 'rgba(255,255,255,0.8)' }}
+						color="var(--wc-text-faint)"
+						_hover={{ color: 'var(--wc-text-secondary)' }}
 						onClick={handleCreateFolder}
 						title="New folder"
 						mt="1"
@@ -676,7 +676,7 @@ export const ThreadList: FC = React.memo(() => {
 			</HStack>
 
 			{/* Scrollable thread list */}
-			<Box flex="1" overflowY="auto" css={{ '&::-webkit-scrollbar': { width: '4px' }, '&::-webkit-scrollbar-thumb': { background: 'rgba(255,255,255,0.1)', borderRadius: '2px' } }} borderTop="1px solid rgb(25,25,25)" pt="2" >
+			<Box flex="1" overflowY="auto" css={{ '&::-webkit-scrollbar': { width: '4px' }, '&::-webkit-scrollbar-thumb': { background: 'var(--wc-text-disabled)', borderRadius: '2px' } }} borderTop="1px solid rgb(25,25,25)" pt="2" >
 				<VStack align="start" gap="0" w="full">
 				{threadsAPI.folders.map((f) => (
 					<FolderSection
@@ -709,7 +709,7 @@ export const ThreadList: FC = React.memo(() => {
 					onDragOver={handleRootDragOver as any}
 					onDragLeave={handleRootDragLeave}
 					onDrop={handleRootDrop as any}
-					bg={rootDragOver ? 'rgba(100,150,255,0.05)' : 'transparent'}
+					bg={rootDragOver ? 'var(--wc-bg-hover)' : 'transparent'}
 					borderRadius="md"
 					transition="background 0.15s"
 					w="full"
@@ -733,13 +733,13 @@ export const ThreadList: FC = React.memo(() => {
 			</Box>
 
 			{/* Fixed footer */}
-			{/* <Box flexShrink={0} mt="2" pt="2" borderTopWidth="1px" borderColor="rgba(255,255,255,0.04)">
+			{/* <Box flexShrink={0} mt="2" pt="2" borderTopWidth="1px" borderColor="var(--wc-bg-card)">
 				<ThreadListPrimitive.New asChild>
 					<Box
 						as="button"
 						w="100%" px="3" py="2"
 						borderRadius="md" borderWidth="1px"
-						borderColor="rgba(255,255,255,0.06)"
+						borderColor="var(--wc-bg-hover)"
 						bg="rgba(255,255,255,0.02)"
 						_hover={{ bg: 'rgba(255,255,255,0.05)' }}
 						display="flex" alignItems="center" gap="2"

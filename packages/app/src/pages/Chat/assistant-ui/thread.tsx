@@ -119,7 +119,7 @@ export const Thread: FC<{
 				)}
 
 				{!isLoading && (
-					<div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,#131313_35%,#131313_100%)]">
+					<div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,var(--wc-bg-page)_35%,var(--wc-bg-page)_100%)]">
 						<ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer w-full max-w-(--thread-max-width) flex flex-col gap-4 overflow-visible">
 							<ThreadScrollToBottom />
 							<Composer />
@@ -220,7 +220,7 @@ const ContextUsageBar: FC = () => {
 	const total = branchTokensCount + inputTokens;
 	const ctxLabel = contextSize > 0 ? (contextSize > 1000 ? `${(contextSize / 1000).toFixed(0)}k` : String(contextSize)) : '?';
 	const pct = contextSize > 0 ? Math.min((total / contextSize) * 100, 100) : 0;
-	const color = pct > 90 ? '#ef4444' : pct > 70 ? '#f59e0b' : 'rgba(255,255,255,0.15)';
+	const color = pct > 90 ? 'var(--wc-accent-red)' : pct > 70 ? 'var(--wc-accent-yellow-strong)' : 'var(--wc-text-disabled)';
 
 	return (
 		<div className="flex items-center gap-2 px-1 pt-1" title={`Context: ${total.toLocaleString()} / ${contextSize > 0 ? contextSize.toLocaleString() : '?'} tokens`}>
@@ -251,7 +251,7 @@ const Composer: FC = () => {
 					data-slot="composer-shell"
 					className="flex w-full flex-col gap-2 rounded-xl border p-(--composer-padding) transition-shadow focus-within:border-ring/75 focus-within:ring-2 focus-within:ring-ring/20 data-[dragging=true]:border-ring data-[dragging=true]:border-dashed data-[dragging=true]:bg-accent/50"
 					style={{
-						background: "#181818",
+						background: "var(--wc-bg-elevated)",
 						boxShadow: "0px 10px 10px 10px rgba(0,0,0,0.15)",
 					}}
 				>
@@ -284,11 +284,11 @@ const ReasoningEffortToggle: FC = () => {
 	const label = isOn ? reasoningEffort : 'off';
 	const color = isOn
 		? reasoningEffort === EReasoningEffort.LOW
-			? '#1bd987'
+			? 'var(--wc-accent-green)'
 			: reasoningEffort === EReasoningEffort.MEDIUM
-				? '#da980a'
-				: '#f83737'
-		: 'grey';
+				? 'var(--wc-accent-yellow-strong)'
+				: 'var(--wc-accent-red)'
+		: 'var(--wc-text-muted)';
 	return (
 		<IconButton
 			variant="outline"
@@ -297,8 +297,8 @@ const ReasoningEffortToggle: FC = () => {
 			ml="1"
 			borderRadius={"lg"}
 			borderWidth="1px"
-			borderColor={isOn ? color : "rgba(255,255,255,0.08)"}
-			_hover={{ bg: 'rgba(255,255,255,0.05)' }}
+			borderColor={isOn ? color : "var(--wc-border-default)"}
+			_hover={{ bg: 'var(--wc-bg-hover)' }}
 			color={color}
 			onClick={next}
 			className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors hover:bg-accent`}
@@ -318,7 +318,7 @@ const ToolsToggle: FC = React.memo(() => {
 		setAttachedTools(next, []);
 	};
 	const label = attachAllTools ? 'Tools' : 'Off';
-	const color = attachAllTools ? '#4aa1ff' : 'grey';
+	const color = attachAllTools ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)';
 	return (
 		<IconButton
 			variant="outline"
@@ -327,8 +327,8 @@ const ToolsToggle: FC = React.memo(() => {
 			ml="1"
 			borderRadius={"lg"}
 			borderWidth="1px"
-			borderColor={attachAllTools ? color : "rgba(255,255,255,0.08)"}
-			_hover={{ bg: 'rgba(255,255,255,0.05)' }}
+			borderColor={attachAllTools ? color : "var(--wc-border-default)"}
+			_hover={{ bg: 'var(--wc-bg-hover)' }}
 			color={color}
 			onClick={toggle}
 			className="flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors hover:bg-accent"
@@ -353,7 +353,7 @@ const ToolsSelector: FC = React.memo(() => {
 
 	const totalCount = useMemo(() => connectedServers.reduce((sum, [, s]) => sum + s.tools.length, 0), [connectedServers]);
 
-	const color = (attachAllTools || attachedTools.length > 0) ? '#4aa1ff' : 'grey';
+	const color = (attachAllTools || attachedTools.length > 0) ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)';
 	const label = attachAllTools ? 'All Tools' : attachedTools.length > 0 ? `${String(attachedTools.length)} Tool(s)` : 'Off';
 
 	const handleAllToolsChange = useCallback((checked: boolean) => {
@@ -389,8 +389,8 @@ const ToolsSelector: FC = React.memo(() => {
 					ml="1"
 					borderRadius={"lg"}
 					borderWidth="1px"
-					borderColor={(attachAllTools || attachedTools.length > 0) ? color : "rgba(255,255,255,0.08)"}
-					_hover={{ bg: 'rgba(255,255,255,0.05)' }}
+					borderColor={(attachAllTools || attachedTools.length > 0) ? color : "var(--wc-border-default)"}
+					_hover={{ bg: 'var(--wc-bg-hover)' }}
 					color={color}
 					className="flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors hover:bg-accent"
 					title={`Tools: ${label}`}
@@ -404,15 +404,15 @@ const ToolsSelector: FC = React.memo(() => {
 					w="280px"
 					maxH="70vh"
 					overflow="auto"
-					bg="#18181b"
+					bg="var(--wc-bg-elevated)"
 					borderWidth="1px"
-					borderColor="rgba(255,255,255,0.1)"
+					borderColor="var(--wc-border-overlay)"
 					borderRadius="lg"
 					shadow="0 8px 32px rgba(0, 0, 0, 0.5)"
 				>
 					<Popover.Body p="3">
 						{totalCount === 0 ? (
-							<Text fontSize="12px" color="rgba(255,255,255,0.3)" textAlign="center" py="4">No tools available</Text>
+							<Text fontSize="12px" color="var(--wc-text-faint)" textAlign="center" py="4">No tools available</Text>
 						) : (
 							<VStack gap="3" align="stretch">
 								<HStack gap="2">
@@ -422,10 +422,10 @@ const ToolsSelector: FC = React.memo(() => {
 										onCheckedChange={(details) => handleAllToolsChange(details.checked)}
 									>
 										<Switch.HiddenInput />
-										<Switch.Control css={{ bg: attachAllTools ? '#4aa1ff' : 'rgba(255,255,255,0.1)' }}>
-											<Switch.Thumb css={{ bg: '#18181b' }} />
+										<Switch.Control css={{ bg: attachAllTools ? 'var(--wc-accent-blue)' : 'var(--wc-text-disabled)' }}>
+											<Switch.Thumb css={{ bg: 'var(--wc-bg-elevated)' }} />
 										</Switch.Control>
-										<Switch.Label ml="2" fontSize="12px" color={attachAllTools ? '#4aa1ff' : 'rgba(255,255,255,0.5)'} userSelect="none">
+										<Switch.Label ml="2" fontSize="12px" color={attachAllTools ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)'} userSelect="none">
 											All tools
 										</Switch.Label>
 									</Switch.Root>
@@ -437,7 +437,7 @@ const ToolsSelector: FC = React.memo(() => {
 												style={{
 													padding: '8px',
 													borderRadius: '6px',
-													background: 'rgba(255,255,255,0.03)',
+													background: 'var(--wc-bg-card)',
 													border: 'none',
 													cursor: 'pointer',
 													display: 'flex',
@@ -446,10 +446,10 @@ const ToolsSelector: FC = React.memo(() => {
 													width: '100%',
 												}}
 											>
-												<Text fontSize="11px" fontWeight="600" color="rgba(255,255,255,0.5)" textTransform="uppercase" letterSpacing="0.05em">
+												<Text fontSize="11px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em">
 													{serverName}
 												</Text>
-												<Text fontSize="10px" color="rgba(255,255,255,0.3)">{state.tools.length}</Text>
+												<Text fontSize="10px" color="var(--wc-text-faint)">{state.tools.length}</Text>
 											</AccordionItemTrigger>
 											<AccordionItemContent pt="1" pb="2" px="2">
 												<VStack gap="1.5" align="stretch">
@@ -466,10 +466,10 @@ const ToolsSelector: FC = React.memo(() => {
 																	}}
 																>
 																	<Switch.HiddenInput />
-																	<Switch.Control css={{ bg: isSelected && !attachAllTools ? '#4aa1ff' : 'rgba(255,255,255,0.1)' }}>
-																		<Switch.Thumb css={{ bg: '#18181b'}} />
-																	</Switch.Control>
-																	<Switch.Label ml="0" fontSize="12px" color={isSelected ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.4)'} userSelect="none">
+																	<Switch.Control css={{ bg: isSelected && !attachAllTools ? 'var(--wc-accent-blue)' : 'var(--wc-text-disabled)' }}>
+<Switch.Thumb css={{ bg: 'var(--wc-bg-elevated)'}} />
+								</Switch.Control>
+								<Switch.Label ml="0" fontSize="12px" color={isSelected ? 'var(--wc-text-primary)' : 'var(--wc-text-muted)'} userSelect="none">
 																		{tool.name}
 																	</Switch.Label>
 																</Switch.Root>
@@ -565,14 +565,14 @@ const StatsTooltip: FC = () => {
 		<Tooltip>
 			<TooltipTrigger asChild>
 				<div className="cursor-help p-1 rounded hover:bg-muted/50 transition-colors" style={{margin: "0 8px 0 0"}}>
-					<Timer size={16} style={{ color: "grey" }}  />
+					<Timer size={16} style={{ color: "var(--wc-text-muted)" }}  />
 				</div>
 			</TooltipTrigger>
 			<TooltipContent align="start" sideOffset={4} side={"bottom"}>
-				<div className="text-sm" style={{ color: 'white', boxShadow: "0 0 10px black"}}>
+				<div className="text-sm" style={{ color: 'var(--wc-special-white)', boxShadow: "0 0 10px black"}}>
 					{stats.map((s, i) => (
 						<span key={s.label}>
-							<span style={{ color: "grey" }}>{s.label}</span>&nbsp;{s.value}&nbsp;&nbsp;
+							<span style={{ color: "var(--wc-text-muted)" }}>{s.label}</span>&nbsp;{s.value}&nbsp;&nbsp;
 						</span>
 					))}
 				</div>
@@ -690,8 +690,8 @@ const ActionBarIcon: FC<{ children: React.ReactNode; onClick?: () => void }> = (
 		justifyContent="center"
 		cursor="pointer"
 		rounded="md"
-		color="rgba(255,255,255,0.5)"
-		_hover={{ bg: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.9)' }}
+		color="var(--wc-text-secondary)"
+		_hover={{ bg: 'var(--wc-bg-selected)', color: 'var(--wc-text-heading)' }}
 		onClick={onClick}
 	>
 		{children}
