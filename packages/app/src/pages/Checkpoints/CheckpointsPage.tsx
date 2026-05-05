@@ -155,10 +155,10 @@ export function CheckpointsPage() {
 	function CheckpointActions({ cp }: { cp: ICheckpoint }) {
 		return (
 			<HStack gap="0.5">
-				<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }} borderRadius="md" onClick={() => startRename(cp)}>
+				<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-blue)', bg: 'var(--wc-accent-blue-bg-8)' }} borderRadius="md" onClick={() => startRename(cp)}>
 					<Edit size={12} />
 				</Button>
-				<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fb7185', bg: 'rgba(251, 113, 133, 0.08)' }} borderRadius="md" onClick={() => setDeletingCheckpointId(cp.id)}>
+				<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-red)', bg: 'var(--wc-accent-red-bg-8)' }} borderRadius="md" onClick={() => setDeletingCheckpointId(cp.id)}>
 					<Trash2 size={12} />
 				</Button>
 			</HStack>
@@ -174,7 +174,7 @@ export function CheckpointsPage() {
 				py="2"
 				pl={indent ? '10' : '3'}
 				borderRadius="md"
-				_hover={{ bg: 'rgba(255, 255, 255, 0.03)' }}
+_hover={{ bg: 'var(--wc-bg-hover)' }}
 			>
 				<VStack gap="0" align="stretch" flex="1">
 					<HStack gap="2">
@@ -189,24 +189,24 @@ export function CheckpointsPage() {
 								}}
 								onBlur={commitRename}
 								autoFocus
-								bg="rgba(255, 255, 255, 0.03)"
-								borderColor="rgba(51, 129, 255, 0.3)"
-								color="#e4e4e7"
+								bg="var(--wc-bg-subtle)"
+								borderColor="var(--wc-accent-blue-border)"
+								color="var(--wc-text-primary)"
 								fontSize="12px"
 							/>
 						) : (
-							<Text fontSize="12px" color="#e4e4e7" fontFamily='"Geist Mono", monospace'>
+							<Text fontSize="12px" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace'>
 								Slot {cp.slotIndex}
 							</Text>
 						)}
-						<Text fontSize="11px" color="rgba(255, 255, 255, 0.4)" fontFamily='"Geist Mono", monospace'>
+						<Text fontSize="11px" color="var(--wc-text-muted)" fontFamily='"Geist Mono", monospace'>
 							{cp.tokens.toLocaleString()} tok
 						</Text>
-						<Text fontSize="11px" color="rgba(255, 255, 255, 0.4)" fontFamily='"Geist Mono", monospace'>
+						<Text fontSize="11px" color="var(--wc-text-muted)" fontFamily='"Geist Mono", monospace'>
 							{formatBytes(cp.sizeBytes)}
 						</Text>
 					</HStack>
-					<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)" fontFamily='"Geist Mono", monospace'>
+					<Text fontSize="10px" color="var(--wc-text-faint)" fontFamily='"Geist Mono", monospace'>
 						{cp.fingerprint.modelFilename}
 					</Text>
 				</VStack>
@@ -322,18 +322,18 @@ export function CheckpointsPage() {
 					gap="1"
 					align="stretch"
 					borderRadius="lg"
-					bg="rgba(255, 255, 255, 0.02)"
+					bg="var(--wc-bg-surface)"
 					borderWidth="1px"
-					borderColor="rgba(255, 255, 255, 0.05)"
+					borderColor="var(--wc-border-subtle)"
 					p="2"
 					minH="240px"
 				>
 					{grouped.bundles.length === 0 && grouped.standalone.length === 0 && (
-						<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)" textAlign="center" py="8">
+						<Text fontSize="12px" color="var(--wc-text-muted)" textAlign="center" py="8">
 							No checkpoints yet
 							<br />
 							Read the{' '}
-							<ChakraLink href="https://github.com/mikjee/warpdrv/blob/master/docs/guides/checkpoints.md" color="#3381ff" _hover={{ color: '#5a98ff' }} onClick={(e) => { e.preventDefault(); openExternal('https://github.com/mikjee/warpdrv/blob/master/docs/guides/checkpoints.md'); }}>
+							<ChakraLink href="https://github.com/mikjee/warpdrv/blob/master/docs/guides/checkpoints.md" color="var(--wc-accent-blue)" _hover={{ color: 'var(--wc-accent-blue-hover)' }} onClick={(e) => { e.preventDefault(); openExternal('https://github.com/mikjee/warpdrv/blob/master/docs/guides/checkpoints.md'); }}>
 								guide
 							</ChakraLink>{' '}
 							on how to use checkpoints.
@@ -349,19 +349,19 @@ export function CheckpointsPage() {
 									px="3"
 									py="2"
 									borderRadius="md"
-									bg="rgba(255, 255, 255, 0.02)"
-									_hover={{ bg: 'rgba(255, 255, 255, 0.04)' }}
+									bg="var(--wc-bg-surface)"
+									_hover={{ bg: 'var(--wc-bg-card)' }}
 								>
-									<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.5)" _hover={{ color: '#e4e4e7' }} borderRadius="md" onClick={() => toggleBundle(b.bundleId)}>
+									<Button size="xs" variant="ghost" color="var(--wc-text-tertiary)" _hover={{ color: 'var(--wc-text-primary)' }} borderRadius="md" onClick={() => toggleBundle(b.bundleId)}>
 										{expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
 									</Button>
 									<VStack gap="0" align="stretch" flex="1">
-										<Text fontSize="13px" color="#e4e4e7" fontWeight="500">{b.name}</Text>
-										<Text fontSize="11px" color="rgba(255, 255, 255, 0.4)" fontFamily='"Geist Mono", monospace'>
+										<Text fontSize="13px" color="var(--wc-text-primary)" fontWeight="500">{b.name}</Text>
+										<Text fontSize="11px" color="var(--wc-text-muted)" fontFamily='"Geist Mono", monospace'>
 											{b.items.length} slots · {formatBytes(b.totalSize)} · {b.totalTokens.toLocaleString()} tok · {formatAge(b.createdAt)}
 										</Text>
 									</VStack>
-									<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#fb7185', bg: 'rgba(251, 113, 133, 0.08)' }} borderRadius="md" onClick={() => setDeletingBundleId(b.bundleId)}>
+									<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-red)', bg: 'var(--wc-accent-red-bg-8)' }} borderRadius="md" onClick={() => setDeletingBundleId(b.bundleId)}>
 										<Trash2 size={12} />
 									</Button>
 								</HStack>
@@ -373,7 +373,7 @@ export function CheckpointsPage() {
 					})}
 
 					{grouped.standalone.map(cp => (
-						<HStack key={cp.id} gap="2" px="3" py="2" borderRadius="md" _hover={{ bg: 'rgba(255, 255, 255, 0.03)' }}>
+						<HStack key={cp.id} gap="2" px="3" py="2" borderRadius="md" _hover={{ bg: 'var(--wc-bg-hover)' }}>
 							<VStack gap="0" align="stretch" flex="1">
 								<HStack gap="2">
 									{renamingId === cp.id ? (
@@ -387,19 +387,19 @@ export function CheckpointsPage() {
 											}}
 											onBlur={commitRename}
 											autoFocus
-											bg="rgba(255, 255, 255, 0.03)"
-											borderColor="rgba(51, 129, 255, 0.3)"
-											color="#e4e4e7"
+											bg="var(--wc-bg-subtle)"
+											borderColor="var(--wc-accent-blue-border)"
+											color="var(--wc-text-primary)"
 											fontSize="12px"
 										/>
 									) : (
-										<Text fontSize="13px" color="#e4e4e7" fontWeight="500">{cp.name}</Text>
+										<Text fontSize="13px" color="var(--wc-text-primary)" fontWeight="500">{cp.name}</Text>
 									)}
-									<Text fontSize="11px" color="rgba(255, 255, 255, 0.4)" fontFamily='"Geist Mono", monospace'>
+									<Text fontSize="11px" color="var(--wc-text-muted)" fontFamily='"Geist Mono", monospace'>
 										Slot {cp.slotIndex} · {cp.tokens.toLocaleString()} tok · {formatBytes(cp.sizeBytes)} · {formatAge(cp.createdAt)}
 									</Text>
 								</HStack>
-								<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)" fontFamily='"Geist Mono", monospace'>
+								<Text fontSize="10px" color="var(--wc-text-faint)" fontFamily='"Geist Mono", monospace'>
 									{cp.fingerprint.modelFilename}
 								</Text>
 							</VStack>
@@ -409,7 +409,7 @@ export function CheckpointsPage() {
 				</VStack>
 
 				<Flex mt="3" justify="flex-end">
-					<Text fontSize="11px" color="rgba(255, 255, 255, 0.4)" fontFamily='"Geist Mono", monospace'>
+					<Text fontSize="11px" color="var(--wc-text-muted)" fontFamily='"Geist Mono", monospace'>
 						Total disk usage: {formatBytes(totalDiskUsage)}
 					</Text>
 				</Flex>
