@@ -5,30 +5,30 @@ div#root.theme-light {
 :root {
 	// Semantic palette
 	--wc-bg-page: #f5f5f5;
-	--wc-bg-surface: rgba(0,0,0,0.02);
-	--wc-bg-subtle: rgba(0,0,0,0.03);
-	--wc-bg-card: rgba(0,0,0,0.02);
-	--wc-bg-interactive: rgba(0,0,0,0.05);
-	--wc-bg-hover: rgba(0,0,0,0.06);
-	--wc-bg-active: rgba(0,0,0,0.08);
-	--wc-bg-selected: rgba(0,0,0,0.1);
+	--wc-bg-surface: rgba(0,0,0,0.04);
+	--wc-bg-subtle: rgba(0,0,0,0.05);
+	--wc-bg-card: rgba(0,0,0,0.04);
+	--wc-bg-interactive: rgba(0,0,0,0.08);
+	--wc-bg-hover: rgba(0,0,0,0.08);
+	--wc-bg-active: rgba(0,0,0,0.12);
+	--wc-bg-selected: rgba(0,0,0,0.14);
 	--wc-bg-dialog: #fafafa;
 	--wc-bg-elevated: #fafafa;
 
-	--wc-border-subtle: rgba(0,0,0,0.06);
-	--wc-border-default: rgba(0,0,0,0.08);
-	--wc-border-overlay: rgba(0,0,0,0.1);
-	--wc-border-hover: rgba(0,0,0,0.12);
-	--wc-border-strong: rgba(0,0,0,0.15);
-	--wc-border-focus: rgba(0,0,0,0.2);
+	--wc-border-subtle: rgba(0,0,0,0.1);
+	--wc-border-default: rgba(0,0,0,0.12);
+	--wc-border-overlay: rgba(0,0,0,0.15);
+	--wc-border-hover: rgba(0,0,0,0.18);
+	--wc-border-strong: rgba(0,0,0,0.2);
+	--wc-border-focus: rgba(0,0,0,0.25);
 
 	--wc-text-heading: rgba(0,0,0,0.9);
 	--wc-text-primary: #27272a;
 	--wc-text-secondary: rgba(0,0,0,0.7);
 	--wc-text-tertiary: rgba(0,0,0,0.5);
-	--wc-text-muted: rgba(0,0,0,0.4);
-	--wc-text-faint: rgba(0,0,0,0.3);
-	--wc-text-placeholder: rgba(0,0,0,0.2);
+	--wc-text-muted: rgba(0,0,0,0.5);
+	--wc-text-faint: rgba(0,0,0,0.35);
+	--wc-text-placeholder: rgba(0,0,0,0.25);
 	--wc-text-disabled: rgba(0,0,0,0.15);
 
 	--wc-overlay-modal: rgba(255,255,255,0.7);
@@ -36,51 +36,51 @@ div#root.theme-light {
 
 	--wc-accent-blue: #3381ff;
 	--wc-accent-blue-hover: #5a98ff;
-	--wc-accent-blue-bg-8: rgba(51,129,255,0.08);
-	--wc-accent-blue-bg-10: rgba(51,129,255,0.1);
-	--wc-accent-blue-bg-12: rgba(51,129,255,0.12);
-	--wc-accent-blue-border: rgba(51,129,255,0.25);
+	--wc-accent-blue-bg-8: rgba(51,129,255,0.12);
+	--wc-accent-blue-bg-10: rgba(51,129,255,0.14);
+	--wc-accent-blue-bg-12: rgba(51,129,255,0.16);
+	--wc-accent-blue-border: rgba(51,129,255,0.35);
 	--wc-accent-blue-hover-bg: rgba(51,129,255,0.2);
 	--wc-accent-blue-focus: rgba(51,129,255,0.4);
 
 	--wc-accent-purple: #a78bfa;
-	--wc-accent-purple-bg-8: rgba(167,139,250,0.08);
-	--wc-accent-purple-bg-15: rgba(167,139,250,0.15);
-	--wc-accent-purple-border: rgba(167,139,250,0.25);
-	--wc-accent-purple-hover-bg: rgba(167,139,250,0.2);
+	--wc-accent-purple-bg-8: rgba(167,139,250,0.2);
+	--wc-accent-purple-bg-15: rgba(167,139,250,0.3);
+	--wc-accent-purple-border: rgba(167,139,250,0.45);
+	--wc-accent-purple-hover-bg: rgba(167,139,250,0.3);
 	--wc-accent-purple-text: rgba(167,139,250,0.7);
 	--wc-accent-purple-icon: rgba(167,139,250,0.5);
-	--wc-accent-purple-strong: rgba(167,139,250,0.3);
+	--wc-accent-purple-strong: rgba(167,139,250,0.4);
 
 	--wc-accent-green: #34d399;
-	--wc-accent-green-bg-8: rgba(52,211,153,0.08);
-	--wc-accent-green-bg-15: rgba(52,211,153,0.15);
-	--wc-accent-green-border: rgba(52,211,153,0.2);
+	--wc-accent-green-bg-8: rgba(52,211,153,0.12);
+	--wc-accent-green-bg-15: rgba(52,211,153,0.2);
+	--wc-accent-green-border: rgba(52,211,153,0.3);
 	--wc-accent-green-hover: #4ade80;
 	--wc-accent-green-icon: #22c55e;
 
 	--wc-accent-yellow: #fbbf24;
 	--wc-accent-yellow-strong: #f59e0b;
-	--wc-accent-yellow-bg-8: rgba(251,191,36,0.08);
-	--wc-accent-yellow-border: rgba(251,191,36,0.3);
-	--wc-accent-yellow-hover-bg: rgba(251,191,36,0.2);
+	--wc-accent-yellow-bg-8: rgba(251,191,36,0.2);
+	--wc-accent-yellow-border: rgba(251,191,36,0.5);
+	--wc-accent-yellow-hover-bg: rgba(251,191,36,0.3);
 	--wc-accent-yellow-glow: rgba(245,158,11,0.5);
 
 	--wc-accent-red: #fb7185;
-	--wc-accent-red-bg-8: rgba(251,113,133,0.08);
-	--wc-accent-red-bg-12: rgba(251,113,133,0.12);
-	--wc-accent-red-border: rgba(251,113,133,0.2);
-	--wc-accent-red-hover: rgba(251,113,133,0.3);
+	--wc-accent-red-bg-8: rgba(251,113,133,0.2);
+	--wc-accent-red-bg-12: rgba(251,113,133,0.24);
+	--wc-accent-red-border: rgba(251,113,133,0.45);
+	--wc-accent-red-hover: rgba(251,113,133,0.45);
 	--wc-accent-red-alt: #f43f5e;
-	--wc-accent-red-alt-bg: rgba(244,63,94,0.1);
+	--wc-accent-red-alt-bg: rgba(244,63,94,0.2);
 
 	--wc-special-indigo: #6366f1;
-	--wc-special-indigo-bg: rgba(99,102,241,0.12);
-	--wc-special-indigo-border: rgba(99,102,241,0.25);
-	--wc-special-indigo-bg-subtle: rgba(99,102,241,0.08);
-	--wc-special-indigo-border-subtle: rgba(99,102,241,0.2);
+	--wc-special-indigo-bg: rgba(99,102,241,0.16);
+	--wc-special-indigo-border: rgba(99,102,241,0.35);
+	--wc-special-indigo-bg-subtle: rgba(99,102,241,0.12);
+	--wc-special-indigo-border-subtle: rgba(99,102,241,0.25);
 	--wc-special-cyan: #0891b2;
-	--wc-special-cyan-bg: rgba(34,211,238,0.1);
+	--wc-special-cyan-bg: rgba(34,211,238,0.14);
 	--wc-special-vision-yellow: #d97706;
 	--wc-special-vision-red: #dc2626;
 	--wc-special-card-name: #404040;
@@ -99,15 +99,15 @@ div#root.theme-light {
 	--wc-switch-active: #3b86d6;
 
 	// Header
-	--wc-text-header-muted: rgba(0,0,0,0.5);
+	--wc-text-header-muted: rgba(0,0,0,0.6);
 	--wc-text-header-hover: rgba(0,0,0,0.9);
 	--wc-text-header-hover-bg: rgba(0,0,0,0.08);
 	--wc-text-header-title: rgba(0,0,0,0.85);
-	--wc-text-header-subtitle: rgba(0,0,0,0.5);
-	--wc-text-header-toggle: rgba(0,0,0,0.4);
-	--wc-text-header-close-bg: rgba(244,63,94,0.1);
+	--wc-text-header-subtitle: rgba(0,0,0,0.6);
+	--wc-text-header-toggle: rgba(0,0,0,0.5);
+	--wc-text-header-close-bg: rgba(244,63,94,0.15);
 	--wc-text-header-close: #f43f5e;
 	--wc-bg-header: rgba(255,255,255,0.6);
-	--wc-border-header: rgba(0,0,0,0.06);
+	--wc-border-header: rgba(0,0,0,0.1);
 
 }
