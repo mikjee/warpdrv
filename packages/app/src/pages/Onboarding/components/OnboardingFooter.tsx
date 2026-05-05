@@ -20,15 +20,15 @@ export function OnboardingFooter({
 		<Box
 			position="sticky"
 			bottom="0"
-			bg="linear-gradient(to top, #0e0e0e 80%, transparent)"
+			bg="linear-gradient(to top, var(--wc-bg-page) 80%, transparent)"
 			pt="8"
 			pb="6"
 		>
 			<Flex justify="space-between" align="center" maxW="560px" mx="auto" px="4">
 				<Button
 					variant="ghost"
-					color="rgba(255, 255, 255, 0.4)"
-					_hover={{ color: 'rgba(255, 255, 255, 0.7)' }}
+					color="var(--wc-text-secondary)"
+					_hover={{ color: 'var(--wc-text-primary)' }}
 					borderRadius="lg"
 					fontSize="13px"
 					leftIcon={<ArrowLeft size={16} />}
@@ -39,9 +39,9 @@ export function OnboardingFooter({
 				</Button>
 
 				<Button
-					bg="#3381ff"
+					bg="var(--wc-accent-blue)"
 					color="white"
-					_hover={{ bg: '#1b5ff5' }}
+					_hover={{ bg: 'var(--wc-accent-blue-hover)' }}
 					borderRadius="lg"
 					fontSize="13px"
 					fontWeight="500"

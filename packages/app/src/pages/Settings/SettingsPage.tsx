@@ -176,36 +176,36 @@ const handleSave = async () => {
 	};
 
 	return (
-<Box pb="80px">
+		<Box pb="80px">
 				<PageHeader title="Settings" subtitle="WarpCore configuration" icon={<Settings size={20} />} />
-				<Box p="4">
+				<Box pt="76px" px="4" pb="4">
 				<VStack align="stretch" gap="6">
 					{/* Model directories */}
 					<Card>
 						<VStack align="stretch" gap="4">
 							<Box>
-								<Text fontSize="14px" fontWeight="600" color="#e4e4e7" mb="1">Model Directories</Text>
-								<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)">Folders to scan for GGUF models (user/model structure)</Text>
+								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">Model Directories</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)">Folders to scan for GGUF models (user/model structure)</Text>
 							</Box>
 
 							<VStack align="stretch" gap="2">
 								{modelRoots.map((root, idx) => (
 									<HStack key={idx} gap="2">
-										<Flex w="8" h="8" borderRadius="md" alignItems="center" justifyContent="center" bg="rgba(255, 255, 255, 0.04)" flexShrink={0}>
-											<FolderOpen size={14} color="rgba(255, 255, 255, 0.4)" />
+										<Flex w="8" h="8" borderRadius="md" alignItems="center" justifyContent="center" bg="var(--wc-bg-surface)" flexShrink={0}>
+											<FolderOpen size={14} color="var(--wc-text-secondary)" />
 										</Flex>
 										<Input
 											value={root}
 											readOnly
 											size="sm"
-											bg="rgba(255, 255, 255, 0.03)"
-											borderColor="rgba(255, 255, 255, 0.08)"
-											color="rgba(255, 255, 255, 0.7)"
+											bg="var(--wc-bg-card)"
+											borderColor="var(--wc-border-default)"
+											color="var(--wc-text-primary)"
 											fontFamily='"Geist Mono", monospace'
 											fontSize="12px"
 											borderRadius="lg"
 										/>
-										<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.3)" _hover={{ color: '#fb7185', bg: 'rgba(251, 113, 133, 0.08)' }} borderRadius="md" minW="8" px="0" onClick={() => confirmDeleteRoot(idx)}>
+										<Button size="sm" variant="ghost" color="var(--wc-text-faint)" _hover={{ color: 'var(--wc-accent-red-alt)', bg: 'var(--wc-accent-red-bg-12)' }} borderRadius="md" minW="8" px="0" onClick={() => confirmDeleteRoot(idx)}>
 											<Trash2 size={14} />
 										</Button>
 									</HStack>
@@ -215,26 +215,26 @@ const handleSave = async () => {
 									<Input
 										placeholder="/path/to/models"
 										size="sm"
-										bg="rgba(255, 255, 255, 0.03)"
-										borderColor="rgba(255, 255, 255, 0.08)"
-										color="rgba(255, 255, 255, 0.7)"
+										bg="var(--wc-bg-card)"
+										borderColor="var(--wc-border-default)"
+										color="var(--wc-text-primary)"
 										fontFamily='"Geist Mono", monospace'
 										fontSize="12px"
 										borderRadius="lg"
-										_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
-										_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
+										_placeholder={{ color: 'var(--wc-text-placeholder)' }}
+										_focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }}
 										value={newRoot}
 										onChange={e => dirtySetter(setNewRoot, e.target.value)}
 										onKeyDown={e => e.key === 'Enter' && handleAddRoot()}
 									/>
-									<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#a78bfa', bg: 'rgba(167, 139, 250, 0.08)' }} borderRadius="lg" minW="8" px="0" onClick={handleBrowseDirectory} title="Browse directory">
+									<Button size="sm" variant="ghost" color="var(--wc-text-secondary)" _hover={{ color: 'var(--wc-accent-purple)', bg: 'var(--wc-accent-purple-hover-bg)' }} borderRadius="lg" minW="8" px="0" onClick={handleBrowseDirectory} title="Browse directory">
 										<FolderInput size={14} />
 									</Button>
 									<Button
 										size="sm"
 										variant="ghost"
-										color="rgba(255, 255, 255, 0.4)"
-										_hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }}
+										color="var(--wc-text-secondary)"
+										_hover={{ color: 'var(--wc-accent-blue)', bg: 'var(--wc-accent-blue-bg-10)' }}
 										borderRadius="lg"
 										onClick={handleAddRoot}
 										disabled={!newRoot.trim()}
@@ -250,13 +250,13 @@ const handleSave = async () => {
 					<Card>
 						<VStack align="stretch" gap="4">
 							<Box>
-								<Text fontSize="14px" fontWeight="600" color="#e4e4e7" mb="1">Port Range</Text>
-								<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)">Auto-assigned port range for llama-server instances</Text>
+								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">Port Range</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)">Auto-assigned port range for llama-server instances</Text>
 							</Box>
 							<HStack gap="3">
-								<Input value={portStart} onChange={e => dirtySetter(setPortStart, Number(e.target.value))} type="number" size="sm" w="100px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
-								<Text fontSize="13px" color="rgba(255, 255, 255, 0.25)">to</Text>
-								<Input value={portEnd} onChange={e => dirtySetter(setPortEnd, Number(e.target.value))} type="number" size="sm" w="100px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
+								<Input value={portStart} onChange={e => dirtySetter(setPortStart, Number(e.target.value))} type="number" size="sm" w="100px" bg="var(--wc-bg-card)" borderColor="var(--wc-border-default)" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }} />
+								<Text fontSize="13px" color="var(--wc-text-faint)">to</Text>
+								<Input value={portEnd} onChange={e => dirtySetter(setPortEnd, Number(e.target.value))} type="number" size="sm" w="100px" bg="var(--wc-bg-card)" borderColor="var(--wc-border-default)" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }} />
 							</HStack>
 						</VStack>
 					</Card>
@@ -265,16 +265,16 @@ const handleSave = async () => {
 					<Card>
 						<VStack align="stretch" gap="4">
 							<Box>
-								<Text fontSize="14px" fontWeight="600" color="#e4e4e7" mb="1">Checkpoints</Text>
-								<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)">KV cache checkpoint storage. Leave path blank for default.</Text>
+								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">Checkpoints</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)">KV cache checkpoint storage. Leave path blank for default.</Text>
 							</Box>
 							<HStack gap="3">
-								<Input value={checkpointsPath} onChange={e => dirtySetter(setCheckpointsPath, e.target.value)} size="sm" flex="1" placeholder="~/.config/warpcore/checkpoints/" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
+								<Input value={checkpointsPath} onChange={e => dirtySetter(setCheckpointsPath, e.target.value)} size="sm" flex="1" placeholder="~/.config/warpcore/checkpoints/" bg="var(--wc-bg-card)" borderColor="var(--wc-border-default)" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" _focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }} />
 							</HStack>
 							<HStack gap="3">
-								<Text fontSize="13px" color="rgba(255, 255, 255, 0.5)">Max disk usage</Text>
-								<Input value={maxCheckpointDiskGB} onChange={e => dirtySetter(setMaxCheckpointDiskGB, Number(e.target.value))} type="number" size="sm" w="100px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
-								<Text fontSize="13px" color="rgba(255, 255, 255, 0.4)">GB</Text>
+								<Text fontSize="13px" color="var(--wc-text-secondary)">Max disk usage</Text>
+								<Input value={maxCheckpointDiskGB} onChange={e => dirtySetter(setMaxCheckpointDiskGB, Number(e.target.value))} type="number" size="sm" w="100px" bg="var(--wc-bg-card)" borderColor="var(--wc-border-default)" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }} />
+								<Text fontSize="13px" color="var(--wc-text-muted)">GB</Text>
 							</HStack>
 						</VStack>
 					</Card>
@@ -284,15 +284,15 @@ const handleSave = async () => {
 						<VStack align="stretch" gap="4">
 							<HStack justify="space-between" alignItems="center" mb="2">
 								<Box flex="1">
-									<Text fontSize="14px" fontWeight="600" color="#e4e4e7">Generate conversation titles</Text>
-									<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)">
+									<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)">Generate conversation titles</Text>
+									<Text fontSize="12px" color="var(--wc-text-muted)">
 										Use the loaded model to generate a concise title for new conversations. When disabled, titles are derived from your first message.
 									</Text>
 								</Box>
 								<Switch.Root label='Generate titles' checked={!disableTitleGen} onCheckedChange={(details) => dirtySetter(setDisableTitleGen, !details.checked)}>
 									<Switch.HiddenInput />
-									<Switch.Control css={{ bg: !disableTitleGen ? '#3b86d6' : 'surface.4' }}>
-										<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+									<Switch.Control css={{ bg: !disableTitleGen ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
+										<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 									</Switch.Control>
 									<Switch.Label ml="2" fontSize="13px" userSelect="none">
 										Generate titles
@@ -306,13 +306,13 @@ const handleSave = async () => {
 					<Card>
 						<VStack align="stretch" gap="4">
 							<Box>
-								<Text fontSize="14px" fontWeight="600" color="#e4e4e7" mb="1">API Host</Text>
-								<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)">WarpCore API listen address</Text>
+								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">API Host</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)">WarpCore API listen address</Text>
 							</Box>
 							<HStack gap="3">
-								<Input value={apiHost} onChange={e => dirtySetter(setApiHost, e.target.value)} size="sm" w="140px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
-								<Text fontSize="13px" color="rgba(255, 255, 255, 0.25)">:</Text>
-								<Input value={apiPort} onChange={e => dirtySetter(setApiPort, Number(e.target.value))} type="number" size="sm" w="100px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} />
+								<Input value={apiHost} onChange={e => dirtySetter(setApiHost, e.target.value)} size="sm" w="140px" bg="var(--wc-bg-card)" borderColor="var(--wc-border-default)" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }} />
+								<Text fontSize="13px" color="var(--wc-text-faint)">:</Text>
+								<Input value={apiPort} onChange={e => dirtySetter(setApiPort, Number(e.target.value))} type="number" size="sm" w="100px" bg="var(--wc-bg-card)" borderColor="var(--wc-border-default)" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }} />
 							</HStack>
 						</VStack>
 					</Card>
@@ -322,8 +322,8 @@ const handleSave = async () => {
 						<VStack align="stretch" gap="4">
 							<HStack justify="space-between" alignItems="center" mb="2">
 								<Box flex="1">
-									<Text fontSize="14px" fontWeight="600" color="#e4e4e7">Router</Text>
-									<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)">
+									<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)">Router</Text>
+									<Text fontSize="12px" color="var(--wc-text-muted)">
 										OpenAI-compatible proxy for routing requests by server alias
 									</Text>
 								</Box>
@@ -331,14 +331,14 @@ const handleSave = async () => {
 							<HStack gap="3">
 								<Switch.Root label='Start router on App launch' checked={proxyEnabled} onCheckedChange={(details) => dirtySetter(setProxyEnabled, details.checked)}>
 									<Switch.HiddenInput />
-									<Switch.Control css={{ bg: proxyEnabled ? '#3b86d6' : 'rgba(255, 255, 255, 0.08)' }}>
-										<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+									<Switch.Control css={{ bg: proxyEnabled ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
+										<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 									</Switch.Control>
 									<Switch.Label ml="2" fontSize="13px" userSelect="none">
 										Start router on App launch
 									</Switch.Label>
 								</Switch.Root>
-								<Input value={proxyPort} onChange={e => dirtySetter(setProxyPort, Number(e.target.value))} type="number" size="sm" w="100px" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} disabled={!proxyEnabled} />
+								<Input value={proxyPort} onChange={e => dirtySetter(setProxyPort, Number(e.target.value))} type="number" size="sm" w="100px" bg="var(--wc-bg-card)" borderColor="var(--wc-border-default)" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }} disabled={!proxyEnabled} />
 							</HStack>
 						</VStack>
 					</Card>
@@ -348,36 +348,36 @@ const handleSave = async () => {
 						<VStack align="stretch" gap="4">
 							<HStack justify="space-between" alignItems="center">
 								<Box flex="1">
-									<Text fontSize="14px" fontWeight="600" color="#e4e4e7">Launch on Startup</Text>
-									<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)">
+									<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)">Launch on Startup</Text>
+									<Text fontSize="12px" color="var(--wc-text-muted)">
 										Start WarpCore automatically when you log in
 									</Text>
 									{autoLaunch === null && (
-										<Text fontSize="11px" color="#fb7185" mt="1">
+										<Text fontSize="11px" color="var(--wc-accent-red-alt)" mt="1">
 											Desktop API not available - toggle disabled
 										</Text>
 									)}
 								</Box>
 								<Switch.Root checked={autoLaunch ?? false} onCheckedChange={(details) => dirtySetter(setAutoLaunch, details.checked)} disabled={autoLaunch === null}>
 									<Switch.HiddenInput />
-									<Switch.Control css={{ bg: autoLaunch ? '#3b86d6' : 'rgba(255, 255, 255, 0.08)' }}>
-										<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+									<Switch.Control css={{ bg: autoLaunch ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
+										<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 									</Switch.Control>
 								</Switch.Root>
 							</HStack>
 							{/* Start minimized */}
-							<Box pt="2" borderTop="1px solid rgba(255, 255, 255, 0.08)">
+							<Box pt="2" borderTop="1px solid var(--wc-border-default)">
 								<HStack justify="space-between" alignItems="center">
 									<Box flex="1">
-										<Text fontSize="13px" fontWeight="500" color="#e4e4e7">Start Minimized</Text>
-										<Text fontSize="11px" color="rgba(255, 255, 255, 0.4)">
+										<Text fontSize="13px" fontWeight="500" color="var(--wc-text-heading)">Start Minimized</Text>
+										<Text fontSize="11px" color="var(--wc-text-muted)">
 											Start to tray without showing window (requires Launch on Startup)
 										</Text>
 									</Box>
 									<Switch.Root checked={startMinimized} onCheckedChange={(details) => dirtySetter(setStartMinimized, details.checked)} disabled={!autoLaunch || autoLaunch === null}>
 										<Switch.HiddenInput />
-										<Switch.Control css={{ bg: startMinimized ? '#3b86d6' : 'surface.4' }}>
-											<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+										<Switch.Control css={{ bg: startMinimized ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
+											<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 										</Switch.Control>
 									</Switch.Root>
 								</HStack>
@@ -389,14 +389,14 @@ const handleSave = async () => {
 					<Card>
 						<VStack align="stretch" gap="4">
 							<Box>
-								<Text fontSize="14px" fontWeight="600" color="#e4e4e7" mb="1">Onboarding</Text>
-								<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)">Re-run the setup guide</Text>
+								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">Onboarding</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)">Re-run the setup guide</Text>
 							</Box>
 							<Button
 								size="sm"
 								variant="ghost"
-								color="rgba(255, 255, 255, 0.5)"
-								_hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }}
+								color="var(--wc-text-secondary)"
+								_hover={{ color: 'var(--wc-accent-blue)', bg: 'var(--wc-accent-blue-bg-10)' }}
 								borderRadius="lg"
 								leftIcon={<BookOpen size={15} />}
 								onClick={() => updateSettings({ isOnboardingComplete: false })}
@@ -414,20 +414,20 @@ const handleSave = async () => {
 					bottom="0"
 					left="0"
 					right="0"
-					bg="#101010"
+					bg="var(--wc-bg-page)"
 					borderTopWidth="1px"
-					borderColor="rgba(255, 255, 255, 0.08)"
+					borderColor="var(--wc-border-default)"
 					p="4"
 					zIndex={100}
 				>
 					<HStack justify="flex-end" gap="4">
 						<Button
 							size="sm"
-							bg="rgba(52, 211, 153, 0.12)"
-							color="#34d399"
+							bg="var(--wc-accent-green-bg-15)"
+							color="var(--wc-accent-green-icon)"
 							borderWidth="1px"
-							borderColor="rgba(52, 211, 153, 0.25)"
-							_hover={{ bg: 'rgba(52, 211, 153, 0.2)' }}
+							borderColor="var(--wc-accent-green-border)"
+							_hover={{ bg: 'var(--wc-accent-green-hover)' }}
 							borderRadius="lg"
 							fontSize="13px"
 							fontWeight="500"

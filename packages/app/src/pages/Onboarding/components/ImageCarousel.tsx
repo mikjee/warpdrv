@@ -25,7 +25,7 @@ export function ImageCarousel({ slides }: IImageCarouselProps) {
 			display: 'flex',
 			flexDirection: 'column',
 			overflow: 'hidden',
-			border: '1px solid rgba(255, 255, 255, 0.06)',
+			border: '1px solid var(--wc-border-subtle)',
 			borderRadius: '8px',
 			background: 'transparent',
 			boxSizing: 'border-box',
@@ -38,14 +38,14 @@ export function ImageCarousel({ slides }: IImageCarouselProps) {
 				<div style={{
 					fontSize: '16px',
 					fontWeight: 600,
-					color: '#e4e4e7',
+					color: 'var(--wc-text-heading)',
 					marginBottom: '4px',
 				}}>
 					{slide.title}
 				</div>
 				<div style={{
 					fontSize: '14px',
-					color: 'rgba(255, 255, 255, 0.45)',
+					color: 'var(--wc-text-muted)',
 					lineHeight: 1.5,
 				}}>
 					{slide.description}
@@ -80,7 +80,7 @@ export function ImageCarousel({ slides }: IImageCarouselProps) {
 						flexDirection: 'column',
 						alignItems: 'center',
 						gap: '8px',
-						color: 'rgba(255, 255, 255, 0.15)',
+						color: 'var(--wc-text-disabled)',
 					}}>
 						<ImageIcon size={32} />
 						<div style={{ fontSize: '12px' }}>Screenshot placeholder</div>
@@ -101,14 +101,14 @@ export function ImageCarousel({ slides }: IImageCarouselProps) {
 					style={{
 						background: 'transparent',
 						border: 'none',
-						color: 'rgba(255, 255, 255, 0.4)',
+						color: 'var(--wc-text-secondary)',
 						cursor: 'pointer',
 						display: 'flex',
 						alignItems: 'center',
 						padding: '4px',
 					}}
-					onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)'}
-					onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.4)'}
+					onMouseEnter={(e) => e.currentTarget.style.color = 'var(--wc-text-primary)'}
+					onMouseLeave={(e) => e.currentTarget.style.color = 'var(--wc-text-secondary)'}
 				>
 					<ChevronLeft size={16} />
 				</button>
@@ -125,7 +125,7 @@ export function ImageCarousel({ slides }: IImageCarouselProps) {
 								border: 'none',
 								padding: 0,
 								cursor: 'pointer',
-								background: i === index ? 'rgba(255, 255, 255, 0.7)' : 'rgba(255, 255, 255, 0.2)',
+								background: i === index ? 'var(--wc-text-primary)' : 'var(--wc-text-faint)',
 							}}
 						/>
 					))}
@@ -136,14 +136,14 @@ export function ImageCarousel({ slides }: IImageCarouselProps) {
 					style={{
 						background: 'transparent',
 						border: 'none',
-						color: 'rgba(255, 255, 255, 0.4)',
+						color: 'var(--wc-text-secondary)',
 						cursor: 'pointer',
 						display: 'flex',
 						alignItems: 'center',
 						padding: '4px',
 					}}
-					onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)'}
-					onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.4)'}
+					onMouseEnter={(e) => e.currentTarget.style.color = 'var(--wc-text-primary)'}
+					onMouseLeave={(e) => e.currentTarget.style.color = 'var(--wc-text-secondary)'}
 				>
 					<ChevronRight size={16} />
 				</button>

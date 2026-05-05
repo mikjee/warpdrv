@@ -78,24 +78,24 @@ export function StepModelFolders({ goNext, goPrev, finishOnboarding }: IStepProp
 
 			<Box flex="1" display="flex" alignItems="center" px="4" py="4" overflow="auto">
 				<Box w="100%" maxW="520px" mx="auto">
-					<Text fontSize="14px" color="rgba(255, 255, 255, 0.45)" textAlign="center" mb="6">
+					<Text fontSize="14px" color="var(--wc-text-muted)" textAlign="center" mb="6">
 						Tell WarpCore where your GGUF models live. Models should follow the user/model folder structure.
 					</Text>
 
 					<VStack align="stretch" gap="2" mb="5">
 						{modelRoots.map((root, idx) => (
 							<HStack key={idx} gap="2">
-								<Flex w="8" h="8" borderRadius="md" alignItems="center" justifyContent="center" bg="rgba(255, 255, 255, 0.04)" flexShrink={0}>
-									<FolderOpen size={14} color="rgba(255, 255, 255, 0.4)" />
+								<Flex w="8" h="8" borderRadius="md" alignItems="center" justifyContent="center" bg="var(--wc-bg-surface)" flexShrink={0}>
+									<FolderOpen size={14} color="var(--wc-text-secondary)" />
 								</Flex>
-								<Text flex="1" fontSize="12px" color="rgba(255, 255, 255, 0.6)" fontFamily='"Geist Mono", monospace' isTruncated>
+								<Text flex="1" fontSize="12px" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace' isTruncated>
 									{root}
 								</Text>
 								<Button
 									size="sm"
 									variant="ghost"
-									color="rgba(255, 255, 255, 0.3)"
-									_hover={{ color: '#fb7185' }}
+									color="var(--wc-text-faint)"
+									_hover={{ color: 'var(--wc-accent-red-alt)' }}
 									borderRadius="md"
 									minW="8"
 									px="0"
@@ -110,14 +110,14 @@ export function StepModelFolders({ goNext, goPrev, finishOnboarding }: IStepProp
 							<Input
 								placeholder="/path/to/models"
 								size="sm"
-								bg="rgba(255, 255, 255, 0.03)"
-								borderColor="rgba(255, 255, 255, 0.08)"
-								color="rgba(255, 255, 255, 0.7)"
+								bg="var(--wc-bg-card)"
+								borderColor="var(--wc-border-default)"
+								color="var(--wc-text-primary)"
 								fontFamily='"Geist Mono", monospace'
 								fontSize="12px"
 								borderRadius="lg"
-								_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
-								_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
+								_placeholder={{ color: 'var(--wc-text-placeholder)' }}
+								_focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }}
 								value={newRoot}
 								onChange={e => setNewRoot(e.target.value)}
 								onKeyDown={e => e.key === 'Enter' && handleAddRoot()}
@@ -125,8 +125,8 @@ export function StepModelFolders({ goNext, goPrev, finishOnboarding }: IStepProp
 							<Button
 								size="sm"
 								variant="ghost"
-								color="rgba(255, 255, 255, 0.4)"
-								_hover={{ color: '#a78bfa' }}
+								color="var(--wc-text-secondary)"
+								_hover={{ color: 'var(--wc-accent-purple)' }}
 								borderRadius="lg"
 								minW="8"
 								px="0"
@@ -138,8 +138,8 @@ export function StepModelFolders({ goNext, goPrev, finishOnboarding }: IStepProp
 							<Button
 								size="sm"
 								variant="ghost"
-								color="rgba(255, 255, 255, 0.4)"
-								_hover={{ color: '#3381ff' }}
+								color="var(--wc-text-secondary)"
+								_hover={{ color: 'var(--wc-accent-blue)' }}
 								borderRadius="lg"
 								onClick={handleAddRoot}
 								disabled={!newRoot.trim()}
@@ -152,11 +152,11 @@ export function StepModelFolders({ goNext, goPrev, finishOnboarding }: IStepProp
 					<Flex justify="center" mb="4">
 						<Button
 							size="sm"
-							bg="rgba(51, 129, 255, 0.12)"
-							color="#3381ff"
+							bg="var(--wc-accent-blue-bg-12)"
+							color="var(--wc-accent-blue)"
 							borderWidth="1px"
-							borderColor="rgba(51, 129, 255, 0.25)"
-							_hover={{ bg: 'rgba(51, 129, 255, 0.2)' }}
+							borderColor="var(--wc-accent-blue-border)"
+							_hover={{ bg: 'var(--wc-accent-blue-hover-bg)' }}
 							borderRadius="lg"
 							leftIcon={isScanning ? <Spinner size="xs" /> : <Check size={15} />}
 							onClick={handleSaveAndScan}
@@ -173,16 +173,16 @@ export function StepModelFolders({ goNext, goPrev, finishOnboarding }: IStepProp
 								px="4"
 								py="2.5"
 								borderRadius="lg"
-								bg={modelCount > 0 ? 'rgba(52, 211, 153, 0.08)' : 'rgba(251, 191, 36, 0.08)'}
+								bg={modelCount > 0 ? 'var(--wc-accent-green-bg-15)' : 'var(--wc-accent-yellow-bg-8)'}
 								borderWidth="1px"
-								borderColor={modelCount > 0 ? 'rgba(52, 211, 153, 0.2)' : 'rgba(251, 191, 36, 0.2)'}
+								borderColor={modelCount > 0 ? 'var(--wc-accent-green-border)' : 'var(--wc-accent-yellow-border)'}
 							>
 								{modelCount > 0 ? (
-									<Check size={15} color="#34d399" />
+									<Check size={15} color="var(--wc-accent-green-icon)" />
 								) : (
-									<AlertCircle size={15} color="#fbbf24" />
+									<AlertCircle size={15} color="var(--wc-accent-yellow-strong)" />
 								)}
-								<Text fontSize="13px" color={modelCount > 0 ? '#34d399' : '#fbbf24'} fontWeight="500">
+								<Text fontSize="13px" color={modelCount > 0 ? 'var(--wc-accent-green-icon)' : 'var(--wc-accent-yellow-strong)'} fontWeight="500">
 									{modelCount} {modelCount === 1 ? 'model' : 'models'} found
 								</Text>
 							</HStack>
