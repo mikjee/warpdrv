@@ -252,7 +252,7 @@ const Composer: FC = () => {
 					className="flex w-full flex-col gap-2 rounded-xl border p-(--composer-padding) transition-shadow focus-within:border-ring/75 focus-within:ring-2 focus-within:ring-ring/20 data-[dragging=true]:border-ring data-[dragging=true]:border-dashed data-[dragging=true]:bg-accent/50"
 					style={{
 						background: "var(--wc-bg-elevated)",
-						boxShadow: "0px 10px 10px 10px rgba(0,0,0,0.15)",
+						boxShadow: "0px 10px 10px 10px var(--wc-overlay-dim)",
 					}}
 				>
 					<ComposerAttachments />
@@ -408,7 +408,7 @@ const ToolsSelector: FC = React.memo(() => {
 					borderWidth="1px"
 					borderColor="var(--wc-border-overlay)"
 					borderRadius="lg"
-					shadow="0 8px 32px rgba(0, 0, 0, 0.5)"
+					shadow="0 8px 32px var(--wc-overlay-strong)"
 				>
 					<Popover.Body p="3">
 						{totalCount === 0 ? (

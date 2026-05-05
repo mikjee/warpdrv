@@ -171,7 +171,7 @@ function ConfirmDialog({ message, onConfirm, onCancel }: { message: string; onCo
 	return (
 		<Box
 			position="fixed" top="0" left="0" right="0" bottom="0"
-			bg="rgba(0,0,0,0.5)" zIndex={100}
+			bg="var(--wc-overlay-strong)" zIndex={100}
 			display="flex" alignItems="center" justifyContent="center"
 			onClick={onCancel}
 		>
@@ -233,7 +233,8 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect, onDelet
 	return (
 		<Box
 			w="100%"
-			className={`group ${selected ? 'bg-[#2a2a2a]' : ''}`}
+			className={`group ${selected ? 'selected' : ''}`}
+				bg={selected ? 'var(--wc-bg-card)' : undefined}
 			draggable
 			onDragStart={(e: any) => {
 				e.dataTransfer.setData('threadId', thread.id);
@@ -631,6 +632,7 @@ export const ThreadList: FC = React.memo(() => {
 						onChange={(e) => setSearch(e.target.value)}
 						size="2xs"
 color="var(--wc-text-primary)"
+						_focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }}
 					/>
 					{search && (
 						<Box cursor="pointer" onClick={() => setSearch('')} opacity={0.3} _hover={{ opacity: 0.6 }}>
@@ -740,10 +742,10 @@ color="var(--wc-text-primary)"
 						w="100%" px="3" py="2"
 						borderRadius="md" borderWidth="1px"
 						borderColor="var(--wc-bg-hover)"
-						bg="rgba(255,255,255,0.02)"
-						_hover={{ bg: 'rgba(255,255,255,0.05)' }}
+						bg="var(--wc-bg-subtle)"
+						_hover={{ bg: 'var(--wc-bg-card)' }}
 						display="flex" alignItems="center" gap="2"
-						fontSize="12px" color="rgba(255,255,255,0.4)"
+						fontSize="12px" color="var(--wc-text-muted)"
 						cursor="pointer"
 					>
 						<PlusIcon size={14} />

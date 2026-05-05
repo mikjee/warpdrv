@@ -180,7 +180,7 @@ export function ToolCallBlock({
 					</HStack>
 					{resultExpanded && (
 						<Box
-							bg="rgba(0,0,0,0.3)"
+							bg="var(--wc-overlay-dim)"
 							borderRadius="sm"
 							p="2"
 							mb="1"

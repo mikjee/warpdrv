@@ -2,9 +2,9 @@ import { Box } from '@chakra-ui/react';
 import React from 'react';
 
 const dotColors: Record<string, { bg: string; shadow: string }> = {
-	online: { bg: 'var(--wc-accent-green-icon)', shadow: '0 0 6px var(--w-home-statusdot-online-shadow)' },
-		loading: { bg: 'var(--wc-accent-yellow-strong)', shadow: '0 0 6px var(--w-home-statusdot-loading-shadow)' },
-		error: { bg: 'var(--wc-accent-red-alt)', shadow: '0 0 6px var(--w-home-statusdot-error-shadow)' },
+	online: { bg: 'var(--wc-accent-green-icon)', shadow: '0 0 6px var(--wc-accent-green-icon)' },
+		loading: { bg: 'var(--wc-accent-yellow-strong)', shadow: '0 0 6px var(--wc-accent-yellow-strong)' },
+		error: { bg: 'var(--wc-accent-red-alt)', shadow: '0 0 6px var(--wc-accent-red-alt)' },
 		offline: { bg: 'var(--wc-text-disabled)', shadow: 'none' },
 };
 

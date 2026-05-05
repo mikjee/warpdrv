@@ -155,15 +155,15 @@ export const HubPage = React.memo(() => {
 						<Box position="relative">
 							<Input
 								placeholder="Search models or users..."
-								size="sm" bg="var(--w-header-search-bg)" borderColor="var(--w-header-search-border)"
-								color="var(--w-header-search-color)" fontSize="13px" borderRadius="lg" pl="9"
-								_placeholder={{ color: 'var(--w-header-search-placeholder)' }}
-								_focus={{ borderColor: 'var(--w-header-search-focus-border)', outline: 'none' }}
+								size="sm" bg="var(--wc-bg-card)" borderColor="var(--wc-border-default)"
+								color="var(--wc-text-primary)" fontSize="13px" borderRadius="lg" pl="9"
+								_placeholder={{ color: 'var(--wc-text-faint)' }}
+								_focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }}
 								value={query} onChange={e => setQuery(e.target.value)}
 								onKeyDown={e => e.key === 'Enter' && handleSearch()}
 								w="200px"
 							/>
-							<Box position="absolute" left="3" top="50%" transform="translateY(-50%)" color="var(--w-header-search-icon)">
+							<Box position="absolute" left="3" top="50%" transform="translateY(-50%)" color="var(--wc-text-muted)">
 								<Search size={14} />
 							</Box>
 						</Box>
@@ -189,7 +189,7 @@ export const HubPage = React.memo(() => {
 							<Text fontSize="10px" color="var(--wc-text-tertiary)">{PARAM_STEPS[paramsRange[0]]}B - {PARAM_STEPS[paramsRange[1]]}B</Text>
 						</HStack>
 						<Button
-							size="sm" bgGradient="to-r" gradientFrom="var(--w-header-gradient-btn-from)" gradientTo="var(--w-header-gradient-btn-to)"
+							size="sm" bgGradient="to-r" gradientFrom="var(--wc-gradient-blue-from)" gradientTo="var(--wc-gradient-blue-to)"
 							color="white" _hover={{ opacity: 0.9 }}
 							borderRadius="lg" fontSize="13px" fontWeight="600"
 							onClick={handleSearch} disabled={!query.trim() || searching} px="5"
@@ -202,10 +202,10 @@ export const HubPage = React.memo(() => {
 				actionsRight={
 					<Button
 						size="sm" variant="outline"
-						bg={activeDownloadCount > 0 ? 'var(--wc-accent-blue-bg-8)' : 'var(--wc-bg-surface)'}
-						borderColor={activeDownloadCount > 0 ? 'var(--wc-accent-blue-border)' : 'var(--wc-border-default)'}
-						color={activeDownloadCount > 0 ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)'}
-						_hover={{ bg: 'var(--wc-accent-blue-bg-12)' }}
+						bg={activeDownloadCount > 0 ? 'var(--wc-accent-blue-bg-8)' : 'var(--wc-accent-blue-bg-12)'}
+						borderColor={activeDownloadCount > 0 ? 'var(--wc-accent-blue-border)' : 'var(--wc-accent-blue-border)'}
+						color={activeDownloadCount > 0 ? 'var(--wc-accent-blue)' : 'var(--wc-accent-blue)'}
+						_hover={{ bg: 'var(--wc-accent-blue-hover-bg)' }}
 						borderRadius="lg" fontSize="12px"
 						onClick={() => setShowDownloads(!showDownloads)}
 					>

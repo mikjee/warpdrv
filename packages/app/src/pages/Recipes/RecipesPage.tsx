@@ -85,17 +85,17 @@ export function RecipesPage() {
 				icon={<ScrollText size={20} />}
 				actions={
 					<HStack gap="3">
-						<InputGroup startElement={<Search size={14} color="var(--w-header-search-icon)" />} w="200px">
+						<InputGroup startElement={<Search size={14} color="var(--wc-text-muted)" />} w="200px">
 							<Input
 								placeholder="Search recipes..."
 								size="sm"
-								bg="var(--w-header-search-bg)"
-								borderColor="var(--w-header-search-border)"
-								color="var(--w-header-search-color)"
+								bg="var(--wc-bg-card)"
+								borderColor="var(--wc-border-default)"
+								color="var(--wc-text-primary)"
 								fontSize="13px"
 								borderRadius="lg"
-								_placeholder={{ color: 'var(--w-header-search-placeholder)' }}
-								_focus={{ borderColor: 'var(--w-header-search-focus-border)', outline: 'none' }}
+								_placeholder={{ color: 'var(--wc-text-faint)' }}
+								_focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }}
 								value={searchQuery}
 								onChange={e => setSearchQuery(e.target.value)}
 							/>
@@ -122,9 +122,9 @@ export function RecipesPage() {
 													size="sm"
 													w="170px"
 													justifyContent="space-between"
-													bg="var(--w-header-filter-btn-bg)"
-													borderColor="var(--w-header-filter-btn-border)"
-													color="var(--w-header-filter-btn-color)"
+													bg="var(--wc-bg-subtle)"
+													borderColor="var(--wc-border-default)"
+													color="var(--wc-text-secondary)"
 													fontSize="13px"
 													borderRadius="lg"
 												>
@@ -137,7 +137,7 @@ export function RecipesPage() {
 											<Combobox.Positioner>
 												<Combobox.Content
 													maxH="200px" overflowY="auto"
-													bg="var(--w-header-combobox-bg)" borderWidth="1px" borderColor="var(--w-header-combobox-border)"
+													bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-default)"
 													borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
 												>
 													{sortCollection.items.map((item) => (
@@ -145,10 +145,10 @@ export function RecipesPage() {
 															key={item.value}
 															item={item}
 															px="3" py="2" borderRadius="md" cursor="pointer"
-															_hover={{ bg: 'var(--w-header-combobox-item-hover)' }}
-															_highlighted={{ bg: 'var(--w-header-combobox-bg)' }}
+															_hover={{ bg: 'var(--wc-bg-hover)' }}
+															_highlighted={{ bg: 'var(--wc-accent-blue-bg-10)' }}
 														>
-															<Text fontSize="12px" color="var(--w-header-combobox-item-text)">{item.label}</Text>
+															<Text fontSize="12px" color="var(--wc-text-primary)">{item.label}</Text>
 															<Combobox.ItemIndicator />
 														</Combobox.Item>
 													))}
@@ -161,11 +161,11 @@ export function RecipesPage() {
 							<Button
 								size="sm"
 								variant="outline"
-								bg="var(--w-header-sortorder-btn-bg)"
-								borderColor="var(--w-header-sortorder-btn-border)"
-								color="var(--w-header-sortorder-btn-color)"
+								bg="var(--wc-bg-subtle)"
+								borderColor="var(--wc-border-default)"
+								color="var(--wc-text-tertiary)"
 								borderRadius="md"
-								_hover={{ borderColor: 'var(--w-header-sortorder-btn-hover-border)' }}
+								_hover={{ borderColor: 'var(--wc-border-strong)' }}
 								title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
 								onClick={() => handleSortChange(sortField, sortOrder === 'asc' ? 'desc' : 'asc')}
 							>

@@ -271,7 +271,7 @@ export function ModelsPage() {
 								left: '10px',
 								top: '50%',
 								transform: 'translateY(-50%)',
-								color: 'var(--w-header-search-icon)',
+								color: 'var(--wc-text-muted)',
 								pointerEvents: 'none',
 							}}
 						/>
@@ -282,25 +282,25 @@ export function ModelsPage() {
 							size="sm"
 							pl="8"
 							w="220px"
-							bg="var(--w-header-search-bg)"
-							borderColor="var(--w-header-search-border)"
+							bg="var(--wc-bg-card)"
+							borderColor="var(--wc-border-default)"
 							borderRadius="lg"
 							fontSize="13px"
-							color="var(--w-header-search-color)"
-							_placeholder={{ color: 'var(--w-header-search-placeholder)' }}
+							color="var(--wc-text-primary)"
+							_placeholder={{ color: 'var(--wc-text-faint)' }}
 							_hover={{ borderColor: 'var(--wc-border-hover)' }}
-							_focus={{ borderColor: 'var(--w-header-search-focus-border)', boxShadow: 'none' }}
+							_focus={{ borderColor: 'var(--wc-accent-blue-focus)', boxShadow: 'none' }}
 						/>
 					</Box>
 				}
 				actionsRight={
 					<Button
 						size="sm"
-						bg="var(--w-header-action-btn-bg)"
-						color="var(--w-header-action-btn-color)"
+						bg="var(--wc-accent-blue-bg-12)"
+						color="var(--wc-accent-blue)"
 						borderWidth="1px"
-						borderColor="var(--w-header-action-btn-border)"
-						_hover={{ bg: 'var(--w-header-action-btn-hover-bg)' }}
+						borderColor="var(--wc-accent-blue-border)"
+						_hover={{ bg: 'var(--wc-accent-blue-hover-bg)' }}
 						borderRadius="lg"
 						fontSize="13px"
 						fontWeight="500"
