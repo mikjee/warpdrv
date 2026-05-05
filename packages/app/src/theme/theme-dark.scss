@@ -1,8 +1,8 @@
-div#root.theme-dark {
-	background: #111;
-}
+:root.theme-dark {
+	div#root {
+		background: #111;
+	}
 
-:root {
 	// Semantic palette
 	--wc-bg-page: #131313;
 	--wc-bg-surface: rgba(255,255,255,0.02);

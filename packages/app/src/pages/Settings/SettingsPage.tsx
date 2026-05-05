@@ -1,5 +1,5 @@
-import { Box, Text, HStack, VStack, Flex, Input, Button, Spinner, Switch } from '@chakra-ui/react';
-import { Settings, FolderOpen, Plus, Trash2, Save, Check, FolderInput, BookOpen } from 'lucide-react';
+import { Box, Text, HStack, VStack, Flex, Input, Button, Spinner, Switch, Combobox, createListCollection, Portal } from '@chakra-ui/react';
+import { Settings, FolderOpen, Plus, Trash2, Save, ChevronDown, FolderInput, BookOpen } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { useDependantState } from '../../hooks/useDependantState';
 import { PageHeader } from '../../components/PageHeader';
@@ -8,6 +8,7 @@ import { useMutation } from '../../hooks/useQuery';
 import { ConfirmDialog } from '../../components/dialogs/ConfirmDialog';
 import { updateSettings, startProxy, stopProxy } from '../../api/services';
 import type { ISettings } from '@warpcore/shared';
+import { ETheme } from '@warpcore/shared';
 import { useToast } from '../../components/ToastProvider';
 import { useStore } from '../../store';
 
@@ -45,6 +46,15 @@ export function SettingsPage() {
 	const [newRoot, setNewRoot] = useState('');
 	const [saved, setSaved] = useState(false);
 	const [isDirty, setIsDirty] = useState(false);
+	const [localTheme, setLocalTheme] = useDependantState(settings.theme ?? ETheme.DARK);
+	const themeCollection = createListCollection({
+		items: [
+			{ label: 'Dark', value: ETheme.DARK },
+			{ label: 'Light', value: ETheme.LIGHT },
+		],
+		itemToString: (item) => item.label,
+		itemToValue: (item) => item.value,
+	});
 
 	const dirtySetter = useCallback((fn: (val: any) => void, val: any) => {
 		fn(val);
@@ -136,6 +146,7 @@ const handleSave = async () => {
 			checkpointsPath,
 			maxCheckpointDiskGB,
 			disableTitleGen,
+			theme: localTheme,
 		});
 
 		if (saveMut.error) {
@@ -179,7 +190,64 @@ const handleSave = async () => {
 		<Box pb="80px">
 				<PageHeader title="Settings" subtitle="WarpCore configuration" icon={<Settings size={20} />} />
 				<Box pt="76px" px="4" pb="4">
-				<VStack align="stretch" gap="6">
+		<VStack align="stretch" gap="6">
+					{/* Theme */}
+					<Card>
+						<VStack align="stretch" gap="4">
+							<Box>
+								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">Theme</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)">UI appearance theme</Text>
+							</Box>
+							<Combobox.Root
+								collection={themeCollection}
+								value={[localTheme]}
+								onValueChange={(details) => {
+									dirtySetter(setLocalTheme, details.value?.[0] as ETheme);
+								}}
+							>
+								<Combobox.Control>
+									<Combobox.Trigger asChild>
+										<Button
+											variant="outline"
+											size="sm"
+											justifyContent="space-between"
+											bg="var(--wc-bg-subtle)"
+											borderColor="var(--wc-border-default)"
+											color="var(--wc-text-primary)"
+											fontSize="13px"
+											borderRadius="lg"
+											fontWeight="500"
+										>
+											{themeCollection.items.find(i => i.value === localTheme)?.label ?? 'Dark'}
+											<ChevronDown size={14} />
+										</Button>
+									</Combobox.Trigger>
+								</Combobox.Control>
+								<Portal>
+									<Combobox.Positioner>
+										<Combobox.Content
+											bg="var(--wc-bg-elevated)"
+											borderWidth="1px"
+											borderColor="var(--wc-border-default)"
+											borderRadius="lg"
+											shadow="0 8px 32px rgba(0, 0, 0, 0.5)"
+											p="1"
+										>
+											<Combobox.Item key={ETheme.DARK} item={ETheme.DARK} px="3" py="2" borderRadius="md" cursor="pointer" _hover={{ bg: 'var(--wc-bg-hover)' }} _highlighted={{ bg: 'var(--wc-bg-active)' }}>
+												<Text fontSize="12px" color="var(--wc-text-primary)">Dark</Text>
+												<Combobox.ItemIndicator />
+											</Combobox.Item>
+											<Combobox.Item key={ETheme.LIGHT} item={ETheme.LIGHT} px="3" py="2" borderRadius="md" cursor="pointer" _hover={{ bg: 'var(--wc-bg-hover)' }} _highlighted={{ bg: 'var(--wc-bg-active)' }}>
+												<Text fontSize="12px" color="var(--wc-text-primary)">Light</Text>
+												<Combobox.ItemIndicator />
+											</Combobox.Item>
+										</Combobox.Content>
+									</Combobox.Positioner>
+								</Portal>
+							</Combobox.Root>
+						</VStack>
+					</Card>
+
 					{/* Model directories */}
 					<Card>
 						<VStack align="stretch" gap="4">

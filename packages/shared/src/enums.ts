@@ -73,3 +73,9 @@ export enum EReasoningEffort {
 	MEDIUM = 'medium',
 	HIGH = 'high',
 }
+
+// App theme
+export enum ETheme {
+	DARK = 'dark',
+	LIGHT = 'light',
+}

@@ -5,15 +5,22 @@ import { useToast } from './components/ToastProvider';
 import { useEventSource } from './hooks/useEventSource';
 import { useChatEventsStream } from './hooks/useChatEventsStream';
 import { useStore } from './store';
+import { ETheme } from '@warpcore/shared';
 
 export function App() {
 	const { toast } = useToast();
+	const theme = useStore(s => s.settings.theme ?? ETheme.DARK);
 
 	// Initialize SSE connection for control plane
 	useEventSource();
 
 	// Initialize bridge SSE connection for chat events
 	useChatEventsStream();
+
+	// Apply theme to html element
+	useEffect(() => {
+		document.documentElement.className = `theme-${theme}`;
+	}, [theme]);
 
 	// Expose store to window for debugging
 	useEffect(() => {
