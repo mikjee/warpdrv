@@ -14,6 +14,9 @@ import { proxySlice } from './slices/proxy';
 import { recipesSlice } from './slices/recipes';
 import { checkpointsSlice } from './slices/checkpoints';
 import { createChatStoreSlice } from '@warpcore/bridge/client';
+import { DiffRenderer } from '@/pages/Chat/assistant-ui/tool-renderers/DiffRenderer';
+import { BashRenderer } from '@/pages/Chat/assistant-ui/tool-renderers/BashRenderer';
+import { FetchRenderer } from '@/pages/Chat/assistant-ui/tool-renderers/FetchRenderer';
 
 export const useStore = create<AppState>()(
 	subscribeWithSelector(
@@ -72,6 +75,14 @@ export const useStore = create<AppState>()(
 					toolPermissions: bridge.toolPermissions,
 					setMcpServers: bridge.setMcpServers,
 					setPermissions: bridge.setPermissions,
+					toolCallRenderers: {
+						DiffRenderer,
+						BashRenderer,
+						FetchRenderer,
+					},
+					registerToolCallRenderer: (name, component) => set((state) => {
+						state.toolCallRenderers[name] = component;
+					}),
 
 					reset: bridge.reset,
 

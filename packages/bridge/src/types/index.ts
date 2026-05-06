@@ -267,6 +267,13 @@ export interface IMcpServerEntry {
 	url?: string;
 	headers?: Record<string, string>;
 	timeout?: number;
+	warpdrv?: {
+		renderers?: Record<string, {
+			component: string;
+			propsMap?: Record<string, string>;
+			props?: Record<string, unknown>;
+		}>;
+	};
 }
 
 export interface IMcpConfigFile {
@@ -280,6 +287,7 @@ export interface IMcpServerState {
 	error: string | null;
 	tools: IToolDefinition[];
 	connectedAt: number | null;
+	warpdrv?: IMcpServerEntry['warpdrv'];
 }
 
 // ============================================================
