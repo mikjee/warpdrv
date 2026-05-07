@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Text, HStack, VStack, Link } from '@chakra-ui/react';
 import { Search, ExternalLink } from 'lucide-react';
 import { extractResultText } from './utils';
+import type { IToolCallRenderer, TCanRenderResult } from '@/store/types';
 
 interface ISearchResult {
 	title?: string;
@@ -66,8 +67,18 @@ export const SearchRenderer = React.memo((props: {
 					<Text fontSize="11px" fontFamily="mono" color="var(--wc-text-secondary)" whiteSpace="pre-wrap">
 						{resultText}
 					</Text>
-				</Box>
-			)}
+		</Box>
+		)}
 		</Box>
 	);
 });
+
+export const SearchRendererMeta: IToolCallRenderer = {
+	component: SearchRenderer,
+	keywords: ['search', 'find', 'grep', 'query', 'lookup'],
+	canRender: (args: Record<string, unknown>): TCanRenderResult => {
+		const query = args.query ?? args.q ?? args.pattern ?? args.search ?? args.term;
+		if (typeof query !== 'string' || query.length === 0) return false;
+		return { query };
+	},
+};

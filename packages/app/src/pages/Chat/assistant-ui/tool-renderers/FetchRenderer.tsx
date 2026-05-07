@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Text, HStack } from '@chakra-ui/react';
 import { Globe } from 'lucide-react';
+import type { IToolCallRenderer, TCanRenderResult } from '@/store/types';
 
 export const FetchRenderer = React.memo((props: {
 	url?: string,
@@ -29,3 +30,16 @@ export const FetchRenderer = React.memo((props: {
 		</Box>
 	);
 });
+
+export const FetchRendererMeta: IToolCallRenderer = {
+	component: FetchRenderer,
+	keywords: ['fetch', 'http', 'url', 'web', 'request', 'get', 'curl', 'download', 'navigate', 'scrape'],
+	canRender: (args: Record<string, unknown>): TCanRenderResult => {
+		const url = args.url ?? args.uri ?? args.link ?? args.endpoint ?? args.address;
+		if (typeof url !== 'string' || url.length === 0) return false;
+		// Basic URL sanity check — must look url-ish
+		if (!/^https?:\/\//i.test(url) && !url.startsWith('/')) return false;
+		const { url: _u, uri: _i, link: _l, endpoint: _e, address: _a, ...rest } = args;
+		return { url, ...rest };
+	},
+};

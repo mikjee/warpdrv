@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Box, Text, HStack } from '@chakra-ui/react';
 import { FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import { extractResultText } from './utils';
+import type { IToolCallRenderer, TCanRenderResult } from '@/store/types';
 
 export const ReadFileRenderer = React.memo((props: {
 	path?: string,
@@ -46,8 +47,26 @@ export const ReadFileRenderer = React.memo((props: {
 							</Text>
 						</Box>
 					)}
-				</Box>
-			)}
+		</Box>
+		)}
 		</Box>
 	);
 });
+
+export const ReadFileRendererMeta: IToolCallRenderer = {
+	component: ReadFileRenderer,
+	keywords: ['read', 'cat', 'view', 'open', 'get', 'fetch', 'load'],
+	canRender: (args: Record<string, unknown>): TCanRenderResult => {
+		const path = args.path ?? args.file_path ?? args.filepath ?? args.filename ?? args.file;
+		if (typeof path !== 'string' || path.length === 0) return false;
+		// Reject if it also looks like a write/edit (must NOT have content/old/edits)
+		if (typeof args.content === 'string') return false;
+		if (typeof args.old_string === 'string' || typeof args.new_string === 'string') return false;
+		if (Array.isArray(args.edits)) return false;
+		const head = typeof args.head === 'number' ? args.head : undefined;
+		const tail = typeof args.tail === 'number' ? args.tail : undefined;
+		const offset = typeof args.offset === 'number' ? args.offset : undefined;
+		const length = typeof args.length === 'number' ? args.length : undefined;
+		return { path, head, tail, offset, length };
+	},
+};
