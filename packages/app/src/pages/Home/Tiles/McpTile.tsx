@@ -1,10 +1,10 @@
-import { Text } from '@chakra-ui/react';
 import { Plug } from 'lucide-react';
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '@/store';
 import { EMcpServerStatus } from '@warpcore/bridge';
 import { TileContainer } from '../TileContainer';
+import { TileValueDisplay } from '../TileValueDisplay';
 
 export const McpTile = React.memo(() => {
 	const navigate = useNavigate();
@@ -30,10 +30,7 @@ export const McpTile = React.memo(() => {
 			statusDot={state}
 			onClick={() => navigate('/mcp')}
 		>
-			<span style={{ color: "#777", fontSize: "12px" }}>MCP Servers Connected</span>
-			<Text fontSize="24px" fontWeight="600" color="rgba(255,255,255,0.85)">
-				{mcpConnected}/{mcpTotal}
-			</Text>
+			<TileValueDisplay label="MCP Servers Connected" value={`${mcpConnected}/${mcpTotal}`} />
 		</TileContainer>
 	);
 });

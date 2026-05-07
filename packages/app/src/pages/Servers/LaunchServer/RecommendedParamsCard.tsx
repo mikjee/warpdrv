@@ -48,20 +48,20 @@ export const RecommendedParamsCard = React.memo(({
 			<VStack align="stretch" gap="3">
 				<HStack justify="space-between" align="center">
 					<VStack align="start" gap="0.5">
-						<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em">Model Params</Text>
-						<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">These params will apply to all servers that use this Model.</Text>
+<Text fontSize="12px" fontWeight="600" color="var(--wc-text-tertiary)" textTransform="uppercase" letterSpacing="0.05em">Model Params</Text>
+					<Text fontSize="11px" color="var(--wc-text-tertiary)">These params will apply to all servers that use this Model.</Text>
 					</VStack>
-					<Switch.Root label="Use recommended params" checked={useRecommended} onCheckedChange={(d) => onUseRecommendedChange(d.checked)} color={useRecommended ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'}>
+					<Switch.Root label="Use recommended params" checked={useRecommended} onCheckedChange={(d) => onUseRecommendedChange(d.checked)} color={useRecommended ? 'var(--wc-accent-blue)' : 'var(--wc-text-tertiary)'}>
 						<Switch.HiddenInput />
-						<Switch.Control css={{ bg: useRecommended ? '#3b86d6' : 'surface.4' }}>
-							<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+						<Switch.Control css={{ bg: useRecommended ? 'var(--wc-accent-blue)' : 'surface.4' }}>
+							<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 						</Switch.Control>
 					</Switch.Root>
 				</HStack>
 				{useRecommended && (
 					<Box position="relative">
 						<Textarea value={draftText} variant="subtle"
-							bg={isEditing ? "rgb(30,30,30)" : "transparent"} outline="none"
+							bg={isEditing ? "var(--wc-bg-subtle)" : "transparent"} outline="none"
 							onChange={(e) => setDraftText(e.target.value)}
 							readOnly={!isEditing} opacity={isEditing ? 1 : 0.5}
 							fontFamily="monospace" fontSize="12px"
@@ -73,12 +73,12 @@ export const RecommendedParamsCard = React.memo(({
 						/>
 						<HStack position="absolute" bottom="2" right="2" gap="2">
 							{isEditing && (
-								<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.6)"
-									_hover={{ color: '#f43f5e', bg: 'rgba(244, 63, 94, 0.1)' }} borderRadius="md" fontSize="10px"
+								<Button size="xs" variant="ghost" color="var(--wc-text-secondary)"
+									_hover={{ color: 'var(--wc-accent-red-alt)', bg: 'var(--wc-accent-red-bg-12)' }} borderRadius="md" fontSize="10px"
 									onClick={handleCancel}>Cancel</Button>
 							)}
-							<Button size="xs" variant="outline" borderColor="rgba(255, 255, 255, 0.2)" color="rgba(255, 255, 255, 0.6)"
-								_hover={{ borderColor: '#3b86d6', color: '#3b86d6', bg: 'rgba(51, 129, 255, 0.05)' }}
+							<Button size="xs" variant="outline" borderColor="var(--wc-border-default)" color="var(--wc-text-secondary)"
+								_hover={{ borderColor: 'var(--wc-border-hover)', color: 'var(--wc-text-primary)', bg: 'var(--wc-bg-hover)' }}
 								borderRadius="md" fontSize="10px" gap="1" onClick={() => isEditing ? handleSave() : handleEdit()}>
 								{isEditing ? <Check size={10} /> : <Pencil size={10} />}
 								{isEditing ? 'Save' : 'Edit'}

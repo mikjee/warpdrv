@@ -48,27 +48,27 @@ const ModelCombobox = React.memo(({ entries, selectedPath, onSelect, placeholder
 		>
 			<Combobox.Control>
 				<Combobox.Input placeholder={placeholder}
-					bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
+					bg="var(--wc-bg-subtle)" borderColor="var(--wc-border-default)" color="var(--wc-text-secondary)"
 					fontSize="13px" borderRadius="lg"
-					_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
-					_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
+					_placeholder={{ color: 'var(--wc-text-faint)' }}
+					_focus={{ borderColor: 'var(--wc-accent-blue)', outline: 'none' }}
 				/>
 				<Combobox.IndicatorGroup><Combobox.ClearTrigger /><Combobox.Trigger /></Combobox.IndicatorGroup>
 			</Combobox.Control>
 			<Portal>
 				<Combobox.Positioner>
-					<Combobox.Content maxH="280px" overflowY="auto" bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
+					<Combobox.Content maxH="280px" overflowY="auto" bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-default)"
 						borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1">
-						<Combobox.Empty><Text fontSize="12px" color="rgba(255, 255, 255, 0.25)" py="4" textAlign="center">No matches</Text></Combobox.Empty>
+						<Combobox.Empty><Text fontSize="12px" color="var(--wc-text-disabled)" py="4" textAlign="center">No matches</Text></Combobox.Empty>
 						{collection.items.map((item) => {
 							const entry = (item as { entry: TModelEntry }).entry;
 							return (
 								<Combobox.Item key={item.value} item={item} px="3" py="2" borderRadius="md" cursor="pointer"
-									_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }} _highlighted={{ bg: 'rgba(167, 139, 250, 0.08)' }}>
+									_hover={{ bg: 'var(--wc-bg-hover)' }} _highlighted={{ bg: 'var(--wc-accent-purple-bg-8)' }}>
 									<HStack gap="3" w="100%">
 										<Box flex="1" minW="0">
-											<Text fontSize="12px" fontWeight="500" color="#e4e4e7" lineClamp={1}>{entry.file.fileName}</Text>
-											<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)">{entry.model.user}</Text>
+											<Text fontSize="12px" fontWeight="500" color="var(--wc-text-primary)" lineClamp={1}>{entry.file.fileName}</Text>
+											<Text fontSize="10px" color="var(--wc-text-tertiary)">{entry.model.user}</Text>
 										</Box>
 										<Combobox.ItemIndicator />
 									</HStack>
@@ -100,22 +100,22 @@ export const SpeculativeDecodingCard = React.memo(({
 	deviceIdToName: Record<string, string>;
 }) => {
 	return (
-		<Card bg={specDecode.enabled ? 'rgba(167, 139, 250, 0.03)' : undefined} borderColor={specDecode.enabled ? 'rgba(167, 139, 250, 0.12)' : undefined}>
+		<Card bg={specDecode.enabled ? 'var(--wc-accent-purple-bg-8)' : undefined} borderColor={specDecode.enabled ? 'var(--wc-accent-purple-border)' : undefined}>
 			<HStack justify="space-between" align="center">
 				<HStack gap="3">
 					<Flex w="6" h="6" borderRadius="md" alignItems="center" justifyContent="center"
-						bg={specDecode.enabled ? 'rgba(167, 139, 250, 0.15)' : 'rgba(255, 255, 255, 0.04)'}>
-						<Sparkles size={14} color={specDecode.enabled ? '#a78bfa' : 'rgba(255, 255, 255, 0.3)'} />
+						bg={specDecode.enabled ? 'var(--wc-accent-purple-bg-8)' : 'var(--wc-bg-subtle)'}>
+						<Sparkles size={14} color={specDecode.enabled ? 'var(--wc-accent-purple)' : 'var(--wc-text-tertiary)'} />
 					</Flex>
 					<VStack align="start" gap="0.5">
-						<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em">Speculative Decoding</Text>
-						<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">{specDecode.mode === 'ngram' ? 'Draftless n-gram speculation' : 'Use a smaller model as the draft driver'}</Text>
+<Text fontSize="12px" fontWeight="600" color="var(--wc-text-tertiary)" textTransform="uppercase" letterSpacing="0.05em">Speculative Decoding</Text>
+					<Text fontSize="11px" color="var(--wc-text-tertiary)">{specDecode.mode === 'ngram' ? 'Draftless n-gram speculation' : 'Use a smaller model as the draft driver'}</Text>
 					</VStack>
 				</HStack>
-				<Switch.Root label="Enable speculative decoding" checked={specDecode.enabled} onCheckedChange={(d) => onSpecParamChange('enabled', d.checked)} color={specDecode.enabled ? '#a78bfa' : 'rgba(255, 255, 255, 0.4)'}>
+				<Switch.Root label="Enable speculative decoding" checked={specDecode.enabled} onCheckedChange={(d) => onSpecParamChange('enabled', d.checked)} color={specDecode.enabled ? 'var(--wc-accent-purple)' : 'var(--wc-text-tertiary)'}>
 					<Switch.HiddenInput />
-					<Switch.Control css={{ bg: specDecode.enabled ? '#a78bfa' : 'surface.4' }}>
-						<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+					<Switch.Control css={{ bg: specDecode.enabled ? 'var(--wc-accent-purple)' : 'surface.4' }}>
+						<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 					</Switch.Control>
 				</Switch.Root>
 			</HStack>
@@ -124,19 +124,19 @@ export const SpeculativeDecodingCard = React.memo(({
 				<VStack align="stretch" gap="4" mt="4">
 					<HStack gap="2">
 						<Button size="sm" variant="outline" flex="1" justifyContent="center"
-							borderColor={specDecode.mode === 'ngram' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(167, 139, 250, 0.3)'}
+							borderColor={specDecode.mode === 'ngram' ? 'var(--wc-border-subtle)' : 'var(--wc-accent-purple-border)'}
 							borderWidth={specDecode.mode === 'ngram' ? '1px' : '2px'}
-							color={specDecode.mode === 'ngram' ? 'rgba(255, 255, 255, 0.4)' : '#a78bfa'}
-							bg={specDecode.mode === 'ngram' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(167, 139, 250, 0.05)'}
-							_hover={{ borderColor: specDecode.mode === 'ngram' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(167, 139, 250, 0.5)' }}
+							color={specDecode.mode === 'ngram' ? 'var(--wc-text-secondary)' : 'var(--wc-accent-purple)'}
+							bg={specDecode.mode === 'ngram' ? 'var(--wc-bg-subtle)' : 'var(--wc-accent-purple-bg-8)'}
+							_hover={{ borderColor: specDecode.mode === 'ngram' ? 'var(--wc-border-hover)' : 'var(--wc-accent-purple-hover)' }}
 							onClick={() => onSpecParamChange('mode', 'draft')}
 						><Text fontSize="13px" fontWeight="500">Draft Model</Text></Button>
 						<Button size="sm" variant="outline" flex="1" justifyContent="center"
-							borderColor={specDecode.mode === 'ngram' ? 'rgba(167, 139, 250, 0.3)' : 'rgba(255, 255, 255, 0.08)'}
-							borderWidth={specDecode.mode === 'ngram' ? '2px' : '1px'}
-							color={specDecode.mode === 'ngram' ? '#a78bfa' : 'rgba(255, 255, 255, 0.4)'}
-							bg={specDecode.mode === 'ngram' ? 'rgba(167, 139, 250, 0.05)' : 'rgba(255, 255, 255, 0.02)'}
-							_hover={{ borderColor: specDecode.mode === 'ngram' ? 'rgba(167, 139, 250, 0.5)' : 'rgba(255, 255, 255, 0.15)' }}
+borderColor={specDecode.mode === 'ngram' ? 'var(--wc-accent-purple-border)' : 'var(--wc-border-subtle)'}
+						borderWidth={specDecode.mode === 'ngram' ? '2px' : '1px'}
+						color={specDecode.mode === 'ngram' ? 'var(--wc-accent-purple)' : 'var(--wc-text-secondary)'}
+						bg={specDecode.mode === 'ngram' ? 'var(--wc-accent-purple-bg-8)' : 'var(--wc-bg-subtle)'}
+						_hover={{ borderColor: specDecode.mode === 'ngram' ? 'var(--wc-accent-purple-hover)' : 'var(--wc-border-hover)' }}
 							onClick={() => onSpecParamChange('mode', 'ngram')}
 						><Text fontSize="13px" fontWeight="500">Ngram</Text></Button>
 					</HStack>
@@ -144,21 +144,21 @@ export const SpeculativeDecodingCard = React.memo(({
 					{specDecode.mode !== 'ngram' && (
 						<VStack align="stretch" gap="4">
 							<Box>
-								<Text fontSize="11px" color="rgba(167, 139, 250, 0.7)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Draft Model</Text>
+								<Text fontSize="11px" color="var(--wc-accent-purple-text)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Draft Model</Text>
 								{!targetArchitecture ? (
-									<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">Select a target model first to see compatible draft models.</Text>
+									<Text fontSize="12px" color="var(--wc-text-muted)">Select a target model first to see compatible draft models.</Text>
 								) : draftModelEntries.length === 0 ? (
-									<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">No compatible draft models found. Draft models must share the same architecture ({targetArchitecture}).</Text>
+									<Text fontSize="12px" color="var(--wc-text-muted)">No compatible draft models found. Draft models must share the same architecture ({targetArchitecture}).</Text>
 								) : (
 									<ModelCombobox entries={draftModelEntries} selectedPath={specDecode.draftModelPath || null}
 										onSelect={(path) => onSpecParamChange('draftModelPath', path)}
 										placeholder="Search compatible draft models..." />
 								)}
 								{selectedDraftEntry?.file.metadata && (
-									<HStack mt="2" gap="4" px="3" py="2" bg="rgba(167, 139, 250, 0.04)" borderRadius="lg" borderWidth="1px" borderColor="rgba(167, 139, 250, 0.1)">
-										<HStack gap="1.5"><Layers size={12} color="rgba(167, 139, 250, 0.5)" /><Text fontSize="11px" color="rgba(167, 139, 250, 0.7)">{selectedDraftEntry.file.metadata.nLayers} layers</Text></HStack>
-										<HStack gap="1.5"><Cpu size={12} color="rgba(167, 139, 250, 0.5)" /><Text fontSize="11px" color="rgba(167, 139, 250, 0.7)">{selectedDraftEntry.file.metadata.paramCount}</Text></HStack>
-										<Text fontSize="11px" color="rgba(167, 139, 250, 0.5)" fontFamily='"Geist Mono", monospace'>{formatSize(selectedDraftEntry.model.totalSizeMb)}</Text>
+									<HStack mt="2" gap="4" px="3" py="2" bg="var(--wc-accent-purple-bg-8)" borderRadius="lg" borderWidth="1px" borderColor="var(--wc-accent-purple-border)">
+										<HStack gap="1.5"><Layers size={12} color="var(--wc-accent-purple-icon)" /><Text fontSize="11px" color="var(--wc-accent-purple-text)">{selectedDraftEntry.file.metadata.nLayers} layers</Text></HStack>
+										<HStack gap="1.5"><Cpu size={12} color="var(--wc-accent-purple-icon)" /><Text fontSize="11px" color="var(--wc-accent-purple-text)">{selectedDraftEntry.file.metadata.paramCount}</Text></HStack>
+										<Text fontSize="11px" color="var(--wc-accent-purple-icon)" fontFamily='"Geist Mono", monospace'>{formatSize(selectedDraftEntry.model.totalSizeMb)}</Text>
 									</HStack>
 								)}
 							</Box>
@@ -168,20 +168,20 @@ export const SpeculativeDecodingCard = React.memo(({
 									<SelectField label="Draft Device" value={specDecode.draftDevice} options={['', ...deviceOptions]}
 										onChange={v => onSpecParamChange('draftDevice', v)} mono
 										optionLabels={{ '': 'Same as target', ...deviceIdToName }} />
-									<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)" mt="1">Leave empty to use target device.</Text>
+									<Text fontSize="10px" color="var(--wc-text-muted)" mt="1">Leave empty to use target device.</Text>
 								</Box>
 							)}
 
 							<Flex gap="4">
 								{selectedDraftEntry?.file.metadata ? (
 									<Box flex="1">
-										<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">
-											GPU Layers <Text as="span" color="rgba(255, 255, 255, 0.2)">/ {selectedDraftEntry.file.metadata.nLayers}</Text>
+										<Text fontSize="11px" color="var(--wc-text-tertiary)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">
+											GPU Layers <Text as="span" color="var(--wc-text-muted)">/ {selectedDraftEntry.file.metadata.nLayers}</Text>
 										</Text>
 										<Input type="number" value={specDecode.draftGpuLayers} onChange={e => onSpecParamChange('draftGpuLayers', Number(e.target.value))} size="sm"
-											bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
+											bg="var(--wc-bg-subtle)" borderColor="var(--wc-border-default)" color="var(--wc-text-secondary)"
 											fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
-											_focus={{ borderColor: 'rgba(167, 139, 250, 0.4)', outline: 'none' }} min={0} max={selectedDraftEntry.file.metadata.nLayers}
+											_focus={{ borderColor: 'var(--wc-accent-purple)', outline: 'none' }} min={0} max={selectedDraftEntry.file.metadata.nLayers}
 										/>
 									</Box>
 								) : (
@@ -191,12 +191,12 @@ export const SpeculativeDecodingCard = React.memo(({
 							</Flex>
 
 							<Box>
-								<Text fontSize="11px" color="rgba(167, 139, 250, 0.7)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Accept Threshold</Text>
+								<Text fontSize="11px" color="var(--wc-accent-purple-text)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Accept Threshold</Text>
 								<Input type="number" value={specDecode.draftPMin} onChange={e => onSpecParamChange('draftPMin', Number(e.target.value))} size="sm"
-									bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
+									bg="var(--wc-bg-subtle)" borderColor="var(--wc-border-default)" color="var(--wc-text-primary)"
 									fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
-									_focus={{ borderColor: 'rgba(167, 139, 250, 0.4)', outline: 'none' }} min={0} max={1} step={0.05} />
-								<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)" mt="1">0.0 - 1.0</Text>
+									_focus={{ borderColor: 'var(--wc-accent-purple)', outline: 'none' }} min={0} max={1} step={0.05} />
+								<Text fontSize="10px" color="var(--wc-text-muted)" mt="1">0.0 - 1.0</Text>
 							</Box>
 						</VStack>
 					)}
@@ -222,7 +222,7 @@ export const SpeculativeDecodingCard = React.memo(({
 					)}
 
 					<Box>
-						<Text fontSize="11px" color="rgba(167, 139, 250, 0.7)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Drafting Parameters</Text>
+						<Text fontSize="11px" color="var(--wc-accent-purple-text)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Drafting Parameters</Text>
 						<Flex gap="4">
 							<NumberField label="Draft Max" value={specDecode.draftMax} onChange={v => onSpecParamChange('draftMax', v)} min={1} max={128} />
 							<NumberField label="Draft Min" value={specDecode.draftMin} onChange={v => onSpecParamChange('draftMin', v)} min={0} max={64} />

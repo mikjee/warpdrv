@@ -98,8 +98,8 @@ export function McpPage() {
 								py="1"
 								fontSize="12px"
 								borderRadius="sm"
-								bg={viewMode === m ? 'rgba(255,255,255,0.1)' : 'transparent'}
-								color={viewMode === m ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.4)'}
+								bg={viewMode === m ? 'var(--wc-bg-selected)' : 'transparent'}
+								color={viewMode === m ? 'var(--wc-text-heading)' : 'var(--wc-text-muted)'}
 								onClick={() => setViewMode(m)}
 							>
 								{m === 'cards' ? 'Servers' : 'JSON'}
@@ -109,21 +109,21 @@ export function McpPage() {
 							as="button"
 							p="1.5"
 							borderRadius="sm"
-							_hover={{ bg: 'rgba(255,255,255,0.06)' }}
+							_hover={{ bg: 'var(--wc-bg-hover)' }}
 							onClick={() => reloadMcpServers()}
 							title="Reload all servers"
 						>
-							<RefreshCw size={14} color="rgba(255,255,255,0.5)" />
+							<RefreshCw size={14} color="var(--wc-text-tertiary)" />
 						</Box>
 						<Box
 							as="button"
 							p="1.5"
 							borderRadius="sm"
-							_hover={{ bg: 'rgba(255,255,255,0.06)' }}
+							_hover={{ bg: 'var(--wc-bg-hover)' }}
 							onClick={() => setShowAddForm(true)}
 							title="Add server"
 						>
-							<Plus size={14} color="rgba(255,255,255,0.5)" />
+							<Plus size={14} color="var(--wc-text-tertiary)" />
 						</Box>
 					</HStack>
 				}
@@ -152,7 +152,7 @@ export function McpPage() {
 								/>
 							))}
 							{Object.keys(serverEntries).length === 0 && !showAddForm && (
-								<Text fontSize="13px" color="rgba(255,255,255,0.3)" textAlign="center" py="8">
+								<Text fontSize="13px" color="var(--wc-text-muted)" textAlign="center" py="8">
 									No MCP servers configured. Click + to add one, or edit the JSON directly.
 								</Text>
 							)}

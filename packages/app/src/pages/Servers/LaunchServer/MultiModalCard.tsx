@@ -13,22 +13,22 @@ export const MultiModalCard = React.memo(({
 	hasMmproj: boolean;
 }) => {
 	return (
-		<Card bg={useMultiModal ? 'rgba(251, 191, 36, 0.03)' : undefined} borderColor={useMultiModal ? 'rgba(251, 191, 36, 0.12)' : undefined}>
+		<Card bg={useMultiModal ? 'var(--wc-accent-yellow-bg-8)' : undefined} borderColor={useMultiModal ? 'var(--wc-accent-yellow-border)' : undefined}>
 			<HStack justify="space-between" align="center">
 				<HStack gap="3">
 					<Flex w="6" h="6" borderRadius="md" alignItems="center" justifyContent="center"
-						bg={useMultiModal ? 'rgba(251, 191, 36, 0.15)' : 'rgba(255, 255, 255, 0.04)'}>
-						<Eye size={14} color={useMultiModal ? '#fbbf24' : 'rgba(255, 255, 255, 0.3)'} />
+						bg={useMultiModal ? 'var(--wc-accent-yellow-bg-8)' : 'var(--wc-bg-subtle)'}>
+						<Eye size={14} color={useMultiModal ? 'var(--wc-accent-yellow)' : 'var(--wc-text-tertiary)'} />
 					</Flex>
 					<VStack align="start" gap="0.5">
-						<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em">Multi-modal</Text>
-						<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)">Vision requires mmproj.GGUF</Text>
+<Text fontSize="12px" fontWeight="600" color="var(--wc-text-tertiary)" textTransform="uppercase" letterSpacing="0.05em">Multi-modal</Text>
+					<Text fontSize="11px" color="var(--wc-text-tertiary)">Vision requires mmproj.GGUF</Text>
 					</VStack>
 				</HStack>
-				<Switch.Root label="Use multi-modal (mmproj)" checked={useMultiModal} onCheckedChange={(d) => onUseMultiModalChange(d.checked)} disabled={!hasMmproj} color={useMultiModal ? '#fbbf24' : 'rgba(255, 255, 255, 0.4)'}>
+				<Switch.Root label="Use multi-modal (mmproj)" checked={useMultiModal} onCheckedChange={(d) => onUseMultiModalChange(d.checked)} disabled={!hasMmproj} color={useMultiModal ? 'var(--wc-accent-yellow)' : 'var(--wc-text-tertiary)'}>
 					<Switch.HiddenInput />
-					<Switch.Control css={{ bg: useMultiModal ? '#fbbf24' : 'surface.4' }}>
-						<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+					<Switch.Control css={{ bg: useMultiModal ? 'var(--wc-accent-yellow)' : 'surface.4' }}>
+						<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 					</Switch.Control>
 				</Switch.Root>
 			</HStack>

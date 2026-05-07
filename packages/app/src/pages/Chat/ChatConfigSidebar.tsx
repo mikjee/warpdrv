@@ -95,7 +95,7 @@ function ParamSlider({ label, value, min, max, step, onChange }: {
 	return (
 		<Box>
 			<HStack justify="space-between" mb="1">
-				<Text fontSize="12px" color="rgba(255,255,255,0.5)">{label}</Text>
+				<Text fontSize="12px" color="var(--wc-text-secondary)">{label}</Text>
 				<Input
 					size="xs"
 					w="60px"
@@ -104,9 +104,9 @@ function ParamSlider({ label, value, min, max, step, onChange }: {
 					fontSize="12px"
 					value={value}
 					onChange={handleInputChange}
-					bg="rgba(255,255,255,0.04)"
-					borderColor="rgba(255,255,255,0.08)"
-					color="rgba(255,255,255,0.8)"
+					bg="var(--wc-bg-card)"
+					borderColor="var(--wc-border-default)"
+					color="var(--wc-text-primary)"
 					px="2"
 					h="24px"
 				/>
@@ -118,7 +118,7 @@ function ParamSlider({ label, value, min, max, step, onChange }: {
 				step={step}
 				value={value}
 				onChange={handleSliderChange}
-				style={{ width: '100%', accentColor: '#666' }}
+				style={{ width: '100%', accentColor: 'var(--wc-special-mono-gray)' }}
 			/>
 		</Box>
 	);
@@ -135,22 +135,22 @@ function ParamSelect({ label, value, options, onChange }: {
 }) {
 	return (
 		<Box>
-			<Text fontSize="12px" color="rgba(255,255,255,0.5)" mb="1">{label}</Text>
+			<Text fontSize="12px" color="var(--wc-text-secondary)" mb="1">{label}</Text>
 			<select
 				value={value}
 				onChange={e => onChange(e.target.value)}
 				style={{
 					width: '100%',
-					background: 'rgba(255,255,255,0.04)',
-					border: '1px solid rgba(255,255,255,0.08)',
+					background: 'var(--wc-bg-card)',
+					border: '1px solid var(--wc-border-default)',
 					borderRadius: '6px',
-					color: 'rgba(255,255,255,0.8)',
+					color: 'var(--wc-text-primary)',
 					fontSize: '12px',
 					padding: '4px 8px',
 					height: '28px',
 				}}
 			>
-				{options.map((o) => <option key={o.value} value={o.value} style={{ background: '#1a1a1a' }}>{o.label}</option>)}
+				{options.map((o) => <option key={o.value} value={o.value} style={{ background: 'var(--wc-bg-elevated)' }}>{o.label}</option>)}
 			</select>
 		</Box>
 	);
@@ -166,16 +166,16 @@ function ParamToggle({ label, value, onChange }: {
 }) {
 	return (
 		<HStack justify="space-between">
-			<Text fontSize="12px" color="rgba(255,255,255,0.5)">{label}</Text>
+			<Text fontSize="12px" color="var(--wc-text-secondary)">{label}</Text>
 			<Box
 				w="36px" h="20px" borderRadius="full" cursor="pointer"
-				bg={value ? 'rgba(100,200,100,0.4)' : 'rgba(255,255,255,0.08)'}
+				bg={value ? 'var(--wc-accent-green)' : 'var(--wc-border-default)'}
 				position="relative"
 				onClick={() => onChange(!value)}
 				transition="background 0.15s"
 			>
 				<Box
-					w="16px" h="16px" borderRadius="full" bg="white"
+					w="16px" h="16px" borderRadius="full" bg="var(--wc-special-white)"
 					position="absolute" top="2px"
 					left={value ? '18px' : '2px'}
 					transition="left 0.15s"
@@ -206,7 +206,7 @@ function SectionHeader({ title, collapsed, onToggle }: { title: string; collapse
 					}}
 				/>
 			)}
-			<Text fontSize="11px" fontWeight="600" color="rgba(255,255,255,0.4)" textTransform="uppercase" letterSpacing="0.05em">
+			<Text fontSize="11px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em">
 				{title}
 			</Text>
 		</HStack>
@@ -307,18 +307,18 @@ export function ChatConfigContentPanel({
 						onChange={(e) => handlePresetChange(e.target.value)}
 						style={{
 							flex: 1,
-							background: 'rgba(255,255,255,0.04)',
-							border: '1px solid rgba(255,255,255,0.08)',
+							background: 'var(--wc-bg-card)',
+							border: '1px solid var(--wc-border-default)',
 							borderRadius: '6px',
-							color: 'rgba(255,255,255,0.8)',
+							color: 'var(--wc-text-primary)',
 							fontSize: '12px',
 							padding: '4px 8px',
 							height: '28px',
 						}}
 					>
-						<option value="" style={{ background: '#1a1a1a' }}>None (custom)</option>
+						<option value="" style={{ background: 'var(--wc-bg-elevated)' }}>None (custom)</option>
 						{presets.map((p) => (
-							<option key={p.id} value={p.id} style={{ background: '#1a1a1a' }}>{p.name}</option>
+							<option key={p.id} value={p.id} style={{ background: 'var(--wc-bg-elevated)' }}>{p.name}</option>
 						))}
 					</select>
 					{selectedPresetId && (
@@ -340,9 +340,9 @@ export function ChatConfigContentPanel({
 							value={savePresetName}
 							onChange={(e) => setSavePresetName(e.target.value)}
 							onKeyDown={(e) => { if (e.key === 'Enter') handleSavePreset(); if (e.key === 'Escape') setShowSaveInput(false); }}
-							bg="rgba(255,255,255,0.04)"
-							borderColor="rgba(255,255,255,0.08)"
-							color="rgba(255,255,255,0.8)"
+							bg="var(--wc-bg-card)"
+							borderColor="var(--wc-border-default)"
+							color="var(--wc-text-primary)"
 							fontSize="12px"
 							h="26px"
 							autoFocus
@@ -362,9 +362,9 @@ export function ChatConfigContentPanel({
 					onChange={(e) => onSystemPromptChange(e.target.value)}
 					placeholder="You are a helpful assistant..."
 					fontSize="12px"
-					bg="rgba(255,255,255,0.04)"
-					borderColor="rgba(255,255,255,0.08)"
-					color="rgba(255,255,255,0.8)"
+					bg="var(--wc-bg-card)"
+					borderColor="var(--wc-border-default)"
+					color="var(--wc-text-primary)"
 					minH="80px"
 					maxH="200px"
 					resize="vertical"
@@ -381,15 +381,19 @@ export function ChatConfigContentPanel({
 						onValueChange={(details) => setSettings({ showRawJSONChatConfig: details.value === 'json' })}
 						size={"sm"}
 						w="full"
+						css={{
+							bg: 'var(--wc-bg-subtle)',
+							'--segment-indicator-bg': 'var(--wc-bg-active)',
+						}}
 					>
-						<SegmentGroup.Indicator />
+						<SegmentGroup.Indicator css={{ bg: 'var(--wc-bg-active)' }} />
 						<SegmentGroup.Items
 							flex={"content"}
 							items={[
 								{
 									value: 'ui',
 									label: (
-										<HStack gap="1.5">
+										<HStack gap="1.5" color={showRawJSON ? 'var(--wc-text-muted)' : 'var(--wc-text-heading)'}>
 											<LuLayoutGrid size={14} />
 											<Text fontSize="12px">Controls</Text>
 										</HStack>
@@ -398,7 +402,7 @@ export function ChatConfigContentPanel({
 								{
 									value: 'json',
 									label: (
-										<HStack gap="1.5">
+										<HStack gap="1.5" color={showRawJSON ? 'var(--wc-text-heading)' : 'var(--wc-text-muted)'}>
 											<LuCode size={14} />
 											<Text fontSize="12px">Raw</Text>
 										</HStack>
@@ -432,19 +436,19 @@ export function ChatConfigContentPanel({
 							placeholder='{"temperature": 0.7, "topP": 0.9}'
 							fontFamily="mono"
 							fontSize="11px"
-							bg="rgba(255,255,255,0.04)"
-							borderColor={jsonError ? 'rgba(244, 63, 94, 0.5)' : 'rgba(255,255,255,0.08)'}
-							color="rgba(255,255,255,0.8)"
+							bg="var(--wc-bg-card)"
+							borderColor={jsonError ? 'var(--wc-accent-red-border)' : 'var(--wc-border-default)'}
+							color="var(--wc-text-primary)"
 							minH="200px"
 							resize="vertical"
 							p="2"
 						/>
 						{jsonError && (
-							<Text fontSize="10px" color="rgba(244, 63, 94, 0.9)" mt="1" fontFamily="mono">
+							<Text fontSize="10px" color="var(--wc-accent-red-alt)" mt="1" fontFamily="mono">
 								{jsonError}
 							</Text>
 						)}
-						<Text fontSize="10px" color="rgba(255,255,255,0.3)" mt="1">
+						<Text fontSize="10px" color="var(--wc-text-faint)" mt="1">
 							Edit JSON directly. Only non-default values are saved as overrides.
 						</Text>
 					</Box>
@@ -472,30 +476,30 @@ export function ChatConfigContentPanel({
 						<SectionHeader title="Generation" />
 						<VStack gap="2.5" align="stretch">
 							<Box>
-								<Text fontSize="12px" color="rgba(255,255,255,0.5)" mb="1">Max Tokens (-1 = unlimited)</Text>
+								<Text fontSize="12px" color="var(--wc-text-secondary)" mb="1">Max Tokens (-1 = unlimited)</Text>
 								<Input
 									size="xs"
 									fontFamily="mono"
 									fontSize="12px"
 		value={displayParams.maxTokens}
 								onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) updateParam('maxTokens', v); }}
-									bg="rgba(255,255,255,0.04)"
-									borderColor="rgba(255,255,255,0.08)"
-									color="rgba(255,255,255,0.8)"
+									bg="var(--wc-bg-card)"
+									borderColor="var(--wc-border-default)"
+									color="var(--wc-text-primary)"
 									h="28px"
 								/>
 							</Box>
 							<Box>
-								<Text fontSize="12px" color="rgba(255,255,255,0.5)" mb="1">Seed (-1 = random)</Text>
+								<Text fontSize="12px" color="var(--wc-text-secondary)" mb="1">Seed (-1 = random)</Text>
 								<Input
 									size="xs"
 									fontFamily="mono"
 									fontSize="12px"
 		value={displayParams.seed}
 								onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) updateParam('seed', v); }}
-									bg="rgba(255,255,255,0.04)"
-									borderColor="rgba(255,255,255,0.08)"
-									color="rgba(255,255,255,0.8)"
+									bg="var(--wc-bg-card)"
+									borderColor="var(--wc-border-default)"
+									color="var(--wc-text-primary)"
 									h="28px"
 								/>
 							</Box>

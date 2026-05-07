@@ -1,7 +1,9 @@
+import React, { useState, useContext, useCallback, useMemo } from 'react';
+import { Box, Text, HStack } from '@chakra-ui/react';
+import { Wrench, Check, Ban, Loader, AlertCircle, X } from 'lucide-react';
 import { ToolCallBlock } from '@/pages/Chat/assistant-ui/ToolCallBlock';
 import { useStore } from '@/store';
 import { EToolCallStatus } from '@warpcore/bridge';
-import { useContext } from 'react';
 import { ServerStatusContext } from './thread';
 
 interface IToolCallBlockWrapperProps {
@@ -13,47 +15,130 @@ interface IToolCallBlockWrapperProps {
 	status: 'complete' | 'running' | 'requires-action' | 'error';
 }
 
-export function ToolCallBlockWrapper({ toolCallId, toolName, serverName, args, result, status }: IToolCallBlockWrapperProps) {
+const statusColors: Record<EToolCallStatus, string> = {
+	[EToolCallStatus.PENDING]: 'var(--wc-accent-yellow-strong)',
+	[EToolCallStatus.DENIED]: 'var(--wc-accent-red)',
+	[EToolCallStatus.EXECUTING]: 'var(--wc-accent-blue)',
+	[EToolCallStatus.COMPLETED]: 'var(--wc-accent-green-icon)',
+	[EToolCallStatus.ERROR]: 'var(--wc-accent-red)',
+};
+
+const statusLabels: Record<EToolCallStatus, string> = {
+	[EToolCallStatus.PENDING]: 'Awaiting approval',
+	[EToolCallStatus.DENIED]: 'Denied',
+	[EToolCallStatus.EXECUTING]: 'Running',
+	[EToolCallStatus.COMPLETED]: 'Completed',
+	[EToolCallStatus.ERROR]: 'Error',
+};
+
+export const ToolCallBlockWrapper = React.memo(({ toolCallId, toolName, serverName, args, result, status }: IToolCallBlockWrapperProps) => {
 	const currentThreadId = useStore(s => s.currentThreadId);
 	const { currentServerId } = useContext(ServerStatusContext);
 	const currentSystemPrompt = useStore(s => s.currentSystemPrompt);
 	const currentInferenceParams = useStore(s => s.currentInferenceParams);
 	const toolCall = useStore(s => s.toolCallsById[toolCallId]);
+	const serverState = useStore(s => serverName ? s.mcpServers[serverName] : undefined);
+	const toolCallRenderers = useStore(s => s.toolCallRenderers);
+	const [deciding, setDeciding] = useState(false);
 
-	async function handleDecisionV2(decision: 'approve' | 'deny') {
+	const handleDecision = useCallback(async (decision: 'approve' | 'deny') => {
 		if (!currentThreadId || !currentServerId) return;
-
 		const { decideMcpToolCall } = await import('@/api/mcpServices');
-		await decideMcpToolCall(
-			toolCallId,
-			decision,
-			currentThreadId,
-			currentServerId,
-			currentSystemPrompt,
-			currentInferenceParams
-		);
-	}
+		setDeciding(true);
+		try {
+			await decideMcpToolCall(
+				toolCallId, decision, currentThreadId, currentServerId,
+				currentSystemPrompt, currentInferenceParams
+			);
+		} finally {
+			setDeciding(false);
+		}
+	}, [toolCallId, currentThreadId, currentServerId, currentSystemPrompt, currentInferenceParams]);
 
-	// Use actual status from store, fallback to mapped status if not available
+
 	const displayStatus: EToolCallStatus = toolCall?.status ?? (
 		status === 'requires-action'
 			? EToolCallStatus.PENDING
 			: status === 'running'
-			? EToolCallStatus.EXECUTING
-			: status === 'error'
-			? EToolCallStatus.ERROR
-			: EToolCallStatus.COMPLETED
+				? EToolCallStatus.EXECUTING
+				: status === 'error'
+					? EToolCallStatus.ERROR
+					: EToolCallStatus.COMPLETED
 	);
 
+	const isPending = displayStatus === EToolCallStatus.PENDING;
+	const isExecuting = displayStatus === EToolCallStatus.EXECUTING;
+	const statusColor = statusColors[displayStatus];
+
+	const body = useMemo(() => {
+		const rendererCfg = serverState?.warpdrv?.renderers?.[toolName];
+		const RendererComponent = rendererCfg ? toolCallRenderers[rendererCfg.component] : undefined;
+
+		if (rendererCfg && RendererComponent) {
+			const mappedArgs: Record<string, unknown> = {};
+			for (const [k, v] of Object.entries(args)) {
+				const targetKey = rendererCfg.propsMap?.[k] ?? k;
+				mappedArgs[targetKey] = v;
+			}
+			return <RendererComponent {...mappedArgs} {...(rendererCfg.props ?? {})} />;
+		}
+		return <ToolCallBlock args={JSON.stringify(args)} result={result ? JSON.stringify(result) : undefined} />;
+	}, [serverState, toolName, toolCallRenderers, args, result]);
+
 	return (
-		<ToolCallBlock
-			id={toolCallId}
-			serverName={serverName ?? 'unknown'}
-			toolName={toolName}
-			arguments={JSON.stringify(args)}
-			result={result ? JSON.stringify(result) : undefined}
-			status={displayStatus}
-			onDecided={handleDecisionV2}
-		/>
+		<Box my="2" borderWidth="1px" borderColor="var(--wc-border-default)" borderRadius="lg" bg="var(--wc-bg-surface)" overflow="hidden">
+			<HStack gap="2" px="3" py="2" bg="var(--wc-bg-surface)">
+				<Wrench size={13} color="var(--wc-text-secondary)" />
+				<Text fontSize="12px" fontWeight="500" color="var(--wc-text-primary)">{toolName}</Text>
+				<Text fontSize="11px" color="var(--wc-text-faint)">{serverName}</Text>
+				<Box flex="1" />
+				<HStack gap="1">
+					{isExecuting && (
+						<>
+							<Loader size={11} color={statusColor} className="animate-spin" />
+							<Text fontSize="10px" color={statusColor}>{statusLabels[displayStatus]}</Text>
+						</>
+					)}
+					{displayStatus === EToolCallStatus.COMPLETED && <Check size={11} color={statusColor} />}
+					{displayStatus === EToolCallStatus.DENIED && (
+						<>
+							<Ban size={11} color={statusColor} />
+							<Text fontSize="10px" color={statusColor}>{statusLabels[displayStatus]}</Text>
+						</>
+					)}
+					{displayStatus === EToolCallStatus.ERROR && (
+						<>
+							<AlertCircle size={11} color={statusColor} />
+							<Text fontSize="10px" color={statusColor}>{statusLabels[displayStatus]}</Text>
+						</>
+					)}
+					{isPending && (
+						<>
+							<Box w="6px" h="6px" borderRadius="full" bg={statusColor} />
+							<Text fontSize="10px" color={statusColor}>{statusLabels[displayStatus]}</Text>
+						</>
+					)}
+				</HStack>
+			</HStack>
+
+			{body}
+
+			{isPending && !deciding && (
+				<HStack gap="2" px="3" py="2" justify="flex-end" borderTopWidth="1px" borderColor="var(--wc-border-subtle)">
+					<Box as="button" px="3" py="1" fontSize="12px" borderRadius="sm" bg="var(--wc-accent-red-bg-12)" color="var(--wc-accent-red-alt)" _hover={{ bg: 'var(--wc-accent-red-hover)' }} onClick={() => handleDecision('deny')}>
+						<HStack gap="1"><X size={12} /><Text fontSize="12px">Deny</Text></HStack>
+					</Box>
+					<Box as="button" px="3" py="1" fontSize="12px" borderRadius="sm" bg="var(--wc-accent-green-bg-15)" color="var(--wc-accent-green)" _hover={{ bg: 'var(--wc-accent-green-hover)' }} onClick={() => handleDecision('approve')}>
+						<HStack gap="1"><Check size={12} /><Text fontSize="12px">Approve</Text></HStack>
+					</Box>
+				</HStack>
+			)}
+			{deciding && (
+				<HStack gap="2" px="3" py="2" justify="center">
+					<Loader size={12} className="animate-spin" color="var(--wc-text-muted)" />
+					<Text fontSize="11px" color="var(--wc-text-muted)">Processing...</Text>
+				</HStack>
+			)}
+		</Box>
 	);
-}
+});

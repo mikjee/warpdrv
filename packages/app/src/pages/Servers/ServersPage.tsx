@@ -142,17 +142,17 @@ export const ServersPage = React.memo(() => {
 				icon={<Server size={20} />}
 				actions={
 					<HStack gap="3">
-						<InputGroup startElement={<Search size={14} color="rgba(255, 255, 255, 0.3)" />} w="200px">
+						<InputGroup startElement={<Search size={14} color="var(--wc-text-tertiary)" />} w="200px">
 							<Input
 								placeholder="Search servers..."
 								size="sm"
-								bg="rgba(255, 255, 255, 0.03)"
-								borderColor="rgba(255, 255, 255, 0.08)"
-								color="rgba(255, 255, 255, 0.7)"
+								bg="var(--wc-bg-subtle)"
+								borderColor="var(--wc-border-default)"
+								color="var(--wc-text-primary)"
 								fontSize="13px"
 								borderRadius="lg"
-								_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
-								_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
+								_placeholder={{ color: 'var(--wc-text-placeholder)' }}
+								_focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }}
 								value={searchQuery}
 								onChange={e => setSearchQuery(e.target.value)}
 							/>
@@ -179,9 +179,9 @@ export const ServersPage = React.memo(() => {
 													size="sm"
 													w="150px"
 													justifyContent="space-between"
-													bg="rgba(255, 255, 255, 0.03)"
-													borderColor="rgba(255, 255, 255, 0.08)"
-													color="rgba(255, 255, 255, 0.7)"
+													bg="var(--wc-bg-subtle)"
+													borderColor="var(--wc-border-default)"
+													color="var(--wc-text-secondary)"
 													fontSize="13px"
 													borderRadius="lg"
 												>
@@ -194,7 +194,7 @@ export const ServersPage = React.memo(() => {
 											<Combobox.Positioner>
 												<Combobox.Content
 													maxH="200px" overflowY="auto"
-													bg="#181818" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
+													bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-default)"
 													borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
 												>
 													{sortCollection.items.map((item) => (
@@ -202,10 +202,10 @@ export const ServersPage = React.memo(() => {
 															key={item.value}
 															item={item}
 															px="3" py="2" borderRadius="md" cursor="pointer"
-															_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
-															_highlighted={{ bg: '#181818' }}
+															_hover={{ bg: 'var(--wc-bg-hover)' }}
+															_highlighted={{ bg: 'var(--wc-bg-elevated)' }}
 														>
-															<Text fontSize="12px" color="#e4e4e7">{item.label}</Text>
+															<Text fontSize="12px" color="var(--wc-text-secondary)">{item.label}</Text>
 															<Combobox.ItemIndicator />
 														</Combobox.Item>
 													))}
@@ -218,23 +218,23 @@ export const ServersPage = React.memo(() => {
 							<Button
 								size="sm"
 								variant="outline"
-								bg="rgba(255, 255, 255, 0.03)"
-								borderColor="rgba(255, 255, 255, 0.08)"
-								color="rgba(255, 255, 255, 0.5)"
+								bg="var(--wc-bg-subtle)"
+								borderColor="var(--wc-border-default)"
+								color="var(--wc-text-secondary)"
 								borderRadius="md"
-								_hover={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
+								_hover={{ borderColor: 'var(--wc-border-hover)' }}
 								title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
 								onClick={() => handleSortChange(sortField, sortOrder === 'asc' ? 'desc' : 'asc')}
 							>
 								{sortOrder === 'asc' ? <ArrowUpAZ size={14} /> : <ArrowDownZA size={14} />}
 							</Button>
 						</HStack>
-						<Switch.Root label="Show only running servers" checked={runningOnly} onCheckedChange={(details) => setRunningOnly(details.checked)} color={runningOnly ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'}>
+						<Switch.Root label="Show only running servers" checked={runningOnly} onCheckedChange={(details) => setRunningOnly(details.checked)} color={runningOnly ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)'}>
 							<Switch.HiddenInput />
-							<Switch.Control css={{ bg: runningOnly ? '#3b86d6' : 'surface.4' }}>
-								<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+							<Switch.Control css={{ bg: runningOnly ? 'var(--wc-accent-blue)' : 'surface.4' }}>
+								<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 							</Switch.Control>
-							<Switch.Label ml="2" fontSize="13px" color={runningOnly ? '#3b86d6' : 'rgba(255, 255, 255, 0.4)'} userSelect="none">
+							<Switch.Label ml="2" fontSize="13px" color={runningOnly ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)'} userSelect="none">
 								Running only
 							</Switch.Label>
 						</Switch.Root>
@@ -243,10 +243,10 @@ export const ServersPage = React.memo(() => {
 				actionsRight={
 					<Button
 						size="sm"
-						bg="rgba(51, 129, 255, 0.15)"
-						color="#60a5fa"
-						borderWidth="1px" borderColor="rgba(51, 129, 255, 0.25)"
-						_hover={{ bg: 'rgba(51, 129, 255, 0.25)' }}
+						bg="var(--wc-accent-blue-bg-12)"
+						color="var(--wc-accent-blue)"
+						borderWidth="1px" borderColor="var(--wc-accent-blue-border)"
+						_hover={{ bg: 'var(--wc-accent-blue-hover-bg)' }}
 						borderRadius="lg"
 						fontSize="13px"
 						fontWeight="600"
@@ -267,12 +267,12 @@ export const ServersPage = React.memo(() => {
 				{filteredServers.length === 0 ? (
 					<Flex
 						h="300px" alignItems="center" justifyContent="center"
-						borderWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" borderRadius="xl" borderStyle="dashed"
+						borderWidth="1px" borderColor="var(--wc-border-subtle)" borderRadius="xl" borderStyle="dashed"
 					>
-						<VStack gap="3" color="rgba(255, 255, 255, 0.2)">
+						<VStack gap="3" color="var(--wc-text-muted)">
 							<Server size={40} />
 							<Text fontSize="14px">{serversArr.length === 0 ? 'No servers running' : 'No matching servers'}</Text>
-							<Text fontSize="12px" color="rgba(255, 255, 255, 0.15)">{serversArr.length === 0 ? 'Click "Launch Server" to get started' : 'Try adjusting your filters or search query'}</Text>
+							<Text fontSize="12px" color="var(--wc-text-disabled)">{serversArr.length === 0 ? 'Click "Launch Server" to get started' : 'Try adjusting your filters or search query'}</Text>
 						</VStack>
 					</Flex>
 				) : (

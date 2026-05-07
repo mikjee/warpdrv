@@ -13,10 +13,10 @@ interface IRunRecipeDialogProps {
 }
 
 const RUN_STATUS_CONFIG: Record<ERecipeRunStatus, { color: string; icon: typeof CheckCircle; label: string }> = {
-	[ERecipeRunStatus.RUNNING]: { color: '#fbbf24', icon: Play, label: 'Running' },
-	[ERecipeRunStatus.OK]: { color: '#34d399', icon: CheckCircle, label: 'Completed' },
-	[ERecipeRunStatus.FAILED]: { color: '#fb7185', icon: AlertCircle, label: 'Failed' },
-	[ERecipeRunStatus.CANCELLED]: { color: 'rgba(255, 255, 255, 0.4)', icon: XCircle, label: 'Cancelled' },
+	[ERecipeRunStatus.RUNNING]: { color: 'var(--wc-accent-yellow)', icon: Play, label: 'Running' },
+	[ERecipeRunStatus.OK]: { color: 'var(--wc-accent-green)', icon: CheckCircle, label: 'Completed' },
+	[ERecipeRunStatus.FAILED]: { color: 'var(--wc-accent-red)', icon: AlertCircle, label: 'Failed' },
+	[ERecipeRunStatus.CANCELLED]: { color: 'var(--wc-text-tertiary)', icon: XCircle, label: 'Cancelled' },
 };
 
 export function RunRecipeDialog({ recipe, onClose }: IRunRecipeDialogProps) {
@@ -87,20 +87,20 @@ export function RunRecipeDialog({ recipe, onClose }: IRunRecipeDialogProps) {
 	const canRun = parseResult.error === null && !starting && !isRunning && !isOtherRunActive;
 
 	return (
-		<Box position="fixed" inset="6px" bg="rgba(0, 0, 0, 0.6)" zIndex="modal" display="flex" alignItems="center" justifyContent="center" borderRadius="12px" overflow="hidden" onClick={onClose}>
-			<Box w="900px" maxW="95vw" h="80vh" bg="#0e0e0e" borderRadius="xl" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.08)" shadow="0 20px 80px rgba(0, 0, 0, 0.6)" display="flex" flexDirection="column" overflow="hidden" onClick={(e) => e.stopPropagation()}>
+<Box position="fixed" inset="6px" bg="var(--wc-overlay-modal)" zIndex="modal" display="flex" alignItems="center" justifyContent="center" borderRadius="12px" overflow="hidden" onClick={onClose}>
+		<Box w="900px" maxW="95vw" h="80vh" bg="var(--wc-bg-dialog)" borderRadius="xl" borderWidth="1px" borderColor="var(--wc-border-default)" shadow="0 20px 80px rgba(0, 0, 0, 0.6)" display="flex" flexDirection="column" overflow="hidden" onClick={(e) => e.stopPropagation()}>
 				{/* Header */}
-				<Flex px="5" py="3" justify="space-between" align="center" borderBottomWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" flexShrink={0}>
+				<Flex px="5" py="3" justify="space-between" align="center" borderBottomWidth="1px" borderColor="var(--wc-border-subtle)" flexShrink={0}>
 					<HStack gap="3">
-						<Text fontSize="14px" fontWeight="600" color="rgba(255, 255, 255, 0.8)">{recipe.name}</Text>
+						<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)">{recipe.name}</Text>
 						{statusConfig && StatusIcon && (
-							<HStack gap="1.5" px="2" py="0.5" borderRadius="full" bg="rgba(255, 255, 255, 0.04)">
+							<HStack gap="1.5" px="2" py="0.5" borderRadius="full" bg="var(--wc-bg-interactive)">
 								<Box color={statusConfig.color}><StatusIcon size={11} /></Box>
 								<Text fontSize="10px" fontWeight="600" color={statusConfig.color}>{statusConfig.label}</Text>
 							</HStack>
 						)}
 					</HStack>
-					<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} onClick={onClose}>
+					<Button size="xs" variant="ghost" color="var(--wc-text-tertiary)" _hover={{ color: 'var(--wc-text-primary)', bg: 'var(--wc-bg-hover)' }} onClick={onClose}>
 						<X size={14} />
 					</Button>
 				</Flex>
@@ -108,17 +108,17 @@ export function RunRecipeDialog({ recipe, onClose }: IRunRecipeDialogProps) {
 				{/* Body */}
 				<Box flex="1" overflowY="auto" px="5" py="4">
 					{parseResult.error !== null ? (
-						<Flex h="200px" alignItems="center" justifyContent="center" direction="column" gap="2" color="#fb7185">
+						<Flex h="200px" alignItems="center" justifyContent="center" direction="column" gap="2" color="var(--wc-accent-red)">
 							<AlertCircle size={32} />
 							<Text fontSize="13px">Recipe is invalid</Text>
-							<Text fontSize="11px" fontFamily='"Geist Mono", monospace' color="rgba(251, 113, 133, 0.7)">{parseResult.error}</Text>
+							<Text fontSize="11px" fontFamily='"Geist Mono", monospace' color="var(--wc-accent-red-border)">{parseResult.error}</Text>
 						</Flex>
 					) : (
 						<VStack align="stretch" gap="5">
 							{/* Inputs */}
 							{parseResult.parsed!.inputs.length > 0 && (
 								<Box>
-									<Text fontSize="11px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Inputs</Text>
+									<Text fontSize="11px" fontWeight="600" color="var(--wc-text-tertiary)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Inputs</Text>
 									<InputFormGenerator
 										inputs={parseResult.parsed!.inputs}
 										values={values}
@@ -130,7 +130,7 @@ export function RunRecipeDialog({ recipe, onClose }: IRunRecipeDialogProps) {
 
 							{/* Steps */}
 							<Box>
-								<Text fontSize="11px" fontWeight="600" color="rgba(255, 255, 255, 0.5)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Steps</Text>
+								<Text fontSize="11px" fontWeight="600" color="var(--wc-text-tertiary)" textTransform="uppercase" letterSpacing="0.05em" mb="3">Steps</Text>
 								{isThisRecipeActive ? (
 									<VStack align="stretch" gap="2">
 										{activeRun!.steps.map((step) => (
@@ -140,11 +140,11 @@ export function RunRecipeDialog({ recipe, onClose }: IRunRecipeDialogProps) {
 								) : (
 									<VStack align="stretch" gap="1.5">
 										{parseResult.parsed!.steps.map((step, i) => (
-											<HStack key={step.id} gap="2" px="2.5" py="1.5" borderRadius="md" bg="rgba(255, 255, 255, 0.02)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.06)">
-												<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)" fontFamily='"Geist Mono", monospace' minW="20px">{i + 1}.</Text>
-												<Text fontSize="12px" color="#e4e4e7" flex="1">{step.name}</Text>
+											<HStack key={step.id} gap="2" px="2.5" py="1.5" borderRadius="md" bg="var(--wc-bg-surface)" borderWidth="1px" borderColor="var(--wc-border-subtle)">
+												<Text fontSize="10px" color="var(--wc-text-faint)" fontFamily='"Geist Mono", monospace' minW="20px">{i + 1}.</Text>
+												<Text fontSize="12px" color="var(--wc-text-primary)" flex="1">{step.name}</Text>
 												{step.cwd && (
-													<Badge size="sm" px="1.5" py="0.5" borderRadius="full" bg="rgba(255, 255, 255, 0.04)" color="rgba(255, 255, 255, 0.4)" fontSize="10px" fontFamily='"Geist Mono", monospace'>{step.cwd}</Badge>
+													<Badge size="sm" px="1.5" py="0.5" borderRadius="full" bg="var(--wc-bg-interactive)" color="var(--wc-text-tertiary)" fontSize="10px" fontFamily='"Geist Mono", monospace'>{step.cwd}</Badge>
 												)}
 											</HStack>
 										))}
@@ -156,27 +156,27 @@ export function RunRecipeDialog({ recipe, onClose }: IRunRecipeDialogProps) {
 				</Box>
 
 				{/* Footer */}
-				<Flex px="5" py="3" justify="space-between" align="center" borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" flexShrink={0}>
+				<Flex px="5" py="3" justify="space-between" align="center" borderTopWidth="1px" borderColor="var(--wc-border-subtle)" flexShrink={0}>
 					{serverError ? (
-						<HStack gap="1.5" color="#fb7185">
+						<HStack gap="1.5" color="var(--wc-accent-red)">
 							<AlertCircle size={12} />
 							<Text fontSize="11px">{serverError}</Text>
 						</HStack>
 					) : isOtherRunActive ? (
-						<HStack gap="1.5" color="#fbbf24">
+						<HStack gap="1.5" color="var(--wc-accent-yellow)">
 							<AlertCircle size={12} />
 							<Text fontSize="11px">Another recipe is currently running</Text>
 						</HStack>
 					) : <Box />}
 					<HStack gap="2">
-						<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.5)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} onClick={onClose}>{isFinished || !isThisRecipeActive ? 'Close' : 'Hide'}</Button>
+						<Button size="sm" variant="ghost" color="var(--wc-text-tertiary)" _hover={{ color: 'var(--wc-text-primary)', bg: 'var(--wc-bg-hover)' }} onClick={onClose}>{isFinished || !isThisRecipeActive ? 'Close' : 'Hide'}</Button>
 						{isRunning ? (
-							<Button size="sm" bg="rgba(251, 113, 133, 0.15)" color="#fb7185" _hover={{ bg: 'rgba(251, 113, 133, 0.25)' }} onClick={handleCancel} disabled={cancelling}>
+							<Button size="sm" bg="var(--wc-accent-red-bg-8)" color="var(--wc-accent-red)" _hover={{ bg: 'var(--wc-accent-red-hover)' }} onClick={handleCancel} disabled={cancelling}>
 								{cancelling ? <Spinner size="xs" /> : <Square size={13} />}
 								<Text ml="1.5">Cancel</Text>
 							</Button>
 						) : (
-							<Button size="sm" bg={canRun ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.04)'} color={canRun ? '#34d399' : 'rgba(255, 255, 255, 0.3)'} _hover={canRun ? { bg: 'rgba(52, 211, 153, 0.25)' } : undefined} onClick={handleRun} disabled={!canRun}>
+							<Button size="sm" bg={canRun ? 'var(--wc-accent-green-bg-8)' : 'var(--wc-bg-interactive)'} color={canRun ? 'var(--wc-accent-green)' : 'var(--wc-text-faint)'} _hover={canRun ? { bg: 'var(--wc-accent-green-hover-bg)' } : undefined} onClick={handleRun} disabled={!canRun}>
 								{starting ? <Spinner size="xs" /> : <Play size={13} />}
 								<Text ml="1.5">{isFinished ? 'Run Again' : 'Run'}</Text>
 							</Button>

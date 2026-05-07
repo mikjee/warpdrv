@@ -49,6 +49,7 @@ export class McpClientManager implements IMcpClient {
 			error: null,
 			tools: [],
 			connectedAt: null,
+			warpdrv: entry.warpdrv,
 		};
 
 		const client = new Client({ name: `warpbridge-${name}`, version: '1.0.0' });

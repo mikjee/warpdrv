@@ -21,21 +21,21 @@ export function Card({ children, variant = 'default', accentColor, onClick, sele
 	return (
 		<Box
 			position="relative"
-			bg={hasGradient && gradientFrom && gradientTo ? undefined : bg ?? '#161616'}
+			bg={hasGradient && gradientFrom && gradientTo ? undefined : bg ?? 'var(--wc-bg-card)'}
 			bgGradient={hasGradient && gradientFrom && gradientTo ? 'to-br' : undefined}
 			gradientFrom={hasGradient ? gradientFrom : undefined}
 			gradientTo={hasGradient ? gradientTo : undefined}
 			borderRadius="xl"
 			borderWidth="1px"
-			borderColor={selected ? 'rgba(51, 129, 255, 0.4)' : borderColor ?? 'rgba(255, 255, 255, 0.06)'}
+			borderColor={selected ? 'var(--wc-accent-blue-focus)' : borderColor ?? 'var(--wc-border-subtle)'}
 			p={p}
 			cursor={isClickable ? 'pointer' : 'default'}
 			transition="all 0.2s ease"
 			overflow="hidden"
 			onClick={onClick}
 			_hover={isClickable ? {
-				borderColor: selected ? 'rgba(51, 129, 255, 0.5)' : 'rgba(255, 255, 255, 0.12)',
-				bg: '#131317',
+				borderColor: selected ? 'var(--wc-accent-blue-border)' : 'var(--wc-border-hover)',
+				bg: 'var(--wc-bg-hover)',
 				transform: 'translateY(-1px)',
 				shadow: '0 4px 24px rgba(0, 0, 0, 0.3)',
 			} : undefined}

@@ -38,27 +38,27 @@ export const ServerLogs = React.memo(({ serverId, serverName, onClose }: IServer
 	}, [serverLogs]);
 
 	return (
-		<Box position="fixed" bottom="20px" right="20px" w="700px" h="400px" bg="#0c0c0f"
-			borderWidth="1px" borderColor="rgba(255, 255, 255, 0.08)" borderTopLeftRadius="xl"
+		<Box position="fixed" bottom="20px" right="20px" w="700px" h="400px" bg="var(--wc-bg-dialog)"
+			borderWidth="1px" borderColor="var(--wc-border-default)" borderTopLeftRadius="xl"
 			shadow="0 -8px 40px rgba(0, 0, 0, 0.5)" zIndex="popover"
 			display="flex" flexDirection="column" overflow="hidden"
 		>
-			<Flex px="4" py="2.5" justify="space-between" align="center" borderBottomWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" bg="rgba(255, 255, 255, 0.02)" flexShrink={0}>
+			<Flex px="4" py="2.5" justify="space-between" align="center" borderBottomWidth="1px" borderColor="var(--wc-border-subtle)" bg="var(--wc-bg-surface)" flexShrink={0}>
 				<HStack gap="2">
-					<Terminal size={14} color="rgba(255, 255, 255, 0.4)" />
-					<Text fontSize="12px" fontWeight="600" color="rgba(255, 255, 255, 0.6)">Logs — {serverName}</Text>
+					<Terminal size={14} color="var(--wc-text-muted)" />
+					<Text fontSize="12px" fontWeight="600" color="var(--wc-text-secondary)">Logs — {serverName}</Text>
 				</HStack>
 				<HStack gap="1">
-					<Button size="xs" variant="ghost" color={autoScroll ? '#3381ff' : 'rgba(255, 255, 255, 0.3)'} _hover={{ bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="md" onClick={() => setAutoScroll(!autoScroll)}>
+					<Button size="xs" variant="ghost" color={autoScroll ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)' } _hover={{ bg: 'var(--wc-bg-hover)' }} borderRadius="md" onClick={() => setAutoScroll(!autoScroll)}>
 						<ArrowDown size={12} />
 					</Button>
-					<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.3)" _hover={{ color: 'rgba(255, 255, 255, 0.6)', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="md" onClick={handleDownload}>
+					<Button size="xs" variant="ghost" color="var(--wc-text-tertiary)" _hover={{ color: 'var(--wc-text-secondary)', bg: 'var(--wc-bg-hover)' }} borderRadius="md" onClick={handleDownload}>
 						<Download size={12} />
 					</Button>
-					<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.3)" _hover={{ color: '#fb7185', bg: 'rgba(251, 113, 133, 0.08)' }} borderRadius="md" onClick={handleClear}>
+					<Button size="xs" variant="ghost" color="var(--wc-text-tertiary)" _hover={{ color: 'var(--wc-accent-red)', bg: 'var(--wc-accent-red-bg-8)' }} borderRadius="md" onClick={handleClear}>
 						<Trash2 size={12} />
 					</Button>
-					<Button size="xs" variant="ghost" color="rgba(255, 255, 255, 0.3)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="md" onClick={onClose}>
+					<Button size="xs" variant="ghost" color="var(--wc-text-tertiary)" _hover={{ color: 'var(--wc-text-primary)', bg: 'var(--wc-bg-hover)' }} borderRadius="md" onClick={onClose}>
 						<X size={12} />
 					</Button>
 				</HStack>
@@ -67,11 +67,11 @@ export const ServerLogs = React.memo(({ serverId, serverName, onClose }: IServer
 			<Box flex="1" overflowY="auto" px="4" py="2" fontFamily='"Geist Mono", monospace' fontSize="11px" lineHeight="1.8">
 				{serverLogs.length === 0 ? (
 					<Flex h="100%" alignItems="center" justifyContent="center">
-						<Text color="rgba(255, 255, 255, 0.15)">No logs yet...</Text>
+						<Text color="var(--wc-text-disabled)">No logs yet...</Text>
 					</Flex>
 				) : (
 					serverLogs.map((line: string, i: number) => (
-						<Text key={i} color="rgba(255, 255, 255, 0.6)" whiteSpace="pre-wrap" wordBreak="break-all" _hover={{ bg: 'rgba(255, 255, 255, 0.02)' }} px="1" borderRadius="sm">
+						<Text key={i} color="var(--wc-text-secondary)" whiteSpace="pre-wrap" wordBreak="break-all" _hover={{ bg: 'var(--wc-bg-subtle)' }} px="1" borderRadius="sm">
 							{line}
 						</Text>
 					))

@@ -164,37 +164,37 @@ const FileRow = React.memo(({ file, modelRoots, author, modelName, allFiles, exi
 				<HStack gap="3" flex="1" minW="0">
 					<Flex
 						w="8" h="8" borderRadius="md" alignItems="center" justifyContent="center"
-						bg={file.isDownloaded ? 'rgba(52, 211, 153, 0.08)' : 'rgba(255, 255, 255, 0.04)'}
+						bg={file.isDownloaded ? 'var(--wc-accent-green-bg-8)' : 'var(--wc-bg-card)'}
 						flexShrink={0}
 					>
 						{file.isDownloaded
-							? <CheckCircle size={16} color="#34d399" />
-							: <Layers size={16} color="rgba(255, 255, 255, 0.3)" />
+							? <CheckCircle size={16} color="var(--wc-accent-green)" />
+							: <Layers size={16} color="var(--wc-text-tertiary)" />
 						}
 					</Flex>
 					<Box flex="1" minW="0">
 						{/* Display parent model name for split files, or basename for regular files */}
-						<Text fontSize="12px" fontWeight="500" color="#e4e4e7" fontFamily='"Geist Mono", monospace' lineClamp={1}>
+						<Text fontSize="12px" fontWeight="500" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace' lineClamp={1}>
 							{file.parentModel ?? getBasename(file.filename)}
 						</Text>
 						<HStack gap="2" mt="0.5" flexWrap="wrap">
-							<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)" fontFamily='"Geist Mono", monospace'>
+							<Text fontSize="11px" color="var(--wc-text-muted)" fontFamily='"Geist Mono", monospace'>
 								{formatBytes(totalSize)}
 							</Text>
 							{/* Show total parts if this is a multi-part file */}
 							{fileParts.length > 1 && (
-								<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)">
+								<Text fontSize="10px" color="var(--wc-text-faint)">
 									{fileParts.length} parts
 								</Text>
 							)}
 							{/* Show directory path if file is nested */}
 							{file.filename.includes('/') && (
-								<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)">
+								<Text fontSize="10px" color="var(--wc-text-faint)">
 									in {getDirname(file.filename)}
 								</Text>
 							)}
 							{file.isDownloaded && file.downloadedInRoot && (
-								<Text fontSize="10px" color="rgba(52, 211, 153, 0.6)" lineClamp={1}>
+								<Text fontSize="10px" color="var(--wc-accent-green-icon)" lineClamp={1}>
 									in {file.downloadedInRoot}
 								</Text>
 							)}
@@ -217,8 +217,8 @@ const FileRow = React.memo(({ file, modelRoots, author, modelName, allFiles, exi
 					{file.isDownloaded ? (
 						<Badge
 							px="2.5" py="1" borderRadius="lg" fontSize="11px" fontWeight="500"
-							bg="rgba(52, 211, 153, 0.08)" color="#34d399"
-							borderWidth="1px" borderColor="rgba(52, 211, 153, 0.15)"
+							bg="var(--wc-accent-green-bg-8)" color="var(--wc-accent-green)"
+							borderWidth="1px" borderColor="var(--wc-accent-green-border)"
 						>
 							<CheckCircle size={11} /> Downloaded
 						</Badge>
@@ -226,9 +226,9 @@ const FileRow = React.memo(({ file, modelRoots, author, modelName, allFiles, exi
 						<Box position="relative">
 							<Button
 								size="xs" px="3" borderRadius="lg" fontSize="11px" fontWeight="500"
-								bg="rgba(51, 129, 255, 0.1)" color="#3381ff"
-								borderWidth="1px" borderColor="rgba(51, 129, 255, 0.25)"
-								_hover={{ bg: 'rgba(51, 129, 255, 0.2)' }}
+								bg="var(--wc-accent-blue-bg-10)" color="var(--wc-accent-blue)"
+								borderWidth="1px" borderColor="var(--wc-accent-blue-border)"
+								_hover={{ bg: 'var(--wc-accent-blue-hover-bg)' }}
 								onClick={handleDownloadClick}
 								disabled={downloading}
 							>
@@ -268,7 +268,7 @@ export const HubModelDetail = React.memo(({ modelId, modelRoots }: IHubModelDeta
 	if (loading) {
 		return (
 			<Flex h="100%" alignItems="center" justifyContent="center">
-				<Spinner size="lg" color="rgba(255, 255, 255, 0.2)" />
+				<Spinner size="lg" color="var(--wc-text-faint)" />
 			</Flex>
 		);
 	}
@@ -276,7 +276,7 @@ export const HubModelDetail = React.memo(({ modelId, modelRoots }: IHubModelDeta
 	if (!detail) {
 		return (
 			<Flex h="100%" alignItems="center" justifyContent="center">
-				<Text color="rgba(255, 255, 255, 0.25)">Failed to load model details</Text>
+				<Text color="var(--wc-text-faint)">Failed to load model details</Text>
 			</Flex>
 		);
 	}
@@ -321,26 +321,26 @@ export const HubModelDetail = React.memo(({ modelId, modelRoots }: IHubModelDeta
 			<VStack align="stretch" gap="6">
 				{/* Header */}
 				<Box>
-					<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)" mb="1">{detail.author}</Text>
-					<Text fontSize="22px" fontWeight="700" color="#e4e4e7" letterSpacing="-0.02em">
+					<Text fontSize="11px" color="var(--wc-text-faint)" mb="1">{detail.author}</Text>
+					<Text fontSize="22px" fontWeight="700" color="var(--wc-text-primary)" letterSpacing="-0.02em">
 						{detail.modelId}
 					</Text>
 
 					<HStack gap="4" mt="3" flexWrap="wrap">
-						<HStack gap="1.5" color="rgba(255, 255, 255, 0.4)">
+						<HStack gap="1.5" color="var(--wc-text-muted)">
 							<Download size={13} />
 							<Text fontSize="12px" fontFamily='"Geist Mono", monospace'>{formatCount(detail.downloads)}</Text>
-							<Text fontSize="11px" color="rgba(255, 255, 255, 0.25)">downloads</Text>
+							<Text fontSize="11px" color="var(--wc-text-faint)">downloads</Text>
 						</HStack>
-						<HStack gap="1.5" color="rgba(255, 255, 255, 0.4)">
+						<HStack gap="1.5" color="var(--wc-text-muted)">
 							<Heart size={13} />
 							<Text fontSize="12px" fontFamily='"Geist Mono", monospace'>{formatCount(detail.likes)}</Text>
 						</HStack>
-						<HStack gap="1.5" color="rgba(255, 255, 255, 0.25)">
+						<HStack gap="1.5" color="var(--wc-text-faint)">
 							<Calendar size={12} />
 							<Text fontSize="11px">Created {formatDate(detail.createdAt)}</Text>
 						</HStack>
-						<HStack gap="1.5" color="rgba(255, 255, 255, 0.25)">
+						<HStack gap="1.5" color="var(--wc-text-faint)">
 							<Clock size={12} />
 							<Text fontSize="11px">Updated {formatDate(detail.lastModified)}</Text>
 						</HStack>
@@ -351,14 +351,14 @@ export const HubModelDetail = React.memo(({ modelId, modelRoots }: IHubModelDeta
 							{detail.tags.slice(0, 15).map((tag: string) => (
 								<Badge
 									key={tag} px="2" py="0.5" borderRadius="md" fontSize="10px"
-									bg="rgba(255, 255, 255, 0.04)" color="rgba(255, 255, 255, 0.4)"
-									borderWidth="1px" borderColor="rgba(255, 255, 255, 0.06)"
+									bg="var(--wc-bg-card)" color="var(--wc-text-muted)"
+									borderWidth="1px" borderColor="var(--wc-border-subtle)"
 								>
 									{tag}
 								</Badge>
 							))}
 							{detail.tags.length > 15 && (
-								<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)">
+								<Text fontSize="10px" color="var(--wc-text-disabled)">
 									+{detail.tags.length - 15} more
 								</Text>
 							)}
@@ -372,30 +372,30 @@ export const HubModelDetail = React.memo(({ modelId, modelRoots }: IHubModelDeta
 						<AccordionItemComp value="downloads" w="full">
 							<AccordionItemTrigger
 								w="full" p="4" borderRadius="xl"
-								bg={`linear-gradient(135deg, ${downloadedCount === allGgufFiles.length ? 'rgba(52, 211, 153, 0.12)' : 'rgba(51, 129, 255, 0.12)'} 0%, transparent 100%)`}
+								bg={`linear-gradient(135deg, ${downloadedCount === allGgufFiles.length ? 'var(--wc-accent-green-bg-8)' : 'var(--wc-accent-blue-bg-10)'} 0%, transparent 100%)`}
 								borderWidth="1px"
-								borderColor={`color-mix(in srgb, ${downloadedCount === allGgufFiles.length ? '#34d399' : '#3381ff'} 25%, rgba(255, 255, 255, 0.06))`}
-								_hover={{ bg: 'rgba(51, 129, 255, 0.08)' }}
+								borderColor={`color-mix(in srgb, ${downloadedCount === allGgufFiles.length ? 'var(--wc-accent-green)' : 'var(--wc-accent-blue)'} 25%, var(--wc-border-subtle))`}
+								_hover={{ bg: 'var(--wc-accent-blue-bg-8)' }}
 								focusRing="none"
 							>
 								<Flex w="full" justify="space-between" align="center">
 									<Flex gap="4" flex="1" minW="0">
 										<Box
 											w="12" h="12" borderRadius="lg" display="flex" alignItems="center" justifyContent="center"
-											bg={`color-mix(in srgb, ${downloadedCount === allGgufFiles.length ? '#34d399' : '#3381ff'} 15%, transparent)`}
+											bg={`color-mix(in srgb, ${downloadedCount === allGgufFiles.length ? 'var(--wc-accent-green)' : 'var(--wc-accent-blue)'} 15%, transparent)`}
 										>
-											<HardDriveDownload size={20} color={downloadedCount === allGgufFiles.length ? '#34d399' : '#3381ff'} />
+											<HardDriveDownload size={20} color={downloadedCount === allGgufFiles.length ? 'var(--wc-accent-green)' : 'var(--wc-accent-blue)'} />
 										</Box>
 
 										<VStack align="start" gap="0.5">
-											<Text fontSize="14px" fontWeight="600" color="#e4e4e7">
+											<Text fontSize="14px" fontWeight="600" color="var(--wc-text-primary)">
 												Download Files
 											</Text>
 											<HStack gap="2">
-												<Text fontSize="12px" color={downloadedCount === allGgufFiles.length ? '#34d399' : '#3381ff'} fontWeight="500">
+												<Text fontSize="12px" color={downloadedCount === allGgufFiles.length ? 'var(--wc-accent-green)' : 'var(--wc-accent-blue)'} fontWeight="500">
 													{totalModels} model{totalModels !== 1 ? 's' : ''} ({allGgufFiles.length} file{allGgufFiles.length !== 1 ? 's' : ''})
 												</Text>
-												<Text fontSize="12px" color="rgba(255, 255, 255, 0.3)">
+												<Text fontSize="12px" color="var(--wc-text-muted)">
 													({downloadedCount} downloaded)
 												</Text>
 											</HStack>
@@ -404,9 +404,9 @@ export const HubModelDetail = React.memo(({ modelId, modelRoots }: IHubModelDeta
 
 									<Box
 										w="8" h="8" borderRadius="md" display="flex" alignItems="center" justifyContent="center" flexShrink={0}
-										bg={`color-mix(in srgb, ${downloadedCount === allGgufFiles.length ? '#34d399' : '#3381ff'} 10%, transparent)`}
+										bg={`color-mix(in srgb, ${downloadedCount === allGgufFiles.length ? 'var(--wc-accent-green)' : 'var(--wc-accent-blue)'} 10%, transparent)`}
 									>
-										<ChevronDown size={16} color={downloadedCount === allGgufFiles.length ? '#34d399' : '#3381ff'} />
+										<ChevronDown size={16} color={downloadedCount === allGgufFiles.length ? 'var(--wc-accent-green)' : 'var(--wc-accent-blue)'} />
 									</Box>
 								</Flex>
 							</AccordionItemTrigger>
@@ -433,7 +433,7 @@ export const HubModelDetail = React.memo(({ modelId, modelRoots }: IHubModelDeta
 				{/* Other files info */}
 				{otherFiles.length > 0 && (
 					<Box mt="4">
-						<Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">
+						<Text fontSize="12px" color="var(--wc-text-faint)">
 							{otherFiles.length} other file{otherFiles.length > 1 ? 's' : ''} (config, tokenizer, etc.)
 						</Text>
 					</Box>
@@ -443,8 +443,8 @@ export const HubModelDetail = React.memo(({ modelId, modelRoots }: IHubModelDeta
 				{detail.readme && (
 					<Box>
 						<HStack gap="2" mb="3">
-							<FileText size={14} color="rgba(255, 255, 255, 0.4)" />
-							<Text fontSize="13px" fontWeight="600" color="rgba(255, 255, 255, 0.6)">
+							<FileText size={14} color="var(--wc-text-tertiary)" />
+							<Text fontSize="13px" fontWeight="600" color="var(--wc-text-secondary)">
 								README
 							</Text>
 						</HStack>

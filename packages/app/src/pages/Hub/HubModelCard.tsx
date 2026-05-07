@@ -40,40 +40,40 @@ export const HubModelCard = React.memo(({ model, selected, onClick }: IHubModelC
 	return (
 		<Box
 			px="4" py="3" borderRadius="lg" cursor="pointer"
-			bg={selected ? 'rgba(51, 129, 255, 0.08)' : 'rgba(255, 255, 255, 0.02)'}
+			bg={selected ? 'var(--wc-accent-blue-bg-8)' : 'var(--wc-bg-surface)'}
 			borderWidth="1px"
-			borderColor={selected ? 'rgba(51, 129, 255, 0.25)' : 'rgba(255, 255, 255, 0.06)'}
+			borderColor={selected ? 'var(--wc-accent-blue-border)' : 'var(--wc-border-subtle)'}
 			_hover={{
-				borderColor: selected ? 'rgba(51, 129, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)',
-				bg: selected ? 'rgba(51, 129, 255, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+				borderColor: selected ? 'var(--wc-accent-blue-strong)' : 'var(--wc-border-overlay)',
+				bg: selected ? 'var(--wc-accent-blue-bg-10)' : 'var(--wc-bg-hover)',
 			}}
 			onClick={onClick}
 			transition="all 0.15s ease"
 		>
 			<VStack align="stretch" gap="2">
 				<Box>
-					<Text fontSize="11px" color="rgba(255, 255, 255, 0.3)" mb="0.5">
+					<Text fontSize="11px" color="var(--wc-text-faint)" mb="0.5">
 						{model.author}
 					</Text>
-					<Text fontSize="13px" fontWeight="600" color="#e4e4e7" lineClamp={1}>
+					<Text fontSize="13px" fontWeight="600" color="var(--wc-text-primary)" lineClamp={1}>
 						{model.modelId}
 					</Text>
 				</Box>
 
 				<HStack gap="3">
-					<HStack gap="1" color="rgba(255, 255, 255, 0.35)">
+					<HStack gap="1" color="var(--wc-text-muted)">
 						<Download size={11} />
 						<Text fontSize="11px" fontFamily='"Geist Mono", monospace'>
 							{formatCount(model.downloads)}
 						</Text>
 					</HStack>
-					<HStack gap="1" color="rgba(255, 255, 255, 0.35)">
+					<HStack gap="1" color="var(--wc-text-muted)">
 						<Heart size={11} />
 						<Text fontSize="11px" fontFamily='"Geist Mono", monospace'>
 							{formatCount(model.likes)}
 						</Text>
 					</HStack>
-					<HStack gap="1" color="rgba(255, 255, 255, 0.25)">
+					<HStack gap="1" color="var(--wc-text-faint)">
 						<Clock size={11} />
 						<Text fontSize="11px">{formatDate(model.createdAt)}</Text>
 					</HStack>
@@ -84,8 +84,8 @@ export const HubModelCard = React.memo(({ model, selected, onClick }: IHubModelC
 						{topTags.map((tag: string) => (
 							<Badge
 								key={tag} px="1.5" py="0" borderRadius="sm" fontSize="10px"
-								bg="rgba(255, 255, 255, 0.04)" color="rgba(255, 255, 255, 0.4)"
-								borderWidth="1px" borderColor="rgba(255, 255, 255, 0.06)"
+								bg="var(--wc-bg-card)" color="var(--wc-text-muted)"
+								borderWidth="1px" borderColor="var(--wc-border-subtle)"
 							>
 								{tag}
 							</Badge>

@@ -1,3 +1,4 @@
+import type React from 'react';
 import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, TStepId, IServerSlotsState, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings } from '@warpcore/shared';
 import type { IProxyStatus, IStickyRouteInfo } from '@/api/services';
 export { type ImmerSet, type ImmerGet } from '@warpcore/bridge';
@@ -63,6 +64,8 @@ export interface AppState {
 	toolPermissions: IToolPermission[];
 	setMcpServers: (servers: Record<string, IMcpServerState>) => void;
 	setPermissions: (serverPerms: IMcpServerPermission[], toolPerms: IToolPermission[]) => void;
+	toolCallRenderers: Record<string, React.ComponentType<any>>;
+	registerToolCallRenderer: (name: string, component: React.ComponentType<any>) => void;
 
 	reset: () => void;
 
@@ -76,6 +79,7 @@ export interface AppState {
 	messagesByThread: Record<TThreadId, Record<TMessageId, IChatMessage>>;
 	headMessageIdByThread: Record<TThreadId, TMessageId>;
 	toolCallsById: Record<TToolCallId, IToolCall>;
+	startingToolsByMessage: Record<TMessageId, string[]>;
 	isRunningByThread: Record<TThreadId, boolean>;
 	activeThreadId: TThreadId | null;
 
@@ -90,6 +94,7 @@ export interface AppState {
 	applyMessagePatched: (messageId: TMessageId, threadId: TThreadId, updates: IMessagePatch) => void;
 	applyMessageDeleted: (messageId: TMessageId, threadId: TThreadId) => void;
 	applyMessageChunk: (messageId: TMessageId, threadId: TThreadId, partId: TMessagePartId, deltaText: string) => void;
+	applyToolCallStarting: (messageId: TMessageId, name: string) => void;
 	applyToolCallCreated: (toolCall: IToolCall) => void;
 	applyToolCallUpdated: (toolCall: IToolCall) => void;
 	applyInferenceStarted: (threadId: TThreadId, messageId: TMessageId) => void;

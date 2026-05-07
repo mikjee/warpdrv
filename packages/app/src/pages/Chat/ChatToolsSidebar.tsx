@@ -25,10 +25,10 @@ import { EMcpServerStatus, EToolApprovalMode } from '@warpcore/bridge';
 
 function StatusDot({ status }: { status: EMcpServerStatus }) {
 	const colors: Record<EMcpServerStatus, string> = {
-		[EMcpServerStatus.CONNECTED]: '#22c55e',
-		[EMcpServerStatus.CONNECTING]: '#f59e0b',
-		[EMcpServerStatus.ERROR]: '#ef4444',
-		[EMcpServerStatus.DISCONNECTED]: 'rgba(255,255,255,0.15)',
+		[EMcpServerStatus.CONNECTED]: 'var(--wc-accent-green-icon)',
+		[EMcpServerStatus.CONNECTING]: 'var(--wc-accent-yellow-strong)',
+		[EMcpServerStatus.ERROR]: 'var(--wc-accent-red)',
+		[EMcpServerStatus.DISCONNECTED]: 'var(--wc-text-disabled)',
 	};
 	return <Box w="6px" h="6px" borderRadius="full" bg={colors[status]} flexShrink={0} />;
 }
@@ -40,9 +40,9 @@ const approvalIcons: Record<EToolApprovalMode, React.ReactNode> = {
 };
 
 const approvalColors: Record<EToolApprovalMode, string> = {
-	[EToolApprovalMode.ASK]: 'rgba(245,158,11,0.6)',
-	[EToolApprovalMode.ALLOWED]: 'rgba(34,197,94,0.6)',
-	[EToolApprovalMode.DENIED]: 'rgba(239,68,68,0.6)',
+	[EToolApprovalMode.ASK]: 'var(--wc-accent-yellow-glow)',
+	[EToolApprovalMode.ALLOWED]: 'var(--wc-accent-green)',
+	[EToolApprovalMode.DENIED]: 'var(--wc-accent-red)',
 };
 
 export function ChatToolsSidebar({ open, onToggle }: { open: boolean; onToggle: () => void }) {
@@ -71,18 +71,18 @@ export function ChatToolsSidebar({ open, onToggle }: { open: boolean; onToggle: 
 				w="36px"
 				minW="36px"
 				borderLeftWidth="1px"
-				borderColor="rgba(255,255,255,0.06)"
+				borderColor="var(--wc-border-subtle)"
 				display="flex"
 				flexDirection="column"
 				alignItems="center"
 				pt="3"
 				cursor="pointer"
 				onClick={onToggle}
-				_hover={{ bg: 'rgba(255,255,255,0.02)' }}
+				_hover={{ bg: 'var(--wc-bg-surface)' }}
 			>
-				<Wrench size={14} color="rgba(255,255,255,0.4)" />
+				<Wrench size={14} color="var(--wc-text-muted)" />
 				{totalTools > 0 && (
-					<Text fontSize="10px" color="rgba(255,255,255,0.3)" mt="1">{totalTools}</Text>
+					<Text fontSize="10px" color="var(--wc-text-faint)" mt="1">{totalTools}</Text>
 				)}
 			</Box>
 		);
@@ -92,19 +92,19 @@ export function ChatToolsSidebar({ open, onToggle }: { open: boolean; onToggle: 
 		<Box
 			w="260px"
 			minW="260px"
-			borderLeftWidth="1px"
-			borderColor="rgba(255,255,255,0.06)"
-			overflow="auto"
-			p="3"
+borderLeftWidth="1px"
+				borderColor="var(--wc-border-subtle)"
+				overflow="auto"
+				p="3"
 		>
 			<HStack gap="2" mb="3">
-				<Box as="button" onClick={onToggle} p="1" _hover={{ bg: 'rgba(255,255,255,0.05)' }} borderRadius="sm">
-					<ChevronRight size={12} color="rgba(255,255,255,0.4)" />
+				<Box as="button" onClick={onToggle} p="1" _hover={{ bg: 'var(--wc-bg-hover)' }} borderRadius="sm">
+					<ChevronRight size={12} color="var(--wc-text-muted)" />
 				</Box>
-				<Text fontSize="12px" fontWeight="600" color="rgba(255,255,255,0.5)" textTransform="uppercase" letterSpacing="0.05em">
+				<Text fontSize="12px" fontWeight="600" color="var(--wc-text-secondary)" textTransform="uppercase" letterSpacing="0.05em">
 					Tools
 				</Text>
-				<Badge fontSize="9px" px="1.5" borderRadius="sm" bg="rgba(255,255,255,0.06)" color="rgba(255,255,255,0.35)">
+				<Badge fontSize="9px" px="1.5" borderRadius="sm" bg="var(--wc-bg-surface)" color="var(--wc-text-faint)">
 					{totalTools}
 				</Badge>
 			</HStack>
@@ -123,16 +123,16 @@ export function ChatToolsSidebar({ open, onToggle }: { open: boolean; onToggle: 
 							py="1"
 							borderRadius="sm"
 							cursor="pointer"
-							_hover={{ bg: 'rgba(255,255,255,0.03)' }}
+							_hover={{ bg: 'var(--wc-bg-card)' }}
 							onClick={() => setExpandedServers(prev => ({ ...prev, [name]: !prev[name] }))}
 						>
 							{isExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
 							<StatusDot status={state.status} />
-							<Text flex="1" fontSize="12px" color="rgba(255,255,255,0.7)" fontWeight="500">
+							<Text flex="1" fontSize="12px" color="var(--wc-text-primary)" fontWeight="500">
 								{name}
 							</Text>
 							{!serverEnabled && (
-								<Text fontSize="9px" color="rgba(239,68,68,0.5)">OFF</Text>
+								<Text fontSize="9px" color="var(--wc-accent-red-border)">OFF</Text>
 							)}
 						</HStack>
 
@@ -156,14 +156,14 @@ export function ChatToolsSidebar({ open, onToggle }: { open: boolean; onToggle: 
 											<Box color={approvalColors[mode]} flexShrink={0}>
 												{approvalIcons[mode]}
 											</Box>
-											<Text fontSize="11px" color="rgba(255,255,255,0.6)" flex="1" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+											<Text fontSize="11px" color="var(--wc-text-secondary)" flex="1" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
 												{tool.name}
 											</Text>
 										</HStack>
 									);
 								})}
 								{state.tools.length === 0 && (
-									<Text fontSize="10px" color="rgba(255,255,255,0.2)" px="2" py="1">No tools</Text>
+									<Text fontSize="10px" color="var(--wc-text-faint)" px="2" py="1">No tools</Text>
 								)}
 							</VStack>
 						)}
@@ -172,7 +172,7 @@ export function ChatToolsSidebar({ open, onToggle }: { open: boolean; onToggle: 
 			})}
 
 			{serverEntries.length === 0 && (
-				<Text fontSize="11px" color="rgba(255,255,255,0.2)" textAlign="center" py="4">
+				<Text fontSize="11px" color="var(--wc-text-faint)" textAlign="center" py="4">
 					No MCP servers
 				</Text>
 			)}
@@ -218,16 +218,16 @@ export function ChatToolsContentPanel() {
 							py="1"
 							borderRadius="sm"
 							cursor="pointer"
-							_hover={{ bg: 'rgba(255,255,255,0.03)' }}
+							_hover={{ bg: 'var(--wc-bg-card)' }}
 							onClick={() => setExpandedServers(prev => ({ ...prev, [name]: !prev[name] }))}
 						>
 							{isExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
 							<StatusDot status={state.status} />
-							<Text flex="1" fontSize="12px" color="rgba(255,255,255,0.7)" fontWeight="500">
+							<Text flex="1" fontSize="12px" color="var(--wc-text-primary)" fontWeight="500">
 								{name}
 							</Text>
 							{!serverEnabled && (
-								<Text fontSize="9px" color="rgba(239,68,68,0.5)">OFF</Text>
+								<Text fontSize="9px" color="var(--wc-accent-red-border)">OFF</Text>
 							)}
 						</HStack>
 
@@ -251,14 +251,14 @@ export function ChatToolsContentPanel() {
 											<Box color={approvalColors[mode]} flexShrink={0}>
 												{approvalIcons[mode]}
 											</Box>
-											<Text fontSize="11px" color="rgba(255,255,255,0.6)" flex="1" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+											<Text fontSize="11px" color="var(--wc-text-secondary)" flex="1" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
 												{tool.name}
 											</Text>
 										</HStack>
 									);
 								})}
 								{state.tools.length === 0 && (
-									<Text fontSize="10px" color="rgba(255,255,255,0.2)" px="2" py="1">No tools</Text>
+									<Text fontSize="10px" color="var(--wc-text-faint)" px="2" py="1">No tools</Text>
 								)}
 							</VStack>
 						)}
@@ -267,7 +267,7 @@ export function ChatToolsContentPanel() {
 			})}
 
 			{serverEntries.length === 0 && (
-				<Text fontSize="11px" color="rgba(255,255,255,0.2)" textAlign="center" py="4">
+				<Text fontSize="11px" color="var(--wc-text-faint)" textAlign="center" py="4">
 					No MCP servers
 				</Text>
 			)}

@@ -10,12 +10,12 @@ interface IStepPanelProps {
 }
 
 const STATUS_CONFIG: Record<ERecipeStepStatus, { color: string; icon: typeof Circle; label: string }> = {
-	[ERecipeStepStatus.PENDING]: { color: 'rgba(255, 255, 255, 0.3)', icon: Circle, label: 'Pending' },
-	[ERecipeStepStatus.RUNNING]: { color: '#fbbf24', icon: Loader, label: 'Running' },
-	[ERecipeStepStatus.OK]: { color: '#34d399', icon: CheckCircle, label: 'OK' },
-	[ERecipeStepStatus.FAILED]: { color: '#fb7185', icon: AlertCircle, label: 'Failed' },
-	[ERecipeStepStatus.CANCELLED]: { color: 'rgba(255, 255, 255, 0.4)', icon: XCircle, label: 'Cancelled' },
-	[ERecipeStepStatus.SKIPPED]: { color: 'rgba(255, 255, 255, 0.3)', icon: Circle, label: 'Skipped' },
+	[ERecipeStepStatus.PENDING]: { color: 'var(--wc-text-faint)', icon: Circle, label: 'Pending' },
+	[ERecipeStepStatus.RUNNING]: { color: 'var(--wc-accent-yellow)', icon: Loader, label: 'Running' },
+	[ERecipeStepStatus.OK]: { color: 'var(--wc-accent-green)', icon: CheckCircle, label: 'OK' },
+	[ERecipeStepStatus.FAILED]: { color: 'var(--wc-accent-red)', icon: AlertCircle, label: 'Failed' },
+	[ERecipeStepStatus.CANCELLED]: { color: 'var(--wc-text-tertiary)', icon: XCircle, label: 'Cancelled' },
+	[ERecipeStepStatus.SKIPPED]: { color: 'var(--wc-text-faint)', icon: Circle, label: 'Skipped' },
 };
 
 export function StepPanel({ step, defaultExpanded = false }: IStepPanelProps) {
@@ -45,37 +45,37 @@ export function StepPanel({ step, defaultExpanded = false }: IStepPanelProps) {
 
 	return (
 		<Collapsible.Root open={expanded} onOpenChange={(o) => setExpanded(o.open)}>
-			<Box borderRadius="lg" bg="rgba(255, 255, 255, 0.02)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" overflow="hidden">
-				<Flex px="3" py="2" align="center" justify="space-between" cursor="pointer" onClick={() => setExpanded(!expanded)} _hover={{ bg: 'rgba(255, 255, 255, 0.02)' }}>
+			<Box borderRadius="lg" bg="var(--wc-bg-surface)" borderWidth="1px" borderColor="var(--wc-border-subtle)" overflow="hidden">
+				<Flex px="3" py="2" align="center" justify="space-between" cursor="pointer" onClick={() => setExpanded(!expanded)} _hover={{ bg: 'var(--wc-bg-surface)' }}>
 					<HStack gap="3" flex="1">
-						<Box color="rgba(255, 255, 255, 0.3)">
+						<Box color="var(--wc-text-faint)">
 							{expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
 						</Box>
 						<Box color={config.color}>
 							<StatusIcon size={14} className={isRunning ? 'spin' : undefined} style={isRunning ? { animation: 'spin 1.5s linear infinite' } : undefined} />
 						</Box>
-						<Text fontSize="13px" fontWeight="500" color="#e4e4e7">{step.name}</Text>
-						<Badge size="sm" px="1.5" py="0.5" borderRadius="full" bg="rgba(255, 255, 255, 0.04)" color={config.color} fontSize="10px" fontWeight="600">{config.label}</Badge>
+						<Text fontSize="13px" fontWeight="500" color="var(--wc-text-primary)">{step.name}</Text>
+						<Badge size="sm" px="1.5" py="0.5" borderRadius="full" bg="var(--wc-bg-interactive)" color={config.color} fontSize="10px" fontWeight="600">{config.label}</Badge>
 						{step.exitCode !== undefined && step.exitCode !== 0 && (
-							<Badge size="sm" px="1.5" py="0.5" borderRadius="full" bg="rgba(251, 113, 133, 0.15)" color="#fb7185" fontSize="10px" fontWeight="600">exit {step.exitCode}</Badge>
+							<Badge size="sm" px="1.5" py="0.5" borderRadius="full" bg="var(--wc-accent-red-bg-8)" color="var(--wc-accent-red)" fontSize="10px" fontWeight="600">exit {step.exitCode}</Badge>
 						)}
 					</HStack>
 					<HStack gap="2">
 						{duration && (
-							<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" fontFamily='"Geist Mono", monospace'>{duration}</Text>
+							<Text fontSize="11px" color="var(--wc-text-muted)" fontFamily='"Geist Mono", monospace'>{duration}</Text>
 						)}
 					</HStack>
 				</Flex>
 				<Collapsible.Content>
-					<Box bg="#0c0c0f" borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" maxH="400px" overflowY="auto" px="3" py="2" fontFamily='"Geist Mono", monospace' fontSize="11px" lineHeight="1.6" onScroll={(e) => {
+					<Box bg="var(--wc-bg-page)" borderTopWidth="1px" borderColor="var(--wc-border-subtle)" maxH="400px" overflowY="auto" px="3" py="2" fontFamily='"Geist Mono", monospace' fontSize="11px" lineHeight="1.6" onScroll={(e) => {
 						const el = e.currentTarget;
 						const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 30;
 						setAutoScroll(atBottom);
 					}}>
 						{output.length === 0 ? (
-							<Text color="rgba(255, 255, 255, 0.2)">No output yet...</Text>
+							<Text color="var(--wc-text-placeholder)">No output yet...</Text>
 						) : (
-							<Text color="rgba(255, 255, 255, 0.7)" whiteSpace="pre-wrap" wordBreak="break-all">{output}</Text>
+							<Text color="var(--wc-text-secondary)" whiteSpace="pre-wrap" wordBreak="break-all">{output}</Text>
 						)}
 						<Box ref={outputEndRef} />
 					</Box>

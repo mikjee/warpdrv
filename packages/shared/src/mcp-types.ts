@@ -11,6 +11,23 @@ export interface IMcpServerEntry {
 	url?: string;
 	headers?: Record<string, string>;
 	timeout?: number;
+	warpdrv?: IWarpdrvServerExt;
+}
+
+export interface IWarpdrvServerExt {
+	renderers?: Record<string, IRendererConfig>;
+}
+
+export interface IRendererConfig {
+	component: ERendererComponent;
+	strategy?: string;
+	argMap?: Record<string, string>;
+}
+
+export enum ERendererComponent {
+	DIFF = 'diff',
+	BASH = 'bash',
+	FETCH = 'fetch',
 }
 
 // The mcp.json file shape (Cursor-compatible)

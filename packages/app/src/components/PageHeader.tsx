@@ -33,13 +33,13 @@ function WindowButton({ onClick, children, isClose }: {
 			cursor="pointer"
 			transition="background 0.1s ease"
 			bg="transparent"
-			color="rgba(255, 255, 255, 0.5)"
+			color="var(--wc-text-header-muted)"
 			border="none"
 			outline="none"
 			borderRadius={"md"}
 			_hover={{
-				bg: isClose ? 'rgba(255, 60, 60, 0.3)' : 'rgba(255, 255, 255, 0.08)',
-				color: isClose ? '#ff6b6b' : 'rgba(255, 255, 255, 0.9)',
+				bg: isClose ? 'var(--wc-text-header-close-bg)' : 'var(--wc-text-header-hover-bg)',
+				color: isClose ? 'var(--wc-text-header-close)' : 'var(--wc-text-header-hover)',
 			}}
 			onClick={(e) => {
 				e.stopPropagation();
@@ -84,8 +84,8 @@ export const PageHeader = React.memo(({ title, subtitle, icon, actions, actionsR
 			right={"0px"}
 			boxSizing={"border-box"}
 			borderBottomWidth="1px"
-			borderColor="rgba(255, 255, 255, 0.05)"
-			bg="rgba(30,30,30,0.6)"
+			borderColor="var(--wc-border-header)"
+			bg="var(--wc-bg-header)"
 			boxShadow={"4px 0px 10px rgba(0,0,0,0.2)"}
 			className='drag'
 			onDoubleClick={handleDoubleClick}
@@ -104,8 +104,8 @@ export const PageHeader = React.memo(({ title, subtitle, icon, actions, actionsR
 					justifyContent="center"
 					borderRadius="md"
 					cursor="pointer"
-					color="rgba(255, 255, 255, 0.4)"
-					_hover={{ color: 'rgba(255, 255, 255, 0.8)', bg: 'rgba(255, 255, 255, 0.08)' }}
+					color="var(--wc-text-header-toggle)"
+					_hover={{ color: 'var(--wc-text-header-hover)', bg: 'var(--wc-text-header-hover-bg)' }}
 					transition="all 0.15s ease"
 					onClick={() => handleCollapseChange(!collapsed)}
 					flexShrink={0}
@@ -115,20 +115,20 @@ export const PageHeader = React.memo(({ title, subtitle, icon, actions, actionsR
 					{collapsed ? <RiMenuFold4Line size={20} /> : <RiMenuFold3Line size={20} />}
 				</Flex>
 				<Box mr="1" ml="-1">
-					<Text fontSize="14px" fontWeight="500" letterSpacing="-0.02em" color="rgb(180,180,180)">
+					<Text fontSize="14px" fontWeight="500" letterSpacing="-0.02em" color="var(--wc-text-header-title)">
 						{title}
 					</Text>
 					{subtitle && (
-						<Text fontSize="12px" color="rgba(255, 255, 255, 0.35)">
+						<Text fontSize="12px" color="var(--wc-text-header-subtitle)">
 							{subtitle}
 						</Text>
 					)}
 				</Box>
-				{actions && <HStack gap="2" pl="5" borderLeft={"1px solid rgb(30,30,30)"} className='no-drag'>{actions}</HStack>}
+				{actions && <HStack gap="2" pl="5" borderLeft={`1px solid var(--wc-border-header)`} className='no-drag'>{actions}</HStack>}
 			</HStack>
 			<HStack gap="4" alignItems="center">
 				{actionsRight && <HStack gap="2" className='no-drag'>{actionsRight}</HStack>}
-				{isTauri && <HStack gap="0" mr="-2" borderLeft={"1px solid rgb(30,30,30)"} ml="2" pl="2" className='no-drag'>
+				{isTauri && <HStack gap="0" mr="-2" borderLeft={`1px solid var(--wc-border-header)`} ml="2" pl="2" className='no-drag'>
 					<WindowButton onClick={handleMinimize}>
 						<Minus size={14} />
 					</WindowButton>

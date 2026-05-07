@@ -22,9 +22,9 @@ function ApprovalModeButton({ mode, currentMode, onSelect }: {
 		[EToolApprovalMode.DENIED]: 'Deny',
 	};
 	const activeColors: Record<EToolApprovalMode, string> = {
-		[EToolApprovalMode.ASK]: 'rgba(245,158,11,0.2)',
-		[EToolApprovalMode.ALLOWED]: 'rgba(34,197,94,0.2)',
-		[EToolApprovalMode.DENIED]: 'rgba(239,68,68,0.2)',
+		[EToolApprovalMode.ASK]: 'var(--wc-accent-yellow-hover-bg)',
+		[EToolApprovalMode.ALLOWED]: 'var(--wc-accent-green-bg-8)',
+		[EToolApprovalMode.DENIED]: 'var(--wc-accent-red-alt-bg)',
 	};
 
 	return (
@@ -36,8 +36,8 @@ function ApprovalModeButton({ mode, currentMode, onSelect }: {
 			cursor="pointer"
 			fontSize="11px"
 			bg={isActive ? activeColors[mode] : 'transparent'}
-			color={isActive ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)'}
-			_hover={{ bg: isActive ? activeColors[mode] : 'rgba(255,255,255,0.05)' }}
+			color={isActive ? 'var(--wc-text-heading)' : 'var(--wc-text-muted)'}
+			_hover={{ bg: isActive ? activeColors[mode] : 'var(--wc-bg-hover)' }}
 			onClick={() => onSelect(mode)}
 		>
 			{icons[mode]}
@@ -68,11 +68,11 @@ export function ToolListSidebar({ serverNames, mcpServers, serverPermissions, to
 			w="320px"
 			minW="320px"
 			borderLeftWidth="1px"
-			borderColor="rgba(255,255,255,0.06)"
+			borderColor="var(--wc-border-subtle)"
 			overflow="auto"
 			p="3"
 		>
-			<Text fontSize="12px" fontWeight="600" color="rgba(255,255,255,0.5)" mb="3" textTransform="uppercase" letterSpacing="0.05em">
+			<Text fontSize="12px" fontWeight="600" color="var(--wc-text-muted)" mb="3" textTransform="uppercase" letterSpacing="0.05em">
 				Tools
 			</Text>
 
@@ -89,13 +89,13 @@ export function ToolListSidebar({ serverNames, mcpServers, serverPermissions, to
 							py="1.5"
 							borderRadius="md"
 							cursor="pointer"
-							_hover={{ bg: 'rgba(255,255,255,0.03)' }}
+							_hover={{ bg: 'var(--wc-bg-hover)' }}
 							onClick={() => toggleExpand(name)}
 							opacity={serverEnabled ? 1 : 0.4}
 						>
-							{isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+							{isExpanded ? <ChevronDown size={12} color="var(--wc-text-muted)" /> : <ChevronRight size={12} color="var(--wc-text-muted)" />}
 							<McpStatusDot status={state?.status ?? EMcpServerStatus.DISCONNECTED} />
-							<Text flex="1" fontSize="13px" color="rgba(255,255,255,0.8)" fontWeight="500">
+							<Text flex="1" fontSize="13px" color="var(--wc-text-heading)" fontWeight="500">
 								{name}
 							</Text>
 							<Badge
@@ -103,8 +103,8 @@ export function ToolListSidebar({ serverNames, mcpServers, serverPermissions, to
 								px="1.5"
 								py="0.5"
 								borderRadius="sm"
-								bg="rgba(255,255,255,0.06)"
-								color="rgba(255,255,255,0.4)"
+								bg="var(--wc-bg-hover)"
+								color="var(--wc-text-muted)"
 							>
 								{state?.tools.length ?? 0}
 							</Badge>
@@ -116,9 +116,9 @@ export function ToolListSidebar({ serverNames, mcpServers, serverPermissions, to
 								}}
 								p="1"
 								borderRadius="sm"
-								_hover={{ bg: 'rgba(255,255,255,0.08)' }}
+								_hover={{ bg: 'var(--wc-bg-hover)' }}
 							>
-								{serverEnabled ? <Check size={12} color="rgba(34,197,94,0.8)" /> : <X size={12} color="rgba(239,68,68,0.6)" />}
+								{serverEnabled ? <Check size={12} color="var(--wc-accent-green-icon)" /> : <X size={12} color="var(--wc-accent-red-alt)" />}
 							</Box>
 						</HStack>
 
@@ -145,11 +145,11 @@ export function ToolListSidebar({ serverNames, mcpServers, serverPermissions, to
 													flexShrink={0}
 												>
 													{toolEnabled
-														? <Check size={11} color="rgba(34,197,94,0.8)" />
-														: <X size={11} color="rgba(239,68,68,0.6)" />
+														? <Check size={11} color="var(--wc-accent-green-icon)" />
+														: <X size={11} color="var(--wc-accent-red-alt)" />
 													}
 												</Box>
-												<Text fontSize="12px" color="rgba(255,255,255,0.7)" flex="1">
+												<Text fontSize="12px" color="var(--wc-text-secondary)" flex="1">
 													{tool.name}
 												</Text>
 											</HStack>
@@ -166,7 +166,7 @@ export function ToolListSidebar({ serverNames, mcpServers, serverPermissions, to
 												</HStack>
 											)}
 											{tool.description && (
-												<Text fontSize="11px" color="rgba(255,255,255,0.3)" pl="4" mt="1">
+												<Text fontSize="11px" color="var(--wc-text-muted)" pl="4" mt="1">
 													{tool.description}
 												</Text>
 											)}
@@ -174,7 +174,7 @@ export function ToolListSidebar({ serverNames, mcpServers, serverPermissions, to
 									);
 								})}
 								{state.tools.length === 0 && (
-									<Text fontSize="11px" color="rgba(255,255,255,0.25)" px="2" py="1">
+									<Text fontSize="11px" color="var(--wc-text-disabled)" px="2" py="1">
 										No tools available
 									</Text>
 								)}
@@ -185,7 +185,7 @@ export function ToolListSidebar({ serverNames, mcpServers, serverPermissions, to
 			})}
 
 			{serverNames.length === 0 && (
-				<Text fontSize="12px" color="rgba(255,255,255,0.25)" textAlign="center" py="4">
+				<Text fontSize="12px" color="var(--wc-text-disabled)" textAlign="center" py="4">
 					No MCP servers configured
 				</Text>
 			)}

@@ -22,9 +22,9 @@ export const StepCollapsible = React.memo(({
 	return (
 		<Box
 			borderWidth="1px"
-			borderColor={isHighlighted ? '#f59e0b' : 'rgba(255,255,255,0.06)'}
+			borderColor={isHighlighted ? 'var(--wc-accent-yellow-strong)' : 'var(--wc-border-subtle)'}
 			borderRadius="xl"
-			bg="rgba(255,255,255,0.015)"
+			bg="var(--wc-bg-subtle)"
 			overflow="hidden"
 		>
 			<Flex
@@ -33,21 +33,21 @@ export const StepCollapsible = React.memo(({
 				justify="space-between"
 				cursor="pointer"
 				onClick={() => setOpen(!open)}
-				_hover={{ bg: 'rgba(255,255,255,0.02)' }}
+				_hover={{ bg: 'var(--wc-bg-card)' }}
 				transition="background 0.15s ease"
 			>
 				<HStack gap="3">
 					{done
-						? <CheckCircle2 size={18} color="#22c55e" />
+						? <CheckCircle2 size={18} color="var(--wc-accent-green-icon)" />
 						: isHighlighted
-							? <CircleDot size={18} color="#f59e0b" />
-							: <Circle size={18} color="rgba(255,255,255,0.25)" />
+							? <CircleDot size={18} color="var(--wc-accent-yellow-strong)" />
+							: <Circle size={18} color="var(--wc-text-muted)" />
 					}
-					<Text fontSize="14px" fontWeight="500" color="rgba(255,255,255,0.8)">
+					<Text fontSize="14px" fontWeight="500" color="var(--wc-text-primary)">
 						{title}
 					</Text>
 				</HStack>
-				<Box color="rgba(255,255,255,0.3)">
+				<Box color="var(--wc-text-tertiary)">
 					<ChevronRight size={16} transform={open ? 'rotate(90deg)' : 'rotate(0deg)'} transition="transform 0.15s ease" />
 				</Box>
 			</Flex>

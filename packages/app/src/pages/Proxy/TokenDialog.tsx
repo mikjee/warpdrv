@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import {
 	Box, Text, HStack, VStack, Flex, Badge, Input, IconButton,
 	DialogRoot, DialogContent, DialogHeader, DialogBody, DialogFooter,
-	DialogTitle, DialogCloseTrigger,
+	DialogTitle, DialogCloseTrigger, Portal, DialogBackdrop, DialogPositioner,
 	Button,
 } from '@chakra-ui/react';
 import { X, Copy, Check, Shield, Cpu, Wrench, AlertTriangle } from 'lucide-react';
@@ -54,9 +54,9 @@ function PillInput({
 	return (
 		<Box
 			borderWidth="1px"
-			borderColor={disabled ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.08)'}
+			borderColor={disabled ? 'var(--wc-bg-card)' : 'var(--wc-border-default)'}
 			borderRadius="lg"
-			bg={disabled ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.2)'}
+			bg={disabled ? 'var(--wc-bg-selected)' : 'var(--wc-bg-interactive)'}
 			px="2"
 			py="1.5"
 			minH="38px"
@@ -64,7 +64,7 @@ function PillInput({
 			opacity={disabled ? 0.4 : 1}
 			onClick={() => { if (!disabled) inputRef.current?.focus(); }}
 			transition="border-color 0.15s ease"
-			_focusWithin={{ borderColor: 'rgba(59, 130, 246, 0.4)' }}
+			_focusWithin={{ borderColor: 'var(--wc-accent-blue-focus)' }}
 		>
 			<HStack gap="1.5" flexWrap="wrap">
 				{values.map((val, idx) => (
@@ -73,8 +73,8 @@ function PillInput({
 						px="2"
 						py="0.5"
 						borderRadius="md"
-						bg="rgba(59, 130, 246, 0.12)"
-						color="#60a5fa"
+						bg="var(--wc-accent-blue-bg-12)"
+						color="var(--wc-accent-blue-hover)"
 						fontSize="11px"
 						fontWeight="500"
 						fontFamily="mono"
@@ -85,8 +85,8 @@ function PillInput({
 								<Box
 									cursor="pointer"
 									onClick={(e) => { e.stopPropagation(); removeValue(idx); }}
-									color="rgba(96,165,250,0.5)"
-									_hover={{ color: '#f87171' }}
+									color="var(--wc-text-tertiary)"
+									_hover={{ color: 'var(--wc-accent-red)' }}
 									transition="color 0.15s ease"
 								>
 									<X size={10} />
@@ -107,8 +107,8 @@ function PillInput({
 						flex="1"
 						minW="80px"
 						fontSize="12px"
-						color="rgba(255,255,255,0.7)"
-						_placeholder={{ color: 'rgba(255,255,255,0.2)' }}
+						color="var(--wc-text-secondary)"
+						_placeholder={{ color: 'var(--wc-text-placeholder)' }}
 					/>
 				)}
 			</HStack>
@@ -141,23 +141,23 @@ function RoleOption({
 			px="3"
 			py="2.5"
 			borderWidth="1px"
-			borderColor={selected ? `${color}40` : 'rgba(255,255,255,0.06)'}
+			borderColor={selected ? `color-mix(in srgb, ${color} 25%, transparent)` : 'var(--wc-border-subtle)'}
 			borderRadius="lg"
-			bg={selected ? `${color}08` : 'transparent'}
+			bg={selected ? `color-mix(in srgb, ${color} 5%, transparent)` : 'transparent'}
 			cursor="pointer"
 			onClick={onClick}
 			transition="all 0.15s ease"
-			_hover={{ borderColor: selected ? `${color}40` : 'rgba(255,255,255,0.12)' }}
+			_hover={{ borderColor: selected ? `color-mix(in srgb, ${color} 25%, transparent)` : 'var(--wc-border-hover)' }}
 		>
 			<HStack gap="2.5">
-				<Box color={selected ? color : 'rgba(255,255,255,0.3)'}>
+				<Box color={selected ? color : 'var(--wc-text-faint)'}>
 					{icon}
 				</Box>
 				<VStack gap="0" align="start">
-					<Text fontSize="12px" fontWeight="600" color={selected ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)'}>
+					<Text fontSize="12px" fontWeight="600" color={selected ? 'var(--wc-text-heading)' : 'var(--wc-text-tertiary)'}>
 						{label}
 					</Text>
-					<Text fontSize="10px" color={selected ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.25)'}>
+					<Text fontSize="10px" color={selected ? 'var(--wc-text-secondary)' : 'var(--wc-text-muted)'}>
 						{description}
 					</Text>
 				</VStack>
@@ -192,29 +192,29 @@ function ToggleCheck({
 			cursor={disabled ? 'not-allowed' : 'pointer'}
 			opacity={disabled ? 0.35 : 1}
 			onClick={() => { if (!disabled) onChange(!checked); }}
-			_hover={disabled ? {} : { bg: 'rgba(255,255,255,0.02)' }}
+			_hover={disabled ? {} : { bg: 'var(--wc-bg-surface)' }}
 			transition="background 0.15s ease"
 		>
 			<Box
 				w="16px"
 				h="16px"
 				borderWidth="1.5px"
-				borderColor={checked ? '#a78bfa' : 'rgba(255,255,255,0.15)'}
+				borderColor={checked ? 'var(--wc-accent-purple)' : 'var(--wc-border-strong)'}
 				borderRadius="sm"
-				bg={checked ? 'rgba(168, 85, 247, 0.2)' : 'transparent'}
+				bg={checked ? 'var(--wc-accent-purple-bg-8)' : 'var(--wc-special-transparent)'}
 				display="flex"
 				alignItems="center"
 				justifyContent="center"
 				transition="all 0.15s ease"
 				flexShrink={0}
 			>
-				{checked && <Check size={10} color="#a78bfa" />}
+				{checked && <Check size={10} color="var(--wc-accent-purple)" />}
 			</Box>
 			<VStack gap="0" align="start">
-				<Text fontSize="12px" fontWeight="500" color="rgba(255,255,255,0.7)">
+				<Text fontSize="12px" fontWeight="500" color="var(--wc-text-secondary)">
 					{label}
 				</Text>
-				<Text fontSize="10px" color="rgba(255,255,255,0.3)">
+				<Text fontSize="10px" color="var(--wc-text-faint)">
 					{description}
 				</Text>
 			</VStack>
@@ -246,7 +246,7 @@ function ScopeSelector({
 	return (
 		<VStack gap="2" align="stretch">
 			<HStack gap="2">
-				<Text fontSize="11px" fontWeight="600" color="rgba(255,255,255,0.4)" textTransform="uppercase" letterSpacing="0.05em">
+				<Text fontSize="11px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em">
 					{label}
 				</Text>
 				<HStack gap="1" ml="auto">
@@ -257,10 +257,10 @@ function ScopeSelector({
 						fontSize="10px"
 						fontWeight="600"
 						cursor={disabled ? 'not-allowed' : 'pointer'}
-						bg={isAll ? 'rgba(59, 130, 246, 0.15)' : 'transparent'}
-						color={isAll ? '#60a5fa' : 'rgba(255,255,255,0.3)'}
+						bg={isAll ? 'var(--wc-accent-blue-bg-12)' : 'var(--wc-special-transparent)'}
+						color={isAll ? 'var(--wc-accent-blue-hover)' : 'var(--wc-text-faint)'}
 						borderWidth="1px"
-						borderColor={isAll ? 'rgba(59, 130, 246, 0.3)' : 'rgba(255,255,255,0.06)'}
+						borderColor={isAll ? 'var(--wc-accent-blue-border)' : 'var(--wc-border-subtle)'}
 						onClick={() => { if (!disabled) onChange(true); }}
 						transition="all 0.15s ease"
 						opacity={disabled ? 0.4 : 1}
@@ -274,10 +274,10 @@ function ScopeSelector({
 						fontSize="10px"
 						fontWeight="600"
 						cursor={disabled ? 'not-allowed' : 'pointer'}
-						bg={!isAll ? 'rgba(59, 130, 246, 0.15)' : 'transparent'}
-						color={!isAll ? '#60a5fa' : 'rgba(255,255,255,0.3)'}
+						bg={!isAll ? 'var(--wc-accent-blue-bg-12)' : 'var(--wc-special-transparent)'}
+						color={!isAll ? 'var(--wc-accent-blue-hover)' : 'var(--wc-text-faint)'}
 						borderWidth="1px"
-						borderColor={!isAll ? 'rgba(59, 130, 246, 0.3)' : 'rgba(255,255,255,0.06)'}
+						borderColor={!isAll ? 'var(--wc-accent-blue-border)' : 'var(--wc-border-subtle)'}
 						onClick={() => { if (!disabled) onChange([]); }}
 						transition="all 0.15s ease"
 						opacity={disabled ? 0.4 : 1}
@@ -314,21 +314,21 @@ function TokenCreatedDisplay({ rawToken }: { rawToken: string }) {
 	return (
 		<Box
 			borderWidth="1px"
-			borderColor="rgba(234, 179, 8, 0.25)"
+			borderColor="var(--wc-accent-yellow-border)"
 			borderRadius="lg"
-			bg="rgba(234, 179, 8, 0.05)"
+			bg="var(--wc-accent-yellow-bg-8)"
 			p="3"
 		>
 			<VStack gap="2" align="stretch">
 				<HStack gap="2">
-					<AlertTriangle size={14} color="#eab308" />
-					<Text fontSize="12px" fontWeight="600" color="#eab308">
+					<AlertTriangle size={14} color="var(--wc-accent-yellow)" />
+					<Text fontSize="12px" fontWeight="600" color="var(--wc-accent-yellow-strong)">
 						Copy this token now — it will not be shown again
 					</Text>
 				</HStack>
 				<HStack
 					gap="2"
-					bg="rgba(0,0,0,0.3)"
+					bg="var(--wc-overlay-dim)"
 					borderRadius="md"
 					px="3"
 					py="2"
@@ -337,7 +337,7 @@ function TokenCreatedDisplay({ rawToken }: { rawToken: string }) {
 						flex="1"
 						fontSize="12px"
 						fontFamily="mono"
-						color="rgba(255,255,255,0.8)"
+						color="var(--wc-text-primary)"
 						wordBreak="break-all"
 						userSelect="all"
 					>
@@ -347,8 +347,8 @@ function TokenCreatedDisplay({ rawToken }: { rawToken: string }) {
 						aria-label="Copy token"
 						size="xs"
 						variant="ghost"
-						color={copied ? '#22c55e' : 'rgba(255,255,255,0.5)'}
-						_hover={{ bg: 'rgba(255,255,255,0.06)' }}
+						color={copied ? 'var(--wc-accent-green-icon)' : 'var(--wc-text-tertiary)'}
+						_hover={{ bg: 'var(--wc-bg-hover)' }}
 						onClick={handleCopy}
 					>
 						{copied ? <Check size={14} /> : <Copy size={14} />}
@@ -444,15 +444,19 @@ export function TokenDialog({ open, onClose, editingToken }: ITokenDialogProps) 
 			onOpenChange={(details) => { if (!details.open) onClose(); }}
 			size="md"
 		>
-			<DialogContent
-				bg="#1a1a1a"
-				borderWidth="1px"
-				borderColor="rgba(255,255,255,0.06)"
-				borderRadius="xl"
-				boxShadow="0 25px 50px rgba(0,0,0,0.5)"
-			>
+			<Portal>
+				<Box position="fixed" inset="6px" borderRadius="12px" overflow="hidden" zIndex="modal">
+					<DialogBackdrop position="absolute" />
+					<DialogPositioner position="absolute">
+						<DialogContent
+							bg="var(--wc-bg-dialog)"
+							borderWidth="1px"
+							borderColor="var(--wc-border-subtle)"
+							borderRadius="xl"
+							boxShadow="0 25px 50px rgba(0,0,0,0.5)"
+						>
 				<DialogHeader pb="2">
-					<DialogTitle fontSize="15px" fontWeight="600" color="rgba(255,255,255,0.9)">
+					<DialogTitle fontSize="15px" fontWeight="600" color="var(--wc-text-heading)">
 						{createdRawToken ? 'Token Created' : (isEditing ? 'Edit Token' : 'Create Access Token')}
 					</DialogTitle>
 					<DialogCloseTrigger />
@@ -463,7 +467,7 @@ export function TokenDialog({ open, onClose, editingToken }: ITokenDialogProps) 
 						// Token created - show copy-once display
 						<VStack gap="3" align="stretch">
 							<TokenCreatedDisplay rawToken={createdRawToken} />
-							<Text fontSize="11px" color="rgba(255,255,255,0.3)">
+							<Text fontSize="11px" color="var(--wc-text-faint)">
 								Use this token in the Authorization header: Bearer {createdRawToken.substring(0, 11)}...
 							</Text>
 						</VStack>
@@ -472,27 +476,27 @@ export function TokenDialog({ open, onClose, editingToken }: ITokenDialogProps) 
 						<VStack gap="4" align="stretch">
 							{/* Token name */}
 							<VStack gap="1.5" align="stretch">
-								<Text fontSize="11px" fontWeight="600" color="rgba(255,255,255,0.4)" textTransform="uppercase" letterSpacing="0.05em">
-									Name
+<Text fontSize="11px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em">
+					Name
 								</Text>
 								<Input
 									value={name}
 									onChange={(e) => setName(e.target.value)}
 									placeholder="e.g. Mobile app, CI pipeline, Friend's access"
 									size="sm"
-									bg="rgba(0,0,0,0.2)"
-									borderColor="rgba(255,255,255,0.08)"
-									color="rgba(255,255,255,0.8)"
-									fontSize="12px"
-									_placeholder={{ color: 'rgba(255,255,255,0.2)' }}
-									_focus={{ borderColor: 'rgba(59, 130, 246, 0.4)' }}
+bg="var(--wc-bg-interactive)"
+								borderColor="var(--wc-border-default)"
+								color="var(--wc-text-primary)"
+								fontSize="12px"
+								_placeholder={{ color: 'var(--wc-text-placeholder)' }}
+								_focus={{ borderColor: 'var(--wc-accent-blue-focus)' }}
 								/>
 							</VStack>
 
 							{/* Role selector */}
 							<VStack gap="1.5" align="stretch">
-								<Text fontSize="11px" fontWeight="600" color="rgba(255,255,255,0.4)" textTransform="uppercase" letterSpacing="0.05em">
-									Access Level
+<Text fontSize="11px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em">
+					Access Level
 								</Text>
 								<HStack gap="2">
 									<RoleOption
@@ -501,15 +505,15 @@ export function TokenDialog({ open, onClose, editingToken }: ITokenDialogProps) 
 										icon={<Shield size={16} />}
 										label="Admin"
 										description="Full control API, inference, and MCP access"
-										color="#f87171"
+										color="var(--wc-accent-red)"
 									/>
 									<RoleOption
 										selected={!isAdmin}
 										onClick={() => setRole('inference')}
 										icon={<Cpu size={16} />}
 										label="Inference"
-										description="Query models through the proxy server"
-										color="#60a5fa"
+description="Query models through the proxy server"
+										color="var(--wc-accent-blue-hover)"
 									/>
 								</HStack>
 							</VStack>
@@ -578,9 +582,9 @@ export function TokenDialog({ open, onClose, editingToken }: ITokenDialogProps) 
 						<Button
 							size="sm"
 							onClick={onClose}
-							bg="rgba(59, 130, 246, 0.15)"
-							color="#60a5fa"
-							_hover={{ bg: 'rgba(59, 130, 246, 0.25)' }}
+							bg="var(--wc-accent-blue-bg-12)"
+color="var(--wc-accent-blue-hover)"
+							_hover={{ bg: 'var(--wc-accent-blue-focus)' }}
 							fontSize="12px"
 						>
 							Done
@@ -591,8 +595,8 @@ export function TokenDialog({ open, onClose, editingToken }: ITokenDialogProps) 
 								size="sm"
 								variant="ghost"
 								onClick={onClose}
-								color="rgba(255,255,255,0.5)"
-								_hover={{ bg: 'rgba(255,255,255,0.04)' }}
+								color="var(--wc-text-tertiary)"
+								_hover={{ bg: 'var(--wc-bg-card)' }}
 								fontSize="12px"
 							>
 								Cancel
@@ -601,9 +605,9 @@ export function TokenDialog({ open, onClose, editingToken }: ITokenDialogProps) 
 								size="sm"
 								onClick={handleSave}
 								disabled={loading || !name.trim()}
-								bg={isAdmin ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.15)'}
-								color={isAdmin ? '#f87171' : '#60a5fa'}
-								_hover={{ bg: isAdmin ? 'rgba(239, 68, 68, 0.25)' : 'rgba(59, 130, 246, 0.25)' }}
+								bg={isAdmin ? 'var(--wc-accent-red-bg-8)' : 'var(--wc-accent-blue-bg-12)'}
+								color={isAdmin ? 'var(--wc-accent-red)' : 'var(--wc-accent-blue-hover)'}
+								_hover={{ bg: isAdmin ? 'var(--wc-accent-red-hover)' : 'var(--wc-accent-blue-focus)' }}
 								fontSize="12px"
 							>
 								{loading ? 'Saving...' : (isEditing ? 'Update Token' : 'Create Token')}
@@ -611,7 +615,10 @@ export function TokenDialog({ open, onClose, editingToken }: ITokenDialogProps) 
 						</HStack>
 					)}
 				</DialogFooter>
-			</DialogContent>
+						</DialogContent>
+					</DialogPositioner>
+				</Box>
+			</Portal>
 		</DialogRoot>
 	);
 }

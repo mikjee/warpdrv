@@ -17,11 +17,11 @@ export function DirPickerPopover({ roots, existsInRoot, onSelect, onClose }: IDi
 
 				<Box
 					position="fixed" left="50%" top="50%" transform="translate(-50%, -50%)"
-					bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
+					bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-overlay)"
 					borderRadius="xl" shadow="0 12px 40px rgba(0, 0, 0, 0.5)"
 					zIndex="popover" py="2" minW="320px"
 				>
-				<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" px="3" pb="2">
+				<Text fontSize="11px" color="var(--wc-text-faint)" textTransform="uppercase" letterSpacing="0.05em" px="3" pb="2">
 					Download to
 				</Text>
 				<VStack align="stretch" gap="0">
@@ -30,25 +30,25 @@ export function DirPickerPopover({ roots, existsInRoot, onSelect, onClose }: IDi
 						return (
 							<HStack
 								key={root} gap="3" px="3" py="2.5" cursor="pointer"
-								_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }}
+								_hover={{ bg: 'var(--wc-bg-hover)' }}
 								onClick={() => { onSelect(root); onClose(); }}
 								transition="all 0.1s ease"
 							>
 								<Flex
 									w="7" h="7" borderRadius="md" alignItems="center" justifyContent="center"
-									bg={hasFiles ? 'rgba(51, 129, 255, 0.08)' : 'rgba(255, 255, 255, 0.04)'}
+									bg={hasFiles ? 'var(--wc-accent-blue-bg-8)' : 'var(--wc-bg-card)'}
 									flexShrink={0}
 								>
-									<FolderOpen size={14} color={hasFiles ? '#3381ff' : 'rgba(255, 255, 255, 0.35)'} />
+									<FolderOpen size={14} color={hasFiles ? 'var(--wc-accent-blue)' : 'var(--wc-text-tertiary)'} />
 								</Flex>
 								<Box flex="1" minW="0">
-									<Text fontSize="12px" color="#e4e4e7" lineClamp={1} fontFamily='"Geist Mono", monospace'>
+									<Text fontSize="12px" color="var(--wc-text-primary)" lineClamp={1} fontFamily='"Geist Mono", monospace'>
 										{root}
 									</Text>
 									{hasFiles && (
 										<HStack gap="1" mt="0.5">
-											<Check size={10} color="#3381ff" />
-											<Text fontSize="10px" color="#3381ff">Files from this repo already here</Text>
+											<Check size={10} color="var(--wc-accent-blue)" />
+											<Text fontSize="10px" color="var(--wc-accent-blue)">Files from this repo already here</Text>
 										</HStack>
 									)}
 								</Box>

@@ -29,7 +29,7 @@ export const ChatSidebar = React.memo(({
 	const [activeTab, setActiveTab] = useState<'config' | 'tools'>('config');
 
 	return (
-		<Flex direction="row" h="100%" borderLeftWidth="1px" borderColor="rgba(255,255,255,0.06)">
+		<Flex direction="row" h="100%" borderLeftWidth="1px" borderColor="var(--wc-border-subtle)">
 			{/* Content panel (conditional) */}
 			{open && (
 				<Box
@@ -38,7 +38,7 @@ export const ChatSidebar = React.memo(({
 					overflowY="auto"
 					css={{
 						'&::-webkit-scrollbar': { width: '4px' },
-						'&::-webkit-scrollbar-thumb': { background: 'rgba(255,255,255,0.1)', borderRadius: '2px' },
+						'&::-webkit-scrollbar-thumb': { background: 'var(--wc-text-disabled)', borderRadius: '2px' },
 					}}
 				>
 					{activeTab === 'config' ? (
@@ -60,7 +60,7 @@ export const ChatSidebar = React.memo(({
 			<Flex
 				w="60px"
 				borderLeftWidth="1px"
-				borderColor="rgba(255,255,255,0.06)"
+borderColor="var(--wc-border-subtle)"
 				flexDirection="column"
 				alignItems="center"
 				pt="2"
@@ -81,12 +81,12 @@ export const ChatSidebar = React.memo(({
 					borderRadius="lg"
 					cursor="pointer"
 					transition="all 0.15s"
-					bg={activeTab === 'config' && open ? 'rgba(255,255,255,0.04)' : 'transparent'}
+					bg={activeTab === 'config' && open ? 'var(--wc-bg-card)' : 'transparent'}
 					borderWidth="1px"
-					borderColor={activeTab === 'config' && open ? 'rgba(90, 90, 90, 0.2)' : 'transparent'}
-					_hover={{ bg: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.8)' }}
+					borderColor={activeTab === 'config' && open ? 'var(--wc-border-default)' : 'transparent'}
+					_hover={{ bg: 'var(--wc-bg-card)', color: 'var(--wc-text-primary)' }}
 				>
-					<LuSlidersHorizontal size={18} color={activeTab === 'config' && open ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.4)'} />
+					<LuSlidersHorizontal size={18} color={activeTab === 'config' && open ? 'var(--wc-text-primary)' : 'var(--wc-text-muted)'} />
 				</Flex>
 
 				{/* Tools tab */}
@@ -105,12 +105,12 @@ export const ChatSidebar = React.memo(({
 					borderRadius="lg"
 					cursor="pointer"
 					transition="all 0.15s"
-					bg={activeTab === 'tools' && open ? 'rgba(255,255,255,0.04)' : 'transparent'}
+					bg={activeTab === 'tools' && open ? 'var(--wc-bg-card)' : 'transparent'}
 					borderWidth="1px"
-					borderColor={activeTab === 'tools' && open ? 'rgba(90, 90, 90, 0.2)' : 'transparent'}
-					_hover={{ bg: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.8)' }}
+					borderColor={activeTab === 'tools' && open ? 'var(--wc-border-default)' : 'transparent'}
+					_hover={{ bg: 'var(--wc-bg-card)', color: 'var(--wc-text-primary)' }}
 				>
-					<Plug size={18} color={activeTab === 'tools' && open ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.4)'} />
+					<Plug size={18} color={activeTab === 'tools' && open ? 'var(--wc-text-primary)' : 'var(--wc-text-muted)'} />
 				</Flex>
 
 				{/* Close button (only when open) */}
@@ -125,10 +125,10 @@ export const ChatSidebar = React.memo(({
 						transition="all 0.15s"
 						borderWidth="1px"
 						borderColor="transparent"
-						_hover={{ bg: 'rgba(255,255,255,0.04)' }}
+						_hover={{ bg: 'var(--wc-bg-card)' }}
 						onClick={() => setOpen(false)}
 					>
-						<ChevronRight size={18} color="rgba(255,255,255,0.4)" />
+						<ChevronRight size={18} color="var(--wc-text-muted)" />
 					</Flex>
 				)}
 			</Flex>

@@ -150,33 +150,33 @@ export function ActivateBackendDialog({ isOpen, onClose, groupId, newBackendId, 
 					<Dialog.Positioner position="absolute">
 						<Dialog.Content
 							maxW="520px"
-							bg="#0f0f12"
-							borderColor="rgba(255, 255, 255, 0.08)"
+							bg="var(--wc-bg-dialog)"
+							borderColor="var(--wc-border-default)"
 							borderRadius="2xl"
 						shadow="0 24px 80px rgba(0, 0, 0, 0.6)"
 					>
 						<VStack gap="4" px="6" py="5">
-							<Box w="10" h="10" borderRadius="lg" display="flex" alignItems="center" justifyContent="center" bg="rgba(251, 113, 133, 0.12)">
-								<AlertTriangle size={20} color="#fb7185" />
+							<Box w="10" h="10" borderRadius="lg" display="flex" alignItems="center" justifyContent="center" bg="var(--wc-accent-red-bg-12)">
+								<AlertTriangle size={20} color="var(--wc-accent-red)" />
 							</Box>
 
 							<VStack gap="2">
-								<Dialog.Title fontSize="16px" fontWeight="700" color="#e4e4e7">
+								<Dialog.Title fontSize="16px" fontWeight="700" color="var(--wc-text-primary)">
 									Switch Active Backend?
 								</Dialog.Title>
-								<Text fontSize="13px" color="rgba(255, 255, 255, 0.5)" textAlign="center">
-									Changing from <Text as="span" color="#e4e4e7" fontWeight="500">{currentBackend?.name ?? '(deleted)'}</Text> to <Text as="span" color="#e4e4e7" fontWeight="500">{newBackend?.name ?? '(deleted)'}</Text>
+								<Text fontSize="13px" color="var(--wc-text-tertiary)" textAlign="center">
+									Changing from <Text as="span" color="var(--wc-text-primary)" fontWeight="500">{currentBackend?.name ?? '(deleted)'}</Text> to <Text as="span" color="var(--wc-text-primary)" fontWeight="500">{newBackend?.name ?? '(deleted)'}</Text>
 								</Text>
 							</VStack>
 
 							{Object.keys(serversState).length > 0 ? (
 								<Box>
-									<Text fontSize="12px" color="rgba(255, 255, 255, 0.4)" mb="2">
+									<Text fontSize="12px" color="var(--wc-text-muted)" mb="2">
 										Affected running servers ({Object.keys(serversState).length}):
 									</Text>
 									<Box
 										borderWidth="1px"
-										borderColor="rgba(255, 255, 255, 0.06)"
+										borderColor="var(--wc-border-subtle)"
 										borderRadius="lg"
 										p="2"
 										maxH="200px"
@@ -192,34 +192,34 @@ export function ActivateBackendDialog({ isOpen, onClose, groupId, newBackendId, 
 													borderRadius="md"
 													bg={
 														server.status === 'restarting'
-															? 'rgba(51, 129, 255, 0.08)'
+															? 'var(--wc-accent-blue-bg-8)'
 															: server.status === 'completed'
-															? 'rgba(52, 211, 153, 0.08)'
+															? 'var(--wc-accent-green-bg-8)'
 															: server.status === 'failed'
-															? 'rgba(251, 113, 133, 0.08)'
+															? 'var(--wc-accent-red-bg-8)'
 															: 'transparent'
 													}
 													borderWidth="1px"
 													borderColor={
 														server.status === 'restarting'
-															? 'rgba(51, 129, 255, 0.2)'
+															? 'var(--wc-accent-blue-border)'
 															: server.status === 'completed'
-															? 'rgba(52, 211, 153, 0.2)'
+															? 'var(--wc-accent-green-border)'
 															: server.status === 'failed'
-															? 'rgba(251, 113, 133, 0.2)'
+															? 'var(--wc-accent-red-border)'
 															: 'transparent'
 													}
 													transition="all 0.2s ease"
 												>
 													<HStack gap="2">
 														{server.status === 'restarting' && (
-															<Spinner size="xs" color="#3381ff" />
+															<Spinner size="xs" color="var(--wc-accent-blue)" />
 														)}
 														{server.status === 'completed' && (
-															<CheckCircle size={14} color="#34d399" />
+															<CheckCircle size={14} color="var(--wc-accent-green)" />
 														)}
 														{server.status === 'failed' && (
-															<XCircle size={14} color="#fb7185" />
+															<XCircle size={14} color="var(--wc-accent-red)" />
 														)}
 														{server.status === 'idle' && (
 															<Badge
@@ -227,29 +227,29 @@ export function ActivateBackendDialog({ isOpen, onClose, groupId, newBackendId, 
 																py="0.25"
 																borderRadius="md"
 																fontSize="10px"
-																bg="rgba(255, 255, 255, 0.06)"
-																color="rgba(255, 255, 255, 0.4)"
+																bg="var(--wc-bg-hover)"
+																color="var(--wc-text-muted)"
 															>
 																Port {server.port}
 															</Badge>
 														)}
-														<Text fontSize="12px" color={server.status === 'idle' ? 'rgba(255, 255, 255, 0.7)' : '#e4e4e7'} fontWeight={server.status === 'idle' ? '400' : '500'}>
+														<Text fontSize="12px" color={server.status === 'idle' ? 'var(--wc-text-secondary)' : 'var(--wc-text-primary)'} fontWeight={server.status === 'idle' ? '400' : '500'}>
 															{server.name}
 														</Text>
 													</HStack>
 													{server.status === 'restarting' && (
-														<Text fontSize="11px" color="#3381ff" fontWeight="500">
-															Restarting...
-														</Text>
-													)}
+<Text fontSize="11px" color="var(--wc-accent-blue)" fontWeight="500">
+														Restarting...
+													</Text>
+												)}
 													{server.status === 'completed' && (
-														<Text fontSize="11px" color="#34d399" fontWeight="500">
-															Restarted
-														</Text>
-													)}
+														<Text fontSize="11px" color="var(--wc-accent-green)" fontWeight="500">
+														Restarted
+													</Text>
+												)}
 													{server.status === 'failed' && (
-														<Text fontSize="11px" color="#fb7185" fontWeight="500">
-															Failed
+														<Text fontSize="11px" color="var(--wc-accent-red)" fontWeight="500">
+														Failed
 														</Text>
 													)}
 												</HStack>
@@ -258,7 +258,7 @@ export function ActivateBackendDialog({ isOpen, onClose, groupId, newBackendId, 
 									</Box>
 								</Box>
 							) : (
-								<Text fontSize="12px" color="rgba(255, 255, 255, 0.35)" textAlign="center" py="2">
+								<Text fontSize="12px" color="var(--wc-text-muted)" textAlign="center" py="2">
 									No running servers using this group
 								</Text>
 							)}
@@ -268,8 +268,8 @@ export function ActivateBackendDialog({ isOpen, onClose, groupId, newBackendId, 
 									flex="1"
 									size="sm"
 									variant="ghost"
-									color="rgba(255, 255, 255, 0.4)"
-									_hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }}
+									color="var(--wc-text-muted)"
+									_hover={{ color: 'var(--wc-text-primary)', bg: 'var(--wc-bg-hover)' }}
 									borderRadius="lg"
 									fontSize="13px"
 									onClick={handleCancel}
@@ -280,11 +280,11 @@ export function ActivateBackendDialog({ isOpen, onClose, groupId, newBackendId, 
 								<Button
 									flex="1"
 									size="sm"
-									bg="rgba(51, 129, 255, 0.12)"
-									color="#3381ff"
+									bg="var(--wc-accent-purple-bg-12)"
+									color="var(--wc-accent-purple)"
 									borderWidth="1px"
-									borderColor="rgba(51, 129, 255, 0.25)"
-									_hover={{ bg: 'rgba(51, 129, 255, 0.2)' }}
+									borderColor="var(--wc-accent-purple-border)"
+									_hover={{ bg: 'var(--wc-accent-purple-hover-bg)' }}
 									borderRadius="lg"
 									fontSize="13px"
 									fontWeight="500"
@@ -294,20 +294,20 @@ export function ActivateBackendDialog({ isOpen, onClose, groupId, newBackendId, 
 									{isSwitching ? <Spinner size="xs" /> : 'Switch Only'}
 								</Button>
 								{affectedServers.length > 0 && (
-									<Button
+<Button
 										flex="1"
 										size="sm"
-										bg="rgba(167, 139, 250, 0.12)"
-										color="#a78bfa"
+										bg="var(--wc-accent-blue-bg-12)"
+										color="var(--wc-accent-blue)"
 										borderWidth="1px"
-										borderColor="rgba(167, 139, 250, 0.25)"
-										_hover={{ bg: 'rgba(167, 139, 250, 0.2)' }}
+										borderColor="var(--wc-accent-blue-border)"
+										_hover={{ bg: 'var(--wc-accent-blue-hover-bg)' }}
 										borderRadius="lg"
 										fontSize="13px"
 										fontWeight="500"
 										onClick={handleSwitchAndRestart}
 										disabled={isSwitching || switchingDone || isRestarting}
-									>
+								>
 										{isRestarting ? (
 											<HStack gap="1">
 												<Spinner size="xs" />

@@ -136,21 +136,21 @@ export function BackendDialog({ onClose, editBackendId }: IBackendDialogProps) {
 
 	return (
 		<Box position="fixed" inset="0" zIndex="modal" display="flex" alignItems="center" justifyContent="center">
-			<Box position="absolute" inset="0" bg="rgba(0, 0, 0, 0.7)" backdropFilter="blur(8px)" onClick={onClose} />
+			<Box position="absolute" inset="0" bg="var(--wc-overlay-modal)" backdropFilter="blur(8px)" onClick={onClose} />
 
-			<Box position="relative" w="580px" maxH="90vh" bg="#0f0f12" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.08)" borderRadius="2xl" shadow="0 24px 80px rgba(0, 0, 0, 0.6)" overflow="hidden" display="flex" flexDirection="column">
+			<Box position="relative" w="580px" maxH="90vh" bg="var(--wc-bg-dialog)" borderWidth="1px" borderColor="var(--wc-border-default)" borderRadius="2xl" shadow="0 24px 80px rgba(0, 0, 0, 0.6)" overflow="hidden" display="flex" flexDirection="column">
 				{/* Header */}
-				<Flex px="6" py="4" justify="space-between" align="center" borderBottomWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" bg="rgba(255, 255, 255, 0.01)">
+				<Flex px="6" py="4" justify="space-between" align="center" borderBottomWidth="1px" borderColor="var(--wc-border-subtle)" bg="var(--wc-bg-surface)">
 					<HStack gap="3">
-						<Flex w="9" h="9" borderRadius="lg" alignItems="center" justifyContent="center" bg="rgba(167, 139, 250, 0.1)" borderWidth="1px" borderColor="rgba(167, 139, 250, 0.2)">
-							<Blocks size={18} color="#a78bfa" />
+						<Flex w="9" h="9" borderRadius="lg" alignItems="center" justifyContent="center" bg="var(--wc-accent-purple-bg-10)" borderWidth="1px" borderColor="var(--wc-accent-purple-border)">
+							<Blocks size={18} color="var(--wc-accent-purple)" />
 						</Flex>
 						<Box>
-							<Text fontSize="16px" fontWeight="700" color="#e4e4e7">{isEdit ? 'Edit Backend' : 'Add Backend'}</Text>
-							<Text fontSize="12px" color="rgba(255, 255, 255, 0.35)">Register a llama.cpp build</Text>
+							<Text fontSize="16px" fontWeight="700" color="var(--wc-text-primary)">{isEdit ? 'Edit Backend' : 'Add Backend'}</Text>
+							<Text fontSize="12px" color="var(--wc-text-muted)">Register a llama.cpp build</Text>
 						</Box>
 					</HStack>
-					<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.3)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="md" onClick={onClose} minW="8" px="0">
+					<Button size="sm" variant="ghost" color="var(--wc-text-faint)" _hover={{ color: 'var(--wc-text-primary)', bg: 'var(--wc-bg-hover)' }} borderRadius="md" onClick={onClose} minW="8" px="0">
 						<X size={16} />
 					</Button>
 				</Flex>
@@ -159,38 +159,38 @@ export function BackendDialog({ onClose, editBackendId }: IBackendDialogProps) {
 				<Box flex="1" overflowY="auto" p="6">
 					<VStack align="stretch" gap="5">
 						<Box>
-							<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Name</Text>
-							<Input placeholder="e.g. ROCm 7.2 — Strix Halo" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontSize="13px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={name} onChange={e => setName(e.target.value)} />
+							<Text fontSize="11px" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Name</Text>
+							<Input placeholder="e.g. ROCm 7.2 — Strix Halo" size="sm" bg="var(--wc-bg-subtle)" borderColor="var(--wc-border-default)" color="var(--wc-text-secondary)" fontSize="13px" borderRadius="lg" _placeholder={{ color: 'var(--wc-text-placeholder)' }} _focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }} value={name} onChange={e => setName(e.target.value)} />
 						</Box>
 
 						<Box>
-							<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Binary Path</Text>
+							<Text fontSize="11px" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Binary Path</Text>
 							<HStack gap="2">
-								<Input placeholder="/path/to/llama-server" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={path} onChange={e => setPath(e.target.value)} flex="1" />
-								<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#a78bfa', bg: 'rgba(167, 139, 250, 0.08)' }} borderRadius="lg" minW="8" px="0" onClick={handleBrowseFile} title="Browse file">
+								<Input placeholder="/path/to/llama-server" size="sm" bg="var(--wc-bg-subtle)" borderColor="var(--wc-border-default)" color="var(--wc-text-secondary)" fontFamily='"Geist Mono", monospace' fontSize="12px" borderRadius="lg" _placeholder={{ color: 'var(--wc-text-placeholder)' }} _focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }} value={path} onChange={e => setPath(e.target.value)} flex="1" />
+								<Button size="sm" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-purple)', bg: 'var(--wc-accent-purple-bg-8)' }} borderRadius="lg" minW="8" px="0" onClick={handleBrowseFile} title="Browse file">
 									<FileInput size={14} />
 								</Button>
 							</HStack>
-							<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)" mt="1">Binary is validated and devices are discovered when saved</Text>
+							<Text fontSize="10px" color="var(--wc-text-disabled)" mt="1">Binary is validated and devices are discovered when saved</Text>
 						</Box>
 
 						<Box>
-							<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Description (optional)</Text>
-							<Textarea placeholder="Notes about this backend..." size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontSize="12px" borderRadius="lg" rows={2} resize="none" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={description} onChange={e => setDescription(e.target.value)} />
+							<Text fontSize="11px" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em" mb="1.5">Description (optional)</Text>
+							<Textarea placeholder="Notes about this backend..." size="sm" bg="var(--wc-bg-subtle)" borderColor="var(--wc-border-default)" color="var(--wc-text-secondary)" fontSize="12px" borderRadius="lg" rows={2} resize="none" _placeholder={{ color: 'var(--wc-text-placeholder)' }} _focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }} value={description} onChange={e => setDescription(e.target.value)} />
 						</Box>
 
 						<Box>
-							<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Default Arguments</Text>
+							<Text fontSize="11px" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Default Arguments</Text>
 							<HStack gap="1.5" mb="3" flexWrap="wrap">
 								{ALL_COMMON_FLAGS.map(({ flag, label }) => {
 									const parts = flag.split(' ');
 									const added = parts.every(p => defaultArgs.includes(p));
 									return (
 										<Button key={flag} size="xs" px="2.5" py="1" h="auto" borderRadius="md" fontSize="11px" fontWeight="400"
-											bg={added ? 'rgba(52, 211, 153, 0.08)' : 'rgba(255, 255, 255, 0.03)'}
-											color={added ? '#34d399' : 'rgba(255, 255, 255, 0.35)'}
-											borderWidth="1px" borderColor={added ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.06)'}
-											_hover={{ bg: added ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.08)', color: added ? '#4ade80' : 'rgba(255, 255, 255, 0.7)' }}
+											bg={added ? 'var(--wc-accent-green-bg-8)' : 'var(--wc-bg-subtle)'}
+											color={added ? 'var(--wc-accent-green)' : 'var(--wc-text-muted)'}
+											borderWidth="1px" borderColor={added ? 'var(--wc-accent-green-border)' : 'var(--wc-border-subtle)'}
+											_hover={{ bg: added ? 'var(--wc-accent-green-hover)' : 'var(--wc-bg-hover)', color: added ? 'white' : 'var(--wc-text-secondary)' }}
 											onClick={() => handleToggleCommonFlag(flag)} cursor="pointer"
 										>
 											{added && <CheckCircle size={10} />} {label}
@@ -200,7 +200,7 @@ export function BackendDialog({ onClose, editBackendId }: IBackendDialogProps) {
 							</HStack>
 							<HStack gap="1.5" flexWrap="wrap" mb="2">
 								{groupArgsForDisplay(defaultArgs).map((groupedArgs, gi) => (
-									<Badge key={gi} px="2" py="1" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="rgba(255, 255, 255, 0.04)" color="rgba(255, 255, 255, 0.6)" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.08)" cursor="pointer" _hover={{ borderColor: 'rgba(251, 113, 133, 0.3)', color: '#fb7185' }} onClick={() => {
+									<Badge key={gi} px="2" py="1" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="var(--wc-bg-card)" color="var(--wc-text-secondary)" borderWidth="1px" borderColor="var(--wc-border-default)" cursor="pointer" _hover={{ borderColor: 'var(--wc-accent-red-hover)', color: 'var(--wc-accent-red)' }} onClick={() => {
 										// Find the index of the first arg in this group and remove all args in the group
 										const firstArg = groupedArgs[0];
 										const firstIdx = defaultArgs.indexOf(firstArg as any);
@@ -218,8 +218,8 @@ export function BackendDialog({ onClose, editBackendId }: IBackendDialogProps) {
 								))}
 							</HStack>
 							<HStack gap="2">
-								<Input placeholder="--custom-flag" size="sm" bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)" fontFamily='"Geist Mono", monospace' fontSize="12px" borderRadius="lg" _placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }} _focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }} value={newArg} onChange={e => setNewArg(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddArg()} />
-								<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#3381ff', bg: 'rgba(51, 129, 255, 0.08)' }} borderRadius="lg" onClick={handleAddArg} disabled={!newArg.trim()}>
+								<Input placeholder="--custom-flag" size="sm" bg="var(--wc-bg-subtle)" borderColor="var(--wc-border-default)" color="var(--wc-text-secondary)" fontFamily='"Geist Mono", monospace' fontSize="12px" borderRadius="lg" _placeholder={{ color: 'var(--wc-text-placeholder)' }} _focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }} value={newArg} onChange={e => setNewArg(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddArg()} />
+								<Button size="sm" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-blue)', bg: 'var(--wc-accent-blue-bg-8)' }} borderRadius="lg" onClick={handleAddArg} disabled={!newArg.trim()}>
 									<Plus size={14} />
 								</Button>
 							</HStack>
@@ -228,9 +228,9 @@ export function BackendDialog({ onClose, editBackendId }: IBackendDialogProps) {
 				</Box>
 
 				{/* Footer */}
-				<Flex px="6" py="4" justify="flex-end" gap="2" borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" bg="rgba(255, 255, 255, 0.01)">
-					<Button size="sm" variant="ghost" color="rgba(255, 255, 255, 0.4)" _hover={{ color: '#e4e4e7', bg: 'rgba(255, 255, 255, 0.06)' }} borderRadius="lg" fontSize="13px" onClick={onClose}>Cancel</Button>
-					<Button size="sm" disabled={!canSave} bg="rgba(167, 139, 250, 0.15)" color="#a78bfa" borderWidth="1px" borderColor="rgba(167, 139, 250, 0.3)" _hover={{ bg: 'rgba(167, 139, 250, 0.25)' }} _disabled={{ opacity: 0.3, cursor: 'not-allowed' }} borderRadius="lg" fontSize="13px" fontWeight="600" px="5" onClick={handleSave}>
+				<Flex px="6" py="4" justify="flex-end" gap="2" borderTopWidth="1px" borderColor="var(--wc-border-subtle)" bg="var(--wc-bg-surface)">
+					<Button size="sm" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-text-primary)', bg: 'var(--wc-bg-hover)' }} borderRadius="lg" fontSize="13px" onClick={onClose}>Cancel</Button>
+					<Button size="sm" disabled={!canSave} bg="var(--wc-accent-purple-bg-15)" color="var(--wc-accent-purple)" borderWidth="1px" borderColor="var(--wc-accent-purple-border)" _hover={{ bg: 'var(--wc-accent-purple-hover-bg)' }} _disabled={{ opacity: 0.3, cursor: 'not-allowed' }} borderRadius="lg" fontSize="13px" fontWeight="600" px="5" onClick={handleSave}>
 						{saving ? <Spinner size="xs" /> : <Blocks size={14} />}
 						{isEdit ? 'Save Changes' : 'Add Backend'}
 					</Button>

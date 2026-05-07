@@ -32,7 +32,7 @@ export function LoginPage() {
 			minH="100vh"
 			alignItems="center"
 			justifyContent="center"
-			bg="#0d0d0d"
+			bg="var(--wc-bg-page)"
 			p="4"
 		>
 			<Box
@@ -41,8 +41,8 @@ export function LoginPage() {
 				p="6"
 				borderRadius="xl"
 				borderWidth="1px"
-				borderColor="rgba(255,255,255,0.06)"
-				bg="rgba(255,255,255,0.015)"
+				borderColor="var(--wc-border-subtle)"
+				bg="var(--wc-bg-surface)"
 			>
 				<VStack gap="4" align="stretch">
 					<Flex alignItems="center" gap="3" mb="2">
@@ -50,21 +50,21 @@ export function LoginPage() {
 							w="10"
 							h="10"
 							borderRadius="lg"
-							bg="rgba(59, 130, 246, 0.15)"
+							bg="var(--wc-accent-blue-bg-15)"
 							borderWidth="1px"
-							borderColor="rgba(59, 130, 246, 0.3)"
+							borderColor="var(--wc-accent-blue-border)"
 							display="flex"
 							alignItems="center"
 							justifyContent="center"
 						>
-							<Key size={18} color="#60a5fa" />
+							<Key size={18} color="var(--wc-accent-blue)" />
 						</Box>
-						<Heading fontSize="18px" color="rgba(255,255,255,0.9)">
+						<Heading fontSize="18px" color="var(--wc-text-heading)">
 							WarpCore
 						</Heading>
 					</Flex>
 
-					<Text fontSize="13px" color="rgba(255,255,255,0.4)" fontWeight="500">
+					<Text fontSize="13px" color="var(--wc-text-secondary)" fontWeight="500">
 						Enter your access token to continue
 					</Text>
 
@@ -75,20 +75,20 @@ export function LoginPage() {
 								onChange={(e) => setToken(e.target.value)}
 								placeholder="wc_..."
 								size="sm"
-								bg="rgba(0,0,0,0.2)"
-								borderColor="rgba(255,255,255,0.08)"
-								color="rgba(255,255,255,0.8)"
+								bg="var(--wc-bg-elevated)"
+								borderColor="var(--wc-border-default)"
+								color="var(--wc-text-primary)"
 								fontSize="12px"
-								_placeholder={{ color: 'rgba(255,255,255,0.2)' }}
-								_focus={{ borderColor: 'rgba(59, 130, 246, 0.4)' }}
+								_placeholder={{ color: 'var(--wc-text-placeholder)' }}
+								_focus={{ borderColor: 'var(--wc-accent-blue-focus)' }}
 							/>
 
 							<Button
 								type="submit"
 								size="sm"
-								bg="rgba(59, 130, 246, 0.15)"
-								color="#60a5fa"
-								_hover={{ bg: 'rgba(59, 130, 246, 0.25)' }}
+								bg="var(--wc-accent-blue-bg-12)"
+								color="var(--wc-accent-blue)"
+								_hover={{ bg: 'var(--wc-accent-blue-hover-bg)' }}
 								fontSize="12px"
 								fontWeight="500"
 								disabled={loading || !token.trim()}
@@ -98,7 +98,7 @@ export function LoginPage() {
 						</VStack>
 					</form>
 
-					<Text fontSize="11px" color="rgba(255,255,255,0.25)" textAlign="center">
+					<Text fontSize="11px" color="var(--wc-text-faint)" textAlign="center">
 						Contact your WarpCore admin to get an access token
 					</Text>
 				</VStack>

@@ -56,10 +56,10 @@ export const HomePage = React.memo(() => {
 						<HStack gap="3">
 							<Image src="/logo.png" w="64px" h="64px" borderRadius="md" />
 							<VStack align="flex-start" gap="0">
-								<Text fontSize="20px" fontWeight="500" color="rgba(255,255,255,0.5)">
+								<Text fontSize="20px" fontWeight="500" color="var(--wc-text-tertiary)">
 									Welcome
 								</Text>
-								<Text fontSize="24px" fontWeight="600" color="rgba(255,255,255,0.9)">
+								<Text fontSize="24px" fontWeight="600" color="var(--wc-text-heading)">
 									{allComplete ? 'warpdrv is ready!' : "Setup"}
 								</Text>
 							</VStack>
@@ -73,8 +73,8 @@ export const HomePage = React.memo(() => {
 								borderRadius="md"
 								cursor="pointer"
 								onClick={() => setShowSteps(!showSteps)}
-								color="rgba(255,255,255,0.3)"
-								_hover={{ bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)' }}
+color="var(--wc-text-muted)"
+				_hover={{ bg: 'var(--wc-bg-hover)', color: 'var(--wc-text-secondary)' }}
 								transition="all 0.15s ease"
 								fontSize={"11px"}
 							>	
@@ -87,7 +87,7 @@ export const HomePage = React.memo(() => {
 						)}
 					</Flex>
 
-					{(!allComplete || showSteps) && <Box w="100%" h="1px" bg="rgba(255,255,255,0.06)" />}
+					{(!allComplete || showSteps) && <Box w="100%" h="1px" bg="var(--wc-border-subtle)" />}
 
 					{/* Next Steps */}
 					{!allComplete || showSteps ? (
@@ -98,7 +98,7 @@ export const HomePage = React.memo(() => {
 						</VStack>
 					) : null}
 
-					<Box w="100%" h="1px" bg="rgba(255,255,255,0.06)" />
+					<Box w="100%" h="1px" bg="var(--wc-border-subtle)" />
 
 					{/* Overview Tiles */}
 					<Box

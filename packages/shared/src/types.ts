@@ -8,6 +8,7 @@ import {
 	EResponseFormat,
 	EReasoningFormat,
 	EReasoningEffort,
+	ETheme,
 } from './enums';
 // ============================================================
 // Identifiers
@@ -318,6 +319,7 @@ export interface ISettings {
 	disableTitleGen?: boolean; // if true, skip LLM title generation and use message truncation
 	showRawJSONChatConfig?: boolean; // if true, show JSON editor instead of UI controls in chat config
 	isOnboardingComplete?: boolean; // if false or undefined, show onboarding overlay
+	theme?: ETheme;
 }
 export const DEFAULT_SETTINGS: ISettings = {
 	modelRoots: [],
@@ -346,6 +348,7 @@ export const DEFAULT_SETTINGS: ISettings = {
 	maxCheckpointDiskGB: 50,
 	disableTitleGen: false,
 	isOnboardingComplete: false,
+	theme: ETheme.DARK,
 };
 // ============================================================
 // VRAM Calculator

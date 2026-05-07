@@ -51,32 +51,32 @@ const BackendCombobox = React.memo(({ entries, selectedId, onSelect }: {
 			<Combobox.Control>
 				<Combobox.Input
 					placeholder="Search backends..."
-					bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
+					bg="var(--wc-bg-subtle)" borderColor="var(--wc-border-default)" color="var(--wc-text-secondary)"
 					fontSize="13px" borderRadius="lg"
-					_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
-					_focus={{ borderColor: 'rgba(51, 129, 255, 0.4)', outline: 'none' }}
+					_placeholder={{ color: 'var(--wc-text-faint)' }}
+					_focus={{ borderColor: 'var(--wc-accent-blue)', outline: 'none' }}
 				/>
 				<Combobox.IndicatorGroup><Combobox.ClearTrigger /><Combobox.Trigger /></Combobox.IndicatorGroup>
 			</Combobox.Control>
 			<Portal>
 				<Combobox.Positioner>
 					<Combobox.Content
-						maxH="280px" overflowY="auto" bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
+						maxH="280px" overflowY="auto" bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-default)"
 						borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
 					>
-						<Combobox.Empty><Text fontSize="12px" color="rgba(255, 255, 255, 0.25)" py="4" textAlign="center">No matches</Text></Combobox.Empty>
+						<Combobox.Empty><Text fontSize="12px" color="var(--wc-text-disabled)" py="4" textAlign="center">No matches</Text></Combobox.Empty>
 						{collection.items.map((item) => {
 							const entry = (item as { entry: TBackendEntry }).entry;
 							return (
 								<Combobox.Item key={item.value} item={item} px="3" py="2" borderRadius="md" cursor="pointer"
-									_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }} _highlighted={{ bg: 'rgba(51, 129, 255, 0.08)' }}>
+									_hover={{ bg: 'var(--wc-bg-hover)' }} _highlighted={{ bg: 'var(--wc-accent-blue-bg-8)' }}>
 									<HStack gap="3" w="100%">
 										<Box flex="1" minW="0">
-											<Text fontSize="12px" fontWeight="500" color="#e4e4e7" lineClamp={1}>{entry.name}</Text>
-											<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)">{entry.primaryDevice?.name ?? 'No devices detected'}</Text>
+<Text fontSize="12px" fontWeight="500" color="var(--wc-text-primary)" lineClamp={1}>{entry.name}</Text>
+										<Text fontSize="10px" color="var(--wc-text-tertiary)">{entry.primaryDevice?.name ?? 'No devices detected'}</Text>
 										</Box>
 										{entry.primaryDevice && (
-											<Text fontSize="11px" color="rgba(255, 255, 255, 0.5)" fontFamily='"Geist Mono", monospace' flexShrink={0}>
+											<Text fontSize="11px" color="var(--wc-text-tertiary)" fontFamily='"Geist Mono", monospace' flexShrink={0}>
 												{(entry.primaryDevice.vramFreeMb > 0 ? entry.primaryDevice.vramFreeMb : entry.primaryDevice.vramTotalMb) / 1024 | 0} GB
 											</Text>
 										)}
@@ -121,34 +121,34 @@ const GroupCombobox = React.memo(({ entries, selectedId, onSelect }: {
 			<Combobox.Control>
 				<Combobox.Input
 					placeholder="Search groups..."
-					bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)" color="rgba(255, 255, 255, 0.7)"
+					bg="var(--wc-bg-subtle)" borderColor="var(--wc-border-default)" color="var(--wc-text-secondary)"
 					fontSize="13px" borderRadius="lg"
-					_placeholder={{ color: 'rgba(255, 255, 255, 0.2)' }}
-					_focus={{ borderColor: 'rgba(167, 139, 250, 0.4)', outline: 'none' }}
+					_placeholder={{ color: 'var(--wc-text-faint)' }}
+					_focus={{ borderColor: 'var(--wc-accent-purple)', outline: 'none' }}
 				/>
 				<Combobox.IndicatorGroup><Combobox.ClearTrigger /><Combobox.Trigger /></Combobox.IndicatorGroup>
 			</Combobox.Control>
 			<Portal>
 				<Combobox.Positioner>
 					<Combobox.Content
-						maxH="280px" overflowY="auto" bg="#18181b" borderWidth="1px" borderColor="rgba(255, 255, 255, 0.1)"
+						maxH="280px" overflowY="auto" bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-default)"
 						borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
 					>
-						<Combobox.Empty><Text fontSize="12px" color="rgba(255, 255, 255, 0.25)" py="4" textAlign="center">No matches</Text></Combobox.Empty>
+						<Combobox.Empty><Text fontSize="12px" color="var(--wc-text-disabled)" py="4" textAlign="center">No matches</Text></Combobox.Empty>
 						{collection.items.map((item) => {
 							const entry = (item as { entry: TGroupEntry }).entry;
 							return (
 								<Combobox.Item key={item.value} item={item} px="3" py="2" borderRadius="md" cursor="pointer"
-									_hover={{ bg: 'rgba(255, 255, 255, 0.06)' }} _highlighted={{ bg: 'rgba(167, 139, 250, 0.08)' }}>
-									<HStack gap="3" w="100%">
-										<Box flex="1" minW="0">
-											<Text fontSize="12px" fontWeight="500" color="#e4e4e7" lineClamp={1}>{entry.name}</Text>
-											<HStack gap="2" mt="0.5">
-												<Text fontSize="10px" color="rgba(255, 255, 255, 0.3)">{entry.backendCount} backends</Text>
-												{entry.description && <Text fontSize="10px" color="rgba(255, 255, 255, 0.25)">|</Text>}
-												{entry.description && <Text fontSize="10px" color="rgba(255, 255, 255, 0.25)">{entry.description}</Text>}
-											</HStack>
-											<Text fontSize="10px" color="rgba(167, 139, 250, 0.6)" mt="0.5">Active: {entry.activeBackendName}</Text>
+_hover={{ bg: 'var(--wc-bg-hover)' }} _highlighted={{ bg: 'var(--wc-accent-purple-bg-8)' }}>
+					<HStack gap="3" w="100%">
+						<Box flex="1" minW="0">
+							<Text fontSize="12px" fontWeight="500" color="var(--wc-text-primary)" lineClamp={1}>{entry.name}</Text>
+							<HStack gap="2" mt="0.5">
+								<Text fontSize="10px" color="var(--wc-text-tertiary)">{entry.backendCount} backends</Text>
+								{entry.description && <Text fontSize="10px" color="var(--wc-text-muted)">|</Text>}
+								{entry.description && <Text fontSize="10px" color="var(--wc-text-muted)">{entry.description}</Text>}
+							</HStack>
+							<Text fontSize="10px" color="var(--wc-accent-purple-strong)" mt="0.5">Active: {entry.activeBackendName}</Text>
 										</Box>
 										<Combobox.ItemIndicator />
 									</HStack>
@@ -312,35 +312,35 @@ export const BackendPickerCard = React.memo(({
 				<HStack gap="3" mb="2">
 					<HStack gap="2" flex="1">
 						<Button size="sm" variant="outline" flex="1" justifyContent="center"
-							borderColor={!isGroup ? 'rgba(167, 139, 250, 0.3)' : 'rgba(255, 255, 255, 0.08)'}
+							borderColor={!isGroup ? 'var(--wc-accent-purple-border)' : 'var(--wc-border-subtle)'}
 							borderWidth={!isGroup ? '2px' : '1px'}
-							color={!isGroup ? '#a78bfa' : 'rgba(255, 255, 255, 0.4)'}
-							bg={!isGroup ? 'rgba(167, 139, 250, 0.05)' : 'rgba(255, 255, 255, 0.02)'}
-							_hover={{ borderColor: !isGroup ? 'rgba(167, 139, 250, 0.5)' : 'rgba(255, 255, 255, 0.15)' }}
+							color={!isGroup ? 'var(--wc-accent-purple)' : 'var(--wc-text-secondary)'}
+							bg={!isGroup ? 'var(--wc-accent-purple-bg-8)' : 'var(--wc-bg-subtle)'}
+							_hover={{ borderColor: !isGroup ? 'var(--wc-accent-purple-strong)' : 'var(--wc-border-hover)' }}
 							onClick={() => { setIsGroup(false); setSelectedBackendGroupId(null); }}
 						><Text fontSize="13px" fontWeight="500">Backend</Text></Button>
 						<Button size="sm" variant="outline" flex="1" justifyContent="center"
-							borderColor={isGroup ? 'rgba(167, 139, 250, 0.3)' : 'rgba(255, 255, 255, 0.08)'}
-							borderWidth={isGroup ? '2px' : '1px'}
-							color={isGroup ? '#a78bfa' : 'rgba(255, 255, 255, 0.4)'}
-							bg={isGroup ? 'rgba(167, 139, 250, 0.05)' : 'rgba(255, 255, 255, 0.02)'}
-							_hover={{ borderColor: isGroup ? 'rgba(167, 139, 250, 0.5)' : 'rgba(255, 255, 255, 0.15)' }}
+borderColor={isGroup ? 'var(--wc-accent-purple-border)' : 'var(--wc-border-subtle)'}
+						borderWidth={isGroup ? '2px' : '1px'}
+						color={isGroup ? 'var(--wc-accent-purple)' : 'var(--wc-text-secondary)'}
+						bg={isGroup ? 'var(--wc-accent-purple-bg-8)' : 'var(--wc-bg-subtle)'}
+						_hover={{ borderColor: isGroup ? 'var(--wc-accent-purple-strong)' : 'var(--wc-border-hover)' }}
 							onClick={() => { setIsGroup(true); setSelectedBackendId(null); }}
 						><Text fontSize="13px" fontWeight="500">Group</Text></Button>
 					</HStack>
 				</HStack>
 
-				{Object.values(backends).length === 0 && <Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No backends registered. Go to Backends page.</Text>}
-				{isGroup && Object.values(groups).length === 0 && <Text fontSize="12px" color="rgba(255, 255, 255, 0.25)">No backend groups. Create one in Backends page.</Text>}
+				{Object.values(backends).length === 0 && <Text fontSize="12px" color="var(--wc-text-disabled)">No backends registered. Go to Backends page.</Text>}
+				{isGroup && Object.values(groups).length === 0 && <Text fontSize="12px" color="var(--wc-text-disabled)">No backend groups. Create one in Backends page.</Text>}
 				{Object.values(backends).length > 0 && (
 					isGroup ? (
 						<Box>
 							<GroupCombobox entries={groupEntries} selectedId={selectedBackendGroupId}
 								onSelect={(id) => { setSelectedBackendGroupId(id); setSelectedBackendId(null); }} />
 							{selectedBackendGroupId && groups[selectedBackendGroupId] && (
-								<HStack mt="2" gap="4" px="3" py="2" bg="rgba(167, 139, 250, 0.04)" borderRadius="lg" borderWidth="1px" borderColor="rgba(167, 139, 250, 0.1)">
-									<HStack gap="1.5"><Layers size={12} color="rgba(167, 139, 250, 0.5)" /><Text fontSize="11px" color="rgba(167, 139, 250, 0.7)">Active: {selectedBackend?.name ?? 'Unknown'}</Text></HStack>
-									<HStack gap="1.5"><Server size={12} color="rgba(255, 255, 255, 0.35)" /><Text fontSize="11px" color="rgba(255, 255, 255, 0.5)">{groups[selectedBackendGroupId]?.backendIds.length ?? 0} backends</Text></HStack>
+								<HStack mt="2" gap="4" px="3" py="2" bg="var(--wc-accent-purple-bg-8)" borderRadius="lg" borderWidth="1px" borderColor="var(--wc-accent-purple-border)">
+									<HStack gap="1.5"><Layers size={12} color="var(--wc-accent-purple-icon)" /><Text fontSize="11px" color="var(--wc-accent-purple-text)">Active: {selectedBackend?.name ?? 'Unknown'}</Text></HStack>
+									<HStack gap="1.5"><Server size={12} color="var(--wc-text-muted)" /><Text fontSize="11px" color="var(--wc-text-tertiary)">{groups[selectedBackendGroupId]?.backendIds.length ?? 0} backends</Text></HStack>
 								</HStack>
 							)}
 						</Box>
@@ -355,13 +355,13 @@ export const BackendPickerCard = React.memo(({
 
 					<HStack justify="space-between" align="center">
 						<VStack align="start" gap="0.5">
-							<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">Autofit GPU Layers</Text>
-							<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)">Let llama.cpp auto-distribute layers</Text>
+<Text fontSize="11px" color="var(--wc-text-tertiary)" textTransform="uppercase" letterSpacing="0.05em">Autofit GPU Layers</Text>
+						<Text fontSize="10px" color="var(--wc-text-muted)">Let llama.cpp auto-distribute layers</Text>
 						</VStack>
-						<Switch.Root label="Autofit GPU layers" checked={gpuLayersAuto} onCheckedChange={(d) => handleSelect('gpuLayersAuto', d.checked)} color={gpuLayersAuto ? '#3381ff' : 'rgba(255, 255, 255, 0.4)'}>
+						<Switch.Root label="Autofit GPU layers" checked={gpuLayersAuto} onCheckedChange={(d) => handleSelect('gpuLayersAuto', d.checked)} color={gpuLayersAuto ? 'var(--wc-accent-blue)' : 'var(--wc-text-tertiary)'}>
 							<Switch.HiddenInput />
-							<Switch.Control css={{ bg: gpuLayersAuto ? '#3381ff' : 'surface.4' }}>
-								<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+							<Switch.Control css={{ bg: gpuLayersAuto ? 'var(--wc-accent-blue)' : 'var(--wc-bg-card)' }}>
+								<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 							</Switch.Control>
 						</Switch.Root>
 					</HStack>
@@ -374,22 +374,22 @@ export const BackendPickerCard = React.memo(({
 						)
 					)}
 
-					<Box borderTopWidth="1px" borderColor="rgba(255, 255, 255, 0.06)" pt="4">
+					<Box borderTopWidth="1px" borderColor="var(--wc-border-subtle)" pt="4">
 						<HStack justify="space-between" align="center" mb="3">
 							<HStack gap="3">
 								<Flex w="6" h="6" borderRadius="md" alignItems="center" justifyContent="center"
-									bg={(params.multiGpu ?? false) ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.04)'}>
-									<GitBranch size={14} color={(params.multiGpu ?? false) ? '#34d399' : 'rgba(255, 255, 255, 0.3)'} />
+bg={(params.multiGpu ?? false) ? 'var(--wc-accent-green-bg-8)' : 'var(--wc-bg-subtle)'}>
+								<GitBranch size={14} color={(params.multiGpu ?? false) ? 'var(--wc-accent-green)' : 'var(--wc-text-tertiary)'} />
 								</Flex>
 								<VStack align="start" gap="0.5">
-									<Text fontSize="11px" color="rgba(255, 255, 255, 0.35)" textTransform="uppercase" letterSpacing="0.05em">Multi-GPU Split</Text>
-									<Text fontSize="10px" color="rgba(255, 255, 255, 0.2)">Distribute layers across GPUs</Text>
+<Text fontSize="11px" color="var(--wc-text-tertiary)" textTransform="uppercase" letterSpacing="0.05em">Multi-GPU Split</Text>
+								<Text fontSize="10px" color="var(--wc-text-muted)">Distribute layers across GPUs</Text>
 								</VStack>
 							</HStack>
-							<Switch.Root label="Enable multi-GPU split" checked={params.multiGpu ?? false} onCheckedChange={(d) => handleSelect('multiGpu', d.checked)} color={(params.multiGpu ?? false) ? '#34d399' : 'rgba(255, 255, 255, 0.4)'}>
+							<Switch.Root label="Enable multi-GPU split" checked={params.multiGpu ?? false} onCheckedChange={(d) => handleSelect('multiGpu', d.checked)} color={(params.multiGpu ?? false) ? 'var(--wc-accent-green)' : 'var(--wc-text-tertiary)'}>
 								<Switch.HiddenInput />
-								<Switch.Control css={{ bg: (params.multiGpu ?? false) ? '#34d399' : 'surface.4' }}>
-									<Switch.Thumb css={{ bg: 'rgba(25, 25, 25)' }} />
+								<Switch.Control css={{ bg: (params.multiGpu ?? false) ? 'var(--wc-accent-green)' : 'var(--wc-bg-card)' }}>
+									<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
 								</Switch.Control>
 							</Switch.Root>
 						</HStack>
@@ -405,28 +405,28 @@ export const BackendPickerCard = React.memo(({
 												const values = [...(gpuSplitValues ?? devices.map(() => 0))];
 												values[idx] = d.checked ? 1 : 0;
 												handleSplitChange(values);
-											}} color="#34d399">
+											}} color="var(--wc-accent-blue)">
 												<Checkbox.HiddenInput />
-												<Checkbox.Control borderRadius="sm" bg={isActive ? '#34d399' : 'rgba(255, 255, 255, 0.06)'}>
+												<Checkbox.Control borderRadius="sm" bg={isActive ? 'var(--wc-accent-blue)' : 'var(--wc-bg-subtle)'}>
 													<Checkbox.Indicator><Check size={12} /></Checkbox.Indicator>
 												</Checkbox.Control>
 											</Checkbox.Root>
 											<Box flex="1" minW="0">
-												<Text fontSize="11px" color="rgba(255, 255, 255, 0.5)" lineClamp={1}>{dev.name}</Text>
-												<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)">{dev.backendType} · {(dev.vramTotalMb / 1024).toFixed(1)} GB</Text>
+												<Text fontSize="11px" color="var(--wc-text-primary)" lineClamp={1}>{dev.name}</Text>
+												<Text fontSize="10px" color="var(--wc-text-tertiary)">{dev.backendType} · {(dev.vramTotalMb / 1024).toFixed(1)} GB</Text>
 											</Box>
 											<HStack gap="1">
-												<Text fontSize="10px" color="rgba(255, 255, 255, 0.25)" flexShrink={0}>GPU{idx}</Text>
+												<Text fontSize="10px" color="var(--wc-text-muted)" flexShrink={0}>GPU{idx}</Text>
 												<Input type="number" value={splitVal} onChange={(e) => {
 													const val = Math.max(0, Number(e.target.value));
 													const values = [...(gpuSplitValues ?? devices.map(() => 0))];
 													values[idx] = val;
 													handleSplitChange(values);
 												}} size="xs" w="60px" textAlign="right"
-													bg="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)"
-													color="rgba(255, 255, 255, 0.6)" fontFamily='"Geist Mono", monospace'
+bg="var(--wc-bg-subtle)" borderColor="var(--wc-border-default)"
+													color="var(--wc-text-secondary)"
 													fontSize="11px" borderRadius="md" min={0}
-													_focus={{ borderColor: 'rgba(52, 211, 153, 0.4)', outline: 'none' }}
+													_focus={{ borderColor: 'var(--wc-accent-green)', outline: 'none' }}
 													disabled={!isActive}
 												/>
 											</HStack>
@@ -434,8 +434,8 @@ export const BackendPickerCard = React.memo(({
 									);
 								})}
 								<HStack justify="flex-end">
-									<Button size="xs" variant="ghost" fontSize="10px" color="rgba(255, 255, 255, 0.3)"
-										_hover={{ color: '#34d399', bg: 'rgba(52, 211, 153, 0.08)' }}
+									<Button size="xs" variant="ghost" fontSize="10px" color="var(--wc-text-tertiary)"
+										_hover={{ color: 'var(--wc-accent-green)', bg: 'var(--wc-accent-green-bg-8)' }}
 										onClick={() => {
 											const values = devices.map((_, i) => {
 												const current = gpuSplitValues[i] ?? 0;

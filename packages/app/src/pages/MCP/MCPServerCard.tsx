@@ -22,22 +22,22 @@ export function MCPServerCard({ name, entry, state, onRestart, onRefresh, onRemo
 		<Box
 			p="3"
 			borderWidth="1px"
-			borderColor="rgba(255,255,255,0.06)"
+			borderColor="var(--wc-border-subtle)"
 			borderRadius="md"
-			bg="rgba(255,255,255,0.02)"
-			_hover={{ borderColor: 'rgba(255,255,255,0.1)' }}
+			bg="var(--wc-bg-surface)"
+			_hover={{ borderColor: 'var(--wc-border-overlay)' }}
 		>
 			<HStack gap="3" mb="2">
 				<McpStatusDot status={status} />
-				<Text fontSize="14px" fontWeight="500" color="rgba(255,255,255,0.85)" flex="1">
+				<Text fontSize="14px" fontWeight="500" color="var(--wc-text-heading)" flex="1">
 					{name}
 				</Text>
 				<Badge
 					fontSize="10px"
 					px="1.5"
 					borderRadius="sm"
-					bg="rgba(255,255,255,0.06)"
-					color="rgba(255,255,255,0.4)"
+					bg="var(--wc-bg-hover)"
+					color="var(--wc-text-muted)"
 				>
 					{transportType}
 				</Badge>
@@ -46,20 +46,20 @@ export function MCPServerCard({ name, entry, state, onRestart, onRefresh, onRemo
 						fontSize="10px"
 						px="1.5"
 						borderRadius="sm"
-						bg="rgba(255,255,255,0.06)"
-						color="rgba(255,255,255,0.4)"
+						bg="var(--wc-bg-hover)"
+						color="var(--wc-text-muted)"
 					>
 						{state.tools.length} tools
 					</Badge>
 				)}
 			</HStack>
 
-			<Text fontSize="11px" color="rgba(255,255,255,0.35)" mb="2" fontFamily="mono">
+			<Text fontSize="11px" color="var(--wc-text-muted)" mb="2" fontFamily="mono">
 				{connectionDetail}
 			</Text>
 
 			{state?.error && (
-				<Text fontSize="11px" color="rgba(239,68,68,0.8)" mb="2">
+				<Text fontSize="11px" color="var(--wc-accent-red-alt)" mb="2">
 					{state.error}
 				</Text>
 			)}
@@ -69,31 +69,31 @@ export function MCPServerCard({ name, entry, state, onRestart, onRefresh, onRemo
 					as="button"
 					p="1.5"
 					borderRadius="sm"
-					_hover={{ bg: 'rgba(255,255,255,0.06)' }}
+					_hover={{ bg: 'var(--wc-bg-hover)' }}
 					onClick={onRefresh}
 					title="Refresh tools"
 				>
-					<RefreshCw size={13} color="rgba(255,255,255,0.4)" />
+					<RefreshCw size={13} color="var(--wc-text-tertiary)" />
 				</Box>
 				<Box
 					as="button"
 					p="1.5"
 					borderRadius="sm"
-					_hover={{ bg: 'rgba(255,255,255,0.06)' }}
+					_hover={{ bg: 'var(--wc-bg-hover)' }}
 					onClick={onRestart}
 					title="Restart server"
 				>
-					<RotateCcw size={13} color="rgba(255,255,255,0.4)" />
+					<RotateCcw size={13} color="var(--wc-text-tertiary)" />
 				</Box>
 				<Box
 					as="button"
 					p="1.5"
 					borderRadius="sm"
-					_hover={{ bg: 'rgba(239,68,68,0.1)' }}
+					_hover={{ bg: 'var(--wc-accent-red-alt-bg)' }}
 					onClick={onRemove}
 					title="Remove server"
 				>
-					<Trash2 size={13} color="rgba(239,68,68,0.5)" />
+					<Trash2 size={13} color="var(--wc-accent-red-alt)" />
 				</Box>
 			</HStack>
 		</Box>

@@ -42,7 +42,7 @@ export function OnboardingPage() {
 			width="100%"
 			height="100%"
 			zIndex="99999"
-			bg="#0e0e0e"
+			bg="var(--wc-bg-page)"
 			overflow="auto"
 		>
 			<StepComponent {...stepProps} />

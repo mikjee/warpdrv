@@ -119,7 +119,7 @@ export const Thread: FC<{
 				)}
 
 				{!isLoading && (
-					<div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,#131313_35%,#131313_100%)]">
+					<div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,var(--wc-bg-page)_35%,var(--wc-bg-page)_100%)]">
 						<ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer w-full max-w-(--thread-max-width) flex flex-col gap-4 overflow-visible">
 							<ThreadScrollToBottom />
 							<Composer />
@@ -172,10 +172,10 @@ const ThreadWelcome: FC = () => {
 						objectFit="cover"
 						className="fade-in slide-in-from-bottom-1 animate-in fill-mode-both duration-200"
 					/>
-					<h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both font-semibold text-2xl duration-200">
+					<h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both font-semibold text-2xl duration-200" style={{ color: 'var(--wc-text-heading)' }}>
 						Hello there!
 					</h1>
-					<p className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-muted-foreground text-xl delay-75 duration-200">
+					<p className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-xl delay-75 duration-200" style={{ color: 'var(--wc-text-secondary)' }}>
 						How can I help you today?
 					</p>
 				</div>
@@ -201,10 +201,12 @@ const ThreadSuggestionItem: FC = () => {
 			<SuggestionPrimitive.Trigger send asChild>
 				<Button
 					variant="ghost"
-					className="aui-thread-welcome-suggestion h-auto w-full @md:flex-col flex-wrap items-start justify-start gap-1 rounded-3xl border bg-background px-4 py-3 text-left text-sm transition-colors hover:bg-muted"
+					className="aui-thread-welcome-suggestion h-auto w-full @md:flex-col flex-wrap items-start justify-start gap-1 rounded-3xl border px-4 py-3 text-left text-sm transition-colors"
+					style={{ backgroundColor: 'var(--wc-bg-card)', color: 'var(--wc-text-primary)' }}
+					_hover={{ bg: 'var(--wc-bg-hover)' }}
 				>
 					<SuggestionPrimitive.Title className="aui-thread-welcome-suggestion-text-1 font-medium" />
-					<SuggestionPrimitive.Description className="aui-thread-welcome-suggestion-text-2 text-muted-foreground empty:hidden" />
+					<SuggestionPrimitive.Description className="aui-thread-welcome-suggestion-text-2 empty:hidden" style={{ color: 'var(--wc-text-secondary)' }} />
 				</Button>
 			</SuggestionPrimitive.Trigger>
 		</div>
@@ -220,7 +222,7 @@ const ContextUsageBar: FC = () => {
 	const total = branchTokensCount + inputTokens;
 	const ctxLabel = contextSize > 0 ? (contextSize > 1000 ? `${(contextSize / 1000).toFixed(0)}k` : String(contextSize)) : '?';
 	const pct = contextSize > 0 ? Math.min((total / contextSize) * 100, 100) : 0;
-	const color = pct > 90 ? '#ef4444' : pct > 70 ? '#f59e0b' : 'rgba(255,255,255,0.15)';
+	const color = pct > 90 ? 'var(--wc-accent-red)' : pct > 70 ? 'var(--wc-accent-yellow-strong)' : 'var(--wc-text-disabled)';
 
 	return (
 		<div className="flex items-center gap-2 px-1 pt-1" title={`Context: ${total.toLocaleString()} / ${contextSize > 0 ? contextSize.toLocaleString() : '?'} tokens`}>
@@ -249,16 +251,18 @@ const Composer: FC = () => {
 			<ComposerPrimitive.AttachmentDropzone asChild>
 				<div
 					data-slot="composer-shell"
-					className="flex w-full flex-col gap-2 rounded-xl border p-(--composer-padding) transition-shadow focus-within:border-ring/75 focus-within:ring-2 focus-within:ring-ring/20 data-[dragging=true]:border-ring data-[dragging=true]:border-dashed data-[dragging=true]:bg-accent/50"
+					className="flex w-full flex-col gap-2 rounded-xl border p-(--composer-padding) transition-shadow focus-within:border-[var(--wc-border-default)] data-[dragging=true]:border-dashed data-[dragging=true]:bg-accent/50"
 					style={{
-						background: "#181818",
+						background: "var(--wc-bg-elevated)",
 						boxShadow: "0px 10px 10px 10px rgba(0,0,0,0.15)",
+						borderColor: "var(--wc-border-subtle)",
 					}}
 				>
 					<ComposerAttachments />
 				 <ComposerPrimitive.Input
 						placeholder="Send a message..."
-						className="aui-composer-input max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-sm outline-none placeholder:text-muted-foreground/80"
+						className="aui-composer-input max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-sm outline-none aui-composer-input"
+						style={{ color: 'var(--wc-text-primary)' }}
 						rows={1}
 						autoFocus
 						aria-label="Message input"
@@ -284,11 +288,11 @@ const ReasoningEffortToggle: FC = () => {
 	const label = isOn ? reasoningEffort : 'off';
 	const color = isOn
 		? reasoningEffort === EReasoningEffort.LOW
-			? '#1bd987'
+			? 'var(--wc-accent-green)'
 			: reasoningEffort === EReasoningEffort.MEDIUM
-				? '#da980a'
-				: '#f83737'
-		: 'grey';
+				? 'var(--wc-accent-yellow-strong)'
+				: 'var(--wc-accent-red)'
+		: 'var(--wc-text-muted)';
 	return (
 		<IconButton
 			variant="outline"
@@ -297,8 +301,8 @@ const ReasoningEffortToggle: FC = () => {
 			ml="1"
 			borderRadius={"lg"}
 			borderWidth="1px"
-			borderColor={isOn ? color : "rgba(255,255,255,0.08)"}
-			_hover={{ bg: 'rgba(255,255,255,0.05)' }}
+			borderColor={isOn ? color : "var(--wc-border-default)"}
+			_hover={{ bg: 'var(--wc-bg-hover)' }}
 			color={color}
 			onClick={next}
 			className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors hover:bg-accent`}
@@ -318,7 +322,7 @@ const ToolsToggle: FC = React.memo(() => {
 		setAttachedTools(next, []);
 	};
 	const label = attachAllTools ? 'Tools' : 'Off';
-	const color = attachAllTools ? '#4aa1ff' : 'grey';
+	const color = attachAllTools ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)';
 	return (
 		<IconButton
 			variant="outline"
@@ -327,8 +331,8 @@ const ToolsToggle: FC = React.memo(() => {
 			ml="1"
 			borderRadius={"lg"}
 			borderWidth="1px"
-			borderColor={attachAllTools ? color : "rgba(255,255,255,0.08)"}
-			_hover={{ bg: 'rgba(255,255,255,0.05)' }}
+			borderColor={attachAllTools ? color : "var(--wc-border-default)"}
+			_hover={{ bg: 'var(--wc-bg-hover)' }}
 			color={color}
 			onClick={toggle}
 			className="flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors hover:bg-accent"
@@ -353,7 +357,7 @@ const ToolsSelector: FC = React.memo(() => {
 
 	const totalCount = useMemo(() => connectedServers.reduce((sum, [, s]) => sum + s.tools.length, 0), [connectedServers]);
 
-	const color = (attachAllTools || attachedTools.length > 0) ? '#4aa1ff' : 'grey';
+	const color = (attachAllTools || attachedTools.length > 0) ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)';
 	const label = attachAllTools ? 'All Tools' : attachedTools.length > 0 ? `${String(attachedTools.length)} Tool(s)` : 'Off';
 
 	const handleAllToolsChange = useCallback((checked: boolean) => {
@@ -389,8 +393,8 @@ const ToolsSelector: FC = React.memo(() => {
 					ml="1"
 					borderRadius={"lg"}
 					borderWidth="1px"
-					borderColor={(attachAllTools || attachedTools.length > 0) ? color : "rgba(255,255,255,0.08)"}
-					_hover={{ bg: 'rgba(255,255,255,0.05)' }}
+					borderColor={(attachAllTools || attachedTools.length > 0) ? color : "var(--wc-border-default)"}
+					_hover={{ bg: 'var(--wc-bg-hover)' }}
 					color={color}
 					className="flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors hover:bg-accent"
 					title={`Tools: ${label}`}
@@ -404,15 +408,15 @@ const ToolsSelector: FC = React.memo(() => {
 					w="280px"
 					maxH="70vh"
 					overflow="auto"
-					bg="#18181b"
+					bg="var(--wc-bg-elevated)"
 					borderWidth="1px"
-					borderColor="rgba(255,255,255,0.1)"
+					borderColor="var(--wc-border-overlay)"
 					borderRadius="lg"
-					shadow="0 8px 32px rgba(0, 0, 0, 0.5)"
+					shadow="0 8px 32px var(--wc-overlay-modal)"
 				>
 					<Popover.Body p="3">
 						{totalCount === 0 ? (
-							<Text fontSize="12px" color="rgba(255,255,255,0.3)" textAlign="center" py="4">No tools available</Text>
+							<Text fontSize="12px" color="var(--wc-text-faint)" textAlign="center" py="4">No tools available</Text>
 						) : (
 							<VStack gap="3" align="stretch">
 								<HStack gap="2">
@@ -422,22 +426,22 @@ const ToolsSelector: FC = React.memo(() => {
 										onCheckedChange={(details) => handleAllToolsChange(details.checked)}
 									>
 										<Switch.HiddenInput />
-										<Switch.Control css={{ bg: attachAllTools ? '#4aa1ff' : 'rgba(255,255,255,0.1)' }}>
-											<Switch.Thumb css={{ bg: '#18181b' }} />
+										<Switch.Control css={{ bg: attachAllTools ? 'var(--wc-accent-blue)' : 'var(--wc-text-disabled)' }}>
+											<Switch.Thumb css={{ bg: 'var(--wc-bg-elevated)' }} />
 										</Switch.Control>
-										<Switch.Label ml="2" fontSize="12px" color={attachAllTools ? '#4aa1ff' : 'rgba(255,255,255,0.5)'} userSelect="none">
+										<Switch.Label ml="2" fontSize="12px" color={attachAllTools ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)'} userSelect="none">
 											All tools
 										</Switch.Label>
 									</Switch.Root>
 								</HStack>
 								<AccordionRoot collapsible defaultValue={[]}>
 									{connectedServers.map(([serverName, state]) => (
-										<AccordionItemComp key={serverName} value={serverName}>
+										<AccordionItemComp key={serverName} value={serverName} style={{ border: 'none' }}>
 											<AccordionItemTrigger
 												style={{
 													padding: '8px',
 													borderRadius: '6px',
-													background: 'rgba(255,255,255,0.03)',
+													background: 'var(--wc-bg-card)',
 													border: 'none',
 													cursor: 'pointer',
 													display: 'flex',
@@ -446,12 +450,12 @@ const ToolsSelector: FC = React.memo(() => {
 													width: '100%',
 												}}
 											>
-												<Text fontSize="11px" fontWeight="600" color="rgba(255,255,255,0.5)" textTransform="uppercase" letterSpacing="0.05em">
+												<Text fontSize="11px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em">
 													{serverName}
 												</Text>
-												<Text fontSize="10px" color="rgba(255,255,255,0.3)">{state.tools.length}</Text>
+												<Text fontSize="10px" color="var(--wc-text-faint)">{state.tools.length}</Text>
 											</AccordionItemTrigger>
-											<AccordionItemContent pt="1" pb="2" px="2">
+											<AccordionItemContent pt="1" pb="2" px="2" style={{ border: 'none' }}>
 												<VStack gap="1.5" align="stretch">
 													{state.tools.map(tool => {
 														const isSelected = attachAllTools || attachedTools.some(t => t.serverName === serverName && t.toolName === tool.name);
@@ -466,10 +470,10 @@ const ToolsSelector: FC = React.memo(() => {
 																	}}
 																>
 																	<Switch.HiddenInput />
-																	<Switch.Control css={{ bg: isSelected && !attachAllTools ? '#4aa1ff' : 'rgba(255,255,255,0.1)' }}>
-																		<Switch.Thumb css={{ bg: '#18181b'}} />
-																	</Switch.Control>
-																	<Switch.Label ml="0" fontSize="12px" color={isSelected ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.4)'} userSelect="none">
+																	<Switch.Control css={{ bg: isSelected && !attachAllTools ? 'var(--wc-accent-blue)' : 'var(--wc-text-disabled)' }}>
+<Switch.Thumb css={{ bg: 'var(--wc-bg-elevated)'}} />
+								</Switch.Control>
+								<Switch.Label ml="0" fontSize="12px" color={isSelected ? 'var(--wc-text-primary)' : 'var(--wc-text-muted)'} userSelect="none">
 																		{tool.name}
 																	</Switch.Label>
 																</Switch.Root>
@@ -515,6 +519,11 @@ const ComposerAction: FC = () => {
 							variant="outline"
 							className={`${!isValidServer ? 'opacity-50 cursor-not-allowed' : ''} aui-composer-send size-9`}
 							aria-label={!isValidServer ? "Send message - model not selected" : "Send message"}
+							style={!isValidServer
+								? { color: 'var(--wc-text-muted)', borderColor: 'var(--wc-border-default)', backgroundColor: 'transparent' }
+								: { color: 'var(--wc-accent-blue)', borderColor: 'var(--wc-accent-blue-border)', backgroundColor: 'var(--wc-accent-blue-bg-8)' }
+							}
+							_hover={!isValidServer ? undefined : { color: 'var(--wc-accent-blue-hover)', borderColor: 'var(--wc-accent-blue-border)', backgroundColor: 'var(--wc-accent-blue-bg-10)' }}
 						>
 							<SendHorizonal className="aui-composer-send-icon size-4" />
 						</TooltipIconButton>
@@ -527,6 +536,9 @@ const ComposerAction: FC = () => {
 							variant="outline"
 							className="aui-composer-cancel size-9"
 							aria-label="Stop generating"
+							color="var(--wc-text-primary)"
+							borderColor="var(--wc-border-default)"
+						style={{ borderColor: 'var(--wc-border-default)' }}
 						>
 							<SquareIcon className="aui-composer-cancel-icon size-4 fill-current" />
 						</Button>
@@ -540,7 +552,7 @@ const ComposerAction: FC = () => {
 const MessageError: FC = () => {
 	return (
 		<MessagePrimitive.Error>
-			<ErrorPrimitive.Root className="aui-message-error-root mt-2 rounded-md border border-destructive bg-destructive/10 p-3 text-destructive text-sm dark:bg-destructive/5 dark:text-red-200">
+			<ErrorPrimitive.Root className="aui-message-error-root mt-2 rounded-md border p-3 text-sm" style={{ borderColor: 'var(--wc-accent-red)', backgroundColor: 'var(--wc-accent-red-bg-8)', color: 'var(--wc-accent-red)' }}>
 				<ErrorPrimitive.Message className="aui-message-error-message line-clamp-2" />
 			</ErrorPrimitive.Root>
 		</MessagePrimitive.Error>
@@ -565,14 +577,14 @@ const StatsTooltip: FC = () => {
 		<Tooltip>
 			<TooltipTrigger asChild>
 				<div className="cursor-help p-1 rounded hover:bg-muted/50 transition-colors" style={{margin: "0 8px 0 0"}}>
-					<Timer size={16} style={{ color: "grey" }}  />
+					<Timer size={16} style={{ color: "var(--wc-text-muted)" }}  />
 				</div>
 			</TooltipTrigger>
 			<TooltipContent align="start" sideOffset={4} side={"bottom"}>
-				<div className="text-sm" style={{ color: 'white', boxShadow: "0 0 10px black"}}>
+				<div className="text-sm" style={{ color: 'var(--wc-special-white)', boxShadow: "0 0 10px black"}}>
 					{stats.map((s, i) => (
 						<span key={s.label}>
-							<span style={{ color: "grey" }}>{s.label}</span>&nbsp;{s.value}&nbsp;&nbsp;
+							<span style={{ color: "var(--wc-text-muted)" }}>{s.label}</span>&nbsp;{s.value}&nbsp;&nbsp;
 						</span>
 					))}
 				</div>
@@ -626,7 +638,8 @@ const componentsMap = {
 const AssistantMessage: FC = React.memo(() => {
 	const parts = useAuiState((s) => s.message.content);
 	const status = useAuiState((s) => s.message.status?.type);
-
+	const messageId = useAuiState((s) => s.message.id);
+	const startingTools = useStore((s) => s.startingToolsByMessage[messageId]);
 	// Skip rendering empty assistant messages (converted TOOL messages)
 	// BUT render if status is "running" so the loading indicator appears during prompt processing
 	if (parts.length === 0 && status !== 'running') return null;
@@ -636,10 +649,15 @@ const AssistantMessage: FC = React.memo(() => {
 			className="aui-assistant-message-root fade-in slide-in-from-bottom-1 relative mx-auto w-full  animate-in py-3 duration-150"
 			data-role="assistant"
 		>
-			<div className="aui-assistant-message-content wrap-break-word px-2 text-foreground text-[14px] leading-relaxed">
+			<div className="aui-assistant-message-content wrap-break-word px-2 text-[14px] leading-relaxed" style={{ color: 'var(--wc-text-primary)' }}>
 				<MessagePrimitive.Parts
 					components={componentsMap}
 				/>
+				{startingTools && startingTools.length > 0 && (
+					<div className="mt-2 text-md italic" style={{ color: 'var(--wc-text-tertiary)' }}>
+						calling: {startingTools.join(', ')}...
+					</div>
+				)}
 				<MessageError />
 			</div>
 
@@ -662,18 +680,19 @@ const ReasoningBlock: FC = React.memo(() => {
 
 	return (
 		
-		<div className="mb-3 rounded-lg border border-border/50 bg-muted/30">
+		<div className="mb-3 rounded-lg border" style={{ borderColor: 'var(--wc-border-subtle)', backgroundColor: 'var(--wc-bg-subtle)' }}>
 			<button
 				type="button"
 				onClick={() => setOpen(!open)}
-				className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+				className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium transition-colors"
+					style={{ color: 'var(--wc-text-muted)' }}
 			>
 				<BrainCircuitIcon className="size-3.5" />
 				<span>Thinking{reasoning.length > 100 ? ` (${Math.ceil(reasoning.length / 4)} tokens est.)` : ''}</span>
 				<ChevronDownIcon className={`size-3.5 ml-auto transition-transform ${open ? 'rotate-180' : ''}`} />
 			</button>
 			{open && (
-				<div className="px-3 pb-3 text-xs text-muted-foreground/80 whitespace-pre-wrap max-h-64 overflow-y-auto">
+				<div className="px-3 pb-3 text-xs whitespace-pre-wrap max-h-64 overflow-y-auto" style={{ color: 'var(--wc-text-secondary)' }}>
 					{reasoning}
 				</div>
 			)}
@@ -690,8 +709,8 @@ const ActionBarIcon: FC<{ children: React.ReactNode; onClick?: () => void }> = (
 		justifyContent="center"
 		cursor="pointer"
 		rounded="md"
-		color="rgba(255,255,255,0.5)"
-		_hover={{ bg: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.9)' }}
+		color="var(--wc-text-secondary)"
+		_hover={{ bg: 'var(--wc-bg-selected)', color: 'var(--wc-text-heading)' }}
 		onClick={onClick}
 	>
 		{children}

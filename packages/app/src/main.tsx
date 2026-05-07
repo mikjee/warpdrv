@@ -9,23 +9,54 @@ import { App } from './App';
 import { OnboardingPage } from './pages/Onboarding/OnboardingPage';
 import { useStore } from './store';
 
+import "./theme/theme-dark.scss";
+import "./theme/theme-light.scss";
+import "./theme/theme-github-dark.scss";
+import "./theme/theme-github-light.scss";
+import "./theme/theme-one-dark.scss";
+import "./theme/theme-one-light.scss";
+import "./theme/theme-dracula-dark.scss";
+import "./theme/theme-dracula-light.scss";
+import "./theme/theme-catppuccin-mocha.scss";
+import "./theme/theme-catppuccin-latte.scss";
+import "./theme/theme-nord.scss";
+import "./theme/theme-nord-light.scss";
+import "./theme/theme-tokyo-night.scss";
+import "./theme/theme-tokyo-night-light.scss";
+import "./theme/theme-amoled.scss";
+import "./theme/theme-vesper.scss";
+import "./theme/theme-min.scss";
+import "./theme/theme-gruvbox-hard.scss";
+import "./theme/theme-rose-pine.scss";
+import "./theme/theme-kanagawa.scss";
+import "./theme/theme-obsidian.scss";
+import "./theme/theme-monokai-pro.scss";
+import "./theme/theme-palenight.scss";
+import "./theme/theme-solarized-dark.scss";
+import "./theme/theme-gruvbox.scss";
+import "./theme/theme-kimbie-dark.scss";
+import "./theme/theme-everforest-hard.scss";
+import "./theme/theme-solarized-light.scss";
+
 function OnboardingWrapper() {
 	const isOnboardingComplete = useStore(s => s.settings.isOnboardingComplete);
 	if (isOnboardingComplete === true) return null;
 	return <OnboardingPage />;
 }
 
-createRoot(document.getElementById('root')!).render(
-	<StrictMode>
-		<ChakraProvider value={system}>
-			<BrowserRouter>
-				<ToastProvider>
-					<AuthProvider>
-						<App />
-						<OnboardingWrapper />
-					</AuthProvider>
-				</ToastProvider>
-			</BrowserRouter>
-		</ChakraProvider>
-	</StrictMode>,
+createRoot(document.getElementById('root-wrapper')!).render(
+	<div id="root">
+		<StrictMode>
+			<ChakraProvider value={system}>
+				<BrowserRouter>
+					<ToastProvider>
+						<AuthProvider>
+							<App />
+							<OnboardingWrapper />
+						</AuthProvider>
+					</ToastProvider>
+				</BrowserRouter>
+			</ChakraProvider>
+		</StrictMode>
+	</div>,
 );

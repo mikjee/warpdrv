@@ -7,10 +7,10 @@ import { updateThread } from '@/api/services';
 import { useDependantState } from '@/hooks/useDependantState';
 
 function ServerDot({ status }: { status: EServerStatus }) {
-	if (status === EServerStatus.RUNNING) return <Box w="8px" h="8px" borderRadius="full" bg="#22c55e" flexShrink={0} />;
-	if (status === EServerStatus.LOADING) return <Box w="8px" h="8px" borderRadius="full" bg="#f59e0b" flexShrink={0} />;
-	if (status === EServerStatus.ERROR) return <Box w="8px" h="8px" borderRadius="full" bg="#ef4444" flexShrink={0} />;
-	return <Box w="8px" h="8px" borderRadius="full" bg="rgba(255,255,255,0.15)" flexShrink={0} />;
+	if (status === EServerStatus.RUNNING) return <Box w="8px" h="8px" borderRadius="full" bg="var(--wc-accent-green-icon)" flexShrink={0} />;
+	if (status === EServerStatus.LOADING) return <Box w="8px" h="8px" borderRadius="full" bg="var(--wc-accent-yellow-strong)" flexShrink={0} />;
+	if (status === EServerStatus.ERROR) return <Box w="8px" h="8px" borderRadius="full" bg="var(--wc-accent-red)" flexShrink={0} />;
+	return <Box w="8px" h="8px" borderRadius="full" bg="var(--wc-text-disabled)" flexShrink={0} />;
 }
 
 export function parseThreadMeta(meta: string): { serverId: string | null } {
@@ -80,12 +80,12 @@ export const ThreadServerSelector = React.memo(({
 				cursor={'pointer'}
 				borderRadius="lg"
 				borderWidth="1px"
-				borderColor="rgba(255,255,255,0.08)"
-				// bg="rgba(255,255,255,0.03)"
-				_hover={{ bg: 'rgba(255,255,255,0.05)' }}
+				borderColor="var(--wc-border-default)"
+				// bg="var(--wc-bg-surface)"
+				_hover={{ bg: 'var(--wc-bg-hover)' }}
 				onClick={() => setOpen(!open)}
 				fontSize="12px"
-				color="rgba(255,255,255,0.7)"
+				color="var(--wc-text-primary)"
 				maxW="180px"
 				// minW="180px"
 			>
@@ -95,12 +95,12 @@ export const ThreadServerSelector = React.memo(({
 						<Text flex="1" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" fontSize="12px">
 							{displayServer.serverName}
 						</Text>
-						{displayServer.useMultiModal && <Eye size={12} color="#ecbf42" />}
+						{displayServer.useMultiModal && <Eye size={12} color="var(--wc-special-vision-yellow)" />}
 						<ChevronDown size={12} style={{ opacity: 0.4 }} />
 					</>
 				) : (
 					<>
-						<Text flex="1" color="rgba(255,255,255,0.35)" fontSize="12px">
+						<Text flex="1" color="var(--wc-text-faint)" fontSize="12px">
 							Select
 						</Text>
 						<ChevronDown size={12} style={{ opacity: 0.4 }} />
@@ -113,9 +113,9 @@ export const ThreadServerSelector = React.memo(({
 					bottom="100%"
 					left="0px"
 					mt="2"
-					bg="#1a1a1a"
+					bg="var(--wc-bg-elevated)"
 					borderWidth="1px"
-					borderColor="rgba(255,255,255,0.1)"
+					borderColor="var(--wc-border-overlay)"
 					borderRadius="md"
 					zIndex={50}
 					py="1"
@@ -131,21 +131,21 @@ export const ThreadServerSelector = React.memo(({
 							px="3"
 							py="2"
 							cursor="pointer"
-							bg={assignedServerId === s.id ? 'rgba(255,255,255,0.06)' : 'transparent'}
-							_hover={{ bg: 'rgba(255,255,255,0.04)' }}
+					bg={assignedServerId === s.id ? 'var(--wc-bg-selected)' : 'transparent'}
+						_hover={{ bg: 'var(--wc-bg-card)' }}
 							onClick={() => handleSelect(s.id)}
 							fontSize="12px"
-							color="rgba(255,255,255,0.7)"
+							color="var(--wc-text-primary)"
 						>
 							<ServerDot status={s.status} />
 							<Text flex="1" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
 								{s.serverName}
 							</Text>
-							{s.useMultiModal && <Eye size={12} color="#ecbf42" />}
+							{s.useMultiModal && <Eye size={12} color="var(--wc-special-vision-yellow)" />}
 						</HStack>
 					))}
 					{servers.length === 0 && (
-						<Text px="3" py="2" fontSize="12px" color="rgba(255,255,255,0.3)">No servers</Text>
+						<Text px="3" py="2" fontSize="12px" color="var(--wc-text-faint)">No servers</Text>
 					)}
 				</Box>
 			)}

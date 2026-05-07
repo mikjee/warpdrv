@@ -77,10 +77,10 @@ export const ChatConfigContext = createContext<IChatConfig>({
 // UI Components
 // ============================================================
 function ServerDot({ status }: { status: EServerStatus }) {
-	if (status === EServerStatus.RUNNING) return <Box w="8px" h="8px" borderRadius="full" bg="#22c55e" flexShrink={0} />;
-	if (status === EServerStatus.LOADING) return <Box w="8px" h="8px" borderRadius="full" bg="#f59e0b" flexShrink={0} />;
-	if (status === EServerStatus.ERROR) return <Box w="8px" h="8px" borderRadius="full" bg="#ef4444" flexShrink={0} />;
-	return <Box w="8px" h="8px" borderRadius="full" bg="rgba(255,255,255,0.15)" flexShrink={0} />;
+	if (status === EServerStatus.RUNNING) return <Box w="8px" h="8px" borderRadius="full" bg="var(--wc-accent-green-icon)" flexShrink={0} />;
+	if (status === EServerStatus.LOADING) return <Box w="8px" h="8px" borderRadius="full" bg="var(--wc-accent-yellow-strong)" flexShrink={0} />;
+	if (status === EServerStatus.ERROR) return <Box w="8px" h="8px" borderRadius="full" bg="var(--wc-accent-red)" flexShrink={0} />;
+	return <Box w="8px" h="8px" borderRadius="full" bg="var(--wc-text-disabled)" flexShrink={0} />;
 }
 
 export const BranchTokensContext = React.createContext(0);
@@ -559,13 +559,13 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 		<ChatConfigContext.Provider value={chatConfigValue}>
 			<TooltipProvider>
 				<AssistantRuntimeProvider runtime={runtime}>
-				<Flex flex="1" h="100%" overflow="hidden" className="dark" style={{ background: "#131313" }}>
+				<Flex flex="1" h="100%" overflow="hidden" className="dark" style={{ background: "var(--wc-bg-page)" }}>
 						{!threadsListCollapsed && (
 						<Box
 							w="280px"
 							minW="280px"
 							borderRightWidth="1px"
-							borderColor="rgba(255,255,255,0.06)"
+							borderColor="var(--wc-border-subtle)"
 							h="full"
 							p="3"
 							display="flex"
@@ -610,11 +610,11 @@ export const ChatPage = React.memo(() => {
 				actionsRight={
 					<Button
 						size="sm"
-						bg="rgba(51, 129, 255, 0.12)"
-						color="#3381ff"
+						bg="var(--wc-accent-blue-bg-12)"
+						color="var(--wc-accent-blue)"
 						borderWidth="1px"
-						borderColor="rgba(51, 129, 255, 0.25)"
-						_hover={{ bg: 'rgba(51, 129, 255, 0.2)' }}
+						borderColor="var(--wc-accent-blue-border)"
+						_hover={{ bg: 'var(--wc-accent-blue-hover-bg)' }}
 						borderRadius="lg"
 						fontSize="13px"
 						fontWeight="500"
@@ -630,15 +630,15 @@ export const ChatPage = React.memo(() => {
 							aria-label="Toggle threads list"
 							variant="ghost"
 							size="sm"
-							color="rgba(255, 255, 255, 0.6)"
-							_hover={{ color: 'rgba(255, 255, 255, 0.8)', bg: 'rgba(255, 255, 255, 0.08)' }}
+color="var(--wc-text-secondary)"
+						_hover={{ color: 'var(--wc-text-heading)', bg: 'var(--wc-bg-active)' }}
 							onClick={() => setThreadsListCollapsed(!threadsListCollapsed)}
 						>
 							{threadsListCollapsed ? <VscLayoutSidebarLeftOff size={20} /> : <VscLayoutSidebarLeft size={20} />}
 						</IconButton>
 						<span style={{
 							fontSize: "13px",
-							color: "grey",
+							color: "var(--wc-text-muted)",
 							position: "fixed",
 							left: `calc(50% - (${title.length * 3.5}px - ${threadsListCollapsed ? "-20" : "100"}px)`
 						}}>{title}</span>

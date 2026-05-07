@@ -2,14 +2,14 @@ import { HStack, Box, Text } from '@chakra-ui/react';
 import { EServerStatus } from '@warpcore/shared';
 
 const STATUS_CONFIG: Record<EServerStatus, { color: string; label: string }> = {
-	[EServerStatus.RUNNING]: { color: '#34d399', label: 'Running' },
-	[EServerStatus.LOADING]: { color: '#fbbf24', label: 'Loading' },
-	[EServerStatus.STOPPED]: { color: 'rgba(255, 255, 255, 0.3)', label: 'Stopped' },
-	[EServerStatus.ERROR]: { color: '#fb7185', label: 'Error' },
+	[EServerStatus.RUNNING]: { color: 'var(--wc-accent-green)', label: 'Running' },
+	[EServerStatus.LOADING]: { color: 'var(--wc-accent-yellow)', label: 'Loading' },
+	[EServerStatus.STOPPED]: { color: 'var(--wc-text-placeholder)', label: 'Stopped' },
+	[EServerStatus.ERROR]: { color: 'var(--wc-accent-red)', label: 'Error' },
 };
 
 export function StatusBadge({ status, port }: { status: EServerStatus; port?: number }) {
-	const config = STATUS_CONFIG[status] ?? { color: 'rgba(255, 255, 255, 0.3)', label: status };
+	const config = STATUS_CONFIG[status] ?? { color: 'var(--wc-text-placeholder)', label: status };
 
 	// Format label with port info
 	let label = config.label;

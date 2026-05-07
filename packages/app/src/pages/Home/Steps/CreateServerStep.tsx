@@ -11,9 +11,9 @@ export const CreateServerStep = React.memo(({ done, isOpenDefault, isHighlighted
 		isHighlighted={isHighlighted}
 	>
 		<VStack align="stretch" gap="3">
-			<Text fontSize="13px" color="rgba(255,255,255,0.5)" lineHeight="1.6">
+			<Text fontSize="13px" color="var(--wc-text-tertiary)" lineHeight="1.6">
 				1. Navigate to the{' '}
-				<ChakraLink as={NavLink} to="/servers" style={{ textDecoration: 'none' }} color="#3381ff" _hover={{ color: '#5a98ff' }}>
+				<ChakraLink as={NavLink} to="/servers" style={{ textDecoration: 'none' }} color="var(--wc-accent-blue)" _hover={{ color: 'var(--wc-accent-blue-hover)' }}>
 					Servers
 				</ChakraLink>{' '}
 				page.
