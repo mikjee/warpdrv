@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Text, HStack, VStack } from '@chakra-ui/react';
-import { Terminal } from 'lucide-react';
+import { Terminal, ChevronDown, ChevronRight } from 'lucide-react';
 import { parse } from 'shell-quote';
+import { extractResultText } from './utils';
 
 const OPERATORS = new Set(['&&', '||', ';', '|', '&']);
 
@@ -26,9 +27,12 @@ export const BashRenderer = React.memo((props: {
 	command?: string,
 	cwd?: string,
 	shell?: string,
+	result?: unknown,
 }) => {
-	const { command, cwd, shell } = props;
+	const { command, cwd, shell, result } = props;
 	const subCommands = command ? splitCommand(command) : [];
+	const resultText = extractResultText(result);
+	const [resultExpanded, setResultExpanded] = useState(false);
 
 	return (
 		<Box px="3" py="2">
@@ -56,6 +60,21 @@ export const BashRenderer = React.memo((props: {
 					</HStack>
 				))}
 			</VStack>
+			{resultText && (
+				<Box mt="2">
+					<HStack gap="1" cursor="pointer" onClick={() => setResultExpanded(!resultExpanded)} py="1">
+						{resultExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+						<Text fontSize="11px" color="var(--wc-text-muted)">Output</Text>
+					</HStack>
+					{resultExpanded && (
+						<Box bg="var(--wc-overlay-dim)" borderRadius="sm" p="2" overflow="auto" maxH="300px">
+							<Text fontSize="11px" fontFamily="mono" color="var(--wc-text-secondary)" whiteSpace="pre-wrap">
+								{resultText}
+							</Text>
+						</Box>
+					)}
+				</Box>
+			)}
 		</Box>
 	);
 });

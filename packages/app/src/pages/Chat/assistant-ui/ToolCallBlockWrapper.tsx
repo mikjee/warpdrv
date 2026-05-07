@@ -80,7 +80,7 @@ export const ToolCallBlockWrapper = React.memo(({ toolCallId, toolName, serverNa
 				const targetKey = rendererCfg.propsMap?.[k] ?? k;
 				mappedArgs[targetKey] = v;
 			}
-			return <RendererComponent {...mappedArgs} {...(rendererCfg.props ?? {})} />;
+			return <RendererComponent {...mappedArgs} {...(rendererCfg.props ?? {})} result={result} />;
 		}
 		return <ToolCallBlock args={JSON.stringify(args)} result={result ? JSON.stringify(result) : undefined} />;
 	}, [serverState, toolName, toolCallRenderers, args, result]);
