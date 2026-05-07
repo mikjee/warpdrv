@@ -91,9 +91,9 @@ async function main() {
 
 	// Initialize MCP
 	mcpConfig = new McpConfig(path.join(dataDir, 'mcp.json'));
-	mcpClient = new McpClientManager();
-	const permissions = new PermissionManager(persistence);
 	broadcaster = new SseBroadcaster();
+	mcpClient = new McpClientManager(undefined, broadcaster);
+	const permissions = new PermissionManager(persistence);
 	orchestrator = new Orchestrator({ mcpClient, permissions, persistence, broadcaster });
 
 	// Connect MCP servers from config

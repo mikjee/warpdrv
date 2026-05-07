@@ -19,6 +19,7 @@ import type {
 	IServerPermission,
 	IToolPermission,
 	IThreadPatch,
+	IElicitationRequest,
 } from '../types';
 import { EMessagePartType } from '../types';
 import type { WritableDraft } from 'immer';
@@ -73,7 +74,8 @@ export interface IChatStoreState {
 	// Attached tools (for active thread context)
 	attachAllTools: boolean;
 	attachedTools: IToolAttachment[];
-
+	// Elicitations (per thread)
+	elicitationByThread: Record<TThreadId, IElicitationRequest>;
 	// Actions
 	applyThreadCreated: (thread: IChatThread) => void;
 	applyThreadUpdated: (threadId: TThreadId, updates: IThreadPatch) => void;
@@ -88,6 +90,8 @@ export interface IChatStoreState {
 	applyInferenceStarted: (threadId: TThreadId, messageId: TMessageId) => void;
 	applyInferenceEnded: (threadId: TThreadId, messageId: TMessageId) => void;
 	applyInferenceError: (threadId: TThreadId, messageId: TMessageId, error: string) => void;
+	applyElicitationRequest: (threadId: TThreadId, request: IElicitationRequest) => void;
+	applyElicitationResolved: (id: string) => void;
 	seedThreadMessages: (threadId: TThreadId, messages: IChatMessage[]) => void;
 	setThreads: (threads: Record<TThreadId, IChatThread>) => void;
 	setActiveThread: (id: TThreadId | null) => void;
@@ -137,6 +141,7 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 		tempThreadServerId: null,
 		attachAllTools: false,
 		attachedTools: [] as IToolAttachment[],
+		elicitationByThread: {} as Record<TThreadId, IElicitationRequest>,
 	};
 
 	return {
@@ -384,13 +389,22 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 				delete draft.startingToolsByMessage[messageId];
 			}),
 
-		applyInferenceError: (threadId: TThreadId, messageId: TMessageId, error: string) =>
+	applyInferenceError: (threadId: TThreadId, messageId: TMessageId, error: string) =>
 			set((draft) => {
 				draft.isRunningByThread[threadId] = false;
 				draft.inferenceError = { threadId, messageId, error };
 				delete draft.startingToolsByMessage[messageId];
 			}),
-
+		applyElicitationRequest: (threadId: TThreadId, request: IElicitationRequest) =>
+			set((draft) => {
+				draft.elicitationByThread[threadId] = request;
+			}),
+		applyElicitationResolved: (id: string) =>
+			set((draft) => {
+				for (const [tid, e] of Object.entries(draft.elicitationByThread)) {
+					if (e.id === id) delete draft.elicitationByThread[tid];
+				}
+			}),
 		// Initial seeding from API fetch
 		seedThreadMessages: (threadId: TThreadId, messages: IChatMessage[]) =>
 			set((draft) => {

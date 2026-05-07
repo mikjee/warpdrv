@@ -7,9 +7,13 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { ElicitRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { randomUUID } from 'node:crypto';
 import type { IMcpClient } from '../types/interfaces';
+import type { IBridgeBroadcaster } from '../types/interfaces';
 import type { IMcpServerEntry, IMcpServerState, IToolDefinition } from '../types';
 import { EMcpServerStatus, EMcpTransportType } from '../types';
+import { ElicitationRegistry } from './elicitationRegistry';
 
 interface IClientEntry {
 	name: string;
@@ -25,9 +29,13 @@ interface IClientEntry {
 export class McpClientManager implements IMcpClient {
 	private clients: Record<string, IClientEntry> = {};
 	private onChange?: (servers: Record<string, IMcpServerState>) => void;
+	private broadcaster?: IBridgeBroadcaster;
+	public readonly elicitationRegistry: ElicitationRegistry;
 
-	constructor(onChange?: (servers: Record<string, IMcpServerState>) => void) {
+	constructor(onChange?: (servers: Record<string, IMcpServerState>) => void, broadcaster?: IBridgeBroadcaster) {
 		this.onChange = onChange;
+		this.broadcaster = broadcaster;
+		this.elicitationRegistry = new ElicitationRegistry();
 	}
 
 	private emitChange(): void {
@@ -52,7 +60,26 @@ export class McpClientManager implements IMcpClient {
 			warpdrv: entry.warpdrv,
 		};
 
-		const client = new Client({ name: `warpbridge-${name}`, version: '1.0.0' });
+		const client = new Client(
+			{ name: `warpbridge-${name}`, version: '1.0.0' },
+			{ capabilities: { elicitation: {} } },
+		);
+		client.setRequestHandler(ElicitRequestSchema, async (req) => {
+			const id = randomUUID();
+			const promise = this.elicitationRegistry.register(id, name);
+			this.broadcaster?.emit({
+				type: 'elicitation_request',
+				threadId: this.activeThreadByServer[name] ?? '',
+				request: {
+					id,
+					serverName: name,
+					message: req.params.message,
+					requestedSchema: req.params.requestedSchema as Record<string, unknown>,
+				},
+			});
+			const response = await promise;
+			return response;
+		});
 		let transport: StdioClientTransport | StreamableHTTPClientTransport;
 		let stdioEnv: Record<string, string> | null = null;
 		try {
@@ -142,6 +169,10 @@ export class McpClientManager implements IMcpClient {
 		if (!entry) return;
 		if (entry.reconnectTimer) clearTimeout(entry.reconnectTimer);
 		entry._disconnecting = true;
+		const cancelled = this.elicitationRegistry.cancelAllForServer(name);
+		for (const id of cancelled) {
+			this.broadcaster?.emit({ type: 'elicitation_resolved', id });
+		}
 		try { await entry.client.close(); } catch { /* ignore */ }
 		delete this.clients[name];
 		this.emitChange();
@@ -194,11 +225,15 @@ export class McpClientManager implements IMcpClient {
 		return tools;
 	}
 
+	private activeThreadByServer: Record<string, string> = {};
+
 	async executeToolCall(
 		serverName: string,
 		toolName: string,
 		args: Record<string, unknown>,
+		threadId?: string,
 	): Promise<{ content: unknown; isError: boolean }> {
+		if (threadId) this.activeThreadByServer[serverName] = threadId;
 		const entry = this.clients[serverName];
 		if (!entry) throw new Error(`MCP server '${serverName}' not connected`);
 		if (entry.state.status !== EMcpServerStatus.CONNECTED) {
@@ -219,6 +254,10 @@ export class McpClientManager implements IMcpClient {
 			return { content: result.content, isError: Boolean(result.isError) };
 		} catch (err) {
 			clearTimeout(timer);
+			const cancelled = this.elicitationRegistry.cancelAllForServer(serverName);
+			for (const id of cancelled) {
+				this.broadcaster?.emit({ type: 'elicitation_resolved', id });
+			}
 			throw err;
 		}
 	}

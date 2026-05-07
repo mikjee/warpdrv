@@ -59,6 +59,9 @@ export const useStore = create<AppState>()(
 					stepOutputs: recipes.stepOutputs!,
 					checkpoints: checkpoints.checkpoints!,
 					SSEHandlers: sseHandlers.SSEHandlers!,
+					elicitationByThread: bridge.elicitationByThread,
+					applyElicitationRequest: bridge.applyElicitationRequest,
+					applyElicitationResolved: bridge.applyElicitationResolved,
 
 					// Bridge Chat State
 					threads: bridge.threads,

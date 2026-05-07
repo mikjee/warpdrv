@@ -17,6 +17,7 @@ import type {
 	TMessageId,
 	TMessagePartId,
 	TToolCallId,
+	IElicitationRequest,
 } from '@warpcore/bridge';
 
 export interface AppState {
@@ -57,6 +58,11 @@ export interface AppState {
 
 	// SSE Event Handlers (centralized)
 	SSEHandlers: Record<string, (data: any) => void>;
+
+	// Elicitations
+	elicitationByThread: Record<TThreadId, IElicitationRequest>;
+	applyElicitationRequest: (threadId: TThreadId, request: IElicitationRequest) => void;
+	applyElicitationResolved: (id: string) => void;
 
 	// MCP (Bridge canonical names)
 	mcpServers: Record<string, IMcpServerState>;

@@ -56,6 +56,7 @@ import { EReasoningEffort, EServerStatus, TServerId } from "@warpcore/shared";
 import { EMcpServerStatus, IToolAttachment } from "@warpcore/bridge";
 import { encodingForModel } from 'js-tiktoken';
 import { IconButton } from '@chakra-ui/react';
+import { Elicitation } from './Elicitation';
 
 const tokenEncoder = encodingForModel('gpt-4o');
 
@@ -122,6 +123,7 @@ export const Thread: FC<{
 					<div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,var(--wc-bg-page)_35%,var(--wc-bg-page)_100%)]">
 						<ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer w-full max-w-(--thread-max-width) flex flex-col gap-4 overflow-visible">
 							<ThreadScrollToBottom />
+							<Elicitation />
 							<Composer />
 						</ThreadPrimitive.ViewportFooter>
 					</div>

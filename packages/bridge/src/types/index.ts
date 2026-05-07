@@ -343,6 +343,18 @@ export interface IOpenAIToolCall {
 // ============================================================
 // Broadcast events — emitted by bridge for any state change
 // ============================================================
+export interface IElicitationRequest {
+	id: string;
+	serverName: string;
+	message: string;
+	requestedSchema: Record<string, unknown>;
+}
+
+export interface IElicitationResponse {
+	action: 'accept' | 'decline' | 'cancel';
+	content?: Record<string, unknown>;
+}
+
 export type IBridgeEvent =
 	| { type: 'thread.created'; thread: IChatThread }
 	| { type: 'thread.updated'; threadId: TThreadId; updates: IThreadPatch }
@@ -356,7 +368,9 @@ export type IBridgeEvent =
 	| { type: 'tool_call.updated'; toolCall: IToolCall }
 	| { type: 'inference.started'; threadId: TThreadId; messageId: TMessageId }
 	| { type: 'inference.ended'; threadId: TThreadId; messageId: TMessageId }
-	| { type: 'inference.error'; threadId: TThreadId; messageId: TMessageId; error: string };
+	| { type: 'inference.error'; threadId: TThreadId; messageId: TMessageId; error: string }
+	| { type: 'elicitation_request'; threadId: string; request: IElicitationRequest }
+	| { type: 'elicitation_resolved'; id: string };
 
 export interface IMessagePatch {
 	stats?: IChatMessageStats;
