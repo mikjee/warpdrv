@@ -19,6 +19,7 @@ import type {
 	IChatMessageStats,
 	IChatMessage,
 	IMessagePart,
+	IMessagePartToolCall,
 	TMessageId,
 	TThreadId,
 } from '../types';
@@ -1102,20 +1103,24 @@ export class Orchestrator {
 
 		// Check if any other tool calls in the same parent assistant message
 		// are still pending. If so, wait for them too.
-		const chainToolCallIds: string[] = [];
+		let assistantMsg: IChatMessage | null = null;
 		let cursorId: TMessageId | null = tc.messageId;
 		while (cursorId) {
 			const cursorMsg = await this.persistence.getMessage(cursorId);
-			if (!cursorMsg || cursorMsg.role !== EChatRole.TOOL) break;
-			const toolCallPart = cursorMsg.content.find(p => p.type === EMessagePartType.TOOL_CALL);
-			if (toolCallPart && 'toolCallId' in toolCallPart) {
-				chainToolCallIds.push(toolCallPart.toolCallId);
+			if (!cursorMsg || cursorMsg.role !== EChatRole.TOOL) {
+				assistantMsg = cursorMsg ?? null;
+				break;
 			}
 			cursorId = cursorMsg.parentId;
 		}
 
+		if (!assistantMsg) return;
+
 		const allInChain = await Promise.all(
-			chainToolCallIds.map(id => this.persistence.getToolCall(id))
+			assistantMsg.content
+				.filter((p): p is IMessagePartToolCall => p.type === EMessagePartType.TOOL_CALL)
+				.map(p => p.toolCallId)
+				.map(id => this.persistence.getToolCall(id))
 		);
 		const stillBlocking = allInChain.some(t =>
 			t && (t.status === EToolCallStatus.PENDING || t.status === EToolCallStatus.EXECUTING || t.status === EToolCallStatus.DENIED)

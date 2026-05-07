@@ -17,6 +17,9 @@ import { createChatStoreSlice } from '@warpcore/bridge/client';
 import { DiffRenderer } from '@/pages/Chat/assistant-ui/tool-renderers/DiffRenderer';
 import { BashRenderer } from '@/pages/Chat/assistant-ui/tool-renderers/BashRenderer';
 import { FetchRenderer } from '@/pages/Chat/assistant-ui/tool-renderers/FetchRenderer';
+import { ListRenderer } from '@/pages/Chat/assistant-ui/tool-renderers/ListRenderer';
+import { ReadFileRenderer } from '@/pages/Chat/assistant-ui/tool-renderers/ReadFileRenderer';
+import { SearchRenderer } from '@/pages/Chat/assistant-ui/tool-renderers/SearchRenderer';
 
 export const useStore = create<AppState>()(
 	subscribeWithSelector(
@@ -79,6 +82,9 @@ export const useStore = create<AppState>()(
 						DiffRenderer,
 						BashRenderer,
 						FetchRenderer,
+						ListRenderer,
+						ReadFileRenderer,
+						SearchRenderer,
 					},
 					registerToolCallRenderer: (name, component) => set((state) => {
 						state.toolCallRenderers[name] = component;
