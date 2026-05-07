@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Box, Text, VStack, HStack, Input, Checkbox, NativeSelect } from '@chakra-ui/react';
+import { ExternalLink } from 'lucide-react';
 import { useStore } from '@/store';
 import { respondToElicitation } from '@/api/elicitation';
 
@@ -52,11 +53,26 @@ export const Elicitation = React.memo(() => {
 	}, [elicitation, values, properties]);
 
 	if (!elicitation) return null;
+	const isUrlMode = elicitation.mode === 'url' && elicitation.url;
+	let host = '';
+	if (isUrlMode && elicitation.url) {
+		try { host = new URL(elicitation.url).host; } catch { host = elicitation.url; }
+	}
 
 	return (
 		<Box borderWidth="1px" borderColor="var(--wc-border-default)" borderRadius="lg" bg="var(--wc-bg-surface)" p="3" maxH="320px" overflow="auto">
 			<Text fontSize="11px" fontWeight="600" color="var(--wc-text-primary)" mb="1">{elicitation.serverName}</Text>
 			<Text fontSize="12px" color="var(--wc-text-secondary)" mb="3">{elicitation.message}</Text>
+			{isUrlMode && (
+				<VStack gap="2" align="stretch" mb="3">
+					<Text fontSize="11px" color="var(--wc-text-muted)">You will be sent to:</Text>
+					<Text fontSize="12px" fontFamily="mono" color="var(--wc-text-primary)" wordBreak="break-all">{host}</Text>
+					<Box as="button" px="3" py="1" fontSize="12px" borderRadius="sm" bg="var(--wc-accent-blue-bg-15)" color="var(--wc-accent-blue)" disabled={submitting} onClick={() => { if (elicitation.url) window.open(elicitation.url, '_blank'); }}>
+						<HStack gap="1"><ExternalLink size={12} /><Text fontSize="12px">Open in browser</Text></HStack>
+					</Box>
+				</VStack>
+			)}
+			{!isUrlMode && (
 			<VStack gap="2" align="stretch" mb="3">
 				{Object.entries(properties).map(([key, schema]) => {
 					const isRequired = required.includes(key);
@@ -84,10 +100,11 @@ export const Elicitation = React.memo(() => {
 					);
 				})}
 			</VStack>
+			)}
 			<HStack gap="2" justify="flex-end">
 				<Box as="button" px="3" py="1" fontSize="12px" borderRadius="sm" bg="var(--wc-overlay-dim)" color="var(--wc-text-muted)" disabled={submitting} onClick={() => handleAction('cancel')}>Cancel</Box>
 				<Box as="button" px="3" py="1" fontSize="12px" borderRadius="sm" bg="var(--wc-accent-red-bg-12)" color="var(--wc-accent-red-alt)" disabled={submitting} onClick={() => handleAction('decline')}>Decline</Box>
-				<Box as="button" px="3" py="1" fontSize="12px" borderRadius="sm" bg="var(--wc-accent-green-bg-15)" color="var(--wc-accent-green)" disabled={submitting} onClick={() => handleAction('accept')}>Submit</Box>
+				<Box as="button" px="3" py="1" fontSize="12px" borderRadius="sm" bg="var(--wc-accent-green-bg-15)" color="var(--wc-accent-green)" disabled={submitting} onClick={() => handleAction('accept')}>{isUrlMode ? 'Done' : 'Submit'}</Box>
 			</HStack>
 		</Box>
 	);

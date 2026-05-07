@@ -62,7 +62,7 @@ export class McpClientManager implements IMcpClient {
 
 		const client = new Client(
 			{ name: `warpbridge-${name}`, version: '1.0.0' },
-			{ capabilities: { elicitation: {} } },
+			{ capabilities: { elicitation: { form: {}, url: {} } } },
 		);
 		client.setRequestHandler(ElicitRequestSchema, async (req) => {
 			const id = randomUUID();
@@ -74,7 +74,9 @@ export class McpClientManager implements IMcpClient {
 					id,
 					serverName: name,
 					message: req.params.message,
-					requestedSchema: req.params.requestedSchema as Record<string, unknown>,
+					mode: (req.params.mode as 'form' | 'url' | undefined) ?? 'form',
+					url: req.params.url as string | undefined,
+					requestedSchema: req.params.requestedSchema as Record<string, unknown> | undefined,
 				},
 			});
 			const response = await promise;

@@ -347,7 +347,9 @@ export interface IElicitationRequest {
 	id: string;
 	serverName: string;
 	message: string;
-	requestedSchema: Record<string, unknown>;
+	mode: 'form' | 'url';
+	url?: string;
+	requestedSchema?: Record<string, unknown>;
 }
 
 export interface IElicitationResponse {
