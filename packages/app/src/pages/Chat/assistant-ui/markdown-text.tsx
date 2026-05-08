@@ -13,6 +13,7 @@ import { type FC, memo, useState } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
 
 import { TooltipIconButton } from "./tooltip-icon-button";
+import { MermaidDiagram } from "./mermaid-diagram";
 import { cn } from "@/lib/utils";
 
 const MarkdownTextImpl = () => {
@@ -21,6 +22,9 @@ const MarkdownTextImpl = () => {
       remarkPlugins={[remarkGfm]}
       className="aui-md"
       components={defaultComponents}
+      componentsByLanguage={{
+        mermaid: { SyntaxHighlighter: MermaidDiagram },
+      }}
     />
   );
 };

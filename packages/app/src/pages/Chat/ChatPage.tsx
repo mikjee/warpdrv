@@ -29,6 +29,7 @@ import { extractTextFromFile } from '@/hooks/useFileReader';
 import { useToast } from '../../components/ToastProvider';
 import { parseThreadMeta } from '@/pages/Chat/assistant-ui/ServerSelector';
 import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff } from 'react-icons/vsc';
+import mermaid from 'mermaid';
 
 const getFileDataURL = (file: File): Promise<string> =>
 	new Promise((resolve, reject) => {
@@ -101,6 +102,35 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 			useStore.setState(s => { s.inferenceError = null; });
 		}
 	}, [inferenceError, toast]);
+
+	const theme = useStore(s => s.settings.theme);
+	useEffect(() => {
+		const styles = getComputedStyle(document.documentElement);
+		const get = (v: string) => styles.getPropertyValue(v).trim();
+		mermaid.initialize({
+			startOnLoad: false,
+			securityLevel: 'strict',
+			theme: 'base',
+			themeVariables: {
+				primaryColor: get('--wc-bg-card') || '#1f1f23',
+				primaryTextColor: get('--wc-text-primary') || '#dedede',
+				primaryBorderColor: get('--wc-border-default') || 'rgba(255,255,255,0.08)',
+				lineColor: get('--wc-text-secondary') || 'rgba(255,255,255,0.7)',
+				secondaryColor: get('--wc-bg-page') || '#131313',
+				tertiaryColor: get('--wc-bg-subtle') || 'rgba(255,255,255,0.03)',
+				clusterBkg: get('--wc-bg-subtle') || 'rgba(255,255,255,0.03)',
+				actorBkg: get('--wc-bg-card') || 'rgba(255,255,255,0.02)',
+				actorBorder: get('--wc-border-default') || 'rgba(255,255,255,0.08)',
+				actorTextColor: get('--wc-text-primary') || '#dedede',
+				noteBkgColor: get('--wc-bg-card') || 'rgba(255,255,255,0.02)',
+				noteBorderColor: get('--wc-border-default') || 'rgba(255,255,255,0.08)',
+				noteTextColor: get('--wc-text-primary') || '#dedede',
+				activationBorderColor: get('--wc-border-default') || 'rgba(255,255,255,0.08)',
+				activationBackgroundColor: get('--wc-bg-subtle') || 'rgba(255,255,255,0.03)',
+				sequenceNumberColor: get('--wc-text-muted') || 'rgba(255,255,255,0.4)',
+			},
+		});
+	}, [theme]);
 
 	// Get current thread state from store
 	const tempThreadServerId = useStore(s => s.tempThreadServerId);

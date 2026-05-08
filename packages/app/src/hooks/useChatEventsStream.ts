@@ -17,6 +17,8 @@ export function useChatEventsStream() {
 	const applyInferenceStarted = useStore(s => s.applyInferenceStarted);
 	const applyInferenceEnded = useStore(s => s.applyInferenceEnded);
 	const applyInferenceError = useStore(s => s.applyInferenceError);
+	const applyElicitationRequest = useStore(s => s.applyElicitationRequest);
+	const applyElicitationResolved = useStore(s => s.applyElicitationResolved);
 
 	useEffect(() => {
 		console.log('[Chat SSE] Creating EventSource connection to /api/chat/events');
@@ -68,6 +70,12 @@ export function useChatEventsStream() {
 			case 'inference.error':
 				applyInferenceError(event.threadId, event.messageId, event.error);
 				break;
+			case 'elicitation_request':
+				applyElicitationRequest(event.threadId, event.request);
+				break;
+			case 'elicitation_resolved':
+				applyElicitationResolved(event.id);
+				break;
 			default:
 				// Unknown event type, ignore
 				break;
@@ -88,7 +96,8 @@ export function useChatEventsStream() {
 		es.addEventListener('inference.started', handleEvent);
 		es.addEventListener('inference.ended', handleEvent);
 		es.addEventListener('inference.error', handleEvent);
-
+		es.addEventListener('elicitation_request', handleEvent);
+		es.addEventListener('elicitation_resolved', handleEvent);
 		es.onerror = (err) => {
 			console.error('[Chat SSE] ❌ Connection error:', err);
 		};
@@ -111,5 +120,7 @@ export function useChatEventsStream() {
 		applyInferenceStarted,
 		applyInferenceEnded,
 		applyInferenceError,
+		applyElicitationRequest,
+		applyElicitationResolved,
 	]);
 }

@@ -2,6 +2,22 @@ import type React from 'react';
 import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, TStepId, IServerSlotsState, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings } from '@warpcore/shared';
 import type { IProxyStatus, IStickyRouteInfo } from '@/api/services';
 export { type ImmerSet, type ImmerGet } from '@warpcore/bridge';
+
+export type TCanRenderResult = Record<string, unknown> | false;
+
+export interface IToolCallRenderer {
+	component: React.ComponentType<any>;
+	keywords: string[];
+	canRender: (args: Record<string, unknown>) => TCanRenderResult;
+}
+
+export type TCanRenderResult = Record<string, unknown> | false;
+
+export interface IToolCallRenderer {
+	component: React.ComponentType<any>;
+	keywords: string[];
+	canRender: (args: Record<string, unknown>) => TCanRenderResult;
+}
 import type {
 	IMcpServerState,
 	IToolPermission,
@@ -17,6 +33,7 @@ import type {
 	TMessageId,
 	TMessagePartId,
 	TToolCallId,
+	IElicitationRequest,
 } from '@warpcore/bridge';
 
 export interface AppState {
@@ -58,14 +75,19 @@ export interface AppState {
 	// SSE Event Handlers (centralized)
 	SSEHandlers: Record<string, (data: any) => void>;
 
+	// Elicitations
+	elicitationByThread: Record<TThreadId, IElicitationRequest>;
+	applyElicitationRequest: (threadId: TThreadId, request: IElicitationRequest) => void;
+	applyElicitationResolved: (id: string) => void;
+
 	// MCP (Bridge canonical names)
 	mcpServers: Record<string, IMcpServerState>;
 	serverPermissions: IMcpServerPermission[];
 	toolPermissions: IToolPermission[];
 	setMcpServers: (servers: Record<string, IMcpServerState>) => void;
 	setPermissions: (serverPerms: IMcpServerPermission[], toolPerms: IToolPermission[]) => void;
-	toolCallRenderers: Record<string, React.ComponentType<any>>;
-	registerToolCallRenderer: (name: string, component: React.ComponentType<any>) => void;
+	toolCallRenderers: Record<string, IToolCallRenderer>;
+	registerToolCallRenderer: (name: string, entry: IToolCallRenderer) => void;
 
 	reset: () => void;
 

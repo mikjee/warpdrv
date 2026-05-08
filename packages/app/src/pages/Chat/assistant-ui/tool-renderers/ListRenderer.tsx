@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Box, Text, HStack, VStack } from '@chakra-ui/react';
 import { FolderOpen, ChevronDown, ChevronRight, File, Folder } from 'lucide-react';
 import { extractResultText } from './utils';
+import type { IToolCallRenderer, TCanRenderResult } from '@/store/types';
 
 interface ITreeEntry {
 	name: string;
@@ -76,8 +77,22 @@ export const ListRenderer = React.memo((props: {
 							<TreeNode key={`${e.name}-${i}`} entry={e} depth={0} />
 						))}
 					</VStack>
-				</Box>
-			)}
+		</Box>
+		)}
 		</Box>
 	);
 });
+
+export const ListRendererMeta: IToolCallRenderer = {
+	component: ListRenderer,
+	keywords: ['list', 'ls', 'dir', 'directory', 'tree', 'browse'],
+	canRender: (args: Record<string, unknown>): TCanRenderResult => {
+		const path = args.path ?? args.dir ?? args.directory ?? args.folder ?? args.file_path;
+		if (typeof path !== 'string' || path.length === 0) return false;
+		const excludePatterns = args.excludePatterns ?? args.exclude ?? args.ignore;
+		return {
+			path,
+			excludePatterns: Array.isArray(excludePatterns) ? excludePatterns : undefined,
+		};
+	},
+};

@@ -3,9 +3,10 @@
 // ============================================================
 
 import { Router } from 'express';
-import { mcpClient, persistence } from '../index';
+import { mcpClient, persistence, broadcaster } from '../index';
 import type { IMcpConfigFile, IMcpServerEntry } from '@warpcore/shared';
 import { EToolApprovalMode } from '@warpcore/bridge';
+import type { IElicitationResponse } from '@warpcore/bridge';
 
 export const mcpRouter = Router();
 
@@ -197,4 +198,16 @@ mcpRouter.get('/attached-tools/thread/:threadId', async (req, res) => {
 	} catch (err) {
 		res.status(500).json({ ok: false, data: null, error: String(err) });
 	}
+});
+
+mcpRouter.post('/elicitation/:id/respond', async (req, res) => {
+	const { id } = req.params;
+	const response = req.body as IElicitationResponse;
+	const ok = mcpClient.elicitationRegistry.resolve(id, response);
+	if (!ok) {
+		res.status(404).json({ error: 'Elicitation not found or already resolved' });
+		return;
+	}
+	broadcaster.emit({ type: 'elicitation_resolved', id });
+	res.json({ ok: true });
 });

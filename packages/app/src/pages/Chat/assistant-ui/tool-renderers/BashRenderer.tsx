@@ -3,6 +3,7 @@ import { Box, Text, HStack, VStack } from '@chakra-ui/react';
 import { Terminal, ChevronDown, ChevronRight } from 'lucide-react';
 import { parse } from 'shell-quote';
 import { extractResultText } from './utils';
+import type { IToolCallRenderer, TCanRenderResult } from '@/store/types';
 
 const OPERATORS = new Set(['&&', '||', ';', '|', '&']);
 
@@ -78,3 +79,19 @@ export const BashRenderer = React.memo((props: {
 		</Box>
 	);
 });
+
+export const BashRendererMeta: IToolCallRenderer = {
+	component: BashRenderer,
+	keywords: ['bash', 'shell', 'command', 'exec', 'execute', 'run', 'terminal', 'cmd'],
+	canRender: (args: Record<string, unknown>): TCanRenderResult => {
+		const command = args.command ?? args.cmd ?? args.script ?? args.bash;
+		if (typeof command !== 'string' || command.length === 0) return false;
+		const cwd = args.cwd ?? args.workdir ?? args.working_directory;
+		const shell = args.shell ?? args.interpreter;
+		return {
+			command,
+			cwd: typeof cwd === 'string' ? cwd : undefined,
+			shell: typeof shell === 'string' ? shell : undefined,
+		};
+	},
+};

@@ -91,16 +91,23 @@ async function main() {
 
 	// Initialize MCP
 	mcpConfig = new McpConfig(path.join(dataDir, 'mcp.json'));
-	mcpClient = new McpClientManager();
-	const permissions = new PermissionManager(persistence);
 	broadcaster = new SseBroadcaster();
+	mcpClient = new McpClientManager(undefined, broadcaster);
+	const permissions = new PermissionManager(persistence);
 	orchestrator = new Orchestrator({ mcpClient, permissions, persistence, broadcaster });
 
-	// Connect MCP servers from config
+	// Connect MCP servers in parallel (non-blocking)
 	const mcpCfg = mcpConfig.read();
-	for (const [name, entry] of Object.entries(mcpCfg.mcpServers)) {
-		await mcpClient.connect(name, entry);
-	}
+	const mcpConnectResults = Object.entries(mcpCfg.mcpServers).map(
+		([name, entry]) => mcpClient.connect(name, entry),
+	);
+	Promise.allSettled(mcpConnectResults).then(results => {
+		const failures = results.filter(r => r.status === 'rejected');
+		if (failures.length) {
+			console.log(`[MCP] ${failures.length} server(s) failed to connect`);
+		}
+		console.log(`[MCP] Initial connection phase complete`);
+	});
 
 	// Pending approvals will be handled by the orchestrator on next completion
 

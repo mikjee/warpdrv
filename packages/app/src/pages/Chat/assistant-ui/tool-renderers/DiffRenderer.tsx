@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Text, HStack, VStack } from '@chakra-ui/react';
 import { FileText } from 'lucide-react';
 import ReactDiffViewer from 'react-diff-viewer-continued';
+import type { IToolCallRenderer, TCanRenderResult } from '@/store/types';
 
 export enum EDiffStrategy {
 	FIND_REPLACE = 'find_replace',
@@ -97,3 +98,27 @@ export const DiffRenderer = React.memo((props: {
 		</Box>
 	);
 });
+
+export const DiffRendererMeta: IToolCallRenderer = {
+	component: DiffRenderer,
+	keywords: ['edit', 'write', 'replace', 'modify', 'patch', 'apply', 'create'],
+	canRender: (args: Record<string, unknown>): TCanRenderResult => {
+		const path = (args.path ?? args.file_path ?? args.filepath ?? args.filename ?? args.file) as string | undefined;
+		// FIND_REPLACE: old/new strings under various names
+		const oldStr = args.old_string ?? args.oldText ?? args.old_str ?? args.old ?? args.search;
+		const newStr = args.new_string ?? args.newText ?? args.new_str ?? args.new ?? args.replace;
+		if (typeof oldStr === 'string' && typeof newStr === 'string') {
+			return { path, old: oldStr, new: newStr, strategy: EDiffStrategy.FIND_REPLACE };
+		}
+		// EDITS_ARRAY
+		if (Array.isArray(args.edits) && args.edits.length > 0) {
+			return { path, edits: args.edits as IEdit[], strategy: EDiffStrategy.EDITS_ARRAY };
+		}
+		// FULL_WRITE: path + content
+		const content = args.content ?? args.text ?? args.body;
+		if (typeof content === 'string' && typeof path === 'string') {
+			return { path, content, strategy: EDiffStrategy.FULL_WRITE };
+		}
+		return false;
+	},
+};

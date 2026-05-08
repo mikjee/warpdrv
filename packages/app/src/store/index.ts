@@ -14,12 +14,12 @@ import { proxySlice } from './slices/proxy';
 import { recipesSlice } from './slices/recipes';
 import { checkpointsSlice } from './slices/checkpoints';
 import { createChatStoreSlice } from '@warpcore/bridge/client';
-import { DiffRenderer } from '@/pages/Chat/assistant-ui/tool-renderers/DiffRenderer';
-import { BashRenderer } from '@/pages/Chat/assistant-ui/tool-renderers/BashRenderer';
-import { FetchRenderer } from '@/pages/Chat/assistant-ui/tool-renderers/FetchRenderer';
-import { ListRenderer } from '@/pages/Chat/assistant-ui/tool-renderers/ListRenderer';
-import { ReadFileRenderer } from '@/pages/Chat/assistant-ui/tool-renderers/ReadFileRenderer';
-import { SearchRenderer } from '@/pages/Chat/assistant-ui/tool-renderers/SearchRenderer';
+import { DiffRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/DiffRenderer';
+import { BashRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/BashRenderer';
+import { FetchRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/FetchRenderer';
+import { ListRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/ListRenderer';
+import { ReadFileRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/ReadFileRenderer';
+import { SearchRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/SearchRenderer';
 
 export const useStore = create<AppState>()(
 	subscribeWithSelector(
@@ -59,6 +59,9 @@ export const useStore = create<AppState>()(
 					stepOutputs: recipes.stepOutputs!,
 					checkpoints: checkpoints.checkpoints!,
 					SSEHandlers: sseHandlers.SSEHandlers!,
+					elicitationByThread: bridge.elicitationByThread,
+					applyElicitationRequest: bridge.applyElicitationRequest,
+					applyElicitationResolved: bridge.applyElicitationResolved,
 
 					// Bridge Chat State
 					threads: bridge.threads,
@@ -78,13 +81,13 @@ export const useStore = create<AppState>()(
 					toolPermissions: bridge.toolPermissions,
 					setMcpServers: bridge.setMcpServers,
 					setPermissions: bridge.setPermissions,
-					toolCallRenderers: {
-						DiffRenderer,
-						BashRenderer,
-						FetchRenderer,
-						ListRenderer,
-						ReadFileRenderer,
-						SearchRenderer,
+				toolCallRenderers: {
+						DiffRenderer: DiffRendererMeta,
+						BashRenderer: BashRendererMeta,
+						FetchRenderer: FetchRendererMeta,
+						ListRenderer: ListRendererMeta,
+						ReadFileRenderer: ReadFileRendererMeta,
+						SearchRenderer: SearchRendererMeta,
 					},
 					registerToolCallRenderer: (name, component) => set((state) => {
 						state.toolCallRenderers[name] = component;
