@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, TStepId, IServerSlotsState, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings } from '@warpcore/shared';
+import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, TStepId, IServerSlotsState, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings, TWhisperBackendId, IWhisperBackend, TWhisperServerId, IWhisperServer } from '@warpcore/shared';
 import type { IProxyStatus, IStickyRouteInfo } from '@/api/services';
 export { type ImmerSet, type ImmerGet } from '@warpcore/bridge';
 
@@ -61,6 +61,17 @@ export interface AppState {
 
 	// Backend Groups (Phase 1)
 	backendGroups: Record<TBackendGroupId, IBackendGroup>;
+
+	// Whisper Backends
+	whisperBackends: Record<TWhisperBackendId, IWhisperBackend>;
+
+	// Whisper Servers
+	whisperServers: Record<TWhisperServerId, IWhisperServer>;
+	whisperServerLogs: Record<TWhisperServerId, string[]>;
+
+	// Whisper chat state
+	tempThreadWhisperServerId: string | null;
+	setTempThreadWhisperServerId: (id: string | null) => void;
 
 	// Models
 	models: Record<TModelId, IModel>;

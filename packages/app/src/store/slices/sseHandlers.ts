@@ -1,5 +1,5 @@
 import type { AppState, ImmerSet, ImmerGet } from '../types';
-import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, IRecipesInitPayload, IRunsStepStartedPayload, IRunsStepOutputPayload, IRunsStepFinishedPayload, IRunsFinishedPayload, ERecipeStreamKind, ISseSlotStatePayload, ISseServerSlotsSnapshotPayload, IServerSlotsState, ISseCheckpointPayload, ISseCheckpointDeletedPayload, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings } from '@warpcore/shared';
+import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, IRecipesInitPayload, IRunsStepStartedPayload, IRunsStepOutputPayload, IRunsStepFinishedPayload, IRunsFinishedPayload, ERecipeStreamKind, ISseSlotStatePayload, ISseServerSlotsSnapshotPayload, IServerSlotsState, ISseCheckpointPayload, ISseCheckpointDeletedPayload, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings, TWhisperBackendId, IWhisperBackend, TWhisperServerId, IWhisperServer } from '@warpcore/shared';
 import { ERecipeStepStatus, EServerStatus } from '@warpcore/shared';
 
 interface SSEHandlersSlice {
@@ -116,6 +116,31 @@ export const sseHandlersSlice = (
 		'backend-groups:init': (data: Record<TBackendGroupId, IBackendGroup>) => setState((state) => { state.backendGroups = data; }),
 		'backend-groups:update': (data: IBackendGroup) => setState((state) => { state.backendGroups[data.id] = data; }),
 		'backend-groups:delete': (data: IBackendGroup) => setState((state) => { delete state.backendGroups[data.id]; }),
+
+		// Whisper Backends
+		'whisperBackends:init': (data: Record<TWhisperBackendId, IWhisperBackend>) => setState((state) => { state.whisperBackends = data; }),
+		'whisperBackends:update': (data: IWhisperBackend) => setState((state) => { state.whisperBackends[data.id] = data; }),
+		'whisperBackends:delete': (data: IWhisperBackend) => setState((state) => { delete state.whisperBackends[data.id]; }),
+
+		// Whisper Servers
+		'whisperServers:init': (data: Record<TWhisperServerId, IWhisperServer>) => setState((state) => { state.whisperServers = data; }),
+		'whisperServers:update': (data: Record<TWhisperServerId, IWhisperServer>) => setState((state) => {
+			for (const [id, server] of Object.entries(data)) {
+				state.whisperServers[id] = server;
+			}
+		}),
+		'whisperServers:delete': (data: Record<TWhisperServerId, null>) => setState((state) => {
+			for (const id of Object.keys(data)) {
+				delete state.whisperServers[id];
+			}
+		}),
+		'whisperServers:logs': (data: Record<string, string[]>) => setState((state) => {
+			for (const [serverId, lines] of Object.entries(data)) {
+				const logs = state.whisperServerLogs[serverId] || [];
+				const appended = [...logs, ...lines];
+				state.whisperServerLogs[serverId] = appended.length > 500 ? appended.slice(-500) : appended;
+			}
+		}),
 
 		// Models
 		'models:init': (data: IModel[]) => setState((state) => {

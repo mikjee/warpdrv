@@ -8,6 +8,8 @@ import { serversSlice } from './slices/servers';
 import { downloadsSlice } from './slices/downloads';
 import { devicesSlice } from './slices/devices';
 import { backendsSlice } from './slices/backends';
+import { whisperBackendsSlice } from './slices/whisperBackends';
+import { whisperServersSlice } from './slices/whisperServers';
 import { modelsSlice } from './slices/models';
 import { settingsSlice } from './slices/settings';
 import { proxySlice } from './slices/proxy';
@@ -29,6 +31,8 @@ export const useStore = create<AppState>()(
 				const downloads = downloadsSlice(set, get);
 				const devices = devicesSlice(set, get);
 				const backends = backendsSlice(set, get);
+			const whisperBackends = whisperBackendsSlice(set, get);
+			const whisperServers = whisperServersSlice(set, get);
 				const models = modelsSlice(set, get);
 				const settings = settingsSlice(set, get);
 				const proxy = proxySlice(set, get);
@@ -50,6 +54,11 @@ export const useStore = create<AppState>()(
 					devices: devices.devices!,
 					backends: backends.backends!,
 					backendGroups: backends.backendGroups!,
+				whisperBackends: whisperBackends.whisperBackends!,
+				whisperServers: whisperServers.whisperServers!,
+				whisperServerLogs: whisperServers.whisperServerLogs!,
+				tempThreadWhisperServerId: null,
+				setTempThreadWhisperServerId: (id: string | null) => set(s => { s.tempThreadWhisperServerId = id; }),
 					models: models.models!,
 					settings: settings.settings!,
  					proxyStatus: proxy.proxyStatus!,

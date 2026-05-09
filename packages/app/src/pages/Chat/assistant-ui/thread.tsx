@@ -49,6 +49,8 @@ import React, { useCallback, useContext, useMemo, useState, type FC } from "reac
 import { BranchTokensContext, ChatConfigContext } from "@/pages/Chat/ChatPage";
 import { useStore } from "@/store";
 import { ThreadServerSelector } from "@/pages/Chat/assistant-ui/ServerSelector";
+import { ThreadWhisperServerSelector } from "@/pages/Chat/assistant-ui/WhisperServerSelector";
+import { VoiceInput } from "@/pages/Chat/assistant-ui/VoiceInput";
 import { deleteMessage } from "@/api/services";
 import { useMessageTiming } from "@assistant-ui/react";
 import { BrainCircuitIcon, ClockIcon } from "lucide-react";
@@ -510,6 +512,16 @@ const ComposerAction: FC = () => {
 				<ToolsSelector />
 			</div>
 			<div className="flex items-center gap-2">
+				<VoiceInput threadId={currentThreadId} onTranscript={(text) => {
+					// Dispatch text into composer input
+					const input = document.querySelector('.aui-composer-input') as HTMLTextAreaElement;
+					if (input) {
+						input.value += text;
+						input.dispatchEvent(new Event('input', { bubbles: true }));
+						input.focus();
+					}
+				}} />
+				<ThreadWhisperServerSelector threadId={currentThreadId} />
 				<ThreadServerSelector threadId={currentThreadId} />
 				<AuiIf condition={(s) => !s.thread.isRunning}>
 					<ComposerPrimitive.Send asChild>

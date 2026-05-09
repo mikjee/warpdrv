@@ -320,6 +320,7 @@ export interface ISettings {
 	showRawJSONChatConfig?: boolean; // if true, show JSON editor instead of UI controls in chat config
 	isOnboardingComplete?: boolean; // if false or undefined, show onboarding overlay
 	theme?: ETheme;
+	micDeviceId?: string; // app-level mic device selection for STT
 }
 export const DEFAULT_SETTINGS: ISettings = {
 	modelRoots: [],

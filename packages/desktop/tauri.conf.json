@@ -43,11 +43,12 @@
 		"externalBin": [
 			"binaries/warpcore-server"
 		],
-		"resources": [
-			"binaries/better_sqlite3.node",
-			"app-dist/**/*",
-			"../../release.json"
-		],
+"resources": [
+				"binaries/better_sqlite3.node",
+				"app-dist/**/*",
+				"../../release.json",
+				"../../packages/app/public/vad/**/*"
+			],
 		"linux": {
 			"deb": {
 				"depends": [

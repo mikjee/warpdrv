@@ -171,7 +171,7 @@ export async function fetchAllGgufFiles(
 		const dirs: IHubRawDir[] = [];
 
 		for (const item of contents) {
-			if (item.type === 'file' && String(item.path).endsWith('.gguf')) {
+			if (item.type === 'file' && (String(item.path).endsWith('.gguf') || String(item.path).endsWith('.bin'))) {
 				files.push(item as IHubRawFile);
 			} else if (item.type === 'directory') {
 				dirs.push(item as IHubRawDir);
@@ -200,6 +200,7 @@ export function mapFilesToHubFiles(
 		const filename = String(raw.path ?? '');
 		const size = Number(raw.size ?? 0);
 		const isGguf = filename.endsWith('.gguf');
+		const isWhisperBin = filename.endsWith('.bin');
 
 		// Extract quant type from the basename
 		const basename = path.basename(filename);
@@ -223,6 +224,7 @@ export function mapFilesToHubFiles(
 			filename,
 			size,
 			isGguf,
+			isWhisperBin,
 			quantType,
 			isDownloaded,
 			downloadedInRoot,

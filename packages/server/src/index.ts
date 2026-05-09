@@ -28,6 +28,9 @@ import { getAllServerSlots, getServerSlots } from './services/slotStateTracker';
 import { listCheckpoints } from './services/checkpointService';
 import { recipesRouter } from './routes/recipes';
 import { checkpointsRouter } from './routes/checkpoints';
+import { whisperBackendsRouter } from './routes/whisperBackends';
+import { whisperServersRouter } from './routes/whisperServers';
+import { whisperModelsRouter } from './routes/whisperModels';
 import { setRecipeRunnerSSE, getActiveRun } from './services/recipeRunner';
 import { listRecipes } from './services/recipeStore';
 import { getAllDownloads, getAllDownloadsRecord } from './services/downloadManager';
@@ -46,6 +49,7 @@ export let broadcaster: SseBroadcaster;
 
 import { execSync } from 'child_process';
 import { launchAutoStartServers, reconcileServers } from './services/processManager';
+import { reconcileWhisperServers, launchAutoStartWhisperServers } from './services/whisperProcessManager';
 
 function resolveShellPath(): string | null {
 	try {
@@ -117,6 +121,10 @@ async function main() {
 	// Launch auto-start servers after all data has loaded
 	await launchAutoStartServers();
 
+	// Reconcile and launch auto-start whisper servers
+	await reconcileWhisperServers();
+	await launchAutoStartWhisperServers();
+
 	const app = express();
 
 	app.use(cors());
@@ -141,6 +149,9 @@ async function main() {
 	app.use('/api/summary', authMiddleware, summaryRouter);
 	app.use('/api/recipes', authMiddleware, recipesRouter);
 	app.use('/api/checkpoints', authMiddleware, checkpointsRouter);
+	app.use('/api/whisper-backends', authMiddleware, whisperBackendsRouter);
+	app.use('/api/whisper-servers', authMiddleware, whisperServersRouter);
+	app.use('/api/whisper-models', authMiddleware, whisperModelsRouter);
 	// SSE endpoint (protected by auth)
 	app.get('/api/events', authMiddleware, async (req, res) => {
 		console.log('[SSE] New client');
@@ -288,6 +299,28 @@ async function main() {
 		sseManager.onConnect('settings:init', async () => {
 			const settings = await store.get<ISettings>(SETTINGS_KEY);
 			return settings;
+		});
+
+		// Whisper Backends
+		const WHISPER_BACKENDS_PREFIX = 'whisperBackends:';
+
+		sseManager.onConnect('whisperBackends:init', async () => {
+			const backends = await store.list<IBackend>(WHISPER_BACKENDS_PREFIX);
+			return backends.reduce((acc, b) => {
+				acc[b.id] = b;
+				return acc;
+			}, {} as Record<string, IBackend>);
+		});
+
+		// Whisper Servers
+		const WHISPER_SERVERS_PREFIX = 'whisperServers:';
+
+		sseManager.onConnect('whisperServers:init', async () => {
+			const servers = await store.list<IServer>(WHISPER_SERVERS_PREFIX);
+			return servers.reduce((acc, s) => {
+				acc[s.id] = s;
+				return acc;
+			}, {} as Record<string, IServer>);
 		});
 
 	}
