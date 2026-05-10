@@ -30,7 +30,7 @@ import { recipesRouter } from './routes/recipes';
 import { checkpointsRouter } from './routes/checkpoints';
 import { whisperBackendsRouter } from './routes/whisperBackends';
 import { whisperServersRouter } from './routes/whisperServers';
-import { whisperModelsRouter } from './routes/whisperModels';
+import { whisperModelsRouter, loadCachedWhisperModels, getCachedWhisperModels } from './routes/whisperModels';
 import { setRecipeRunnerSSE, getActiveRun } from './services/recipeRunner';
 import { listRecipes } from './services/recipeStore';
 import { getAllDownloads, getAllDownloadsRecord } from './services/downloadManager';
@@ -117,6 +117,9 @@ async function main() {
 
 	// Load cached model scan results
 	await loadCachedModels();
+
+	// Load cached whisper model scan results
+	await loadCachedWhisperModels();
 
 	// Launch auto-start servers after all data has loaded
 	await launchAutoStartServers();
@@ -321,6 +324,11 @@ async function main() {
 				acc[s.id] = s;
 				return acc;
 			}, {} as Record<string, IServer>);
+		});
+
+		// Whisper Models
+		sseManager.onConnect('whisperModels:init', async () => {
+			return getCachedWhisperModels();
 		});
 
 	}

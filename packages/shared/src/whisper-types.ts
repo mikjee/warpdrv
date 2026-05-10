@@ -115,12 +115,22 @@ export interface IWhisperServerCreatePayload {
 // ============================================================
 // Whisper Model Metadata
 // ============================================================
+export type TWhisperModelSize = 'tiny' | 'base' | 'small' | 'medium' | 'large' | 'large-v3-turbo' | 'unknown';
+
+export type TWhisperFtype = 'f32' | 'f16' | 'q4_0' | 'q4_1' | 'q5_0' | 'q5_1' | 'q8_0' | 'unknown';
+
 export interface IWhisperModelMetadata {
 	architecture: string;
 	languages: string[];
 	vocabSize: number;
 	encoderDim: number;
 	contextLength: number;
+	textContextLength: number;
+	textState: number;
+	audioLayers: number;
+	textLayers: number;
+	modelSize: TWhisperModelSize;
+	ftype: TWhisperFtype;
 	fileSize: number;
 }
 

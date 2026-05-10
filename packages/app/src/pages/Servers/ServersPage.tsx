@@ -12,9 +12,11 @@ import type { IServer, IBackend, IBackendGroup, IModel, TSortField, TSortOrder, 
 import { EServerStatus, EWhisperServerStatus } from '@warpcore/shared';
 import { removeWhisperServer, stopWhisperServer, restartWhisperServer } from '@/api/whisperServices';
 import { ServerCard } from './ServerCard';
+import { WhisperServerCard } from './WhisperServerCard';
 import { LaunchServerDialog } from './LaunchServer/LaunchServerDialog';
 import { WhisperLaunchDialog } from './LaunchWhisper/WhisperLaunchDialog';
 import { ServerLogs } from './ServerLogs';
+import { WhisperServerLogs } from './WhisperServerLogs';
 import { ConfirmDialog } from '@/components/dialogs/ConfirmDialog';
 import { SaveCheckpointDialog } from './Checkpoints/SaveCheckpointDialog';
 import { LoadCheckpointDialog } from './Checkpoints/LoadCheckpointDialog';
@@ -30,6 +32,7 @@ export const ServersPage = React.memo(() => {
 	const serversArr = useMemo(() => Object.values(servers), [servers]);
 	const whisperServers = useStore((s) => s.whisperServers);
 	const whisperServersArr = useMemo(() => Object.values(whisperServers), [whisperServers]);
+	const whisperModels = useStore((s) => s.whisperModels);
 	const backends = useStore((s) => s.backends);
 	const groups = useStore((s) => s.backendGroups);
 	const models = useStore((s) => s.models);
@@ -48,6 +51,7 @@ export const ServersPage = React.memo(() => {
 	const [deletingWhisperServerId, setDeletingWhisperServerId] = useState<string | null>(null);
 	const [whisperExpanded, setWhisperExpanded] = useState(true);
 	const [logsServerId, setLogsServerId] = useState<string | null>(null);
+	const [logsWhisperServerId, setLogsWhisperServerId] = useState<string | null>(null);
 	const [editingServerId, setEditingServerId] = useState<string | null>(null);
 	const [saveCheckpointServerId, setSaveCheckpointServerId] = useState<string | null>(null);
 	const [loadCheckpointServerId, setLoadCheckpointServerId] = useState<string | null>(null);
@@ -74,6 +78,17 @@ export const ServersPage = React.memo(() => {
 		});
 		return modelMap;
 	}, [models]);
+
+	const whisperModelByPath = useMemo(() => {
+		const modelMap: Record<string, any> = {};
+		Object.values(whisperModels || {}).forEach(m => {
+			if (m.primaryFile) modelMap[m.primaryFile.filePath] = m;
+			m.files.forEach(f => {
+				if (!m.primaryFile || f.filePath !== m.primaryFile.filePath) modelMap[f.filePath] = m;
+			});
+		});
+		return modelMap;
+	}, [whisperModels]);
 
 	// Filter and sort servers
 	const filteredServers = useMemo(() => {
@@ -331,42 +346,7 @@ export const ServersPage = React.memo(() => {
 							) : (
 								<VStack align="stretch" gap="2">
 									{whisperServersArr.map(server => (
-										<Box key={server.id} px="3" py="2" borderRadius="lg" bg="var(--wc-bg-card)" borderWidth="1px" borderColor="var(--wc-border-subtle)">
-											<HStack justify="space-between">
-												<VStack align="start" gap="1" flex="1" minW="0">
-													<HStack gap="2">
-														<Box w="8px" h="8px" borderRadius="full" bg={server.status === EWhisperServerStatus.RUNNING ? 'var(--wc-accent-green-icon)' : server.status === EWhisperServerStatus.LOADING ? 'var(--wc-accent-yellow-strong)' : server.status === EWhisperServerStatus.ERROR ? 'var(--wc-accent-red)' : 'var(--wc-text-disabled)'} />
-														<Text fontSize="13px" fontWeight="500" color="var(--wc-text-primary)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">{server.serverName}</Text>
-														{server.serverAlias?.length > 0 && server.serverAlias.map(a => (
-															<Box key={a} px="1.5" py="0.5" borderRadius="md" bg="var(--wc-bg-hover)" fontSize="10px" color="var(--wc-text-muted)">{a}</Box>
-														))}
-													</HStack>
-													<Text fontSize="11px" color="var(--wc-text-muted)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">{server.modelPath}</Text>
-												</VStack>
-												<HStack gap="1">
-													{server.status === EWhisperServerStatus.RUNNING && (
-														<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-red)' }}
-															onClick={() => stopWhisperServer(server.id)}>
-															Stop
-														</Button>
-													)}
-													{(server.status === EWhisperServerStatus.RUNNING || server.status === EWhisperServerStatus.LOADING) && (
-														<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-blue)' }}
-															onClick={() => restartWhisperServer(server.id)}>
-															Restart
-														</Button>
-													)}
-													<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-text-primary)' }}
-														onClick={() => setEditingWhisperServerId(server.id)}>
-														Edit
-													</Button>
-													<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-red)' }}
-														onClick={() => setDeletingWhisperServerId(server.id)}>
-														Delete
-													</Button>
-												</HStack>
-											</HStack>
-										</Box>
+										<WhisperServerCard key={server.id} serverId={server.id} modelByPath={whisperModelByPath} onShowLogs={setLogsWhisperServerId} onEdit={setEditingWhisperServerId} onConfirmDelete={setDeletingWhisperServerId} />
 									))}
 								</VStack>
 							)}
@@ -381,6 +361,10 @@ export const ServersPage = React.memo(() => {
 
 			{logsServer && (
 				<ServerLogs serverId={logsServer.id} serverName={logsServer.serverName} onClose={onCloseServerLogs} />
+			)}
+
+			{logsWhisperServerId && whisperServers[logsWhisperServerId] && (
+				<WhisperServerLogs serverId={logsWhisperServerId} serverName={whisperServers[logsWhisperServerId]!.serverName} onClose={() => setLogsWhisperServerId(null)} />
 			)}
 
 			{editingServerId && (

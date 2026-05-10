@@ -43,21 +43,23 @@ async function scanDirRecursive(
 		return [];
 	}
 
-	const ggufEntries = entries.filter(e => e.isFile() && e.name.endsWith('.gguf'));
+	// const ggufEntries = entries.filter(e => e.isFile() && e.name.endsWith('.gguf'));
 	const binEntries = entries.filter(e => e.isFile() && e.name.endsWith('.bin'));
 	const subDirs = entries.filter(e => e.isDirectory());
 
 	const results: IWhisperModel[] = [];
 
 	// Build whisper model files for this directory
-	const whisperEntries = [...ggufEntries, ...binEntries];
+	// const whisperEntries = [...ggufEntries, ...binEntries];
+	const whisperEntries = binEntries;
 	const dirFiles: IWhisperModelFile[] = [];
 
 	for (const entry of whisperEntries) {
 		const modelFile = await buildWhisperModelFile(dirPath, entry.name);
 		if (modelFile) {
-			// Only include if architecture is whisper (for GGUF) or is .bin
-			if (modelFile.format === 'bin' || modelFile.metadata?.architecture === 'whisper') {
+			// Only include .bin files (GGUF scanning disabled)
+			// if (modelFile.format === 'bin' || modelFile.metadata?.architecture === 'whisper') {
+			if (modelFile.format === 'bin') {
 				dirFiles.push(modelFile);
 			}
 		}
@@ -75,7 +77,8 @@ async function scanDirRecursive(
 	}
 
 	// Build IWhisperModel from files in this directory
-	const primaryFile = dirFiles.find(f => f.format === 'gguf') || dirFiles[0] || null;
+	// const primaryFile = dirFiles.find(f => f.format === 'gguf') || dirFiles[0] || null;
+	const primaryFile = dirFiles[0] || null;
 	const totalSizeMb = dirFiles.reduce((sum, f) => sum + f.sizeMb, 0);
 
 	const id = crypto.createHash('md5').update(dirPath).digest('hex').slice(0, 12);

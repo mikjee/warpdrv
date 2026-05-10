@@ -83,7 +83,7 @@ async function scanDirRecursive(
 	const dirFiles: IGgufFile[] = [];
 	for (const entry of ggufEntries) {
 		const ggufFile = await buildGgufFile(dirPath, entry.name, cachedFilesByPath);
-		if (ggufFile.metadata?.architecture === 'whisper') continue;
+		// if (ggufFile.metadata?.architecture === 'whisper') continue;
 		dirFiles.push(ggufFile);
 	}
 

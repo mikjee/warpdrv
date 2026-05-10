@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Text, HStack, VStack, Flex, Badge, Button, Spinner, AccordionRoot, AccordionItem as AccordionItemComp, AccordionItemTrigger, AccordionItemContent } from '@chakra-ui/react';
+import { Box, Text, HStack, VStack, Flex, Badge, Button, Spinner, AccordionRoot, AccordionItem as AccordionItemComp, AccordionItemTrigger, AccordionItemContent, Link } from '@chakra-ui/react';
 import {
 	Download, Heart, Clock, Calendar, CheckCircle,
 	ArrowDownToLine, FileText, Layers, ChevronDown, HardDriveDownload,
@@ -30,7 +30,7 @@ function groupFilesByModel(files: IHubFile[]): Map<string, IHubFile[]> {
 	const groups = new Map<string, IHubFile[]>();
 
 	for (const file of files) {
-		if (!file.isGguf) continue;
+		if (!file.isGguf && !file.isWhisperBin) continue;
 
 		// Use parentModel if available (for split files), otherwise use the full file path
 		// The backend's extractShardInfo uses: filename.replace(SHARD_REGEX, '')
@@ -40,8 +40,8 @@ function groupFilesByModel(files: IHubFile[]): Map<string, IHubFile[]> {
 			// Use parentModel directly - it already includes the directory path if present
 			key = file.parentModel;
 		} else {
-			// Not a shard - use the filename itself as the key (without .gguf extension)
-			key = file.filename.replace(/\.gguf$/i, '');
+			// Not a shard - use the filename itself as the key (without .gguf/.bin extension)
+			key = file.filename.replace(/\.(gguf|bin)$/i, '');
 		}
 
 		if (!groups.has(key)) {
@@ -58,7 +58,7 @@ function getGroupKey(file: IHubFile): string {
 	if (file.parentModel) {
 		return file.parentModel; // Already includes directory path from backend
 	}
-	return file.filename.replace(/\.gguf$/i, '');
+	return file.filename.replace(/\.(gguf|bin)$/i, '');
 }
 
 // Get all file parts for a model (all shards of a split model)
@@ -281,11 +281,11 @@ export const HubModelDetail = React.memo(({ modelId, modelRoots }: IHubModelDeta
 		);
 	}
 
-	const allGgufFiles = detail.files.filter((f: IHubFile) => f.isGguf);
-	const otherFiles = detail.files.filter((f: IHubFile) => !f.isGguf);
+	const allModelFiles = detail.files.filter((f: IHubFile) => f.isGguf || f.isWhisperBin);
+	const otherFiles = detail.files.filter((f: IHubFile) => !f.isGguf && !f.isWhisperBin);
 
 	// Group files by parent model and only show primary files
-	const fileGroups = groupFilesByModel(allGgufFiles);
+	const fileGroups = groupFilesByModel(allModelFiles);
 	const displayFiles: IHubFile[] = [];
 
 	for (const [_, files] of fileGroups) {
@@ -302,7 +302,7 @@ export const HubModelDetail = React.memo(({ modelId, modelRoots }: IHubModelDeta
 	}
 
 	// Sort display files by size
-	const displayWithSize = displayFiles.map(f => ({ file: f, totalSize: getTotalSizeForModel(allGgufFiles, f) }));
+	const displayWithSize = displayFiles.map(f => ({ file: f, totalSize: getTotalSizeForModel(allModelFiles, f) }));
 	displayWithSize.sort((a, b) => a.totalSize - b.totalSize);
 	const sortedFiles = displayWithSize.map(d => d.file);
 
@@ -312,6 +312,7 @@ export const HubModelDetail = React.memo(({ modelId, modelRoots }: IHubModelDeta
 		if (files.every(f => f.isDownloaded)) downloadedCount++;
 	}
 	const totalModels = fileGroups.size;
+	const totalGgufFiles = allModelFiles.length;
 
 	// Find if any file from this repo exists in a root (for dir picker hint)
 	const existsInRoot = detail.files.find((f: IHubFile) => f.downloadedInRoot)?.downloadedInRoot ?? null;
@@ -321,10 +322,16 @@ export const HubModelDetail = React.memo(({ modelId, modelRoots }: IHubModelDeta
 			<VStack align="stretch" gap="6">
 				{/* Header */}
 				<Box>
-					<Text fontSize="11px" color="var(--wc-text-faint)" mb="1">{detail.author}</Text>
-					<Text fontSize="22px" fontWeight="700" color="var(--wc-text-primary)" letterSpacing="-0.02em">
+					<Link href={`https://huggingface.co/${detail.author}/${detail.modelId}`} display="block" color="var(--wc-text-faint)" fontSize="11px" mb="1"
+						_hover={{ color: 'var(--wc-text-muted)' }}
+						onClick={(e) => { e.preventDefault(); openExternal(`https://huggingface.co/${detail.author}/${detail.modelId}`); }}>
+						{detail.author}
+					</Link>
+					<Link href={`https://huggingface.co/${detail.author}/${detail.modelId}`} display="block" fontSize="22px" fontWeight="700" color="var(--wc-text-primary)" letterSpacing="-0.02em"
+						_hover={{ color: 'var(--wc-accent-blue)', textDecoration: 'underline', cursor: 'pointer' }}
+						onClick={(e) => { e.preventDefault(); openExternal(`https://huggingface.co/${detail.author}/${detail.modelId}`); }}>
 						{detail.modelId}
-					</Text>
+					</Link>
 
 					<HStack gap="4" mt="3" flexWrap="wrap">
 						<HStack gap="1.5" color="var(--wc-text-muted)">
@@ -372,9 +379,9 @@ export const HubModelDetail = React.memo(({ modelId, modelRoots }: IHubModelDeta
 						<AccordionItemComp value="downloads" w="full">
 							<AccordionItemTrigger
 								w="full" p="4" borderRadius="xl"
-								bg={`linear-gradient(135deg, ${downloadedCount === allGgufFiles.length ? 'var(--wc-accent-green-bg-8)' : 'var(--wc-accent-blue-bg-10)'} 0%, transparent 100%)`}
+								bg={`linear-gradient(135deg, ${downloadedCount === totalGgufFiles ? 'var(--wc-accent-green-bg-8)' : 'var(--wc-accent-blue-bg-10)'} 0%, transparent 100%)`}
 								borderWidth="1px"
-								borderColor={`color-mix(in srgb, ${downloadedCount === allGgufFiles.length ? 'var(--wc-accent-green)' : 'var(--wc-accent-blue)'} 25%, var(--wc-border-subtle))`}
+								borderColor={`color-mix(in srgb, ${downloadedCount === totalGgufFiles ? 'var(--wc-accent-green)' : 'var(--wc-accent-blue)'} 25%, var(--wc-border-subtle))`}
 								_hover={{ bg: 'var(--wc-accent-blue-bg-8)' }}
 								focusRing="none"
 							>
@@ -382,9 +389,9 @@ export const HubModelDetail = React.memo(({ modelId, modelRoots }: IHubModelDeta
 									<Flex gap="4" flex="1" minW="0">
 										<Box
 											w="12" h="12" borderRadius="lg" display="flex" alignItems="center" justifyContent="center"
-											bg={`color-mix(in srgb, ${downloadedCount === allGgufFiles.length ? 'var(--wc-accent-green)' : 'var(--wc-accent-blue)'} 15%, transparent)`}
+											bg={`color-mix(in srgb, ${downloadedCount === totalGgufFiles ? 'var(--wc-accent-green)' : 'var(--wc-accent-blue)'} 15%, transparent)`}
 										>
-											<HardDriveDownload size={20} color={downloadedCount === allGgufFiles.length ? 'var(--wc-accent-green)' : 'var(--wc-accent-blue)'} />
+											<HardDriveDownload size={20} color={downloadedCount === totalGgufFiles ? 'var(--wc-accent-green)' : 'var(--wc-accent-blue)'} />
 										</Box>
 
 										<VStack align="start" gap="0.5">
@@ -392,8 +399,8 @@ export const HubModelDetail = React.memo(({ modelId, modelRoots }: IHubModelDeta
 												Download Files
 											</Text>
 											<HStack gap="2">
-												<Text fontSize="12px" color={downloadedCount === allGgufFiles.length ? 'var(--wc-accent-green)' : 'var(--wc-accent-blue)'} fontWeight="500">
-													{totalModels} model{totalModels !== 1 ? 's' : ''} ({allGgufFiles.length} file{allGgufFiles.length !== 1 ? 's' : ''})
+												<Text fontSize="12px" color={downloadedCount === totalGgufFiles ? 'var(--wc-accent-green)' : 'var(--wc-accent-blue)'} fontWeight="500">
+													{totalModels} model{totalModels !== 1 ? 's' : ''} ({totalGgufFiles} file{totalGgufFiles !== 1 ? 's' : ''})
 												</Text>
 												<Text fontSize="12px" color="var(--wc-text-muted)">
 													({downloadedCount} downloaded)
@@ -404,9 +411,9 @@ export const HubModelDetail = React.memo(({ modelId, modelRoots }: IHubModelDeta
 
 									<Box
 										w="8" h="8" borderRadius="md" display="flex" alignItems="center" justifyContent="center" flexShrink={0}
-										bg={`color-mix(in srgb, ${downloadedCount === allGgufFiles.length ? 'var(--wc-accent-green)' : 'var(--wc-accent-blue)'} 10%, transparent)`}
-									>
-										<ChevronDown size={16} color={downloadedCount === allGgufFiles.length ? 'var(--wc-accent-green)' : 'var(--wc-accent-blue)'} />
+bg={`color-mix(in srgb, ${downloadedCount === totalGgufFiles ? 'var(--wc-accent-green)' : 'var(--wc-accent-blue)'} 10%, transparent)`}
+										>
+										<ChevronDown size={16} color={downloadedCount === totalGgufFiles ? 'var(--wc-accent-green)' : 'var(--wc-accent-blue)'} />
 									</Box>
 								</Flex>
 							</AccordionItemTrigger>
@@ -417,7 +424,7 @@ export const HubModelDetail = React.memo(({ modelId, modelRoots }: IHubModelDeta
 										<FileRow
 											key={file.filename}
 											file={file}
-											allFiles={allGgufFiles}
+											allFiles={allModelFiles}
 											modelRoots={modelRoots}
 											author={detail.author}
 											modelName={detail.modelId}

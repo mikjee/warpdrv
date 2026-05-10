@@ -1,5 +1,5 @@
 import { Box, Text, HStack, VStack, Flex, Badge, Button, Input, Collapsible, InputGroup, Combobox, createListCollection, Portal, Link as ChakraLink } from '@chakra-ui/react';
-import { Blocks, Plus, Terminal, Layers, ChevronDown, ChevronRight, Search, ArrowUpAZ, ArrowDownZA, CheckCircle, AlertCircle } from 'lucide-react';
+import { Blocks, Plus, Terminal, Layers, ChevronDown, ChevronRight, Search, ArrowUpAZ, ArrowDownZA, CheckCircle, AlertCircle, Edit, Trash2 } from 'lucide-react';
 import { useState, useCallback, useMemo } from 'react';
 import { useDependantState } from '../../hooks/useDependantState';
 import { PageHeader } from '../../components/PageHeader';
@@ -437,16 +437,15 @@ export function BackendsPage() {
 															<Text fontSize="13px" fontWeight="500" color="var(--wc-text-primary)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">{backend.name}</Text>
 															{backend.validation === EValidationStatus.VALID && <CheckCircle size={14} color="var(--wc-accent-green)" />}
 															{backend.validation === EValidationStatus.INVALID && <AlertCircle size={14} color="var(--wc-accent-red)" />}
-															{backend.version && <Badge size="sm" px="1.5" borderRadius="full" bg="var(--wc-bg-hover)" color="var(--wc-text-muted)" fontSize="10px">v{backend.version}</Badge>}
 														</HStack>
 														<Text fontSize="11px" color="var(--wc-text-muted)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">{backend.path}</Text>
 													</VStack>
 													<HStack gap="1">
-														<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-text-primary)' }} onClick={() => setEditingWhisperBackend(backend)}>
-															Edit
+														<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-blue)', bg: 'var(--wc-accent-blue-bg-8)' }} borderRadius="md" onClick={() => setEditingWhisperBackend(backend)}>
+															<Edit size={14} />
 														</Button>
-														<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-red)' }} onClick={() => setDeletingWhisperId(backend.id)}>
-															Delete
+														<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-red)', bg: 'var(--wc-accent-red-bg-8)' }} borderRadius="md" onClick={() => setDeletingWhisperId(backend.id)}>
+															<Trash2 size={14} />
 														</Button>
 													</HStack>
 												</HStack>

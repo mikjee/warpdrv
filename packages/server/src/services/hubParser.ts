@@ -55,7 +55,7 @@ export function groupSplitFilesByModel(files: IHubFile[]): Map<string, IHubFile[
 	const groups = new Map<string, IHubFile[]>();
 
 	for (const file of files) {
-		if (!file.isGguf) continue;
+		if (!file.isGguf && !file.isWhisperBin) continue;
 
 		const { shardIndex, shardTotal, parentModel } = extractShardInfo(file.filename);
 
@@ -89,7 +89,7 @@ export function processGgufFiles(files: IHubFile[]): IHubFile[] {
 	const processed: IHubFile[] = [];
 
 	for (const file of files) {
-		if (!file.isGguf) {
+		if (!file.isGguf && !file.isWhisperBin) {
 			processed.push(file);
 			continue;
 		}

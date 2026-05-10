@@ -44,7 +44,6 @@ hubRouter.get('/search', async (req, res) => {
 
 		const searchParams: Record<string, string> = {
 			search: q.trim(),
-			filter: 'gguf',
 			sort: sort === 'modified' ? 'lastModified' : sort === 'created' ? 'createdAt' : sort,
 			direction,
 			limit: '100',

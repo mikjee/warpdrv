@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, TStepId, IServerSlotsState, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings, TWhisperBackendId, IWhisperBackend, TWhisperServerId, IWhisperServer } from '@warpcore/shared';
+import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, TStepId, IServerSlotsState, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings, TWhisperBackendId, IWhisperBackend, TWhisperServerId, IWhisperServer, IWhisperModel } from '@warpcore/shared';
 import type { IProxyStatus, IStickyRouteInfo } from '@/api/services';
 export { type ImmerSet, type ImmerGet } from '@warpcore/bridge';
 
@@ -68,6 +68,9 @@ export interface AppState {
 	// Whisper Servers
 	whisperServers: Record<TWhisperServerId, IWhisperServer>;
 	whisperServerLogs: Record<TWhisperServerId, string[]>;
+
+	// Whisper Models
+	whisperModels: Record<string, IWhisperModel>;
 
 	// Whisper chat state
 	tempThreadWhisperServerId: string | null;

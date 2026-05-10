@@ -1,5 +1,5 @@
 import type { AppState, ImmerSet, ImmerGet } from '../types';
-import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, IRecipesInitPayload, IRunsStepStartedPayload, IRunsStepOutputPayload, IRunsStepFinishedPayload, IRunsFinishedPayload, ERecipeStreamKind, ISseSlotStatePayload, ISseServerSlotsSnapshotPayload, IServerSlotsState, ISseCheckpointPayload, ISseCheckpointDeletedPayload, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings, TWhisperBackendId, IWhisperBackend, TWhisperServerId, IWhisperServer } from '@warpcore/shared';
+import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, IRecipesInitPayload, IRunsStepStartedPayload, IRunsStepOutputPayload, IRunsStepFinishedPayload, IRunsFinishedPayload, ERecipeStreamKind, ISseSlotStatePayload, ISseServerSlotsSnapshotPayload, IServerSlotsState, ISseCheckpointPayload, ISseCheckpointDeletedPayload, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings, TWhisperBackendId, IWhisperBackend, TWhisperServerId, IWhisperServer, IWhisperModel } from '@warpcore/shared';
 import { ERecipeStepStatus, EServerStatus } from '@warpcore/shared';
 
 interface SSEHandlersSlice {
@@ -140,6 +140,12 @@ export const sseHandlersSlice = (
 				const appended = [...logs, ...lines];
 				state.whisperServerLogs[serverId] = appended.length > 500 ? appended.slice(-500) : appended;
 			}
+		}),
+
+		// Whisper Models
+		'whisperModels:init': (data: IWhisperModel[]) => setState((state) => {
+			state.whisperModels = {};
+			for (const m of data) state.whisperModels[m.id] = m;
 		}),
 
 		// Models

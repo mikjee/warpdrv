@@ -1,10 +1,11 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Box, Flex, Text, HStack, VStack, Button, Input, Switch, Textarea, Badge, Portal, Combobox, createListCollection } from '@chakra-ui/react';
-import { X, Mic, Play, RotateCcw, Package } from 'lucide-react';
+import { X, Mic, Play, RotateCcw, Package, Check } from 'lucide-react';
 import { DEFAULT_WHISPER_LAUNCH_PARAMS, type IWhisperLaunchParams, type IWhisperModel } from '@warpcore/shared';
 import { createWhisperServer, updateWhisperServer } from '@/api/whisperServices';
 import { useToast } from '@/components/ToastProvider';
 import { useStore } from '@/store';
+import { ToggleChip } from '@/pages/Servers/LaunchServer/Helpers';
 
 interface IWhisperLaunchDialogProps {
 	onClose: () => void;
@@ -18,6 +19,65 @@ type TWhisperModelEntry = {
 	label: string;
 	searchText: string;
 };
+
+function WhisperBackendCombobox({ entries, selectedId, onSelect }: {
+	entries: { id: string; name: string }[];
+	selectedId: string | null;
+	onSelect: (id: string) => void;
+}) {
+	const [inputValue, setInputValue] = useState('');
+	const filteredItems = useMemo(() => {
+		if (!inputValue) return entries;
+		return entries.filter(e => e.name.toLowerCase().includes(inputValue.toLowerCase()));
+	}, [entries, inputValue]);
+
+	const collection = useMemo(() =>
+		createListCollection({
+			items: filteredItems.map(e => ({ label: e.name, value: e.id })),
+			itemToString: (item) => item.label,
+		}),
+	[filteredItems]);
+
+	return (
+		<Combobox.Root
+			collection={collection}
+			onValueChange={(details) => { const val = details.value?.[0]; if (val) onSelect(val); }}
+			onInputValueChange={(details) => setInputValue(details.inputValue)}
+			value={selectedId ? [selectedId] : []}
+			openOnClick
+		>
+			<Combobox.Control>
+				<Combobox.Input
+					placeholder="Search backends..."
+					bg="var(--wc-bg-subtle)" borderColor="var(--wc-border-default)" color="var(--wc-text-secondary)"
+					fontSize="13px" borderRadius="lg"
+					_placeholder={{ color: 'var(--wc-text-faint)' }}
+					_focus={{ borderColor: 'var(--wc-accent-green)', outline: 'none' }}
+				/>
+				<Combobox.IndicatorGroup><Combobox.ClearTrigger /><Combobox.Trigger /></Combobox.IndicatorGroup>
+			</Combobox.Control>
+			<Portal>
+				<Combobox.Positioner>
+					<Combobox.Content
+						maxH="280px" overflowY="auto" bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-default)"
+						borderRadius="lg" shadow="0 8px 32px rgba(0, 0, 0, 0.5)" p="1"
+					>
+						<Combobox.Empty><Text fontSize="12px" color="var(--wc-text-disabled)" py="4" textAlign="center">No matches</Text></Combobox.Empty>
+						{collection.items.map((item) => (
+							<Combobox.Item key={item.value} item={item} px="3" py="2" borderRadius="md" cursor="pointer"
+								_hover={{ bg: 'var(--wc-bg-hover)' }} _highlighted={{ bg: 'var(--wc-accent-green-bg-8)' }}>
+								<HStack gap="3" w="100%">
+									<Text fontSize="12px" fontWeight="500" color="var(--wc-text-primary)">{item.label}</Text>
+									<Combobox.ItemIndicator />
+								</HStack>
+							</Combobox.Item>
+						))}
+					</Combobox.Content>
+				</Combobox.Positioner>
+			</Portal>
+		</Combobox.Root>
+	);
+}
 
 function WhisperModelCombobox({ entries, selectedPath, onSelect }: {
 	entries: TWhisperModelEntry[];
@@ -160,7 +220,6 @@ export const WhisperLaunchDialog = React.memo(({ onClose, serverId }: IWhisperLa
 	const whisperModelEntries = useMemo(() => {
 		return whisperModelsArr.flatMap(m =>
 			m.files
-				.filter(f => f.shardIndex === null || f.shardIndex === 1)
 				.map(f => ({
 					model: m,
 					file: f,
@@ -177,11 +236,11 @@ export const WhisperLaunchDialog = React.memo(({ onClose, serverId }: IWhisperLa
 
 	const handleLaunch = async () => {
 		if (!selectedBackendId) {
-			toast({ title: 'Error', description: 'Select a whisper backend', type: 'error' });
+			toast('error', 'Select a whisper backend');
 			return;
 		}
 		if (!selectedModelPath) {
-			toast({ title: 'Error', description: 'Select a model file', type: 'error' });
+			toast('error', 'Select a model file');
 			return;
 		}
 
@@ -198,14 +257,14 @@ export const WhisperLaunchDialog = React.memo(({ onClose, serverId }: IWhisperLa
 
 			if (isEdit && serverId) {
 				await updateWhisperServer(serverId, { ...payload, relaunch: true });
-				toast({ title: 'Success', description: 'Whisper server updated', type: 'success' });
+				toast('success', 'Whisper server updated');
 			} else {
 				await createWhisperServer(payload);
-				toast({ title: 'Success', description: 'Whisper server launched', type: 'success' });
+				toast('success', 'Whisper server launched');
 			}
 			onClose();
 		} catch (err) {
-			toast({ title: 'Error', description: String(err), type: 'error' });
+			toast('error', String(err));
 		} finally {
 			setLaunching(false);
 		}
@@ -251,26 +310,15 @@ export const WhisperLaunchDialog = React.memo(({ onClose, serverId }: IWhisperLa
 						{/* Left column */}
 						<VStack align="stretch" gap="5" flex="1" minW="0">
 							<Card title="Backend">
-								<Flex gap="2" flexWrap="wrap">
-									{whisperBackendsArr.map(b => (
-										<Button
-											key={b.id}
-											size="sm"
-											variant={selectedBackendId === b.id ? 'solid' : 'outline'}
-											bg={selectedBackendId === b.id ? 'var(--wc-accent-green-bg-15)' : 'var(--wc-bg-subtle)'}
-											borderColor={selectedBackendId === b.id ? 'var(--wc-accent-green)' : 'var(--wc-border-default)'}
-											color={selectedBackendId === b.id ? 'var(--wc-accent-green)' : 'var(--wc-text-secondary)'}
-											px="3" py="2" borderRadius="lg" fontSize="12px"
-											_hover={{ bg: selectedBackendId === b.id ? 'var(--wc-accent-green-bg-25)' : 'var(--wc-bg-hover)' }}
-											onClick={() => setSelectedBackendId(b.id)}
-										>
-											{b.name}
-										</Button>
-									))}
-									{whisperBackendsArr.length === 0 && (
-										<Text fontSize="12px" color="var(--wc-text-faint)">No whisper backends. Add one in Backends page.</Text>
-									)}
-								</Flex>
+								{whisperBackendsArr.length === 0 ? (
+									<Text fontSize="12px" color="var(--wc-text-faint)">No whisper backends. Add one in Backends page.</Text>
+								) : (
+									<WhisperBackendCombobox
+										entries={whisperBackendsArr.map(b => ({ id: b.id, name: b.name }))}
+										selectedId={selectedBackendId}
+										onSelect={setSelectedBackendId}
+									/>
+								)}
 							</Card>
 
 							<Card title="Model">
@@ -387,46 +435,15 @@ export const WhisperLaunchDialog = React.memo(({ onClose, serverId }: IWhisperLa
 							</Card>
 
 							<Card title="Options">
-								<Flex gap="4" flexWrap="wrap">
-									<HStack gap="2">
-										<Switch.Root checked={params.noGpu} onCheckedChange={(d) => updateParam('noGpu', d.checked)}>
-											<Switch.HiddenInput />
-											<Switch.Control css={{ bg: params.noGpu ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
-												<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
-											</Switch.Control>
-										</Switch.Root>
-										<Text fontSize="12px" color="var(--wc-text-muted)">--no-gpu</Text>
+								<VStack align="stretch" gap="3">
+									<Text fontSize="11px" color="var(--wc-text-tertiary)" textTransform="uppercase" letterSpacing="0.05em">Options</Text>
+									<HStack gap="2" flexWrap="wrap">
+										<ToggleChip label="No GPU" active={params.noGpu} onClick={() => updateParam('noGpu', !params.noGpu)} />
+										<ToggleChip label="Flash Attention" active={params.flashAttn} onClick={() => updateParam('flashAttn', !params.flashAttn)} />
+										<ToggleChip label="Translate" active={params.translate} onClick={() => updateParam('translate', !params.translate)} />
+										<ToggleChip label="Convert (ffmpeg)" active={params.convert} onClick={() => updateParam('convert', !params.convert)} />
 									</HStack>
-									<HStack gap="2">
-										<Switch.Root checked={params.flashAttn} onCheckedChange={(d) => updateParam('flashAttn', d.checked)}>
-											<Switch.HiddenInput />
-											<Switch.Control css={{ bg: params.flashAttn ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
-												<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
-											</Switch.Control>
-										</Switch.Root>
-										<Text fontSize="12px" color="var(--wc-text-muted)">--flash-attn</Text>
-									</HStack>
-								</Flex>
-								<Flex gap="4" mt="2" flexWrap="wrap">
-									<HStack gap="2">
-										<Switch.Root checked={params.translate} onCheckedChange={(d) => updateParam('translate', d.checked)}>
-											<Switch.HiddenInput />
-											<Switch.Control css={{ bg: params.translate ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
-												<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
-											</Switch.Control>
-										</Switch.Root>
-										<Text fontSize="12px" color="var(--wc-text-muted)">--translate</Text>
-									</HStack>
-									<HStack gap="2">
-										<Switch.Root checked={params.convert} onCheckedChange={(d) => updateParam('convert', d.checked)}>
-											<Switch.HiddenInput />
-											<Switch.Control css={{ bg: params.convert ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
-												<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
-											</Switch.Control>
-										</Switch.Root>
-										<Text fontSize="12px" color="var(--wc-text-muted)">--convert (needs ffmpeg)</Text>
-									</HStack>
-								</Flex>
+								</VStack>
 							</Card>
 
 							<Card title="Extra Args">

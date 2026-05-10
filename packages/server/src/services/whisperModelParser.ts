@@ -1,8 +1,8 @@
 import fs from 'fs/promises';
 import path from 'path';
-import type { IWhisperModelMetadata, IWhisperModelFile } from '@warpcore/shared';
+import type { IWhisperModelMetadata, IWhisperModelFile, TWhisperModelSize, TWhisperFtype } from '@warpcore/shared';
 
-// Parse whisper model metadata from GGUF header
+// Parse whisper model metadata from GGUF header (dead code - GGUF scanning disabled)
 export async function parseWhisperMetadata(filePath: string): Promise<IWhisperModelMetadata | null> {
 	try {
 		const { gguf } = await import('@huggingface/gguf');
@@ -19,6 +19,20 @@ export async function parseWhisperMetadata(filePath: string): Promise<IWhisperMo
 		const vocabSize = Number(meta['tokenizer.vocab_size'] ?? 0);
 		const encoderDim = Number(meta['whisper.encoder.embedding_length'] ?? 0);
 		const contextLength = Number(meta['whisper.encoder.context_length'] ?? 0);
+		const textContextLength = Number(meta['whisper.decoder.context_length'] ?? 0);
+		const textState = Number(meta['whisper.decoder.embedding_length'] ?? 0);
+		const audioLayers = Number(meta['whisper.encoder.n_layer'] ?? 0);
+		const textLayers = Number(meta['whisper.decoder.n_layer'] ?? 0);
+
+		const nAudioLayer = audioLayers;
+		const nTextLayer = textLayers;
+		const modelSize: TWhisperModelSize = nAudioLayer === 4 ? 'tiny'
+			: nAudioLayer === 6 ? 'base'
+			: nAudioLayer === 12 ? 'small'
+			: nAudioLayer === 24 ? 'medium'
+			: nAudioLayer === 32 && nTextLayer === 4 ? 'large-v3-turbo'
+			: nAudioLayer === 32 ? 'large'
+			: 'unknown';
 
 		return {
 			architecture,
@@ -26,6 +40,12 @@ export async function parseWhisperMetadata(filePath: string): Promise<IWhisperMo
 			vocabSize,
 			encoderDim,
 			contextLength,
+			textContextLength,
+			textState,
+			audioLayers,
+			textLayers,
+			modelSize,
+			ftype: 'unknown',
 			fileSize: fileStat.size,
 		};
 	} catch (err) {
@@ -34,19 +54,71 @@ export async function parseWhisperMetadata(filePath: string): Promise<IWhisperMo
 	}
 }
 
-// Parse whisper model metadata from .bin file (basic header read)
+const WHISPER_BIN_MAGIC = 0x67676d6c; // "ggml" little-endian
+
+function resolveModelSize(nAudioLayer: number, nTextLayer: number): TWhisperModelSize {
+	if (nAudioLayer === 4) return 'tiny';
+	if (nAudioLayer === 6) return 'base';
+	if (nAudioLayer === 12) return 'small';
+	if (nAudioLayer === 24) return 'medium';
+	if (nAudioLayer === 32 && nTextLayer === 4) return 'large-v3-turbo';
+	if (nAudioLayer === 32) return 'large';
+	return 'unknown';
+}
+
+function resolveFtype(ftype: number): TWhisperFtype {
+	if (ftype === 0) return 'f32';
+	if (ftype === 1) return 'f16';
+	return 'unknown';
+}
+
+// Parse whisper model metadata from .bin file (ggml binary format)
+// Header: 4 bytes magic + 44 bytes (11 × int32 LE hparams) = 48 bytes total
 export async function parseWhisperBinMetadata(filePath: string): Promise<IWhisperModelMetadata | null> {
 	try {
 		const fileStat = await fs.stat(filePath);
+		const buf = (await fs.readFile(filePath)).slice(0, 48);
 
-		// .bin files don't have easily parseable headers without whisper.cpp code
-		// Return basic info from file size
+		if (buf.length < 48) {
+			console.error(`[whisperModelParser] .bin file too small for header: ${filePath}`);
+			return null;
+		}
+
+		const magic = buf.readUInt32LE(0);
+		if (magic !== WHISPER_BIN_MAGIC) {
+			console.error(`[whisperModelParser] Invalid magic 0x${magic.toString(16)} in ${filePath}`);
+			return null;
+		}
+
+		const nVocab = buf.readInt32LE(4);
+		const nAudioCtx = buf.readInt32LE(8);
+		const nAudioState = buf.readInt32LE(12);
+		const nAudioHead = buf.readInt32LE(16);
+		const nAudioLayer = buf.readInt32LE(20);
+		const nTextCtx = buf.readInt32LE(24);
+		const nTextState = buf.readInt32LE(28);
+		const nTextHead = buf.readInt32LE(32);
+		const nTextLayer = buf.readInt32LE(36);
+		const nMels = buf.readInt32LE(40);
+		const ftype = buf.readInt32LE(44);
+
+		const modelSize = resolveModelSize(nAudioLayer, nTextLayer);
+		const ftypeStr = resolveFtype(ftype);
+
+		console.log(`[whisperModelParser] ${filePath}: ${modelSize} (${nAudioLayer}/${nTextLayer}) ${ftypeStr} vocab=${nVocab}`);
+
 		return {
 			architecture: 'whisper',
 			languages: [],
-			vocabSize: 0,
-			encoderDim: 0,
-			contextLength: 0,
+			vocabSize: nVocab,
+			encoderDim: nAudioState,
+			contextLength: nAudioCtx,
+			textContextLength: nTextCtx,
+			textState: nTextState,
+			audioLayers: nAudioLayer,
+			textLayers: nTextLayer,
+			modelSize,
+			ftype: ftypeStr,
 			fileSize: fileStat.size,
 		};
 	} catch (err) {

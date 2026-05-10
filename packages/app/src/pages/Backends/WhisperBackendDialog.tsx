@@ -62,27 +62,27 @@ export function WhisperBackendDialog({ onClose, editBackendId }: IWhisperBackend
 				}
 			}
 		} else {
-			toast({ title: 'Error', description: 'File picker not supported. Type the path manually.', type: 'error' });
+			toast('error', 'File picker not supported. Type the path manually.');
 		}
 	};
 
 	const handleSave = async () => {
 		if (!name.trim() || !path.trim()) {
-			toast({ title: 'Validation Error', description: 'Name and path are required', type: 'error' });
+			toast('error', 'Name and path are required');
 			return;
 		}
 		setSaving(true);
 		try {
 			if (isEdit) {
 				await updateWhisperBackend(editBackendId!, { name: name.trim(), path: path.trim(), description: description.trim(), defaultArgs });
-				toast({ title: 'Success', description: 'Whisper backend updated', type: 'success' });
+				toast('success', 'Whisper backend updated');
 			} else {
 				await createWhisperBackend({ name: name.trim(), path: path.trim(), description: description.trim(), defaultArgs });
-				toast({ title: 'Success', description: 'Whisper backend added', type: 'success' });
+				toast('success', 'Whisper backend added');
 			}
 			onClose();
 		} catch (err) {
-			toast({ title: 'Error', description: String(err), type: 'error' });
+			toast('error', String(err));
 		} finally {
 			setSaving(false);
 		}
