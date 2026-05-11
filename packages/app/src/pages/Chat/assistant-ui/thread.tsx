@@ -48,6 +48,7 @@ import {
 import React, { useCallback, useContext, useMemo, useState, type FC } from "react";
 import { BranchTokensContext, ChatConfigContext } from "@/pages/Chat/ChatPage";
 import { useStore } from "@/store";
+import { VoiceWaveform } from "./VoiceWaveform";
 import { ThreadServerSelector } from "@/pages/Chat/assistant-ui/ServerSelector";
 import { ThreadWhisperServerSelector } from "@/pages/Chat/assistant-ui/WhisperServerSelector";
 import { VoiceInput } from "@/pages/Chat/assistant-ui/VoiceInput";
@@ -242,14 +243,15 @@ const ContextUsageBar: FC = () => {
 
 const Composer: FC = () => {
 	const { isValidServer } = useContext(ServerStatusContext);
-	
+	const [waveformStream, setWaveformStream] = useState<MediaStream | null>(null);
+
 	const handleSubmit = (e: React.FormEvent) => {
 		if (!isValidServer) {
 			e.preventDefault();
 			document.dispatchEvent(new CustomEvent('server-selector-shake'));
 		}
 	};
-	
+
 	return (
 		<ComposerPrimitive.Root onSubmit={handleSubmit} className="aui-composer-root relative flex w-full flex-col">
 			<ComposerPrimitive.AttachmentDropzone asChild>
@@ -272,8 +274,8 @@ const Composer: FC = () => {
 						aria-label="Message input"
 						autoComplete="off"
 					/>
-					<ComposerAction />
-					<ContextUsageBar />
+					<ComposerAction onStreamChange={setWaveformStream} />
+					{waveformStream ? <VoiceWaveform mediaStream={waveformStream} /> : <ContextUsageBar />}
 				</div>
 			</ComposerPrimitive.AttachmentDropzone>
 		</ComposerPrimitive.Root>
@@ -498,7 +500,7 @@ const ToolsSelector: FC = React.memo(() => {
 	);
 });
 
-const ComposerAction: FC = () => {
+const ComposerAction: FC<{ onStreamChange?: (stream: MediaStream | null) => void }> = ({ onStreamChange }) => {
 	const { isValidServer, supportsMultiModal } = useContext(ServerStatusContext);
 	const currentThreadId = useStore(s => s.currentThreadId);
 	const canAttach = isValidServer && supportsMultiModal;
@@ -523,7 +525,7 @@ const ComposerAction: FC = () => {
 						input.setSelectionRange(cursorPos + text.length, cursorPos + text.length);
 						input.focus();
 					}, 0);
-				}} aui={aui} />
+				}} aui={aui} onStreamChange={onStreamChange} />
 				<ThreadWhisperServerSelector threadId={currentThreadId} />
 				<ThreadServerSelector threadId={currentThreadId} />
 				<AuiIf condition={(s) => !s.thread.isRunning}>
