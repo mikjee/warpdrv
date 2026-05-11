@@ -523,7 +523,7 @@ const ComposerAction: FC = () => {
 						input.setSelectionRange(cursorPos + text.length, cursorPos + text.length);
 						input.focus();
 					}, 0);
-				}} />
+				}} aui={aui} />
 				<ThreadWhisperServerSelector threadId={currentThreadId} />
 				<ThreadServerSelector threadId={currentThreadId} />
 				<AuiIf condition={(s) => !s.thread.isRunning}>

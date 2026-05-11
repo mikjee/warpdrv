@@ -1,23 +1,47 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Box, HStack, Text, Spinner } from '@chakra-ui/react';
+import { Box, HStack } from '@chakra-ui/react';
 import { Mic, Square, Loader2 } from 'lucide-react';
 import { RiVoiceprintLine } from 'react-icons/ri';
 import { useStore } from '@/store';
 import { EWhisperServerStatus } from '@warpcore/shared';
 import { createVADSession, float32ToWavBlob } from './VADManager';
 import { parseWhisperThreadMeta } from './WhisperServerSelector';
+import type { AssistantClient } from '@assistant-ui/react';
 
 interface IVoiceInputProps {
 	threadId: string | null;
 	onTranscript: (text: string) => void;
+	aui: AssistantClient;
 }
 
-type RecordingState = 'idle' | 'recording' | 'transcribing' | 'vad-active';
+// Shared: pure transcription, no state side effects
+async function transcribeAudioRaw(serverId: string, server: any, audioBlob: Blob): Promise<string | null> {
+	const formData = new FormData();
+	formData.append('file', audioBlob, 'audio.webm');
 
-export const VoiceInput = React.memo(({ threadId, onTranscript }: IVoiceInputProps) => {
-	const [state, setState] = useState<RecordingState>('idle');
+	const response = await fetch(`http://127.0.0.1:${server.port}${server.params.inferencePath}`, {
+		method: 'POST',
+		body: formData,
+	});
+
+	if (!response.ok) {
+		throw new Error(`Transcription failed: ${response.status}`);
+	}
+
+	const result = await response.json();
+	return result.text?.trim() ?? null;
+}
+
+export const VoiceInput = React.memo(({ threadId, onTranscript, aui }: IVoiceInputProps) => {
+	// PTT state (independent)
+	const [isPTTRecording, setIsPTTRecording] = useState(false);
+	const [isPTTTranscribing, setIsPTTTranscribing] = useState(false);
 	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 	const chunksRef = useRef<Blob[]>([]);
+
+	// VAD state (independent)
+	const [vadActive, setVadActive] = useState(false);
+	const [isVADTranscribing, setIsVADTranscribing] = useState(false);
 	const vadSessionRef = useRef<ReturnType<typeof createVADSession> | null>(null);
 
 	const whisperServers = useStore(s => s.whisperServers);
@@ -39,9 +63,11 @@ export const VoiceInput = React.memo(({ threadId, onTranscript }: IVoiceInputPro
 	);
 	const isWhisperReady = activeWhisperServer?.status === EWhisperServerStatus.RUNNING;
 
-	// PTT: Hold to record, release to transcribe
+	// ============================================================
+	// PTT flow (independent)
+	// ============================================================
 	const handlePTTStart = useCallback(async () => {
-		if (!isWhisperReady) return;
+		if (!isWhisperReady || vadActive) return;
 		try {
 			const audioConstraints: MediaTrackConstraints = {
 				echoCancellation: true,
@@ -62,14 +88,14 @@ export const VoiceInput = React.memo(({ threadId, onTranscript }: IVoiceInputPro
 			};
 
 			recorder.start();
-			setState('recording');
+			setIsPTTRecording(true);
 		} catch (err) {
 			console.error('[VoiceInput] Failed to start recording:', err);
 		}
-	}, [isWhisperReady]);
+	}, [isWhisperReady, vadActive, micDeviceId]);
 
 	const handlePTTEnd = useCallback(async () => {
-		if (state !== 'recording' || !mediaRecorderRef.current) return;
+		if (!isPTTRecording || !mediaRecorderRef.current) return;
 
 		const recorder = mediaRecorderRef.current;
 		const audioBlob = await new Promise<Blob>((resolve) => {
@@ -82,74 +108,69 @@ export const VoiceInput = React.memo(({ threadId, onTranscript }: IVoiceInputPro
 			recorder.stream.getTracks().forEach(t => t.stop());
 		});
 
-		setState('transcribing');
-		await transcribeAudio(audioBlob);
-	}, [state]);
+		setIsPTTRecording(false);
+		setIsPTTTranscribing(true);
 
-	// Voice chat mode: VAD-managed recording
+		try {
+			if (!activeWhisperServerId || !activeWhisperServer) return;
+			const text = await transcribeAudioRaw(activeWhisperServerId, activeWhisperServer, audioBlob);
+			if (text) onTranscript(text);
+		} catch (err) {
+			console.error('[VoiceInput] PTT transcription error:', err);
+		} finally {
+			setIsPTTTranscribing(false);
+		}
+	}, [isPTTRecording, activeWhisperServerId, activeWhisperServer, onTranscript]);
+
+	// ============================================================
+	// VAD flow (independent)
+	// ============================================================
 	const handleVADToggle = useCallback(async () => {
-		if (state === 'vad-active') {
-			// Stop VAD session
+		if (vadActive) {
 			vadSessionRef.current?.destroy();
 			vadSessionRef.current = null;
-			setState('idle');
+			setVadActive(false);
 			return;
 		}
 
 		if (!isWhisperReady) return;
 
 		const session = await createVADSession({
-			onSpeechStart: () => setState('recording'),
+			onSpeechStart: () => {
+				// Cancel inference if running
+				if (aui.composer().canCancel) {
+					aui.composer().cancel();
+				}
+			},
 			onSpeechEnd: async (audio: Float32Array) => {
-				setState('transcribing');
-				const wavBlob = float32ToWavBlob(audio);
-				await transcribeAudio(wavBlob);
+				setIsVADTranscribing(true);
+				try {
+					if (!activeWhisperServerId || !activeWhisperServer) return;
+					const wavBlob = float32ToWavBlob(audio);
+					const text = await transcribeAudioRaw(activeWhisperServerId, activeWhisperServer, wavBlob);
+					if (text) {
+						aui.composer().setText(text);
+						aui.composer().send({ startRun: true });
+					}
+				} catch (err) {
+					console.error('[VoiceInput] VAD transcription error:', err);
+				} finally {
+					setIsVADTranscribing(false);
+					// vadActive stays true - conversation loop continues
+				}
 			},
 			onError: (err) => {
 				console.error('[VoiceInput] VAD error:', err);
-				setState('idle');
+				setVadActive(false);
 			},
 		});
 
 		if (session) {
 			vadSessionRef.current = session;
 			await session.start();
-			setState('vad-active');
+			setVadActive(true);
 		}
-	}, [state, isWhisperReady]);
-
-	// Send audio directly to whisper server
-	const transcribeAudio = useCallback(async (audioBlob: Blob) => {
-		if (!activeWhisperServerId || !activeWhisperServer) {
-			setState('idle');
-			return;
-		}
-
-		try {
-			const formData = new FormData();
-			formData.append('file', audioBlob, 'audio.webm');
-
-			const response = await fetch(`http://127.0.0.1:${activeWhisperServer.port}${activeWhisperServer.params.inferencePath}`, {
-				method: 'POST',
-				body: formData,
-			});
-
-			if (!response.ok) {
-				throw new Error(`Transcription failed: ${response.status}`);
-			}
-
-			const result = await response.json();
-			const text = result.text?.trim() ?? '';
-
-			if (text) {
-				onTranscript(text);
-			}
-		} catch (err) {
-			console.error('[VoiceInput] Transcription error:', err);
-		} finally {
-			setState('idle');
-		}
-	}, [activeWhisperServerId, activeWhisperServer, onTranscript]);
+	}, [vadActive, isWhisperReady, activeWhisperServerId, activeWhisperServer, aui]);
 
 	// Cleanup on unmount
 	useEffect(() => {
@@ -168,7 +189,7 @@ export const VoiceInput = React.memo(({ threadId, onTranscript }: IVoiceInputPro
 
 	return (
 		<HStack gap="2">
-			{/* PTT Button */}
+			{/* PTT Button - disabled when VAD active */}
 			<Box
 				as="button"
 				type="button"
@@ -179,29 +200,25 @@ export const VoiceInput = React.memo(({ threadId, onTranscript }: IVoiceInputPro
 				h="36px"
 				borderRadius="lg"
 				borderWidth="1px"
-				borderColor={state === 'recording' ? 'var(--wc-accent-red)' : 'var(--wc-border-default)'}
-				bg={state === 'recording' ? 'var(--wc-accent-red-bg-15)' : 'var(--wc-bg-surface)'}
-				cursor="pointer"
-				_hover={{ bg: 'var(--wc-bg-hover)' }}
-				onClick={() => {
-					if (state === 'recording') {
-						handlePTTEnd();
-					} else {
-						handlePTTStart();
-					}
-				}}
-				title={state === 'recording' ? 'Stop recording' : 'Start recording (dictation)'}
+				borderColor={isPTTRecording ? 'var(--wc-accent-red)' : 'var(--wc-border-default)'}
+				bg={isPTTRecording ? 'var(--wc-accent-red-bg-15)' : 'var(--wc-bg-surface)'}
+				cursor={vadActive ? 'not-allowed' : 'pointer'}
+				opacity={vadActive ? 0.4 : 1}
+				_hover={{ bg: vadActive ? undefined : 'var(--wc-bg-hover)' }}
+				onClick={isPTTRecording ? handlePTTEnd : handlePTTStart}
+				disabled={vadActive}
+				title={vadActive ? 'Dictation disabled during voice chat' : isPTTRecording ? 'Stop recording' : 'Start recording (dictation)'}
 			>
-				{state === 'recording' ? (
+				{isPTTRecording ? (
 					<Square size={16} color="var(--wc-accent-red)" fill="var(--wc-accent-red)" />
-				) : state === 'transcribing' ? (
+				) : isPTTTranscribing ? (
 					<Loader2 size={16} color="var(--wc-accent-blue)" className="animate-spin" />
 				) : (
 					<Mic size={16} color="var(--wc-text-muted)" />
 				)}
 			</Box>
 
-			{/* VAD Toggle */}
+			{/* VAD Toggle - disabled when PTT recording */}
 			<Box
 				as="button"
 				type="button"
@@ -212,17 +229,19 @@ export const VoiceInput = React.memo(({ threadId, onTranscript }: IVoiceInputPro
 				h="36px"
 				borderRadius="lg"
 				borderWidth="1px"
-				borderColor={state === 'vad-active' ? 'var(--wc-accent-green)' : 'var(--wc-border-default)'}
-				bg={state === 'vad-active' ? 'var(--wc-accent-green-bg-15)' : 'var(--wc-bg-surface)'}
-				cursor="pointer"
-				_hover={{ bg: 'var(--wc-bg-hover)' }}
+				borderColor={vadActive ? 'var(--wc-accent-green)' : 'var(--wc-border-default)'}
+				bg={vadActive ? 'var(--wc-accent-green-bg-15)' : 'var(--wc-bg-surface)'}
+				cursor={isPTTRecording ? 'not-allowed' : 'pointer'}
+				opacity={isPTTRecording ? 0.4 : 1}
+				_hover={{ bg: isPTTRecording ? undefined : 'var(--wc-bg-hover)' }}
 				onClick={handleVADToggle}
-				title={state === 'vad-active' ? 'Voice chat active (click to stop)' : 'Toggle voice chat mode'}
+				disabled={isPTTRecording}
+				title={isPTTRecording ? 'Voice chat disabled during dictation' : vadActive ? 'Voice chat active (click to stop)' : 'Toggle voice chat mode'}
 			>
-				{state === 'vad-active' ? (
-					<RiVoiceprintLine size={16} color="var(--wc-accent-green)" />
+				{isVADTranscribing ? (
+					<Loader2 size={16} color="var(--wc-accent-green)" className="animate-spin" />
 				) : (
-					<RiVoiceprintLine size={16} color="var(--wc-text-muted)" />
+					<RiVoiceprintLine size={16} color={vadActive ? 'var(--wc-accent-green)' : 'var(--wc-text-muted)'} />
 				)}
 			</Box>
 		</HStack>
