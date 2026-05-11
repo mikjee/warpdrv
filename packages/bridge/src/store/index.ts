@@ -70,6 +70,7 @@ export interface IChatStoreState {
 	currentSystemPrompt: string;
 	currentInferenceParams: Record<string, unknown>;
 	tempThreadServerId: string | null;
+	tempThreadWhisperServerId: string | null;
 
 	// Attached tools (for active thread context)
 	attachAllTools: boolean;
@@ -102,6 +103,7 @@ export interface IChatStoreState {
 	setCurrentSystemPrompt: (prompt: string) => void;
 	setCurrentInferenceParams: (params: Record<string, unknown>) => void;
 	setTempThreadServerId: (id: string | null) => void;
+	setTempThreadWhisperServerId: (id: string | null) => void;
 
 	// Attached tools actions
 	setAttachedTools: (attachAll: boolean, tools: IToolAttachment[]) => void;
@@ -139,6 +141,7 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 		currentSystemPrompt: '',
 		currentInferenceParams: {} as Record<string, unknown>,
 		tempThreadServerId: null,
+		tempThreadWhisperServerId: null,
 		attachAllTools: false,
 		attachedTools: [] as IToolAttachment[],
 		elicitationByThread: {} as Record<TThreadId, IElicitationRequest>,
@@ -453,6 +456,7 @@ setActiveThread: (id: TThreadId | null) =>
 			set((draft) => {
 				draft.currentThreadId = id;
 				draft.tempThreadServerId = null;
+				draft.tempThreadWhisperServerId = null;
 			}),
 
 		setCurrentSystemPrompt: (prompt: string) =>
@@ -468,6 +472,11 @@ setActiveThread: (id: TThreadId | null) =>
 		setTempThreadServerId: (id: string | null) =>
 			set((draft) => {
 				draft.tempThreadServerId = id;
+			}),
+
+		setTempThreadWhisperServerId: (id: string | null) =>
+			set((draft) => {
+				draft.tempThreadWhisperServerId = id;
 			}),
 
 		// Attached tools actions

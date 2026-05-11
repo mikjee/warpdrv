@@ -46,9 +46,7 @@
 "resources": [
 				"binaries/better_sqlite3.node",
 				"app-dist/**/*",
-				"../../release.json",
-				"../../packages/app/public/vad/**/*",
-				"../../packages/app/public/onnxruntime/**/*"
+				"../../release.json"
 			],
 		"linux": {
 			"deb": {

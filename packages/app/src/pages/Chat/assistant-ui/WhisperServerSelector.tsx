@@ -52,17 +52,8 @@ export const ThreadWhisperServerSelector = React.memo(({
 	const handleSelect = useCallback(async (serverId: string) => {
 		setOpen(false);
 		setTempWhisperServerId(serverId);
-		if (threadId) {
-			// Update thread meta with whisperServerId
-			try {
-				const meta = thread?.meta ? JSON.parse(thread.meta) : {};
-				meta.whisperServerId = serverId;
-				await updateThread(threadId, { meta: JSON.stringify(meta) });
-			} catch (err) {
-				console.error('[WhisperServerSelector] Failed to update thread:', err);
-			}
-		}
-	}, [threadId, thread?.meta, setTempWhisperServerId]);
+		if (threadId) await updateThread(threadId, { whisperServerId: serverId });
+	}, [threadId, setTempWhisperServerId]);
 
 	return (
 		<Box position="relative">

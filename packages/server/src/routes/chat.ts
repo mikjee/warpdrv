@@ -39,7 +39,7 @@ chatRouter.get('/threads', async (req, res) => {
 				title: body.title ?? 'New Chat',
 				folderId: body.folderId ?? null,
 				systemPrompt: body.systemPrompt ?? '',
-				meta: JSON.stringify({ serverId: body.serverId ?? null, tags: body.tags ?? [] }),
+				meta: JSON.stringify({ serverId: body.serverId ?? null, whisperServerId: body.whisperServerId ?? null, tags: body.tags ?? [] }),
 				totalPromptTokens: body.totalPromptTokens ?? 0,
 				totalCompletionTokens: body.totalCompletionTokens ?? 0,
 				createdAt: now,
@@ -78,6 +78,7 @@ chatRouter.put('/threads/:id', async (req, res) => {
 		const meta = JSON.parse(thread.meta || '{}');
 		const strMeta = JSON.stringify({
 			serverId: body.serverId ?? meta.serverId,
+			whisperServerId: body.whisperServerId ?? meta.whisperServerId,
 			tags: body.tags ?? meta.tags,
 		});
 
