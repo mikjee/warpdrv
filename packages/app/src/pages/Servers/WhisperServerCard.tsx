@@ -3,12 +3,13 @@ import { Box, Text, HStack, VStack, Flex, Button, Badge, Input, Portal, Popover,
 import { Play, Square, RotateCcw, Mic, Clock, Trash2, X, Plus, Terminal, Edit, Blocks } from 'lucide-react';
 import { FaBrain, FaBookOpen } from 'react-icons/fa6';
 import { Card } from '@/components/Card';
+import { StatusBadge } from '@/pages/Servers/StatusBadge';
 import { ConfirmDialog } from '@/components/dialogs/ConfirmDialog';
 import { useMutation } from '@/hooks/useQuery';
 import { useStore } from '@/store';
 import { stopWhisperServer, restartWhisperServer, updateWhisperServer } from '@/api/whisperServices';
 import type { IWhisperServer, IWhisperModel } from '@warpcore/shared';
-import { EWhisperServerStatus } from '@warpcore/shared';
+import { EWhisperServerStatus, EServerStatus } from '@warpcore/shared';
 import { formatUptime, StatPill } from './utils';
 
 interface IWhisperServerCardProps {
@@ -123,13 +124,7 @@ export const WhisperServerCard = React.memo(({
 										</HoverCard.Positioner>
 									</Portal>
 								</HoverCard.Root>
-								<Badge
-									px="1.5" py="0.5" borderRadius="md" fontSize="10px" fontWeight="600"
-									bg={isRunning ? 'var(--wc-accent-green-bg-15)' : isLoading ? 'var(--wc-accent-yellow-bg-15)' : 'var(--wc-bg-hover)'}
-									color={isRunning ? 'var(--wc-accent-green)' : isLoading ? 'var(--wc-accent-yellow)' : 'var(--wc-text-muted)'}
-								>
-									{server.status}{server.port > 0 ? ` :${server.port}` : ''}
-								</Badge>
+								<StatusBadge status={server.status as EServerStatus} port={server.port} />
 								{server.serverAlias && server.serverAlias.length > 0 && (
 									<>
 										{server.serverAlias.map(alias => (

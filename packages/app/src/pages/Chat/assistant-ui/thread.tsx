@@ -23,7 +23,7 @@ import {
 	MessagePrimitive,
 	SuggestionPrimitive,
 	ThreadPrimitive,
-	useAuiState,
+	useAuiState, useAui,
 } from "@assistant-ui/react";
 import {
 	ArrowDownIcon,
@@ -502,6 +502,7 @@ const ComposerAction: FC = () => {
 	const { isValidServer, supportsMultiModal } = useContext(ServerStatusContext);
 	const currentThreadId = useStore(s => s.currentThreadId);
 	const canAttach = isValidServer && supportsMultiModal;
+	const aui = useAui();
 
 	return (
 		<div className="aui-composer-action-wrapper relative flex items-center justify-between">
@@ -513,13 +514,15 @@ const ComposerAction: FC = () => {
 			</div>
 			<div className="flex items-center gap-2">
 				<VoiceInput threadId={currentThreadId} onTranscript={(text) => {
-					// Dispatch text into composer input
 					const input = document.querySelector('.aui-composer-input') as HTMLTextAreaElement;
-					if (input) {
-						input.value += text;
-						input.dispatchEvent(new Event('input', { bubbles: true }));
+					if (!input) return;
+					const cursorPos = input.selectionStart ?? input.value.length;
+					const newText = input.value.slice(0, cursorPos) + text + input.value.slice(cursorPos);
+					aui.composer().setText(newText);
+					setTimeout(() => {
+						input.setSelectionRange(cursorPos + text.length, cursorPos + text.length);
 						input.focus();
-					}
+					}, 0);
 				}} />
 				<ThreadWhisperServerSelector threadId={currentThreadId} />
 				<ThreadServerSelector threadId={currentThreadId} />

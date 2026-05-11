@@ -12,7 +12,7 @@ import { hubRouter } from './routes/hub';
 import { tokensRouter } from './routes/tokens';
 import { authRouter } from './routes/auth';
 import { authMiddleware } from './middleware/auth';
-import type { ISettings, IServer, IDownload, IDevice, IBackend, IBackendGroup } from '@warpcore/shared';
+import type { ISettings, IServer, IDownload, IDevice, IBackend, IBackendGroup, IWhisperBackend, IWhisperServer } from '@warpcore/shared';
 import type { TBackendId, TBackendGroupId } from '@warpcore/shared';
 import { DEFAULT_SETTINGS, EServerStatus, EDownloadStatus, SSE_CHANNELS_CHECKPOINT } from '@warpcore/shared';
 import { runMigrations } from './services/migrationRunner';
@@ -308,22 +308,22 @@ async function main() {
 		const WHISPER_BACKENDS_PREFIX = 'whisperBackends:';
 
 		sseManager.onConnect('whisperBackends:init', async () => {
-			const backends = await store.list<IBackend>(WHISPER_BACKENDS_PREFIX);
+			const backends = await store.list<IWhisperBackend>(WHISPER_BACKENDS_PREFIX);
 			return backends.reduce((acc, b) => {
 				acc[b.id] = b;
 				return acc;
-			}, {} as Record<string, IBackend>);
+			}, {} as Record<string, IWhisperBackend>);
 		});
 
 		// Whisper Servers
 		const WHISPER_SERVERS_PREFIX = 'whisperServers:';
 
 		sseManager.onConnect('whisperServers:init', async () => {
-			const servers = await store.list<IServer>(WHISPER_SERVERS_PREFIX);
+			const servers = await store.list<IWhisperServer>(WHISPER_SERVERS_PREFIX);
 			return servers.reduce((acc, s) => {
 				acc[s.id] = s;
 				return acc;
-			}, {} as Record<string, IServer>);
+			}, {} as Record<string, IWhisperServer>);
 		});
 
 		// Whisper Models

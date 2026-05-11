@@ -1,5 +1,5 @@
 import { Box, Text, HStack, VStack, Flex, Badge, Button, Input, Collapsible, InputGroup, Combobox, createListCollection, Portal, Link as ChakraLink } from '@chakra-ui/react';
-import { Blocks, Plus, Terminal, Layers, ChevronDown, ChevronRight, Search, ArrowUpAZ, ArrowDownZA, CheckCircle, AlertCircle, Edit, Trash2 } from 'lucide-react';
+import { Blocks, Plus, Terminal, Layers, ChevronDown, ChevronRight, Search, ArrowUpAZ, ArrowDownZA, CheckCircle, AlertCircle, Edit, Trash2, Mic } from 'lucide-react';
 import { useState, useCallback, useMemo } from 'react';
 import { useDependantState } from '../../hooks/useDependantState';
 import { PageHeader } from '../../components/PageHeader';
@@ -431,15 +431,20 @@ export function BackendsPage() {
 									<VStack align="stretch" gap="3">
 										{whisperBackendsArr.map(backend => (
 											<Box key={backend.id} px="3" py="2" borderRadius="lg" bg="var(--wc-bg-card)" borderWidth="1px" borderColor="var(--wc-border-subtle)">
-												<HStack justify="space-between">
-													<VStack align="start" gap="1" flex="1" minW="0">
-														<HStack gap="2">
-															<Text fontSize="13px" fontWeight="500" color="var(--wc-text-primary)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">{backend.name}</Text>
-															{backend.validation === EValidationStatus.VALID && <CheckCircle size={14} color="var(--wc-accent-green)" />}
-															{backend.validation === EValidationStatus.INVALID && <AlertCircle size={14} color="var(--wc-accent-red)" />}
-														</HStack>
-														<Text fontSize="11px" color="var(--wc-text-muted)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">{backend.path}</Text>
-													</VStack>
+												<Flex justify="space-between" align="center">
+													<HStack gap="3" flex="1" minW="0">
+														<Flex w="10" h="10" borderRadius="lg" alignItems="center" justifyContent="center" bg="var(--wc-bg-surface)">
+															<Mic size={20} color="var(--wc-text-tertiary)" />
+														</Flex>
+														<Box flex="1" minW="0">
+															<HStack gap="2">
+																<Text fontSize="13px" fontWeight="500" color="var(--wc-text-primary)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">{backend.name}</Text>
+																{backend.validation === EValidationStatus.VALID && <CheckCircle size={14} color="var(--wc-accent-green)" />}
+																{backend.validation === EValidationStatus.INVALID && <AlertCircle size={14} color="var(--wc-accent-red)" />}
+															</HStack>
+															<Text fontSize="11px" color="var(--wc-text-muted)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">{backend.path}</Text>
+														</Box>
+													</HStack>
 													<HStack gap="1">
 														<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-blue)', bg: 'var(--wc-accent-blue-bg-8)' }} borderRadius="md" onClick={() => setEditingWhisperBackend(backend)}>
 															<Edit size={14} />
@@ -448,7 +453,7 @@ export function BackendsPage() {
 															<Trash2 size={14} />
 														</Button>
 													</HStack>
-												</HStack>
+												</Flex>
 											</Box>
 										))}
 									</VStack>

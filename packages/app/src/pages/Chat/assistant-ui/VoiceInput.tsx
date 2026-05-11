@@ -1,9 +1,11 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Box, HStack, Text, Spinner } from '@chakra-ui/react';
 import { Mic, Square, Loader2 } from 'lucide-react';
+import { RiVoiceprintLine } from 'react-icons/ri';
 import { useStore } from '@/store';
 import { EWhisperServerStatus } from '@warpcore/shared';
 import { createVADSession, float32ToWavBlob } from './VADManager';
+import { parseWhisperThreadMeta } from './WhisperServerSelector';
 
 interface IVoiceInputProps {
 	threadId: string | null;
@@ -21,20 +23,21 @@ export const VoiceInput = React.memo(({ threadId, onTranscript }: IVoiceInputPro
 	const whisperServers = useStore(s => s.whisperServers);
 	const tempWhisperServerId = useStore(s => s.tempThreadWhisperServerId);
 	const thread = useStore(s => threadId ? s.threads[threadId] : null);
-
-	// Get active whisper server ID from thread meta or temp
-	const assignedWhisperServerId = useRef<string | null>(null);
-	if (thread?.meta) {
-		try {
-			const meta = JSON.parse(thread.meta);
-			assignedWhisperServerId.current = meta.whisperServerId ?? null;
-		} catch {}
-	}
-	const activeWhisperServerId = assignedWhisperServerId.current ?? tempWhisperServerId;
-	const activeWhisperServer = activeWhisperServerId ? whisperServers[activeWhisperServerId] : null;
-	const isWhisperReady = activeWhisperServer?.status === EWhisperServerStatus.RUNNING;
 	const micDeviceId = useStore(s => s.settings.micDeviceId);
-	const proxyPort = useStore(s => s.proxyStatus?.port ?? 1234);
+
+	const assignedWhisperServerId = useMemo(
+		() => thread?.meta ? parseWhisperThreadMeta(thread.meta).whisperServerId : null,
+		[thread]
+	);
+	const activeWhisperServerId = useMemo(
+		() => assignedWhisperServerId ?? tempWhisperServerId,
+		[assignedWhisperServerId, tempWhisperServerId]
+	);
+	const activeWhisperServer = useMemo(
+		() => activeWhisperServerId ? whisperServers[activeWhisperServerId] : null,
+		[activeWhisperServerId, whisperServers]
+	);
+	const isWhisperReady = activeWhisperServer?.status === EWhisperServerStatus.RUNNING;
 
 	// PTT: Hold to record, release to transcribe
 	const handlePTTStart = useCallback(async () => {
@@ -115,20 +118,18 @@ export const VoiceInput = React.memo(({ threadId, onTranscript }: IVoiceInputPro
 		}
 	}, [state, isWhisperReady]);
 
-	// Send audio to whisper server via proxy
+	// Send audio directly to whisper server
 	const transcribeAudio = useCallback(async (audioBlob: Blob) => {
-		if (!activeWhisperServerId) {
+		if (!activeWhisperServerId || !activeWhisperServer) {
 			setState('idle');
 			return;
 		}
 
 		try {
-
 			const formData = new FormData();
 			formData.append('file', audioBlob, 'audio.webm');
-			formData.append('model', activeWhisperServer?.serverAlias?.[0] ?? activeWhisperServerId);
 
-			const response = await fetch(`http://127.0.0.1:${proxyPort}/v1/audio/transcriptions`, {
+			const response = await fetch(`http://127.0.0.1:${activeWhisperServer.port}${activeWhisperServer.params.inferencePath}`, {
 				method: 'POST',
 				body: formData,
 			});
@@ -148,7 +149,7 @@ export const VoiceInput = React.memo(({ threadId, onTranscript }: IVoiceInputPro
 		} finally {
 			setState('idle');
 		}
-	}, [activeWhisperServerId, activeWhisperServer, onTranscript, proxyPort]);
+	}, [activeWhisperServerId, activeWhisperServer, onTranscript]);
 
 	// Cleanup on unmount
 	useEffect(() => {
@@ -170,6 +171,7 @@ export const VoiceInput = React.memo(({ threadId, onTranscript }: IVoiceInputPro
 			{/* PTT Button */}
 			<Box
 				as="button"
+				type="button"
 				display="flex"
 				alignItems="center"
 				justifyContent="center"
@@ -177,19 +179,18 @@ export const VoiceInput = React.memo(({ threadId, onTranscript }: IVoiceInputPro
 				h="36px"
 				borderRadius="lg"
 				borderWidth="1px"
-				borderColor="var(--wc-border-default)"
-				bg="var(--wc-bg-surface)"
+				borderColor={state === 'recording' ? 'var(--wc-accent-red)' : 'var(--wc-border-default)'}
+				bg={state === 'recording' ? 'var(--wc-accent-red-bg-15)' : 'var(--wc-bg-surface)'}
 				cursor="pointer"
 				_hover={{ bg: 'var(--wc-bg-hover)' }}
-				_active={{ bg: 'var(--wc-bg-selected)' }}
-				onMouseDown={handlePTTStart}
-				onMouseUp={handlePTTEnd}
-				onMouseLeave={() => {
-					if (state === 'recording') handlePTTEnd();
+				onClick={() => {
+					if (state === 'recording') {
+						handlePTTEnd();
+					} else {
+						handlePTTStart();
+					}
 				}}
-			 onTouchStart={handlePTTStart}
-				onTouchEnd={handlePTTEnd}
-				title="Hold to record (dictation)"
+				title={state === 'recording' ? 'Stop recording' : 'Start recording (dictation)'}
 			>
 				{state === 'recording' ? (
 					<Square size={16} color="var(--wc-accent-red)" fill="var(--wc-accent-red)" />
@@ -203,6 +204,7 @@ export const VoiceInput = React.memo(({ threadId, onTranscript }: IVoiceInputPro
 			{/* VAD Toggle */}
 			<Box
 				as="button"
+				type="button"
 				display="flex"
 				alignItems="center"
 				justifyContent="center"
@@ -218,9 +220,9 @@ export const VoiceInput = React.memo(({ threadId, onTranscript }: IVoiceInputPro
 				title={state === 'vad-active' ? 'Voice chat active (click to stop)' : 'Toggle voice chat mode'}
 			>
 				{state === 'vad-active' ? (
-					<Mic size={16} color="var(--wc-accent-green)" fill="var(--wc-accent-green)" />
+					<RiVoiceprintLine size={16} color="var(--wc-accent-green)" />
 				) : (
-					<Mic size={16} color="var(--wc-text-muted)" />
+					<RiVoiceprintLine size={16} color="var(--wc-text-muted)" />
 				)}
 			</Box>
 		</HStack>

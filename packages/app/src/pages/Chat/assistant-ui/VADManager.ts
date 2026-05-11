@@ -40,7 +40,10 @@ export async function createVADSession(callbacks: IVADCallbacks): Promise<IVADSe
 			onSpeechStart: () => callbacks.onSpeechStart(),
 			onSpeechEnd: (audio: Float32Array) => callbacks.onSpeechEnd(audio),
 			onError: (error: Error) => callbacks.onError?.(error) || console.error('[VADSession] Error:', error),
-			modelUrl: '/vad/vad.onnx', // Bundled from @ricky0123/vad-web/dist/silero_vad_v5.onnx
+			baseAssetPath: '/vad/',
+			model: 'v5',
+			onnxWASMBasePath: '/onnxruntime/',
+			startOnLoad: false,
 		});
 
 		return {
