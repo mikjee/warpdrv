@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const abs = (p: string) => path.resolve(__dirname, p).replace(/\\/g, '/');
 import react from '@vitejs/plugin-react';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 
@@ -48,11 +49,11 @@ export default defineConfig({
 		},
 		viteStaticCopy({
 			targets: [
-				{ src: path.resolve(__dirname, '../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs'), dest: 'onnxruntime' },
-				{ src: path.resolve(__dirname, '../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm'), dest: 'onnxruntime' },
-				{ src: path.resolve(__dirname, '../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.mjs'), dest: 'onnxruntime' },
-				{ src: path.resolve(__dirname, '../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm'), dest: 'onnxruntime' },
-				{ src: path.resolve(__dirname, '../../node_modules/@ricky0123/vad-web/dist/vad.worklet.bundle.min.js'), dest: 'vad' }
+				{ src: abs('../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs'), dest: 'onnxruntime', rename: 'ort-wasm-simd-threaded.mjs' },
+				{ src: abs('../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm'), dest: 'onnxruntime', rename: 'ort-wasm-simd-threaded.wasm' },
+				{ src: abs('../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.mjs'), dest: 'onnxruntime', rename: 'ort-wasm-simd-threaded.jsep.mjs' },
+				{ src: abs('../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm'), dest: 'onnxruntime', rename: 'ort-wasm-simd-threaded.jsep.wasm' },
+				{ src: abs('../../node_modules/@ricky0123/vad-web/dist/vad.worklet.bundle.min.js'), dest: 'vad', rename: 'vad.worklet.bundle.min.js' }
 			]
 		})
 	],
