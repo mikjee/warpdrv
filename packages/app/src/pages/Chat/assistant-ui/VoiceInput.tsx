@@ -16,11 +16,11 @@ interface IVoiceInputProps {
 }
 
 // Shared: pure transcription, no state side effects
-async function transcribeAudioRaw(serverId: string, server: any, audioBlob: Blob): Promise<string | null> {
+async function transcribeAudioRaw(serverId: string, _server: any, audioBlob: Blob): Promise<string | null> {
 	const formData = new FormData();
 	formData.append('file', audioBlob, 'audio.webm');
 
-	const response = await fetch(`http://127.0.0.1:${server.port}${server.params.inferencePath}`, {
+	const response = await fetch(`/api/whisper-servers/${serverId}/transcribe`, {
 		method: 'POST',
 		body: formData,
 	});

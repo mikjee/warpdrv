@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import crypto from 'crypto';
+import http from 'node:http';
 import { store } from '../util/store';
 import {
 	buildWhisperArgs,
@@ -188,4 +189,42 @@ whisperServersRouter.get('/:id/logs', async (req, res) => {
 whisperServersRouter.delete('/:id/logs', async (req, res) => {
 	clearWhisperServerLogs(req.params.id);
 	res.json({ ok: true, data: null, error: null });
+});
+
+// POST /api/whisper-servers/:id/transcribe — stream multipart to whisper server
+whisperServersRouter.post('/:id/transcribe', async (req, res) => {
+	const server = await store.get<IWhisperServer>(PREFIX + req.params.id);
+	if (!server) {
+		res.status(404).json({ ok: false, data: null, error: 'Whisper server not found' });
+		return;
+	}
+	if (server.status !== EWhisperServerStatus.RUNNING) {
+		res.status(503).json({ ok: false, data: null, error: 'Whisper server not running' });
+		return;
+	}
+
+	const upstream = http.request({
+		hostname: '127.0.0.1',
+		port: server.port,
+		path: server.params.inferencePath,
+		method: 'POST',
+		headers: {
+			'content-type': req.headers['content-type'] ?? 'application/octet-stream',
+			'content-length': req.headers['content-length'] ?? '',
+		},
+	}, (upstreamRes) => {
+		res.status(upstreamRes.statusCode ?? 502);
+		for (const [k, v] of Object.entries(upstreamRes.headers)) {
+			if (v !== undefined) res.setHeader(k, v as string | string[]);
+		}
+		upstreamRes.pipe(res);
+	});
+
+	upstream.on('error', (err) => {
+		if (!res.headersSent) {
+			res.status(502).json({ ok: false, data: null, error: 'Whisper upstream error', message: err.message });
+		}
+	});
+
+	req.pipe(upstream);
 });

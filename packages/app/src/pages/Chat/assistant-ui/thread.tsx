@@ -44,6 +44,7 @@ import {
 	SquareIcon,
 	Timer,
 	Trash2,
+	Volume2,
 } from "lucide-react";
 import React, { useCallback, useContext, useMemo, useState, type FC } from "react";
 import { BranchTokensContext, ChatConfigContext } from "@/pages/Chat/ChatPage";
@@ -741,13 +742,46 @@ const DeleteMessageButton: FC<{ messageId: string }> = ({ messageId }) => {
 		if (!confirm('Delete this message?')) return;
 		await deleteMessage(messageId);
 	}, [messageId]);
-	
+
 	return (
 		<ActionBarIcon onClick={handleDelete}>
 			<Trash2 size={14} />
 		</ActionBarIcon>
 	);
 };
+
+const TTSToggle = React.memo(() => {
+	const [speaking, setSpeaking] = useState(false);
+	const parts = useAuiState((s) => s.message.content);
+	const messageText = useMemo(() => {
+		if (!parts || parts.length === 0) return '';
+		return parts
+			.filter((p: any) => p.type === 'text')
+			.map((p: any) => p.text)
+			.join('\n\n');
+	}, [parts]);
+
+	const handleSpeak = useCallback(() => {
+		if (speaking) {
+			window.speechSynthesis.cancel();
+			setSpeaking(false);
+			return;
+		}
+		if (!messageText.trim()) return;
+		window.speechSynthesis.cancel();
+		const utterance = new SpeechSynthesisUtterance(messageText);
+		utterance.onend = () => setSpeaking(false);
+		utterance.onerror = () => setSpeaking(false);
+		setSpeaking(true);
+		window.speechSynthesis.speak(utterance);
+	}, [speaking, messageText]);
+
+	return (
+		<ActionBarIcon onClick={handleSpeak}>
+			{speaking ? <SquareIcon size={14} /> : <Volume2 size={14} />}
+		</ActionBarIcon>
+	);
+});
 
 const AssistantActionBar: FC = () => {
 	const messageId = useAuiState((s) => s.message.id);
@@ -771,6 +805,8 @@ const AssistantActionBar: FC = () => {
 			</ActionBarPrimitive.Reload>
 
 			<DeleteMessageButton messageId={messageId} />
+
+			{/* <TTSToggle /> */}
 
 		</ActionBarPrimitive.Root>
 	);

@@ -5,6 +5,7 @@ import { EWhisperServerStatus, DEFAULT_WHISPER_LAUNCH_PARAMS } from '@warpcore/s
 import { parse as shellParse } from 'shell-quote';
 import { store } from '../util/store';
 import { sseManager } from './sseManagerInstance';
+import { killProcessTree } from './processManager';
 
 export const WHISPER_SERVERS_PREFIX = 'whisperServers:';
 const SETTINGS_KEY = 'settings:general';
@@ -228,28 +229,20 @@ export async function killWhisperServer(serverId: string, pid?: number): Promise
 				emitWhisperServerUpdate(serverId, EWhisperServerStatus.STOPPED, null, null).catch(() => {});
 			});
 
-			try {
-				if (process.platform === 'win32') {
-					require('child_process').execSync(`taskkill /T /F /PID ${pidToUse}`, { stdio: 'ignore' });
-				} else {
-					process.kill(-pidToUse, 'SIGTERM');
-				}
-			} catch {
-				finish(false);
-				return;
-			}
+	try {
+			killProcessTree(pidToUse, 'SIGTERM');
+		} catch {
+			finish(false);
+			return;
+		}
 
-			setTimeout(() => {
-				try {
-					if (process.platform === 'win32') {
-						require('child_process').execSync(`taskkill /T /F /PID ${pidToUse}`, { stdio: 'ignore' });
-					} else {
-						process.kill(-pidToUse, 'SIGKILL');
-					}
-				} catch {}
-				setTimeout(() => finish(true), 200);
-			}, 5000);
-		});
+		setTimeout(() => {
+			try {
+				killProcessTree(pidToUse, 'SIGKILL');
+			} catch {}
+			setTimeout(() => finish(true), 200);
+		}, 5000);
+	});
 	}
 
 	if (pid) {
@@ -260,11 +253,7 @@ export async function killWhisperServer(serverId: string, pid?: number): Promise
 		}
 
 		try {
-			if (process.platform === 'win32') {
-				require('child_process').execSync(`taskkill /T /F /PID ${pid}`, { stdio: 'ignore' });
-			} else {
-				process.kill(-pid, 'SIGTERM');
-			}
+			killProcessTree(pid, 'SIGTERM');
 		} catch {}
 
 		return new Promise((resolve) => {
@@ -278,7 +267,10 @@ export async function killWhisperServer(serverId: string, pid?: number): Promise
 			}, 100);
 			setTimeout(() => {
 				clearInterval(check);
-				resolve(true);
+				try {
+					killProcessTree(pid, 'SIGKILL');
+				} catch {}
+				setTimeout(() => resolve(true), 200);
 			}, 5000);
 		});
 	}

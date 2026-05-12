@@ -28,6 +28,7 @@ import { getAllServerSlots, getServerSlots } from './services/slotStateTracker';
 import { listCheckpoints } from './services/checkpointService';
 import { recipesRouter } from './routes/recipes';
 import { checkpointsRouter } from './routes/checkpoints';
+import { clientLogsRouter } from './routes/clientLogs';
 import { whisperBackendsRouter } from './routes/whisperBackends';
 import { whisperServersRouter } from './routes/whisperServers';
 import { whisperModelsRouter, loadCachedWhisperModels, getCachedWhisperModels } from './routes/whisperModels';
@@ -135,6 +136,8 @@ async function main() {
 	app.use(cookieParser());
 	// Auth routes (no middleware - public endpoints)
 	app.use('/api/auth', authRouter);
+	// Client log route (no auth — server may not be up when errors occur)
+	app.use('/api/client-log', clientLogsRouter);
 	// Token routes (require admin auth)
 	app.use('/api/tokens', authMiddleware, tokensRouter);
 	// API routes with auth middleware

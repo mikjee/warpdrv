@@ -45,13 +45,14 @@ export default defineConfig({
 					fs.createReadStream(filePath).pipe(res);
 				});
 			}
-},
+		},
 		viteStaticCopy({
 			targets: [
-				{ src: '../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs', dest: 'onnxruntime' },
-				{ src: '../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm', dest: 'onnxruntime' },
-				{ src: 'public/vad/silero_vad_v5.onnx', dest: 'vad' },
-				{ src: '../../node_modules/@ricky0123/vad-web/dist/vad.worklet.bundle.min.js', dest: 'vad' }
+				{ src: path.resolve(__dirname, '../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs'), dest: 'onnxruntime' },
+				{ src: path.resolve(__dirname, '../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm'), dest: 'onnxruntime' },
+				{ src: path.resolve(__dirname, '../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.mjs'), dest: 'onnxruntime' },
+				{ src: path.resolve(__dirname, '../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm'), dest: 'onnxruntime' },
+				{ src: path.resolve(__dirname, '../../node_modules/@ricky0123/vad-web/dist/vad.worklet.bundle.min.js'), dest: 'vad' }
 			]
 		})
 	],
