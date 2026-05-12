@@ -4,9 +4,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const abs = (p: string) => path.resolve(__dirname, p).replace(/\\/g, '/');
 import react from '@vitejs/plugin-react';
-import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig({
 	plugins: [
@@ -47,15 +45,24 @@ export default defineConfig({
 				});
 			}
 		},
-		viteStaticCopy({
-			targets: [
-				{ src: abs('../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs'), dest: 'onnxruntime', rename: 'ort-wasm-simd-threaded.mjs' },
-				{ src: abs('../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm'), dest: 'onnxruntime', rename: 'ort-wasm-simd-threaded.wasm' },
-				{ src: abs('../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.mjs'), dest: 'onnxruntime', rename: 'ort-wasm-simd-threaded.jsep.mjs' },
-				{ src: abs('../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm'), dest: 'onnxruntime', rename: 'ort-wasm-simd-threaded.jsep.wasm' },
-				{ src: abs('../../node_modules/@ricky0123/vad-web/dist/vad.worklet.bundle.min.js'), dest: 'vad', rename: 'vad.worklet.bundle.min.js' }
-			]
-		})
+		{
+			name: 'copy-vad-onnx-assets',
+			closeBundle() {
+				const pairs: [string, string][] = [
+					['../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs', 'dist/onnxruntime/ort-wasm-simd-threaded.mjs'],
+					['../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm', 'dist/onnxruntime/ort-wasm-simd-threaded.wasm'],
+					['../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.mjs', 'dist/onnxruntime/ort-wasm-simd-threaded.jsep.mjs'],
+					['../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm', 'dist/onnxruntime/ort-wasm-simd-threaded.jsep.wasm'],
+					['../../node_modules/@ricky0123/vad-web/dist/vad.worklet.bundle.min.js', 'dist/vad/vad.worklet.bundle.min.js'],
+				]
+				for (const [src, dst] of pairs) {
+					const srcAbs = path.resolve(__dirname, src)
+					const dstAbs = path.resolve(__dirname, dst)
+					fs.mkdirSync(path.dirname(dstAbs), { recursive: true })
+					fs.copyFileSync(srcAbs, dstAbs)
+				}
+			}
+		}
 	],
 	define: {
 		__CONTROL_API_PORT__: JSON.stringify(process.env.CONTROL_API_PORT ?? '4400'),
