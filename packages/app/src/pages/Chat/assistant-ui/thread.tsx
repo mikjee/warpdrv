@@ -275,7 +275,7 @@ const Composer: FC = () => {
 						autoComplete="off"
 					/>
 					<ComposerAction onStreamChange={setWaveformStream} />
-					{waveformStream ? <VoiceWaveform mediaStream={waveformStream} /> : <ContextUsageBar />}
+					{waveformStream ? <VoiceWaveform stream={waveformStream} width={680} /> : <ContextUsageBar />}
 				</div>
 			</ComposerPrimitive.AttachmentDropzone>
 		</ComposerPrimitive.Root>

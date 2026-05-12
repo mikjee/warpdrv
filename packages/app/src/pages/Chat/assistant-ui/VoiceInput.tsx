@@ -39,6 +39,7 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 	const [isPTTTranscribing, setIsPTTTranscribing] = useState(false);
 	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 	const chunksRef = useRef<Blob[]>([]);
+	const pttWaveformStreamRef = useRef<MediaStream | null>(null);
 
 	// VAD state (independent)
 	const [vadActive, setVadActive] = useState(false);
@@ -91,29 +92,29 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 
 			recorder.start();
 			setIsPTTRecording(true);
-			onStreamChange?.(stream);
+			const waveformStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+			pttWaveformStreamRef.current = waveformStream;
+			onStreamChange?.(waveformStream);
 		} catch (err) {
 			console.error('[VoiceInput] Failed to start recording:', err);
 		}
 	}, [isWhisperReady, vadActive, micDeviceId, onStreamChange]);
 
 	const handlePTTEnd = useCallback(async () => {
-		const recorder = mediaRecorderRef.current;
-		if (!recorder || recorder.state === 'paused') return;
+		if (!isPTTRecording || !mediaRecorderRef.current) return;
 
+		const recorder = mediaRecorderRef.current;
 		const audioBlob = await new Promise<Blob>((resolve) => {
 			recorder.onstop = () => {
-				recorder.stream.getTracks().forEach(t => t.stop());
 				const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
 				resolve(blob);
 				chunksRef.current = [];
 			};
 			recorder.stop();
+			recorder.stream.getTracks().forEach(t => t.stop());
 		});
 
-		mediaRecorderRef.current = null;
 		setIsPTTRecording(false);
-		onStreamChange?.(null);
 		setIsPTTTranscribing(true);
 
 		try {
@@ -124,8 +125,11 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 			console.error('[VoiceInput] PTT transcription error:', err);
 		} finally {
 			setIsPTTTranscribing(false);
+			pttWaveformStreamRef.current?.getTracks().forEach(t => t.stop());
+			pttWaveformStreamRef.current = null;
+			onStreamChange?.(null);
 		}
-	}, [activeWhisperServerId, activeWhisperServer, onTranscript, onStreamChange]);
+	}, [isPTTRecording, activeWhisperServerId, activeWhisperServer, onTranscript, onStreamChange]);
 
 	// ============================================================
 	// VAD flow (independent)
@@ -202,6 +206,7 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 		return () => {
 			vadSessionRef.current?.destroy();
 			vadWaveformStreamRef.current?.getTracks().forEach(t => t.stop());
+			pttWaveformStreamRef.current?.getTracks().forEach(t => t.stop());
 			if (mediaRecorderRef.current?.state === 'recording') {
 				mediaRecorderRef.current.stop();
 				mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
@@ -228,11 +233,11 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 				borderWidth="1px"
 				borderColor={isPTTRecording ? 'var(--wc-accent-red)' : 'var(--wc-border-default)'}
 				bg={isPTTRecording ? 'var(--wc-accent-red-bg-15)' : 'var(--wc-bg-surface)'}
-				cursor={vadActive || isPTTTranscribing ? 'not-allowed' : 'pointer'}
-				opacity={(vadActive || isPTTTranscribing) ? 0.4 : 1}
-				_hover={{ bg: (vadActive || isPTTTranscribing) ? undefined : 'var(--wc-bg-hover)' }}
+				cursor={vadActive ? 'not-allowed' : 'pointer'}
+				opacity={vadActive ? 0.4 : 1}
+				_hover={{ bg: vadActive ? undefined : 'var(--wc-bg-hover)' }}
 				onClick={isPTTRecording ? handlePTTEnd : handlePTTStart}
-				disabled={vadActive || isPTTTranscribing}
+				disabled={vadActive}
 				title={vadActive ? 'Dictation disabled during voice chat' : isPTTRecording ? 'Stop recording' : 'Start recording (dictation)'}
 			>
 				{isPTTRecording ? (
