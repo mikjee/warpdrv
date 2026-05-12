@@ -308,6 +308,7 @@ export interface ICompletionRequest {
 	userMessage?: ICompletionUserMessage;
 	parentId?: TMessageId | null;
 	serverId?: string;
+	whisperServerId?: string;
 	messages?: Array<{ role: string; content: string }>;
 	systemPrompt?: string;
 	inferenceParams: Record<string, unknown>;

@@ -23,7 +23,7 @@ import {
 	MessagePrimitive,
 	SuggestionPrimitive,
 	ThreadPrimitive,
-	useAuiState,
+	useAuiState, useAui,
 } from "@assistant-ui/react";
 import {
 	ArrowDownIcon,
@@ -44,11 +44,15 @@ import {
 	SquareIcon,
 	Timer,
 	Trash2,
+	Volume2,
 } from "lucide-react";
 import React, { useCallback, useContext, useMemo, useState, type FC } from "react";
 import { BranchTokensContext, ChatConfigContext } from "@/pages/Chat/ChatPage";
 import { useStore } from "@/store";
+import { VoiceWaveform } from "./VoiceWaveform";
 import { ThreadServerSelector } from "@/pages/Chat/assistant-ui/ServerSelector";
+import { ThreadWhisperServerSelector } from "@/pages/Chat/assistant-ui/WhisperServerSelector";
+import { VoiceInput } from "@/pages/Chat/assistant-ui/VoiceInput";
 import { deleteMessage } from "@/api/services";
 import { useMessageTiming } from "@assistant-ui/react";
 import { BrainCircuitIcon, ClockIcon } from "lucide-react";
@@ -240,14 +244,15 @@ const ContextUsageBar: FC = () => {
 
 const Composer: FC = () => {
 	const { isValidServer } = useContext(ServerStatusContext);
-	
+	const [waveformStream, setWaveformStream] = useState<MediaStream | null>(null);
+
 	const handleSubmit = (e: React.FormEvent) => {
 		if (!isValidServer) {
 			e.preventDefault();
 			document.dispatchEvent(new CustomEvent('server-selector-shake'));
 		}
 	};
-	
+
 	return (
 		<ComposerPrimitive.Root onSubmit={handleSubmit} className="aui-composer-root relative flex w-full flex-col">
 			<ComposerPrimitive.AttachmentDropzone asChild>
@@ -270,8 +275,8 @@ const Composer: FC = () => {
 						aria-label="Message input"
 						autoComplete="off"
 					/>
-					<ComposerAction />
-					<ContextUsageBar />
+					<ComposerAction onStreamChange={setWaveformStream} />
+					{waveformStream ? <VoiceWaveform stream={waveformStream} width={680} /> : <ContextUsageBar />}
 				</div>
 			</ComposerPrimitive.AttachmentDropzone>
 		</ComposerPrimitive.Root>
@@ -496,10 +501,11 @@ const ToolsSelector: FC = React.memo(() => {
 	);
 });
 
-const ComposerAction: FC = () => {
+const ComposerAction: FC<{ onStreamChange?: (stream: MediaStream | null) => void }> = ({ onStreamChange }) => {
 	const { isValidServer, supportsMultiModal } = useContext(ServerStatusContext);
 	const currentThreadId = useStore(s => s.currentThreadId);
 	const canAttach = isValidServer && supportsMultiModal;
+	const aui = useAui();
 
 	return (
 		<div className="aui-composer-action-wrapper relative flex items-center justify-between">
@@ -510,6 +516,18 @@ const ComposerAction: FC = () => {
 				<ToolsSelector />
 			</div>
 			<div className="flex items-center gap-2">
+				<VoiceInput threadId={currentThreadId} onTranscript={(text) => {
+					const input = document.querySelector('.aui-composer-input') as HTMLTextAreaElement;
+					if (!input) return;
+					const cursorPos = input.selectionStart ?? input.value.length;
+					const newText = input.value.slice(0, cursorPos) + text + input.value.slice(cursorPos);
+					aui.composer().setText(newText);
+					setTimeout(() => {
+						input.setSelectionRange(cursorPos + text.length, cursorPos + text.length);
+						input.focus();
+					}, 0);
+				}} aui={aui} onStreamChange={onStreamChange} />
+				<ThreadWhisperServerSelector threadId={currentThreadId} />
 				<ThreadServerSelector threadId={currentThreadId} />
 				<AuiIf condition={(s) => !s.thread.isRunning}>
 					<ComposerPrimitive.Send asChild>
@@ -724,13 +742,46 @@ const DeleteMessageButton: FC<{ messageId: string }> = ({ messageId }) => {
 		if (!confirm('Delete this message?')) return;
 		await deleteMessage(messageId);
 	}, [messageId]);
-	
+
 	return (
 		<ActionBarIcon onClick={handleDelete}>
 			<Trash2 size={14} />
 		</ActionBarIcon>
 	);
 };
+
+const TTSToggle = React.memo(() => {
+	const [speaking, setSpeaking] = useState(false);
+	const parts = useAuiState((s) => s.message.content);
+	const messageText = useMemo(() => {
+		if (!parts || parts.length === 0) return '';
+		return parts
+			.filter((p: any) => p.type === 'text')
+			.map((p: any) => p.text)
+			.join('\n\n');
+	}, [parts]);
+
+	const handleSpeak = useCallback(() => {
+		if (speaking) {
+			window.speechSynthesis.cancel();
+			setSpeaking(false);
+			return;
+		}
+		if (!messageText.trim()) return;
+		window.speechSynthesis.cancel();
+		const utterance = new SpeechSynthesisUtterance(messageText);
+		utterance.onend = () => setSpeaking(false);
+		utterance.onerror = () => setSpeaking(false);
+		setSpeaking(true);
+		window.speechSynthesis.speak(utterance);
+	}, [speaking, messageText]);
+
+	return (
+		<ActionBarIcon onClick={handleSpeak}>
+			{speaking ? <SquareIcon size={14} /> : <Volume2 size={14} />}
+		</ActionBarIcon>
+	);
+});
 
 const AssistantActionBar: FC = () => {
 	const messageId = useAuiState((s) => s.message.id);
@@ -754,6 +805,8 @@ const AssistantActionBar: FC = () => {
 			</ActionBarPrimitive.Reload>
 
 			<DeleteMessageButton messageId={messageId} />
+
+			{/* <TTSToggle /> */}
 
 		</ActionBarPrimitive.Root>
 	);

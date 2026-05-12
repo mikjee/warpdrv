@@ -17,7 +17,7 @@ const SETTINGS_KEY = 'settings:general';
 // Cross-platform process tree kill.
 // Linux/macOS: signal the process group via negative PID.
 // Windows: taskkill /T /F walks the process tree and force-terminates.
-function killProcessTree(pid: number, signal: 'SIGTERM' | 'SIGKILL'): void {
+export function killProcessTree(pid: number, signal: 'SIGTERM' | 'SIGKILL'): void {
 	if (process.platform === 'win32') {
 		const args = signal === 'SIGKILL'
 			? ['/T', '/F', '/PID', String(pid)]

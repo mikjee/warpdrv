@@ -15,6 +15,7 @@ import type {
 	IBackendGroupCreatePayload,
 	IBackendGroupUpdatePayload,
 	IModel,
+	IWhisperModel,
 	IServer,
 	IServerCreatePayload,
 	IPreset,
@@ -124,6 +125,10 @@ export async function fetchModels() {
 
 export async function scanModels() {
 	return api.post<IModel[]>('/models/scan');
+}
+
+export async function scanWhisperModels() {
+	return api.post<IWhisperModel[]>('/whisper-models/scan');
 }
 
 export async function fetchScanStatus() {

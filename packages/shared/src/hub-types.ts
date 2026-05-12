@@ -30,6 +30,7 @@ export interface IHubFile {
 	filename: string; // Full path including directory (e.g., "models/file.gguf" or "file.gguf")
 	size: number;
 	isGguf: boolean;
+	isWhisperBin: boolean; // .bin whisper model file
 	quantType: string;
 	isDownloaded: boolean;
 	downloadedInRoot: string | null;

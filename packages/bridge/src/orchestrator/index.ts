@@ -106,7 +106,7 @@ export class Orchestrator {
 					title,
 					folderId: null,
 					systemPrompt: '',
-					meta: JSON.stringify({ serverId: request.serverId ?? null, tags: [] }),
+					meta: JSON.stringify({ serverId: request.serverId ?? null, whisperServerId: request.whisperServerId ?? null, tags: [] }),
 					totalPromptTokens: 0,
 					totalCompletionTokens: 0,
 					createdAt: now,

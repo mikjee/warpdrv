@@ -17,6 +17,7 @@
 		"ai": "^6.0.141",
 		"bcryptjs": "^2.4.3",
 		"better-sse": "^0.16.1",
+		"busboy": "^1.6.0",
 		"cookie-parser": "^1.4.7",
 		"cors": "^2.8.5",
 		"express": "^5.1.0",
@@ -25,6 +26,7 @@
 	},
 	"devDependencies": {
 		"@types/bcryptjs": "^2.4.6",
+		"@types/busboy": "^1.5.4",
 		"@types/cookie-parser": "^1.4.8",
 		"@types/cors": "^2.8.18",
 		"@types/express": "^5.0.2",
