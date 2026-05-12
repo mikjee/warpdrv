@@ -68,7 +68,8 @@ export const ThreadWhisperServerSelector = React.memo(({
 				onClick={() => setOpen(!open)}
 				fontSize="12px"
 				color="var(--wc-text-primary)"
-				minW="140px"
+				minW="150px"
+					maxW="150px"
 			>
 				<Mic size={14} color={displayServer?.status === EWhisperServerStatus.RUNNING ? 'var(--wc-accent-green)' : 'var(--wc-text-muted)'} />
 				{displayServer ? (
@@ -101,7 +102,8 @@ export const ThreadWhisperServerSelector = React.memo(({
 					py="1"
 					maxH="200px"
 					overflowY="auto"
-					minW="140px"
+		minW="130px"
+				maxW="130px"
 				>
 					{whisperServers.map((s) => (
 						<HStack
@@ -127,7 +129,7 @@ export const ThreadWhisperServerSelector = React.memo(({
 						</HStack>
 					))}
 					{whisperServers.length === 0 && (
-						<Text px="3" py="2" fontSize="12px" color="var(--wc-text-faint)">No whisper servers</Text>
+						<Text px="3" py="2" fontSize="12px" color="var(--wc-text-faint)">No servers</Text>
 					)}
 				</Box>
 			)}

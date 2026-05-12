@@ -86,8 +86,8 @@ export const ThreadServerSelector = React.memo(({
 				onClick={() => setOpen(!open)}
 				fontSize="12px"
 				color="var(--wc-text-primary)"
-				maxW="180px"
-				// minW="180px"
+				minW="130px"
+				maxW="130px"
 			>
 				{displayServer ? (
 					<>
@@ -121,8 +121,8 @@ export const ThreadServerSelector = React.memo(({
 					py="1"
 					maxH="200px"
 					overflowY="auto"
-					minW="180px"
-					maxW="180px"
+					minW="150px"
+					maxW="150px"
 				>
 					{servers.map((s) => (
 						<HStack
