@@ -105,12 +105,16 @@ export function StepBackends({ goNext, goPrev }: IStepProps) {
 								{llamaAssets.length === 0 && <Text fontSize="13px" color="var(--wc-text-muted)">No releases available for this OS.</Text>}
 								{llamaAssets.map(asset => (
 									<Flex key={asset.key} align="center" py="2" gap="3">
-										<Checkbox
-											isChecked={!!selectedLlama[asset.key]}
-											onChange={(e) => setSelectedLlama(prev => ({ ...prev, [asset.key]: e.target.checked }))}
+										<Checkbox.Root
+											checked={!!selectedLlama[asset.key]}
+											onCheckedChange={(e) => setSelectedLlama(prev => ({ ...prev, [asset.key]: e.checked }))}
 										>
-											<Text fontSize="14px" color="var(--wc-text-primary)">{assetLabel(asset)}</Text>
-										</Checkbox>
+											<Checkbox.HiddenInput />
+											<Checkbox.Control />
+											<Checkbox.Label>
+												<Text fontSize="14px" color="var(--wc-text-primary)">{assetLabel(asset)}</Text>
+											</Checkbox.Label>
+										</Checkbox.Root>
 										<Badge fontSize="11px">{formatSize(asset.size)}</Badge>
 									</Flex>
 								))}
@@ -120,12 +124,16 @@ export function StepBackends({ goNext, goPrev }: IStepProps) {
 								{whisperAssets.length === 0 && <Text fontSize="13px" color="var(--wc-text-muted)">No releases available for this OS.</Text>}
 								{whisperAssets.map(asset => (
 									<Flex key={asset.key} align="center" py="2" gap="3">
-										<Checkbox
-											isChecked={!!selectedWhisper[asset.key]}
-											onChange={(e) => setSelectedWhisper(prev => ({ ...prev, [asset.key]: e.target.checked }))}
+										<Checkbox.Root
+											checked={!!selectedWhisper[asset.key]}
+											onCheckedChange={(e) => setSelectedWhisper(prev => ({ ...prev, [asset.key]: e.checked }))}
 										>
-											<Text fontSize="14px" color="var(--wc-text-primary)">{assetLabel(asset)}</Text>
-										</Checkbox>
+											<Checkbox.HiddenInput />
+											<Checkbox.Control />
+											<Checkbox.Label>
+												<Text fontSize="14px" color="var(--wc-text-primary)">{assetLabel(asset)}</Text>
+											</Checkbox.Label>
+										</Checkbox.Root>
 										<Badge fontSize="11px">{formatSize(asset.size)}</Badge>
 									</Flex>
 								))}
@@ -136,12 +144,16 @@ export function StepBackends({ goNext, goPrev }: IStepProps) {
 									<Text fontSize="13px" color="var(--wc-text-muted)">Kokoro TTS already installed.</Text>
 								) : (
 									<Flex align="center" py="2" gap="3">
-										<Checkbox
-											isChecked={installKokoroSelected}
-											onChange={(e) => setInstallKokoroSelected(e.target.checked)}
+										<Checkbox.Root
+											checked={installKokoroSelected}
+											onCheckedChange={(e) => setInstallKokoroSelected(e.checked)}
 										>
-											<Text fontSize="14px" color="var(--wc-text-primary)">Kokoro TTS</Text>
-										</Checkbox>
+											<Checkbox.HiddenInput />
+											<Checkbox.Control />
+											<Checkbox.Label>
+												<Text fontSize="14px" color="var(--wc-text-primary)">Kokoro TTS</Text>
+											</Checkbox.Label>
+										</Checkbox.Root>
 										<Badge fontSize="11px">~90 MB</Badge>
 									</Flex>
 								)}
