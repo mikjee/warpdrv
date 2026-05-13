@@ -531,3 +531,38 @@ export interface IAccessTokenCreateResult {
 	token: string; // the raw Bearer token - shown once, never again
 	info: IAccessTokenInfo;
 }
+export type TOs = 'win' | 'linux' | 'mac';
+export type TArch = 'x64' | 'arm64';
+export type TGpuVendor = 'nvidia' | 'amd' | 'intel' | 'apple' | 'unknown';
+export interface IGpuInfo {
+	vendor: TGpuVendor;
+	name: string;
+	driverVersion: string | null;
+}
+export interface IHardwareInfo {
+	os: TOs;
+	arch: TArch;
+	gpus: IGpuInfo[];
+}
+export type TBackendKind = 'cuda' | 'rocm' | 'vulkan' | 'metal' | 'cpu' | 'hip' | 'sycl';
+export type TReleaseSource = 'upstream' | 'lemonade';
+export interface IBackendAsset {
+	key: string;
+	source: TReleaseSource;
+	os: TOs;
+	arch: TArch;
+	backend: TBackendKind;
+	backendVersion: string | null;
+	gpuArch: string | null;
+	llamaBuild: string;
+	url: string;
+	size: number;
+	filename: string;
+}
+export interface IKokoroStatus {
+	installed: boolean;
+	basePath: string;
+	modelPath: string;
+	configPath: string;
+	voicePaths: string[];
+}

@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, TStepId, IServerSlotsState, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings, TWhisperBackendId, IWhisperBackend, TWhisperServerId, IWhisperServer, IWhisperModel } from '@warpcore/shared';
+import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, TStepId, IServerSlotsState, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings, TWhisperBackendId, IWhisperBackend, TWhisperServerId, IWhisperServer, IWhisperModel, IHardwareInfo, IBackendAsset, IKokoroStatus } from '@warpcore/shared';
 import type { IProxyStatus, IStickyRouteInfo } from '@/api/services';
 export { type ImmerSet, type ImmerGet } from '@warpcore/bridge';
 
@@ -81,6 +81,13 @@ export interface AppState {
 
 	// Settings
 	settings: ISettings;
+	// Hardware detection
+	hardware: IHardwareInfo | null;
+	// Llama / Whisper backend releases
+	llamaReleases: Record<string, IBackendAsset>;
+	whisperReleases: Record<string, IBackendAsset>;
+	// Kokoro TTS install status
+	kokoroStatus: IKokoroStatus | null;
 
 	// Proxy (Phase 1)
 	proxyStatus: IProxyStatus | null;

@@ -4,6 +4,10 @@ import cookieParser from 'cookie-parser';
 import { store } from './util/store';
 import { settingsRouter } from './routes/settings';
 import { backendsRouter } from './routes/backends';
+import { hardwareRouter } from './routes/hardware';
+import { releasesRouter } from './routes/releases';
+import { kokoroRouter } from './routes/kokoro';
+import { kokoroRouter } from './routes/kokoro';
 import { backendGroupsRouter } from './routes/backendGroups';
 import { modelsRouter, loadCachedModels, getCachedModels } from './routes/models';
 import { serversRouter} from './routes/servers';
@@ -143,6 +147,10 @@ async function main() {
 	// API routes with auth middleware
 	app.use('/api/settings', authMiddleware, settingsRouter);
 	app.use('/api/backends', authMiddleware, backendsRouter);
+	app.use('/api/hardware', authMiddleware, hardwareRouter);
+	app.use('/api/releases', authMiddleware, releasesRouter);
+	app.use('/api/kokoro', authMiddleware, kokoroRouter);
+	app.use('/api/kokoro', authMiddleware, kokoroRouter);
 	app.use('/api/backend-groups', authMiddleware, backendGroupsRouter);
 	app.use('/api/models', authMiddleware, modelsRouter);
 	app.use('/api/servers', authMiddleware, serversRouter);

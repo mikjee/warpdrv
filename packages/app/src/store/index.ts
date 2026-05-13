@@ -15,6 +15,9 @@ import { settingsSlice } from './slices/settings';
 import { proxySlice } from './slices/proxy';
 import { recipesSlice } from './slices/recipes';
 import { checkpointsSlice } from './slices/checkpoints';
+import { hardwareSlice } from './slices/hardware';
+import { releasesSlice } from './slices/releases';
+import { kokoroSlice } from './slices/kokoro';
 import { createChatStoreSlice } from '@warpcore/bridge/client';
 import { DiffRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/DiffRenderer';
 import { BashRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/BashRenderer';
@@ -38,6 +41,9 @@ export const useStore = create<AppState>()(
 				const proxy = proxySlice(set, get);
 				const recipes = recipesSlice(set, get);
 				const checkpoints = checkpointsSlice(set, get);
+				const hardware = hardwareSlice(set, get);
+				const releases = releasesSlice(set, get);
+				const kokoro = kokoroSlice(set, get);
 				const sseHandlers = sseHandlersSlice(set, get);
 				const bridge = createChatStoreSlice(set, get);
 
@@ -61,6 +67,10 @@ export const useStore = create<AppState>()(
 				setTempThreadWhisperServerId: bridge.setTempThreadWhisperServerId,
 					models: models.models!,
 					settings: settings.settings!,
+					hardware: hardware.hardware!,
+					llamaReleases: releases.llamaReleases!,
+					whisperReleases: releases.whisperReleases!,
+					kokoroStatus: kokoro.kokoroStatus!,
  					proxyStatus: proxy.proxyStatus!,
 					proxyRoutes: proxy.proxyRoutes!,
 					recipes: recipes.recipes!,

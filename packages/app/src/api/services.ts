@@ -1,5 +1,8 @@
 import { api, login, logout, fetchAuthCheck, fetchAuthMe } from './client';
 import type {
+	IHardwareInfo,
+	IBackendAsset,
+	IKokoroStatus,
 	IRecipe,
 	IRecipeCreatePayload,
 	IRecipeUpdatePayload,
@@ -85,6 +88,29 @@ export async function deleteBackend(id: string) {
 
 export async function validateBackend(id: string) {
 	return api.post<IBackend>(`/backends/${id}/validate`);
+}
+export async function installBackend(assetKey: string, installRoot?: string) {
+	return api.post<IDownload>('/backends/install', { assetKey, installRoot });
+}
+export async function installWhisperBackend(assetKey: string, installRoot?: string) {
+	return api.post<IDownload>('/whisper-backends/install', { assetKey, installRoot });
+}
+export async function fetchHardware() {
+	return api.get<IHardwareInfo>('/hardware');
+}
+export async function fetchLlamaReleases(targetOs?: string) {
+	const qs = targetOs ? `?os=${encodeURIComponent(targetOs)}` : '';
+	return api.getList<IBackendAsset>(`/releases/llama${qs}`);
+}
+export async function fetchWhisperReleases(targetOs?: string) {
+	const qs = targetOs ? `?os=${encodeURIComponent(targetOs)}` : '';
+	return api.getList<IBackendAsset>(`/releases/whisper${qs}`);
+}
+export async function fetchKokoroStatus() {
+	return api.get<IKokoroStatus>('/kokoro/status');
+}
+export async function installKokoro() {
+	return api.post<{ groupKey: string; downloads: IDownload[] }>('/kokoro/install');
 }
 
 // ============================================================
