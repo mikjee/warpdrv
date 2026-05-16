@@ -7,6 +7,7 @@ import { MarkdownText } from "./markdown-text";
 import { ToolFallback } from "./tool-fallback";
 import { ToolCallBlockWrapper } from "./ToolCallBlockWrapper";
 import { TooltipIconButton } from "./tooltip-icon-button";
+import { KokoroTTSButton } from "./KokoroTTS";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -750,7 +751,7 @@ const DeleteMessageButton: FC<{ messageId: string }> = ({ messageId }) => {
 	);
 };
 
-const TTSToggle = React.memo(() => {
+const BrowserTTS = React.memo(() => {
 	const [speaking, setSpeaking] = useState(false);
 	const parts = useAuiState((s) => s.message.content);
 	const messageText = useMemo(() => {
@@ -786,6 +787,7 @@ const TTSToggle = React.memo(() => {
 const AssistantActionBar: FC = () => {
 	const messageId = useAuiState((s) => s.message.id);
 	const isCopied = useAuiState((s) => s.message.isCopied);
+	const kokoroInstalled = useStore((s) => s.kokoroStatus?.installed);
 	
 	return (
 		<ActionBarPrimitive.Root
@@ -806,7 +808,7 @@ const AssistantActionBar: FC = () => {
 
 			<DeleteMessageButton messageId={messageId} />
 
-			{/* <TTSToggle /> */}
+			{kokoroInstalled ? <KokoroTTSButton /> : <BrowserTTS />}
 
 		</ActionBarPrimitive.Root>
 	);

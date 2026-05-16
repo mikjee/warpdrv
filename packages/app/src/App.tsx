@@ -5,6 +5,7 @@ import { useToast } from './components/ToastProvider';
 import { useEventSource } from './hooks/useEventSource';
 import { useChatEventsStream } from './hooks/useChatEventsStream';
 import { useStore } from './store';
+import { fetchKokoroStatus } from './api/services';
 import { ETheme } from '@warpcore/shared';
 
 export function App() {
@@ -34,6 +35,9 @@ export function App() {
 		document.addEventListener('contextmenu', handler);
 		return () => document.removeEventListener('contextmenu', handler);
 	}, []);
+
+	// Fetch kokoro status on mount
+	useEffect(() => { fetchKokoroStatus(); }, []);
 
 	return (
 		<Routes>

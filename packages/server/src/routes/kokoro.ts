@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import express, { Router } from 'express';
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
@@ -6,8 +6,9 @@ import { startDownload } from '../services/downloadManager';
 export const kokoroRouter = Router();
 const KOKORO_AUTHOR = 'onnx-community';
 const KOKORO_MODEL = 'Kokoro-82M-v1.0-ONNX';
-const KOKORO_MODEL_FILE = 'onnx/model_q8f16.onnx';
+const KOKORO_MODEL_FILE = 'onnx/model.onnx';
 const KOKORO_CONFIG_FILE = 'config.json';
+const KOKORO_TOKENIZER_FILES = ['tokenizer.json', 'tokenizer_config.json'];
 const KOKORO_VOICE_FILES = [
 	'voices/af_heart.bin',
 	'voices/af_bella.bin',
@@ -32,14 +33,20 @@ function kokoroConfigPath(): string {
 function kokoroVoicePaths(): string[] {
 	return KOKORO_VOICE_FILES.map(f => path.join(kokoroBasePath(), f));
 }
+function kokoroTokenizerPaths(): string[] {
+	return KOKORO_TOKENIZER_FILES.map(f => path.join(kokoroBasePath(), f));
+}
+kokoroRouter.use('/kokoro-model', express.static(kokoroBasePath()));
 kokoroRouter.get('/status', async (_req, res) => {
 	const modelPath = kokoroModelPath();
 	const configPath = kokoroConfigPath();
 	const voicePaths = kokoroVoicePaths();
+	const tokenizerPaths = kokoroTokenizerPaths();
 	const modelExists = fs.existsSync(modelPath);
 	const configExists = fs.existsSync(configPath);
 	const voicesExist = voicePaths.every(p => fs.existsSync(p));
-	const installed = modelExists && configExists && voicesExist;
+	const tokenizersExist = tokenizerPaths.every(p => fs.existsSync(p));
+	const installed = modelExists && configExists && voicesExist && tokenizersExist;
 	res.json({
 		ok: true,
 		data: {
@@ -56,7 +63,7 @@ kokoroRouter.post('/install', async (_req, res) => {
 	try {
 		const groupKey = `kokoro-${Date.now()}`;
 		const destRoot = kokoroDir();
-		const allFiles = [KOKORO_MODEL_FILE, KOKORO_CONFIG_FILE, ...KOKORO_VOICE_FILES];
+		const allFiles = [KOKORO_MODEL_FILE, KOKORO_CONFIG_FILE, ...KOKORO_TOKENIZER_FILES, ...KOKORO_VOICE_FILES];
 		const downloads = [];
 		for (let i = 0; i < allFiles.length; i++) {
 			const dl = await startDownload(

@@ -321,6 +321,7 @@ export interface ISettings {
 	isOnboardingComplete?: boolean; // if false or undefined, show onboarding overlay
 	theme?: ETheme;
 	micDeviceId?: string; // app-level mic device selection for STT
+	kokoroVoice?: string; // kokoro TTS voice selection
 }
 export const DEFAULT_SETTINGS: ISettings = {
 	modelRoots: [],
@@ -350,6 +351,7 @@ export const DEFAULT_SETTINGS: ISettings = {
 	disableTitleGen: false,
 	isOnboardingComplete: false,
 	theme: ETheme.DARK,
+	kokoroVoice: 'af_heart',
 };
 // ============================================================
 // VRAM Calculator

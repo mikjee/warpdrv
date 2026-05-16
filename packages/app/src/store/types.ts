@@ -88,6 +88,7 @@ export interface AppState {
 	whisperReleases: Record<string, IBackendAsset>;
 	// Kokoro TTS install status
 	kokoroStatus: IKokoroStatus | null;
+	setKokoroStatus: (status: IKokoroStatus | null) => void;
 
 	// Proxy (Phase 1)
 	proxyStatus: IProxyStatus | null;

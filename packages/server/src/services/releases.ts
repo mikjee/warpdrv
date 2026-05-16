@@ -12,11 +12,21 @@ interface IGithubRelease {
 const UPSTREAM_LATEST = 'https://api.github.com/repos/ggml-org/llama.cpp/releases/latest';
 const LEMONADE_LATEST = 'https://api.github.com/repos/lemonade-sdk/llamacpp-rocm/releases/latest';
 const WHISPER_LATEST = 'https://api.github.com/repos/ggml-org/whisper.cpp/releases/latest';
+const WHISPER_LEMONADE = 'https://api.github.com/repos/lemonade-sdk/whisper.cpp-builds/releases?per_page=1';
 async function fetchLatest(url: string): Promise<IGithubRelease | null> {
 	try {
 		const res = await fetch(url, { headers: { 'Accept': 'application/vnd.github+json' } });
 		if (!res.ok) return null;
 		return await res.json() as IGithubRelease;
+	} catch {
+		return null;
+	}
+}
+async function fetchLatestArray(url: string): Promise<IGithubRelease[] | null> {
+	try {
+		const res = await fetch(url, { headers: { 'Accept': 'application/vnd.github+json' } });
+		if (!res.ok) return null;
+		return await res.json() as IGithubRelease[];
 	} catch {
 		return null;
 	}
@@ -38,7 +48,7 @@ function parseUpstreamAsset(asset: IGithubReleaseAsset, tag: string): IBackendAs
 	if (lower.includes('-arm64')) arch = 'arm64';
 	let backend: TBackendKind | null = null;
 	let backendVersion: string | null = null;
-	const cudaMatch = lower.match(/-cuda-([\d.]+)-/);
+	const cudaMatch = lower.match(/-cuda-([\d.]+)(?:-)?/);
 	const rocmMatch = lower.match(/-rocm-([\d.]+)-/);
 	if (cudaMatch) {
 		backend = 'cuda';
@@ -198,21 +208,91 @@ function parseWhisperAsset(asset: IGithubReleaseAsset, _tag: string): IBackendAs
 		filename: name,
 	};
 }
+function parseWhisperLemonadeAsset(asset: IGithubReleaseAsset, tag: string): IBackendAsset | null {
+	const name = asset.name;
+	const lower = name.toLowerCase();
+	const versionMatch = name.match(/v?([\d.]+)/);
+	const whisperBuild = versionMatch ? versionMatch[1] : tag;
+	let osName: TOs | null = null;
+	if (lower.includes('win')) osName = 'win';
+	else if (lower.includes('linux')) osName = 'linux';
+	else if (lower.includes('darwin') || lower.includes('mac')) osName = 'mac';
+	if (!osName) return null;
+	let arch: TArch = 'x64';
+	if (lower.includes('arm64') || lower.includes('aarch64')) arch = 'arm64';
+	else if (lower.includes('x86_64') || lower.includes('x64')) arch = 'x64';
+	else if (lower.includes('Win32') || lower.includes('x86')) arch = 'x64';
+	let backend: TBackendKind | null = null;
+	let backendVersion: string | null = null;
+	if (lower.includes('cublas') || lower.includes('cuda')) {
+		backend = 'cuda';
+		const cudaMatch = lower.match(/(?:cublas|cuda)[-_]?([\d.]+)/);
+		backendVersion = cudaMatch ? cudaMatch[1] : null;
+	} else if (lower.includes('rocm')) {
+		backend = 'rocm';
+		const rocmMatch = lower.match(/rocm[-_]?([\d.]+)/);
+		backendVersion = rocmMatch ? rocmMatch[1] : null;
+	} else if (lower.includes('vulkan')) {
+		backend = 'vulkan';
+	} else if (lower.includes('metal')) {
+		backend = 'metal';
+	} else if (lower.includes('blas')) {
+		backend = 'cpu';
+	} else if (lower.includes('cpu') || lower.includes('npu')) {
+		backend = 'cpu';
+	}
+	if (!backend) {
+		if (osName === 'mac') backend = 'metal';
+		else backend = 'cpu';
+	}
+	const key = `whisper-lemonade-${osName}-${arch}-${backend}${backendVersion ? '-' + backendVersion : ''}`;
+	return {
+		key,
+		source: 'lemonade',
+		os: osName,
+		arch,
+		backend,
+		backendVersion,
+		gpuArch: null,
+		llamaBuild: whisperBuild,
+		url: asset.browser_download_url,
+		size: asset.size,
+		filename: name,
+	};
+}
 function dedupeWhisperAssets(assets: IBackendAsset[]): IBackendAsset[] {
 	const byKey: Record<string, IBackendAsset> = {};
 	for (const asset of assets) {
 		const dedupeKey = `${asset.os}-${asset.arch}-${asset.backend}`;
-		if (!byKey[dedupeKey]) byKey[dedupeKey] = asset;
+		const existing = byKey[dedupeKey];
+		if (!existing) {
+			byKey[dedupeKey] = asset;
+			continue;
+		}
+		if (asset.source === 'lemonade' && existing.source !== 'lemonade') {
+			byKey[dedupeKey] = asset;
+		}
 	}
 	return Object.values(byKey);
 }
 export async function fetchWhisperReleases(): Promise<IBackendAsset[]> {
-	const release = await fetchLatest(WHISPER_LATEST);
-	if (!release) return [];
+	const [upstream, lemonadeArr] = await Promise.all([
+		fetchLatest(WHISPER_LATEST),
+		fetchLatestArray(WHISPER_LEMONADE),
+	]);
+	const lemonade = lemonadeArr?.[0] ?? null;
 	const assets: IBackendAsset[] = [];
-	for (const a of release.assets) {
-		const parsed = parseWhisperAsset(a, release.tag_name);
-		if (parsed) assets.push(parsed);
+	if (upstream) {
+		for (const a of upstream.assets) {
+			const parsed = parseWhisperAsset(a, upstream.tag_name);
+			if (parsed) assets.push(parsed);
+		}
+	}
+	if (lemonade) {
+		for (const a of lemonade.assets) {
+			const parsed = parseWhisperLemonadeAsset(a, lemonade.tag_name);
+			if (parsed) assets.push(parsed);
+		}
 	}
 	return dedupeWhisperAssets(assets);
 }

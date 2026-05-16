@@ -1,4 +1,5 @@
 import { api, login, logout, fetchAuthCheck, fetchAuthMe } from './client';
+import { useStore } from '../store';
 import type {
 	IHardwareInfo,
 	IBackendAsset,
@@ -107,7 +108,9 @@ export async function fetchWhisperReleases(targetOs?: string) {
 	return api.getList<IBackendAsset>(`/releases/whisper${qs}`);
 }
 export async function fetchKokoroStatus() {
-	return api.get<IKokoroStatus>('/kokoro/status');
+	const res = await api.get<IKokoroStatus>('/kokoro/status');
+	useStore.getState().setKokoroStatus(res.ok ? res.data : null);
+	return res.ok ? res.data : null;
 }
 export async function installKokoro() {
 	return api.post<{ groupKey: string; downloads: IDownload[] }>('/kokoro/install');

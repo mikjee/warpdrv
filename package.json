@@ -12,7 +12,8 @@
 		"dev:desktop": "npm run dev -w @warpcore/desktop",
 		"build": "npm run build -w @warpcore/app",
 		"build:desktop": "npm run build -w @warpcore/desktop",
-		"release": "bash release.sh"
+		"release": "bash release.sh",
+		"postinstall": "patch-package"
 	},
 	"devDependencies": {
 		"concurrently": "^9.1.2",

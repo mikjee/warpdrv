@@ -3,7 +3,7 @@ import { Box, Text, Flex, Checkbox, Spinner, Badge } from '@chakra-ui/react';
 import { OnboardingHeader } from '../components/OnboardingHeader';
 import { OnboardingFooter } from '../components/OnboardingFooter';
 import type { IStepProps } from '../OnboardingPage';
-import { fetchHardware, fetchLlamaReleases, fetchWhisperReleases, fetchKokoroStatus, installBackend, installWhisperBackend, installKokoro } from '@/api/services';
+import { fetchHardware, fetchLlamaReleases, fetchWhisperReleases, installBackend, installWhisperBackend, installKokoro } from '@/api/services';
 import { useStore } from '@/store';
 import type { IBackendAsset, IHardwareInfo, IKokoroStatus } from '@warpcore/shared';
 function formatSize(bytes: number): string {
@@ -17,6 +17,7 @@ function assetLabel(asset: IBackendAsset): string {
 	if (asset.backendVersion) parts.push(asset.backendVersion);
 	if (asset.gpuArch) parts.push(asset.gpuArch);
 	if (asset.source === 'lemonade') parts.push('(lemonade)');
+	parts.push(`(${asset.llamaBuild})`);
 	return parts.join(' ');
 }
 export function StepBackends({ goNext, goPrev }: IStepProps) {
@@ -24,19 +25,18 @@ export function StepBackends({ goNext, goPrev }: IStepProps) {
 	const [hardware, setHardware] = useState<IHardwareInfo | null>(null);
 	const [llamaAssets, setLlamaAssets] = useState<IBackendAsset[]>([]);
 	const [whisperAssets, setWhisperAssets] = useState<IBackendAsset[]>([]);
-	const [kokoroStatus, setKokoroStatus] = useState<IKokoroStatus | null>(null);
 	const [selectedLlama, setSelectedLlama] = useState<Record<string, boolean>>({});
 	const [selectedWhisper, setSelectedWhisper] = useState<Record<string, boolean>>({});
 	const [installKokoroSelected, setInstallKokoroSelected] = useState<boolean>(false);
 	const [installing, setInstalling] = useState<boolean>(false);
+	const kokoroStatus = useStore(s => s.kokoroStatus);
 	useEffect(() => {
 		const load = async () => {
 			setLoading(true);
-			const [hw, llama, whisper, kokoro] = await Promise.all([
+			const [hw, llama, whisper] = await Promise.all([
 				fetchHardware(),
 				fetchLlamaReleases(),
 				fetchWhisperReleases(),
-				fetchKokoroStatus(),
 			]);
 			if (hw.ok && hw.data) {
 				setHardware(hw.data);
@@ -47,7 +47,6 @@ export function StepBackends({ goNext, goPrev }: IStepProps) {
 				const cpu = llamaForOs.find(a => a.backend === 'cpu');
 				if (cpu) setSelectedLlama({ [cpu.key]: true });
 			}
-			if (kokoro.ok && kokoro.data) setKokoroStatus(kokoro.data);
 			setLoading(false);
 		};
 		load();

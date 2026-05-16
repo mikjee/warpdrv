@@ -44,6 +44,7 @@ export function SettingsPage() {
 	const [maxCheckpointDiskGB, setMaxCheckpointDiskGB] = useDependantState(settings.maxCheckpointDiskGB);
 	const [disableTitleGen, setDisableTitleGen] = useDependantState(settings.disableTitleGen);
 	const [micDeviceId, setMicDeviceId] = useDependantState(settings.micDeviceId ?? '');
+	const [kokoroVoice, setKokoroVoice] = useDependantState(settings.kokoroVoice ?? 'af_heart');
 	const [micDevices, setMicDevices] = useState<Array<{ id: string; label: string }>>([]);
 	const [micPermissionGranted, setMicPermissionGranted] = useState(false);
 	const [newRoot, setNewRoot] = useState('');
@@ -227,6 +228,7 @@ const handleSave = async () => {
 			disableTitleGen,
 			theme: localTheme,
 			micDeviceId,
+			kokoroVoice,
 		});
 
 		if (saveMut.error) {
@@ -487,6 +489,35 @@ const handleSave = async () => {
 									</NativeSelect.Field>
 								</NativeSelect.Root>
 							)}
+						</VStack>
+					</Card>
+
+					{/* Voice Output / TTS */}
+					<Card>
+						<VStack align="stretch" gap="4">
+							<Box>
+								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">Voice Output</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)">Kokoro TTS voice for reading assistant messages</Text>
+							</Box>
+							<NativeSelect.Root value={kokoroVoice}>
+								<NativeSelect.Field
+									size="sm"
+									bg="var(--wc-bg-card)"
+									borderColor="var(--wc-border-default)"
+									color="var(--wc-text-primary)"
+									fontSize="13px"
+									borderRadius="lg"
+									onChange={(e) => dirtySetter(setKokoroVoice, e.target.value)}
+								>
+									<option value="af_heart">Heart (Female, US)</option>
+									<option value="af_bella">Bella (Female, US)</option>
+									<option value="af_nicole">Nicole (Female, US)</option>
+									<option value="am_adam">Adam (Male, US)</option>
+									<option value="am_michael">Michael (Male, US)</option>
+									<option value="bf_emma">Emma (Female, UK)</option>
+									<option value="bm_george">George (Male, UK)</option>
+								</NativeSelect.Field>
+							</NativeSelect.Root>
 						</VStack>
 					</Card>
 
