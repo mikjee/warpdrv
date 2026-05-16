@@ -7,6 +7,7 @@ import { useChatEventsStream } from './hooks/useChatEventsStream';
 import { useStore } from './store';
 import { fetchKokoroStatus } from './api/services';
 import { ETheme } from '@warpcore/shared';
+import { getKokoroTTS } from './pages/Chat/assistant-ui/KokoroTTS';
 
 export function App() {
 	const { toast } = useToast();
@@ -38,6 +39,14 @@ export function App() {
 
 	// Fetch kokoro status on mount
 	useEffect(() => { fetchKokoroStatus(); }, []);
+
+	// Pre-warm kokoro model in background when installed
+	const kokoroStatus = useStore((s) => s.kokoroStatus);
+	useEffect(() => {
+		if (kokoroStatus?.installed) {
+			getKokoroTTS().catch(() => {});
+		}
+	}, [kokoroStatus?.installed]);
 
 	return (
 		<Routes>
