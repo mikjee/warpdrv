@@ -18,6 +18,7 @@ import { checkpointsSlice } from './slices/checkpoints';
 import { hardwareSlice } from './slices/hardware';
 import { releasesSlice } from './slices/releases';
 import { kokoroSlice } from './slices/kokoro';
+import { ttsSlice } from './slices/tts';
 import { createChatStoreSlice } from '@warpcore/bridge/client';
 import { DiffRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/DiffRenderer';
 import { BashRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/BashRenderer';
@@ -44,6 +45,7 @@ export const useStore = create<AppState>()(
 				const hardware = hardwareSlice(set, get);
 				const releases = releasesSlice(set, get);
 				const kokoro = kokoroSlice(set, get);
+			const tts = ttsSlice(set, get);
 				const sseHandlers = sseHandlersSlice(set, get);
 				const bridge = createChatStoreSlice(set, get);
 
@@ -72,6 +74,13 @@ export const useStore = create<AppState>()(
 					whisperReleases: releases.whisperReleases!,
 kokoroStatus: kokoro.kokoroStatus!,
 					setKokoroStatus: kokoro.setKokoroStatus!,
+					ttsActiveMessageId: tts.ttsActiveMessageId!,
+					ttsIsGenerating: tts.ttsIsGenerating!,
+					ttsIsSpeaking: tts.ttsIsSpeaking!,
+					ttsStart: tts.ttsStart!,
+					ttsStop: tts.ttsStop!,
+					ttsSetGenerating: tts.ttsSetGenerating!,
+					ttsSetSpeaking: tts.ttsSetSpeaking!,
   					proxyStatus: proxy.proxyStatus!,
 					proxyRoutes: proxy.proxyRoutes!,
 					recipes: recipes.recipes!,

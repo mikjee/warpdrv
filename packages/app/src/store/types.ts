@@ -90,6 +90,15 @@ export interface AppState {
 	kokoroStatus: IKokoroStatus | null;
 	setKokoroStatus: (status: IKokoroStatus | null) => void;
 
+	// TTS playback state
+	ttsActiveMessageId: string | null;
+	ttsIsGenerating: boolean;
+	ttsIsSpeaking: boolean;
+	ttsStart: (messageId: string) => void;
+	ttsStop: () => void;
+	ttsSetGenerating: (v: boolean) => void;
+	ttsSetSpeaking: (v: boolean) => void;
+
 	// Proxy (Phase 1)
 	proxyStatus: IProxyStatus | null;
 	proxyRoutes: IStickyRouteInfo[];

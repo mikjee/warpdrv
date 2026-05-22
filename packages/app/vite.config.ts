@@ -67,6 +67,9 @@ export default defineConfig({
 	define: {
 		__CONTROL_API_PORT__: JSON.stringify(process.env.CONTROL_API_PORT ?? '4400'),
 	},
+	worker: {
+		format: 'es',
+	},
 	resolve: {
 		alias: {
 			'@': path.resolve(__dirname, './src'),
@@ -75,6 +78,10 @@ export default defineConfig({
 	server: {
 		port: 3000,
 		host: true,
+		headers: [
+			{ name: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+			{ name: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
+		],
 		proxy: {
 			'/api': {
 				target: `http://localhost:${process.env.CONTROL_API_PORT ?? '4400'}`,

@@ -135,6 +135,13 @@ async function main() {
 
 	const app = express();
 
+	// Cross-origin isolation for Web Worker SharedArrayBuffer
+	app.use((req, res, next) => {
+		res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+		res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+		next();
+	});
+
 	app.use(cors());
 	app.use(express.json({ limit: '50mb' }));
 	app.use(cookieParser());

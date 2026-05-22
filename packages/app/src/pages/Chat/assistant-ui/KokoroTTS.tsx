@@ -1,84 +1,149 @@
-import React, { useCallback, useState, useMemo, type FC } from 'react';
+import React, { useCallback, useMemo, type FC } from 'react';
 import { Volume2, SquareIcon, Loader2 } from 'lucide-react';
 import { useAuiState } from '@assistant-ui/react';
 import { useStore } from '@/store';
 import { Box } from '@chakra-ui/react';
 
-const ActionBarIcon: FC<{ children: React.ReactNode; onClick?: () => void; disabled?: boolean }> = ({ children, onClick, disabled }) => (
+const ActionBarIcon: FC<{ children: React.ReactNode; onClick?: () => void }> = ({ children, onClick }) => (
 	<Box
 		w="28px"
 		h="28px"
 		display="flex"
 		alignItems="center"
 		justifyContent="center"
-		cursor={disabled ? 'not-allowed' : 'pointer'}
+		cursor="pointer"
 		rounded="md"
 		color="var(--wc-text-secondary)"
-		_hover={!disabled ? { bg: 'var(--wc-bg-selected)', color: 'var(--wc-text-heading)' } : undefined}
-		onClick={disabled ? undefined : onClick}
-		opacity={disabled ? 0.5 : 1}
+		_hover={{ bg: 'var(--wc-bg-selected)', color: 'var(--wc-text-heading)' }}
+		onClick={onClick}
 	>
 		{children}
 	</Box>
 );
 
-let kokoroInstance: any = null;
-let kokoroLoading = false;
-let kokoroLoadPromise: Promise<any> | null = null;
-let currentAudio: HTMLAudioElement | null = null;
-let currentUrl: string | null = null;
-let aborting = false;
+// --- Worker management ---
 
-function stopPlayback() {
-	if (currentAudio) {
-		currentAudio.pause();
-		currentAudio.currentTime = 0;
-		currentAudio = null;
+let ttsWorker: Worker | null = null;
+let workerReady = false;
+let workerReadyPromise: Promise<void> | null = null;
+let currentAudioEl: HTMLAudioElement | null = null;
+let playbackQueue: string[] = [];
+let isPlayingChunk = false;
+let isStopped = false;
+
+function getWorker() {
+	if (!ttsWorker) {
+		ttsWorker = new Worker(
+			new URL('./KokoroTTS.worker.ts', import.meta.url),
+			{ type: 'module' }
+		);
+		const baseUrl = window.location.origin;
+		const modelUrl = `${baseUrl}/api/kokoro/kokoro-model`;
+		ttsWorker.postMessage({ type: 'init', baseUrl, modelUrl });
+		workerReadyPromise = new Promise((resolve, reject) => {
+			ttsWorker!.onmessage = (e) => {
+				const msg = e.data;
+				if (msg.type === 'ready') {
+					workerReady = true;
+					resolve();
+				} else if (msg.type === 'chunk') {
+					if (isStopped) {
+						return;
+					}
+					const url = URL.createObjectURL(new Blob([msg.audio], { type: 'audio/wav' }));
+					playbackQueue.push(url);
+					tryPlayNext();
+				} else if (msg.type === 'done') {
+					useStore.getState().ttsSetGenerating(false);
+				} else if (msg.type === 'error') {
+					console.error('[KokoroTTS] Worker error:', msg.message);
+					useStore.getState().ttsSetGenerating(false);
+					reject(new Error(msg.message));
+				}
+			};
+		});
 	}
-	if (currentUrl) {
-		URL.revokeObjectURL(currentUrl);
-		currentUrl = null;
-	}
-	aborting = true;
+	return ttsWorker;
 }
 
-export async function getKokoroTTS() {
-	if (kokoroInstance) return kokoroInstance;
-	if (kokoroLoadPromise) return kokoroLoadPromise;
-	kokoroLoading = true;
-	kokoroLoadPromise = (async () => {
-		try {
-			const { KokoroTTS, setVoiceDataUrl, env: kokoroEnv } = await import('kokoro-js');
-			const { env } = await import('@huggingface/transformers');
-			const baseUrl = window.location.origin;
-			const modelUrl = `${baseUrl}/api/kokoro/kokoro-model`;
-			kokoroEnv.wasmPaths = '/onnxruntime/';
-			env.remoteHost = baseUrl;
-			env.remotePathTemplate = '/api/kokoro/kokoro-model';
-			env.allowLocalModels = false;
-			setVoiceDataUrl(`${modelUrl}/voices`);
-			console.log('[KokoroTTS] Loading model...');
-			kokoroInstance = await KokoroTTS.from_pretrained('kokoro', {
-				dtype: 'fp32',
-				device: 'wasm',
-			});
-			console.log('[KokoroTTS] Model loaded');
-			kokoroLoading = false;
-			return kokoroInstance;
-		} catch (err) {
-			console.error('[KokoroTTS] Failed to initialize:', err);
-			kokoroLoading = false;
-			return null;
+function tryPlayNext() {
+	if (isPlayingChunk || playbackQueue.length === 0 || isStopped) return;
+	const url = playbackQueue.shift();
+	if (!url) return;
+	isPlayingChunk = true;
+	const audioEl = new Audio(url);
+	currentAudioEl = audioEl;
+	useStore.getState().ttsSetSpeaking(true);
+	audioEl.onended = () => {
+		if (currentAudioEl === audioEl) {
+			currentAudioEl = null;
 		}
-	})();
-	return kokoroLoadPromise;
+		URL.revokeObjectURL(url);
+		isPlayingChunk = false;
+		const { ttsActiveMessageId, ttsIsGenerating } = useStore.getState();
+		if (!ttsActiveMessageId || !ttsIsGenerating) {
+			useStore.getState().ttsSetSpeaking(false);
+		}
+		tryPlayNext();
+	};
+	audioEl.onerror = () => {
+		if (currentAudioEl === audioEl) {
+			currentAudioEl = null;
+		}
+		URL.revokeObjectURL(url);
+		isPlayingChunk = false;
+		const { ttsActiveMessageId, ttsIsGenerating } = useStore.getState();
+		if (!ttsActiveMessageId || !ttsIsGenerating) {
+			useStore.getState().ttsSetSpeaking(false);
+		}
+		tryPlayNext();
+	};
+	audioEl.play().catch(() => {
+		if (currentAudioEl === audioEl) {
+			currentAudioEl = null;
+		}
+		URL.revokeObjectURL(url);
+		isPlayingChunk = false;
+		const { ttsActiveMessageId, ttsIsGenerating } = useStore.getState();
+		if (!ttsActiveMessageId || !ttsIsGenerating) {
+			useStore.getState().ttsSetSpeaking(false);
+		}
+	});
+}
+
+function stopPlayback() {
+	if (currentAudioEl) {
+		currentAudioEl.pause();
+		currentAudioEl.currentTime = 0;
+		currentAudioEl = null;
+	}
+	for (const url of playbackQueue) {
+		URL.revokeObjectURL(url);
+	}
+	playbackQueue = [];
+	isPlayingChunk = false;
+	isStopped = true;
+	useStore.getState().ttsStop();
+	if (ttsWorker) {
+		ttsWorker.postMessage({ type: 'stop' });
+	}
+}
+
+export function initTTSWorker() {
+	getWorker();
 }
 
 export const KokoroTTSButton = React.memo(() => {
-	const [speaking, setSpeaking] = useState(false);
-	const [loading, setLoading] = useState(false);
 	const parts = useAuiState((s) => s.message.content);
+	const messageId = useAuiState((s) => s.message.id);
 	const voice = useStore((s) => s.settings.kokoroVoice || 'af_heart');
+
+	const activeMessageId = useStore((s) => s.ttsActiveMessageId);
+	const isGenerating = useStore((s) => s.ttsIsGenerating);
+	const isSpeaking = useStore((s) => s.ttsIsSpeaking);
+	const ttsStart = useStore((s) => s.ttsStart);
+
+	const isActive = activeMessageId === messageId;
 
 	const messageText = useMemo(() => {
 		if (!parts || parts.length === 0) return '';
@@ -89,86 +154,30 @@ export const KokoroTTSButton = React.memo(() => {
 	}, [parts]);
 
 	const handleSpeak = useCallback(async () => {
-		if (speaking) {
+		if (isActive) {
 			stopPlayback();
-			setSpeaking(false);
 			return;
 		}
-		if (!messageText.trim()) return;
-		setLoading(true);
-		setSpeaking(true);
-		aborting = false;
-		const timeout = setTimeout(() => {
-			console.error('[KokoroTTS] Timed out');
+		if (activeMessageId) {
 			stopPlayback();
-			setSpeaking(false);
-			setLoading(false);
-		}, 20000);
-		try {
-			const tts = await getKokoroTTS();
-			if (tts) {
-				console.log('[KokoroTTS] Generating audio...');
-				const audio = await tts.generate(messageText, { voice });
-				if (aborting) {
-					console.log('[KokoroTTS] Generation cancelled');
-					setSpeaking(false);
-					setLoading(false);
-					return;
-				}
-				console.log('[KokoroTTS] Audio generated, playing...');
-				try {
-					const buffer = audio.toWav();
-					const blob = new Blob([buffer], { type: 'audio/wav' });
-					const url = URL.createObjectURL(blob);
-					currentUrl = url;
-					const audioEl = new Audio(url);
-
-					audioEl.onplay = () => {
-						currentAudio = audioEl;
-					};
-					audioEl.onended = () => {
-						if (currentAudio === audioEl) {
-							currentAudio = null;
-							currentUrl = null;
-						}
-						URL.revokeObjectURL(url);
-						clearTimeout(timeout);
-						setSpeaking(false);
-						setLoading(false);
-					};
-					audioEl.onerror = (e) => {
-						console.error('[KokoroTTS] Audio element error:', e);
-						if (currentAudio === audioEl) {
-							currentAudio = null;
-							currentUrl = null;
-						}
-						URL.revokeObjectURL(url);
-						clearTimeout(timeout);
-						setSpeaking(false);
-						setLoading(false);
-					};
-					await audioEl.play();
-				} catch (playErr) {
-					console.error('[KokoroTTS] Playback failed:', playErr);
-					setSpeaking(false);
-					setLoading(false);
-				}
-			} else {
-				setSpeaking(false);
-				setLoading(false);
-			}
-		} catch (err) {
-			console.error('[KokoroTTS] Failed to speak:', err);
-			setSpeaking(false);
-			setLoading(false);
-		} finally {
-			clearTimeout(timeout);
 		}
-	}, [speaking, messageText, voice]);
+		if (!messageText.trim()) return;
+		isStopped = false;
+		playbackQueue = [];
+		ttsStart(messageId);
+		try {
+			await workerReadyPromise;
+			const worker = getWorker();
+			worker.postMessage({ type: 'stream', text: messageText, voice });
+		} catch (err) {
+			console.error('[KokoroTTS] Worker init failed:', err);
+			useStore.getState().ttsStop();
+		}
+	}, [isActive, activeMessageId, messageId, messageText, voice, ttsStart]);
 
 	return (
-		<ActionBarIcon onClick={handleSpeak} disabled={loading}>
-			{loading ? <Loader2 size={14} className="animate-spin" /> : speaking ? <SquareIcon size={14} /> : <Volume2 size={14} />}
+		<ActionBarIcon onClick={handleSpeak}>
+			{isActive ? (isSpeaking ? <SquareIcon size={14} /> : <Loader2 size={14} className="animate-spin" />) : <Volume2 size={14} />}
 		</ActionBarIcon>
 	);
 });
