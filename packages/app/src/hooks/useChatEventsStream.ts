@@ -1,7 +1,22 @@
 import { EventSource } from 'eventsource';
 import { useEffect } from 'react';
 import { useStore } from '../store';
+import { getWorker } from '../pages/Chat/assistant-ui/KokoroTTS';
 import type { IBridgeEvent } from '@warpcore/bridge';
+
+function findLastSentenceEnd(text: string): number {
+	for (let i = text.length - 1; i >= 0; i--) {
+		const c = text[i];
+		if (c === '.' || c === '!' || c === '?') {
+			if (i + 1 >= text.length || /\s/.test(text[i + 1])) {
+				return i;
+			}
+		}
+	}
+	return -1;
+}
+
+const ttsAccumulated: Record<string, string> = {};
 
 export function useChatEventsStream() {
 	const applyThreadCreated = useStore(s => s.applyThreadCreated);
@@ -49,8 +64,30 @@ export function useChatEventsStream() {
 			case 'message.deleted':
 				applyMessageDeleted(event.messageId, event.threadId);
 				break;
-			case 'message.chunk':
+case 'message.chunk':
 				applyMessageChunk(event.messageId, event.threadId, event.partId, event.deltaText);
+				if (event.partType === 'text') {
+					const state = useStore.getState();
+					const msg = state.messagesByThread[event.threadId]?.[event.messageId];
+					if (msg) {
+						const part = msg.content.find((p: any) => p.id === event.partId);
+						const buffered = state.chunksByMessageId[event.messageId]?.chunk || '';
+						const fullText = (part?.text || '') + buffered;
+						const spoken = state.ttsSpokenByMessage[event.messageId] || 0;
+						const remaining = fullText.slice(spoken);
+						const lastEnd = findLastSentenceEnd(remaining);
+						if (lastEnd > -1) {
+							const sentence = remaining.slice(0, lastEnd + 1);
+							console.log('[TTS auto] sentence:', JSON.stringify(sentence));
+							getWorker().postMessage({
+								type: 'stream',
+								text: sentence,
+								voice: state.settings.kokoroVoice || 'af_heart',
+							});
+							useStore.getState().ttsSetSpokenIndex(event.messageId, spoken + lastEnd + 1);
+						}
+					}
+				}
 				break;
 			case 'tool_call.starting':
 				applyToolCallStarting(event.messageId, event.name);
@@ -63,9 +100,12 @@ export function useChatEventsStream() {
 				break;
 			case 'inference.started':
 				applyInferenceStarted(event.threadId, event.messageId);
+				useStore.getState().ttsSetSpokenIndex(event.messageId, 0);
 				break;
-			case 'inference.ended':
+case 'inference.ended':
+				console.log('[TTS auto] inference.ended');
 				applyInferenceEnded(event.threadId, event.messageId);
+				useStore.getState().ttsClearSpokenIndex(event.messageId);
 				break;
 			case 'inference.error':
 				applyInferenceError(event.threadId, event.messageId, event.error);

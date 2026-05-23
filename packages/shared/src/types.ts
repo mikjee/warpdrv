@@ -129,7 +129,7 @@ export interface IModel {
 // ============================================================
 export interface ISpecDecodeParams {
 	enabled: boolean;
-	mode?: 'draft' | 'ngram'; // undefined → 'draft' (backward compat)
+	mode?: 'draft' | 'ngram' | 'mtp'; // undefined → 'draft' (backward compat)
 	// Shared across modes
 	draftMax: number; // max tokens to draft per step
 	draftMin: number; // min tokens to draft per step
@@ -139,8 +139,11 @@ export interface ISpecDecodeParams {
 	draftGpuLayers: number;
 	draftContextSize: number; // 0 = loaded from model
 	draftPMin: number; // acceptance probability threshold (0.0-1.0)
-	// Ngram-only (optional)
+	// Spec type for draft/MTP mode (e.g. "mtp" for Mamba Transition Prediction)
 	specType?: ESpecType;
+	// MTP-specific: max draft tokens per step (maps to --spec-draft-n-max)
+	specDraftNMax?: number;
+	// Ngram-only (optional)
 	ngramSizeN?: number; // lookup n-gram length
 	ngramSizeM?: number; // draft m-gram length
 	ngramMinHits?: number; // min occurrences before drafting (ngram-map-k* only)
@@ -154,6 +157,7 @@ export const DEFAULT_SPEC_DECODE_PARAMS: ISpecDecodeParams = {
 	draftMax: 16,
 	draftMin: 0,
 	draftPMin: 0.75,
+	specDraftNMax: 3,
 };
 // ============================================================
 // Server Launch Params

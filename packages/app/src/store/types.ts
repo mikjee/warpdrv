@@ -94,10 +94,13 @@ export interface AppState {
 	ttsActiveMessageId: string | null;
 	ttsIsGenerating: boolean;
 	ttsIsSpeaking: boolean;
+	ttsSpokenByMessage: Record<string, number>;
 	ttsStart: (messageId: string) => void;
 	ttsStop: () => void;
 	ttsSetGenerating: (v: boolean) => void;
 	ttsSetSpeaking: (v: boolean) => void;
+	ttsSetSpokenIndex: (messageId: string, index: number) => void;
+	ttsClearSpokenIndex: (messageId: string) => void;
 
 	// Proxy (Phase 1)
 	proxyStatus: IProxyStatus | null;

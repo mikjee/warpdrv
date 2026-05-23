@@ -5,6 +5,7 @@ import { RiVoiceprintLine } from 'react-icons/ri';
 import { useStore } from '@/store';
 import { EWhisperServerStatus } from '@warpcore/shared';
 import { createVADSession, float32ToWavBlob } from './VADManager';
+import { stopTTS } from './KokoroTTS';
 import { parseWhisperThreadMeta } from './WhisperServerSelector';
 import type { AssistantClient } from '@assistant-ui/react';
 
@@ -136,6 +137,7 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 	// ============================================================
 	const handleVADToggle = useCallback(async () => {
 		if (vadActive) {
+			stopTTS();
 			vadSessionRef.current?.destroy();
 			vadSessionRef.current = null;
 			vadWaveformStreamRef.current?.getTracks().forEach(t => t.stop());
@@ -170,6 +172,7 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 				if (aui.composer().canCancel) {
 					aui.composer().cancel();
 				}
+				stopTTS();
 			},
 			onSpeechEnd: async (audio: Float32Array) => {
 				setIsVADTranscribing(true);

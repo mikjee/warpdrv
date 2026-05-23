@@ -109,7 +109,7 @@ export const SpeculativeDecodingCard = React.memo(({
 					</Flex>
 					<VStack align="start" gap="0.5">
 <Text fontSize="12px" fontWeight="600" color="var(--wc-text-tertiary)" textTransform="uppercase" letterSpacing="0.05em">Speculative Decoding</Text>
-					<Text fontSize="11px" color="var(--wc-text-tertiary)">{specDecode.mode === 'ngram' ? 'Draftless n-gram speculation' : 'Use a smaller model as the draft driver'}</Text>
+					<Text fontSize="11px" color="var(--wc-text-tertiary)">{specDecode.mode === 'ngram' ? 'Draftless n-gram speculation' : specDecode.mode === 'mtp' ? 'Mamba Transition Prediction' : 'Use a smaller model as the draft driver'}</Text>
 					</VStack>
 				</HStack>
 				<Switch.Root label="Enable speculative decoding" checked={specDecode.enabled} onCheckedChange={(d) => onSpecParamChange('enabled', d.checked)} color={specDecode.enabled ? 'var(--wc-accent-purple)' : 'var(--wc-text-tertiary)'}>
@@ -122,26 +122,34 @@ export const SpeculativeDecodingCard = React.memo(({
 
 			{specDecode.enabled && (
 				<VStack align="stretch" gap="4" mt="4">
-					<HStack gap="2">
+		<HStack gap="2">
 						<Button size="sm" variant="outline" flex="1" justifyContent="center"
-							borderColor={specDecode.mode === 'ngram' ? 'var(--wc-border-subtle)' : 'var(--wc-accent-purple-border)'}
-							borderWidth={specDecode.mode === 'ngram' ? '1px' : '2px'}
-							color={specDecode.mode === 'ngram' ? 'var(--wc-text-secondary)' : 'var(--wc-accent-purple)'}
-							bg={specDecode.mode === 'ngram' ? 'var(--wc-bg-subtle)' : 'var(--wc-accent-purple-bg-8)'}
-							_hover={{ borderColor: specDecode.mode === 'ngram' ? 'var(--wc-border-hover)' : 'var(--wc-accent-purple-hover)' }}
+							borderColor={specDecode.mode === 'draft' ? 'var(--wc-accent-purple-border)' : 'var(--wc-border-subtle)'}
+							borderWidth={specDecode.mode === 'draft' ? '2px' : '1px'}
+							color={specDecode.mode === 'draft' ? 'var(--wc-accent-purple)' : 'var(--wc-text-secondary)'}
+							bg={specDecode.mode === 'draft' ? 'var(--wc-accent-purple-bg-8)' : 'var(--wc-bg-subtle)'}
+							_hover={{ borderColor: specDecode.mode === 'draft' ? 'var(--wc-accent-purple-hover)' : 'var(--wc-border-hover)' }}
 							onClick={() => onSpecParamChange('mode', 'draft')}
 						><Text fontSize="13px" fontWeight="500">Draft Model</Text></Button>
 						<Button size="sm" variant="outline" flex="1" justifyContent="center"
-borderColor={specDecode.mode === 'ngram' ? 'var(--wc-accent-purple-border)' : 'var(--wc-border-subtle)'}
-						borderWidth={specDecode.mode === 'ngram' ? '2px' : '1px'}
-						color={specDecode.mode === 'ngram' ? 'var(--wc-accent-purple)' : 'var(--wc-text-secondary)'}
-						bg={specDecode.mode === 'ngram' ? 'var(--wc-accent-purple-bg-8)' : 'var(--wc-bg-subtle)'}
-						_hover={{ borderColor: specDecode.mode === 'ngram' ? 'var(--wc-accent-purple-hover)' : 'var(--wc-border-hover)' }}
+							borderColor={specDecode.mode === 'mtp' ? 'var(--wc-accent-purple-border)' : 'var(--wc-border-subtle)'}
+							borderWidth={specDecode.mode === 'mtp' ? '2px' : '1px'}
+							color={specDecode.mode === 'mtp' ? 'var(--wc-accent-purple)' : 'var(--wc-text-secondary)'}
+							bg={specDecode.mode === 'mtp' ? 'var(--wc-accent-purple-bg-8)' : 'var(--wc-bg-subtle)'}
+							_hover={{ borderColor: specDecode.mode === 'mtp' ? 'var(--wc-accent-purple-hover)' : 'var(--wc-border-hover)' }}
+							onClick={() => onSpecParamChange('mode', 'mtp')}
+						><Text fontSize="13px" fontWeight="500">MTP</Text></Button>
+						<Button size="sm" variant="outline" flex="1" justifyContent="center"
+							borderColor={specDecode.mode === 'ngram' ? 'var(--wc-accent-purple-border)' : 'var(--wc-border-subtle)'}
+							borderWidth={specDecode.mode === 'ngram' ? '2px' : '1px'}
+							color={specDecode.mode === 'ngram' ? 'var(--wc-accent-purple)' : 'var(--wc-text-secondary)'}
+							bg={specDecode.mode === 'ngram' ? 'var(--wc-accent-purple-bg-8)' : 'var(--wc-bg-subtle)'}
+							_hover={{ borderColor: specDecode.mode === 'ngram' ? 'var(--wc-accent-purple-hover)' : 'var(--wc-border-hover)' }}
 							onClick={() => onSpecParamChange('mode', 'ngram')}
 						><Text fontSize="13px" fontWeight="500">Ngram</Text></Button>
 					</HStack>
 
-					{specDecode.mode !== 'ngram' && (
+					{specDecode.mode === 'draft' && (
 						<VStack align="stretch" gap="4">
 							<Box>
 								<Text fontSize="11px" color="var(--wc-accent-purple-text)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Draft Model</Text>
@@ -201,6 +209,23 @@ borderColor={specDecode.mode === 'ngram' ? 'var(--wc-accent-purple-border)' : 'v
 						</VStack>
 					)}
 
+					{specDecode.mode === 'mtp' && (
+						<VStack align="stretch" gap="4">
+					<Box>
+							<Text fontSize="11px" color="var(--wc-accent-purple-text)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Accept Threshold</Text>
+							<Input type="number" value={specDecode.draftPMin} onChange={e => onSpecParamChange('draftPMin', Number(e.target.value))} size="sm"
+								bg="var(--wc-bg-subtle)" borderColor="var(--wc-border-default)" color="var(--wc-text-primary)"
+								fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg"
+								_focus={{ borderColor: 'var(--wc-accent-purple)', outline: 'none' }} min={0} max={1} step={0.05} />
+							<Text fontSize="10px" color="var(--wc-text-muted)" mt="1">0.0 - 1.0</Text>
+						</Box>
+						<Flex gap="4">
+							<NumberField label="Draft Min" value={specDecode.draftMin} onChange={v => onSpecParamChange('draftMin', v)} min={0} max={64} />
+							<NumberField label="Draft N-Max" value={specDecode.specDraftNMax} onChange={v => onSpecParamChange('specDraftNMax', v)} min={1} max={128} />
+						</Flex>
+						</VStack>
+					)}
+
 					{specDecode.mode === 'ngram' && (
 						<VStack align="stretch" gap="4">
 							<SelectField label="Spec Type" value={specDecode.specType ?? ESpecType.NGRAM_SIMPLE}
@@ -221,13 +246,15 @@ borderColor={specDecode.mode === 'ngram' ? 'var(--wc-accent-purple-border)' : 'v
 						</VStack>
 					)}
 
-					<Box>
-						<Text fontSize="11px" color="var(--wc-accent-purple-text)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Drafting Parameters</Text>
-						<Flex gap="4">
-							<NumberField label="Draft Max" value={specDecode.draftMax} onChange={v => onSpecParamChange('draftMax', v)} min={1} max={128} />
-							<NumberField label="Draft Min" value={specDecode.draftMin} onChange={v => onSpecParamChange('draftMin', v)} min={0} max={64} />
-						</Flex>
-					</Box>
+					{specDecode.mode !== 'mtp' && (
+						<Box>
+							<Text fontSize="11px" color="var(--wc-accent-purple-text)" textTransform="uppercase" letterSpacing="0.05em" mb="2">Drafting Parameters</Text>
+							<Flex gap="4">
+								<NumberField label="Draft Max" value={specDecode.draftMax} onChange={v => onSpecParamChange('draftMax', v)} min={1} max={128} />
+								<NumberField label="Draft Min" value={specDecode.draftMin} onChange={v => onSpecParamChange('draftMin', v)} min={0} max={64} />
+							</Flex>
+						</Box>
+					)}
 				</VStack>
 			)}
 		</Card>

@@ -148,6 +148,7 @@ export function buildArgs(
 	if (params.specDecode?.enabled) {
 		const sd = params.specDecode;
 		const isNgram = sd.mode === 'ngram';
+		const isMtp = sd.mode === 'mtp';
 		// Ngram mode — draftless speculative decoding
 		if (isNgram && sd.specType && sd.specType !== 'none') {
 			args.push('--spec-type', sd.specType);
@@ -157,8 +158,15 @@ export function buildArgs(
 				args.push('--spec-ngram-min-hits', String(sd.ngramMinHits));
 			}
 		}
+		// MTP mode
+		if (isMtp) {
+			args.push('--spec-type', 'mtp');
+			if (sd.specDraftNMax) args.push('--spec-draft-n-max', String(sd.specDraftNMax));
+			if (sd.draftMin > 0) args.push('--draft-min', String(sd.draftMin));
+			if (sd.draftPMin > 0) args.push('--draft-p-min', String(sd.draftPMin));
+		}
 		// Draft model mode
-		if (!isNgram && sd.draftModelPath) {
+		if (!isNgram && !isMtp && sd.draftModelPath) {
 			args.push('--model-draft', sd.draftModelPath);
 			if (sd.draftDevice) args.push('--device-draft', sd.draftDevice);
 			if (sd.draftGpuLayers > 0) args.push('--gpu-layers-draft', String(sd.draftGpuLayers));
@@ -166,9 +174,9 @@ export function buildArgs(
 		}
 		// Shared across modes
 		if (sd.draftMax > 0) args.push('--draft-max', String(sd.draftMax));
-		if (sd.draftMin > 0) args.push('--draft-min', String(sd.draftMin));
+		if (!isMtp && sd.draftMin > 0) args.push('--draft-min', String(sd.draftMin));
 		// Draft-model-only
-		if (!isNgram && sd.draftPMin > 0) args.push('--draft-p-min', String(sd.draftPMin));
+		if (!isMtp && !isNgram && sd.draftPMin > 0) args.push('--draft-p-min', String(sd.draftPMin));
 	}
 	args.push('--host', '0.0.0.0');
 	args.push('--port', String(params.port));

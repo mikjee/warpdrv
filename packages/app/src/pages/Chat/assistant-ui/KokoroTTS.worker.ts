@@ -1,6 +1,7 @@
 let kokoroInstance: any = null;
 let isReady = false;
-let stopRequested = false;
+let currentRequestId: number = 0;
+let activeRequestId: number = 0;
 
 interface InitMessage {
 	type: 'init';
@@ -10,6 +11,7 @@ interface InitMessage {
 
 interface StreamMessage {
 	type: 'stream';
+	requestId: number;
 	text: string;
 	voice: string;
 }
@@ -32,7 +34,7 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
 	} else if (msg.type === 'stream') {
 		handleStream(msg);
 	} else if (msg.type === 'stop') {
-		stopRequested = true;
+		activeRequestId = 0;
 	} else if (msg.type === 'destroy') {
 		self.close();
 	}
@@ -64,24 +66,31 @@ async function handleInit(msg: InitMessage) {
 
 async function handleStream(msg: StreamMessage) {
 	if (!kokoroInstance || !isReady) {
-		self.postMessage({ type: 'error', message: 'Worker not initialized' });
+		self.postMessage({ type: 'error', requestId: msg.requestId, message: 'Worker not initialized' });
 		return;
 	}
 
-	stopRequested = false;
+	activeRequestId = msg.requestId;
+	const myRequestId = msg.requestId;
 
 	try {
-		for await (const chunk of kokoroInstance.stream(msg.text, { voice: msg.voice })) {
-			if (stopRequested) {
-				self.postMessage({ type: 'done' });
+		const { TextSplitterStream } = await import('kokoro-js');
+		const splitter = new TextSplitterStream();
+		const stream = kokoroInstance.stream(splitter, { voice: msg.voice });
+		splitter.push(msg.text);
+		splitter.close();
+
+		for await (const chunk of stream) {
+			if (activeRequestId !== myRequestId) {
+				self.postMessage({ type: 'done', requestId: myRequestId });
 				return;
 			}
 			const audio = chunk.audio as any;
 			const wavBuffer = audio.toWav();
-			self.postMessage({ type: 'chunk', audio: wavBuffer }, [wavBuffer]);
+			self.postMessage({ type: 'chunk', requestId: myRequestId, audio: wavBuffer }, [wavBuffer]);
 		}
-		self.postMessage({ type: 'done' });
+		self.postMessage({ type: 'done', requestId: myRequestId });
 	} catch (err: any) {
-		self.postMessage({ type: 'error', message: err?.message ?? String(err) });
+		self.postMessage({ type: 'error', requestId: myRequestId, message: err?.message ?? String(err) });
 	}
 }

@@ -29,9 +29,9 @@ let workerReadyPromise: Promise<void> | null = null;
 let currentAudioEl: HTMLAudioElement | null = null;
 let playbackQueue: string[] = [];
 let isPlayingChunk = false;
-let isStopped = false;
+let currentRequestId: number = 0;
 
-function getWorker() {
+export function getWorker() {
 	if (!ttsWorker) {
 		ttsWorker = new Worker(
 			new URL('./KokoroTTS.worker.ts', import.meta.url),
@@ -46,18 +46,23 @@ function getWorker() {
 				if (msg.type === 'ready') {
 					workerReady = true;
 					resolve();
-				} else if (msg.type === 'chunk') {
-					if (isStopped) {
-						return;
-					}
+					return;
+				}
+				if (msg.requestId !== undefined && msg.requestId !== currentRequestId) {
+					return;
+				}
+				if (msg.type === 'chunk') {
 					const url = URL.createObjectURL(new Blob([msg.audio], { type: 'audio/wav' }));
 					playbackQueue.push(url);
 					tryPlayNext();
 				} else if (msg.type === 'done') {
 					useStore.getState().ttsSetGenerating(false);
+					if (playbackQueue.length === 0 && !isPlayingChunk) {
+						useStore.getState().ttsSetSpeaking(false);
+					}
 				} else if (msg.type === 'error') {
 					console.error('[KokoroTTS] Worker error:', msg.message);
-					useStore.getState().ttsSetGenerating(false);
+					useStore.getState().ttsStop();
 					reject(new Error(msg.message));
 				}
 			};
@@ -67,24 +72,25 @@ function getWorker() {
 }
 
 function tryPlayNext() {
-	if (isPlayingChunk || playbackQueue.length === 0 || isStopped) return;
+	if (isPlayingChunk || playbackQueue.length === 0) return;
 	const url = playbackQueue.shift();
 	if (!url) return;
 	isPlayingChunk = true;
 	const audioEl = new Audio(url);
 	currentAudioEl = audioEl;
-	useStore.getState().ttsSetSpeaking(true);
+	if (!useStore.getState().ttsIsSpeaking) {
+		useStore.getState().ttsSetSpeaking(true);
+	}
 	audioEl.onended = () => {
 		if (currentAudioEl === audioEl) {
 			currentAudioEl = null;
 		}
 		URL.revokeObjectURL(url);
 		isPlayingChunk = false;
-		const { ttsActiveMessageId, ttsIsGenerating } = useStore.getState();
-		if (!ttsActiveMessageId || !ttsIsGenerating) {
+		tryPlayNext();
+		if (playbackQueue.length === 0 && !isPlayingChunk && !useStore.getState().ttsIsGenerating) {
 			useStore.getState().ttsSetSpeaking(false);
 		}
-		tryPlayNext();
 	};
 	audioEl.onerror = () => {
 		if (currentAudioEl === audioEl) {
@@ -92,11 +98,10 @@ function tryPlayNext() {
 		}
 		URL.revokeObjectURL(url);
 		isPlayingChunk = false;
-		const { ttsActiveMessageId, ttsIsGenerating } = useStore.getState();
-		if (!ttsActiveMessageId || !ttsIsGenerating) {
+		tryPlayNext();
+		if (playbackQueue.length === 0 && !isPlayingChunk && !useStore.getState().ttsIsGenerating) {
 			useStore.getState().ttsSetSpeaking(false);
 		}
-		tryPlayNext();
 	};
 	audioEl.play().catch(() => {
 		if (currentAudioEl === audioEl) {
@@ -104,14 +109,11 @@ function tryPlayNext() {
 		}
 		URL.revokeObjectURL(url);
 		isPlayingChunk = false;
-		const { ttsActiveMessageId, ttsIsGenerating } = useStore.getState();
-		if (!ttsActiveMessageId || !ttsIsGenerating) {
-			useStore.getState().ttsSetSpeaking(false);
-		}
 	});
 }
 
-function stopPlayback() {
+export function stopTTS() {
+	currentRequestId = 0;
 	if (currentAudioEl) {
 		currentAudioEl.pause();
 		currentAudioEl.currentTime = 0;
@@ -122,7 +124,6 @@ function stopPlayback() {
 	}
 	playbackQueue = [];
 	isPlayingChunk = false;
-	isStopped = true;
 	useStore.getState().ttsStop();
 	if (ttsWorker) {
 		ttsWorker.postMessage({ type: 'stop' });
@@ -155,20 +156,21 @@ export const KokoroTTSButton = React.memo(() => {
 
 	const handleSpeak = useCallback(async () => {
 		if (isActive) {
-			stopPlayback();
+			stopTTS();
 			return;
 		}
 		if (activeMessageId) {
-			stopPlayback();
+			stopTTS();
 		}
 		if (!messageText.trim()) return;
-		isStopped = false;
 		playbackQueue = [];
+		const requestId = Date.now();
+		currentRequestId = requestId;
 		ttsStart(messageId);
 		try {
 			await workerReadyPromise;
 			const worker = getWorker();
-			worker.postMessage({ type: 'stream', text: messageText, voice });
+			worker.postMessage({ type: 'stream', requestId, text: messageText, voice });
 		} catch (err) {
 			console.error('[KokoroTTS] Worker init failed:', err);
 			useStore.getState().ttsStop();
