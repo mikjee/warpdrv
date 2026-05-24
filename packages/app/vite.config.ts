@@ -70,6 +70,7 @@ export default defineConfig({
 	worker: {
 		format: 'es',
 	},
+	build: { sourcemap: true, minify: false },
 	resolve: {
 		alias: {
 			'@': path.resolve(__dirname, './src'),

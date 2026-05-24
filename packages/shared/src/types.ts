@@ -41,7 +41,9 @@ export interface IBackend {
 	defaultArgs: string[];
 	description: string;
 	validation: EValidationStatus;
-	version: string; // detected build version
+	version: string; // compiled GPU backends (e.g. 'CUDA, Vulkan')
+	buildNumber: string; // llama.cpp build number (e.g. '9293')
+	gitCommit: string; // git commit hash of this build (e.g. '1acee6bf8')
 	detectedDevices: IDevice[];
 	createdAt: number;
 	updatedAt: number;

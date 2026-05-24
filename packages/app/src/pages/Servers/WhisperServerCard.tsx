@@ -10,7 +10,7 @@ import { useStore } from '@/store';
 import { stopWhisperServer, restartWhisperServer, updateWhisperServer } from '@/api/whisperServices';
 import type { IWhisperServer, IWhisperModel } from '@warpcore/shared';
 import { EWhisperServerStatus, EServerStatus } from '@warpcore/shared';
-import { formatUptime, StatPill } from './utils';
+import { formatUptime, StatPill, formatLaunchCommand } from './utils';
 
 interface IWhisperServerCardProps {
 	serverId: string;
@@ -115,9 +115,9 @@ export const WhisperServerCard = React.memo(({
 													<Box
 														fontSize="10px" fontFamily='"Geist Mono", monospace' color="var(--wc-text-secondary)"
 														bg="var(--wc-bg-subtle)" borderRadius="md" p="2.5"
-														whiteSpace="pre-wrap" wordBreak="break-all" lineHeight="1.4"
+														whiteSpace="pre-wrap" wordBreak="break-word" lineHeight="1.8"
 													>
-														{server.launchCommand}
+														{formatLaunchCommand(server.launchCommand ?? '')}
 													</Box>
 												</VStack>
 											</HoverCard.Content>

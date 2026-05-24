@@ -15,7 +15,7 @@ import { useStore } from '@/store';
 import { stopServer, restartServer, updateServer, clearStickyRoute } from '@/api/services';
 import type { IServer, IBackend, IBackendGroup, IModel, TServerId } from '@warpcore/shared';
 import { EServerStatus } from '@warpcore/shared';
-import { formatUptime, formatCount, QUANT_COLORS, StatPill } from './utils';
+import { formatUptime, formatCount, QUANT_COLORS, StatPill, formatLaunchCommand } from './utils';
 import { ServerSlots } from '@/pages/Servers/SlotPill';
 
 interface IServerCardProps {
@@ -155,9 +155,9 @@ export const ServerCard = React.memo(({
 													<Box
 														fontSize="10px" fontFamily='"Geist Mono", monospace' color="var(--wc-text-secondary)"
 														bg="var(--wc-bg-subtle)" borderRadius="md" p="2.5"
-														whiteSpace="pre-wrap" wordBreak="break-all" lineHeight="1.4"
+														whiteSpace="pre-wrap" wordBreak="break-word" lineHeight="1.8"
 													>
-														{server.launchCommand}
+														{formatLaunchCommand(server.launchCommand ?? '')}
 													</Box>
 												</VStack>
 											</HoverCard.Content>
