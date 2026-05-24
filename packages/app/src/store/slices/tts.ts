@@ -7,6 +7,7 @@ interface TTSSlice {
 	ttsSpokenByMessage: Record<string, number>;
 	ttsVadSentencesSent: number;
 	ttsVadSentencesDone: number;
+	ttsVadRequestId: number;
 	ttsStart: (messageId: string, mode?: 'button' | 'vad') => void;
 	ttsStop: () => void;
 	ttsSetGenerating: (v: 'button' | 'vad' | null) => void;
@@ -17,6 +18,7 @@ interface TTSSlice {
 	ttsVadIncSent: () => void;
 	ttsVadIncDone: () => void;
 	ttsVadReset: () => void;
+	ttsVadNewRequestId: () => number;
 }
 
 export const ttsSlice = (
@@ -29,6 +31,7 @@ export const ttsSlice = (
 	ttsSpokenByMessage: {},
 	ttsVadSentencesSent: 0,
 	ttsVadSentencesDone: 0,
+	ttsVadRequestId: 0,
 	ttsStart: (messageId, mode = 'button') => {
 		setState(draft => {
 			draft.ttsActiveMessageId = messageId;
@@ -88,6 +91,14 @@ export const ttsSlice = (
 		setState(draft => {
 			draft.ttsVadSentencesSent = 0;
 			draft.ttsVadSentencesDone = 0;
+			draft.ttsVadRequestId = 0;
 		});
+	},
+	ttsVadNewRequestId: () => {
+		const id = Date.now();
+		setState(draft => {
+			draft.ttsVadRequestId = id;
+		});
+		return id;
 	},
 });

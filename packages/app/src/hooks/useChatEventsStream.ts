@@ -1,7 +1,7 @@
 import { EventSource } from 'eventsource';
 import { useEffect } from 'react';
 import { useStore } from '../store';
-import { getWorker } from '../pages/Chat/assistant-ui/KokoroTTS';
+import { getWorker, setKokoroCurrentRequestId } from '../pages/Chat/assistant-ui/KokoroTTS'; 
 import type { IBridgeEvent } from '@warpcore/bridge';
 
 function findLastSentenceEnd(text: string): number {
@@ -66,7 +66,7 @@ case 'message.chunk':
 				applyMessageChunk(event.messageId, event.threadId, event.partId, event.deltaText);
 		if (event.partType === 'text') {
 					const state = useStore.getState();
-					if (state.ttsActiveMessageId !== event.messageId) break;
+					if (state.ttsActiveMessageId !== event.messageId || state.ttsIsGenerating !== 'vad') break;
 					const msg = state.messagesByThread[event.threadId]?.[event.messageId];
 					if (msg) {
 						const part = msg.content.find((p: any) => p.id === event.partId);
@@ -81,9 +81,10 @@ case 'message.chunk':
 							useStore.getState().ttsVadIncSent();
 							getWorker().postMessage({
 								type: 'stream',
+								requestId: useStore.getState().ttsVadRequestId,
 								text: sentence,
 								voice: state.settings.kokoroVoice || 'af_heart',
-							});
+							}); 
 							useStore.getState().ttsSetSpokenIndex(event.messageId, spoken + lastEnd + 1);
 						}
 					}
@@ -102,6 +103,8 @@ case 'message.chunk':
 				applyInferenceStarted(event.threadId, event.messageId);
 				useStore.getState().ttsSetSpokenIndex(event.messageId, 0);
 				useStore.getState().ttsVadReset();
+				const newId = useStore.getState().ttsVadNewRequestId();
+				setKokoroCurrentRequestId(newId);
 				useStore.getState().ttsStart(event.messageId, 'vad');
 				break;
 case 'inference.ended':

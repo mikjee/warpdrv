@@ -58,9 +58,9 @@ export function getWorker() {
 					resolve();
 					return;
 				}
-				if (msg.requestId !== undefined && msg.requestId !== currentRequestId) {
+				if (msg.requestId !== currentRequestId) {
 					return;
-				}
+				} 
 				if (msg.type === 'chunk') {
 					if (useStore.getState().ttsActiveMessageId === null) return;
 					const url = URL.createObjectURL(new Blob([msg.audio], { type: 'audio/wav' }));
@@ -143,8 +143,11 @@ export function stopTTS() {
 	}
 	playbackQueue = [];
 	isPlayingChunk = false;
-	useStore.getState().ttsVadReset();
-	useStore.getState().ttsStop();
+	const s = useStore.getState();
+	const activeId = s.ttsActiveMessageId;
+	if (activeId) s.ttsClearSpokenIndex(activeId);
+	s.ttsVadReset();
+	s.ttsStop();
 	if (ttsWorker) {
 		ttsWorker.postMessage({ type: 'stop' });
 	}
@@ -152,6 +155,9 @@ export function stopTTS() {
 
 export function initTTSWorker() {
 	getWorker();
+}
+export function setKokoroCurrentRequestId(id: number) {
+	currentRequestId = id;
 }
 
 export const KokoroTTSButton = React.memo(() => {

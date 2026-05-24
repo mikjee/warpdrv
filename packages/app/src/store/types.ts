@@ -97,6 +97,7 @@ export interface AppState {
 	ttsSpokenByMessage: Record<string, number>;
 	ttsVadSentencesSent: number;
 	ttsVadSentencesDone: number;
+	ttsVadRequestId: number;
 	ttsStart: (messageId: string, mode?: 'button' | 'vad') => void;
 	ttsStop: () => void;
 	ttsSetGenerating: (v: 'button' | 'vad' | null) => void;
@@ -107,6 +108,7 @@ export interface AppState {
 	ttsVadIncSent: () => void;
 	ttsVadIncDone: () => void;
 	ttsVadReset: () => void;
+	ttsVadNewRequestId: () => number;
 
 	// Proxy (Phase 1)
 	proxyStatus: IProxyStatus | null;
