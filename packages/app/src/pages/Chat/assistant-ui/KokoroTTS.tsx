@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, type FC } from 'react';
-import { Volume2, SquareIcon, Loader2 } from 'lucide-react';
+import { Volume2, Loader2 } from 'lucide-react';
+import { FaStop } from 'react-icons/fa';
 import { useAuiState } from '@assistant-ui/react';
 import { useStore } from '@/store';
 import { Box } from '@chakra-ui/react';
@@ -182,7 +183,7 @@ export const KokoroTTSButton = React.memo(() => {
 
 	return (
 		<ActionBarIcon onClick={handleSpeak}>
-			{isActive ? (isSpeaking ? <SquareIcon size={14} /> : <Loader2 size={14} className="animate-spin" />) : <Volume2 size={14} />}
+			{isActive ? (isSpeaking ? <FaStop style={{ fontSize: 14, color: 'var(--wc-accent-green)', animation: 'pulse 1.5s ease infinite' }} /> : <Loader2 size={14} className="animate-spin" />) : <Volume2 size={14} />}
 		</ActionBarIcon>
 	);
 });
