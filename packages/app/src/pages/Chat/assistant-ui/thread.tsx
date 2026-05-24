@@ -794,6 +794,9 @@ const AssistantActionBar: FC = () => {
 			className="aui-assistant-action-bar-root col-start-3 row-start-2 -ml-1"
 			style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
 		>
+
+			{kokoroInstalled ? <KokoroTTSButton /> : <BrowserTTS />}
+
 			<ActionBarPrimitive.Copy asChild>
 				<ActionBarIcon>
 					{isCopied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
@@ -807,8 +810,6 @@ const AssistantActionBar: FC = () => {
 			</ActionBarPrimitive.Reload>
 
 			<DeleteMessageButton messageId={messageId} />
-
-			{kokoroInstalled ? <KokoroTTSButton /> : <BrowserTTS />}
 
 		</ActionBarPrimitive.Root>
 	);
@@ -837,13 +838,16 @@ const UserMessage: FC = () => {
 
 const UserActionBar: FC = () => {
 	const messageId = useAuiState((s) => s.message.id);
-	const message = useAuiState((s) => s.message);
+	//const message = useAuiState((s) => s.message);
+	const kokoroInstalled = useStore((s) => s.kokoroStatus?.installed);
 	
 	return (
 		<ActionBarPrimitive.Root
 			className="aui-user-action-bar-root"
 			style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
 		>
+			{kokoroInstalled ? <KokoroTTSButton /> : <BrowserTTS />}
+
 			<ActionBarPrimitive.Edit asChild>
 				<ActionBarIcon>
 					<PencilIcon size={14} />

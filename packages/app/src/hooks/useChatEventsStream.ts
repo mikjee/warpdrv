@@ -16,8 +16,6 @@ function findLastSentenceEnd(text: string): number {
 	return -1;
 }
 
-const ttsAccumulated: Record<string, string> = {};
-
 export function useChatEventsStream() {
 	const applyThreadCreated = useStore(s => s.applyThreadCreated);
 	const applyThreadUpdated = useStore(s => s.applyThreadUpdated);
@@ -101,6 +99,7 @@ case 'message.chunk':
 			case 'inference.started':
 				applyInferenceStarted(event.threadId, event.messageId);
 				useStore.getState().ttsSetSpokenIndex(event.messageId, 0);
+				useStore.getState().ttsStart(event.messageId, 'vad');
 				break;
 case 'inference.ended':
 				console.log('[TTS auto] inference.ended');

@@ -92,13 +92,14 @@ export interface AppState {
 
 	// TTS playback state
 	ttsActiveMessageId: string | null;
-	ttsIsGenerating: boolean;
+	ttsIsGenerating: 'button' | 'vad' | null;
 	ttsIsSpeaking: boolean;
 	ttsSpokenByMessage: Record<string, number>;
-	ttsStart: (messageId: string) => void;
+	ttsStart: (messageId: string, mode?: 'button' | 'vad') => void;
 	ttsStop: () => void;
-	ttsSetGenerating: (v: boolean) => void;
+	ttsSetGenerating: (v: 'button' | 'vad' | null) => void;
 	ttsSetSpeaking: (v: boolean) => void;
+	ttsSetActiveMessageId: (messageId: string | null) => void;
 	ttsSetSpokenIndex: (messageId: string, index: number) => void;
 	ttsClearSpokenIndex: (messageId: string) => void;
 

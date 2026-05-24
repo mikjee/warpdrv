@@ -56,9 +56,12 @@ export function getWorker() {
 					playbackQueue.push(url);
 					tryPlayNext();
 				} else if (msg.type === 'done') {
-					useStore.getState().ttsSetGenerating(false);
-					if (playbackQueue.length === 0 && !isPlayingChunk) {
-						useStore.getState().ttsSetSpeaking(false);
+					const mode = useStore.getState().ttsIsGenerating;
+					if (mode === 'button') {
+						useStore.getState().ttsSetGenerating(null);
+						if (playbackQueue.length === 0 && !isPlayingChunk) {
+							useStore.getState().ttsSetSpeaking(false);
+						}
 					}
 				} else if (msg.type === 'error') {
 					console.error('[KokoroTTS] Worker error:', msg.message);
