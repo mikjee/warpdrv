@@ -5,6 +5,8 @@ interface TTSSlice {
 	ttsIsGenerating: 'button' | 'vad' | null;
 	ttsIsSpeaking: boolean;
 	ttsSpokenByMessage: Record<string, number>;
+	ttsVadSentencesSent: number;
+	ttsVadSentencesDone: number;
 	ttsStart: (messageId: string, mode?: 'button' | 'vad') => void;
 	ttsStop: () => void;
 	ttsSetGenerating: (v: 'button' | 'vad' | null) => void;
@@ -12,6 +14,9 @@ interface TTSSlice {
 	ttsSetActiveMessageId: (messageId: string | null) => void;
 	ttsSetSpokenIndex: (messageId: string, index: number) => void;
 	ttsClearSpokenIndex: (messageId: string) => void;
+	ttsVadIncSent: () => void;
+	ttsVadIncDone: () => void;
+	ttsVadReset: () => void;
 }
 
 export const ttsSlice = (
@@ -22,6 +27,8 @@ export const ttsSlice = (
 	ttsIsGenerating: null,
 	ttsIsSpeaking: false,
 	ttsSpokenByMessage: {},
+	ttsVadSentencesSent: 0,
+	ttsVadSentencesDone: 0,
 	ttsStart: (messageId, mode = 'button') => {
 		setState(draft => {
 			draft.ttsActiveMessageId = messageId;
@@ -65,6 +72,22 @@ export const ttsSlice = (
 	ttsClearSpokenIndex: (messageId) => {
 		setState(draft => {
 			delete draft.ttsSpokenByMessage[messageId];
+		});
+	},
+	ttsVadIncSent: () => {
+		setState(draft => {
+			draft.ttsVadSentencesSent += 1;
+		});
+	},
+	ttsVadIncDone: () => {
+		setState(draft => {
+			draft.ttsVadSentencesDone += 1;
+		});
+	},
+	ttsVadReset: () => {
+		setState(draft => {
+			draft.ttsVadSentencesSent = 0;
+			draft.ttsVadSentencesDone = 0;
 		});
 	},
 });

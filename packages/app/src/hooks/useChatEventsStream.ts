@@ -64,8 +64,9 @@ export function useChatEventsStream() {
 				break;
 case 'message.chunk':
 				applyMessageChunk(event.messageId, event.threadId, event.partId, event.deltaText);
-				if (event.partType === 'text') {
+		if (event.partType === 'text') {
 					const state = useStore.getState();
+					if (state.ttsActiveMessageId !== event.messageId) break;
 					const msg = state.messagesByThread[event.threadId]?.[event.messageId];
 					if (msg) {
 						const part = msg.content.find((p: any) => p.id === event.partId);
@@ -77,6 +78,7 @@ case 'message.chunk':
 						if (lastEnd > -1) {
 							const sentence = remaining.slice(0, lastEnd + 1);
 							console.log('[TTS auto] sentence:', JSON.stringify(sentence));
+							useStore.getState().ttsVadIncSent();
 							getWorker().postMessage({
 								type: 'stream',
 								text: sentence,
@@ -99,6 +101,7 @@ case 'message.chunk':
 			case 'inference.started':
 				applyInferenceStarted(event.threadId, event.messageId);
 				useStore.getState().ttsSetSpokenIndex(event.messageId, 0);
+				useStore.getState().ttsVadReset();
 				useStore.getState().ttsStart(event.messageId, 'vad');
 				break;
 case 'inference.ended':

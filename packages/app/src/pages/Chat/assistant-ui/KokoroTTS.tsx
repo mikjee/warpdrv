@@ -31,6 +31,15 @@ let currentAudioEl: HTMLAudioElement | null = null;
 let playbackQueue: string[] = [];
 let isPlayingChunk = false;
 let currentRequestId: number = 0;
+function checkVadComplete() {
+	if (playbackQueue.length > 0 || isPlayingChunk) return;
+	const s = useStore.getState();
+	if (s.ttsIsGenerating !== 'vad') return;
+	if (s.ttsVadSentencesSent !== s.ttsVadSentencesDone) return;
+	const threadId = s.activeThreadId;
+	if (threadId && s.isRunningByThread[threadId]) return;
+	stopTTS();
+}
 
 export function getWorker() {
 	if (!ttsWorker) {
@@ -53,16 +62,20 @@ export function getWorker() {
 					return;
 				}
 				if (msg.type === 'chunk') {
+					if (useStore.getState().ttsActiveMessageId === null) return;
 					const url = URL.createObjectURL(new Blob([msg.audio], { type: 'audio/wav' }));
 					playbackQueue.push(url);
 					tryPlayNext();
-				} else if (msg.type === 'done') {
-					const mode = useStore.getState().ttsIsGenerating;
-					if (mode === 'button') {
-						useStore.getState().ttsSetGenerating(null);
+				}  else if (msg.type === 'done') {
+					const s = useStore.getState();
+					if (s.ttsIsGenerating === 'button') {
+						s.ttsSetGenerating(null);
 						if (playbackQueue.length === 0 && !isPlayingChunk) {
-							useStore.getState().ttsSetSpeaking(false);
+							s.ttsSetSpeaking(false);
 						}
+					} else if (s.ttsIsGenerating === 'vad') {
+						s.ttsVadIncDone();
+						checkVadComplete();
 					}
 				} else if (msg.type === 'error') {
 					console.error('[KokoroTTS] Worker error:', msg.message);
@@ -95,6 +108,7 @@ function tryPlayNext() {
 		if (playbackQueue.length === 0 && !isPlayingChunk && !useStore.getState().ttsIsGenerating) {
 			useStore.getState().ttsSetSpeaking(false);
 		}
+		checkVadComplete();
 	};
 	audioEl.onerror = () => {
 		if (currentAudioEl === audioEl) {
@@ -106,6 +120,7 @@ function tryPlayNext() {
 		if (playbackQueue.length === 0 && !isPlayingChunk && !useStore.getState().ttsIsGenerating) {
 			useStore.getState().ttsSetSpeaking(false);
 		}
+		checkVadComplete();
 	};
 	audioEl.play().catch(() => {
 		if (currentAudioEl === audioEl) {
@@ -128,6 +143,7 @@ export function stopTTS() {
 	}
 	playbackQueue = [];
 	isPlayingChunk = false;
+	useStore.getState().ttsVadReset();
 	useStore.getState().ttsStop();
 	if (ttsWorker) {
 		ttsWorker.postMessage({ type: 'stop' });
