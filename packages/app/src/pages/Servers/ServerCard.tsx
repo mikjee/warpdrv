@@ -262,8 +262,16 @@ bg="var(--wc-bg-subtle)"
 										</Badge>
 									)}
 								</HStack>
-								{server.params.specDecode?.enabled && draftModel && (
-									<StatPill icon={<Sparkles size={12} />} label="Draft" value={draftModel.name} />
+								{server.params.specDecode?.enabled && (
+									server.params.specDecode.mode === 'mtp' && (
+										<StatPill icon={<Sparkles size={12} />} label="Spec" value="MTP" />
+									) ||
+									server.params.specDecode.mode === 'ngram' && (
+										<StatPill icon={<Sparkles size={12} />} label="Spec" value="Ngram" />
+									) ||
+									draftModel && (
+										<StatPill icon={<Sparkles size={12} />} label="Draft" value={draftModel.name} />
+									)
 								)}
 								<StatPill icon={<Blocks size={12} />} label="Backend" value={backendName} />
 								<StatPill icon={<Cpu size={12} />} label="Device" value={deviceName} />

@@ -21,7 +21,7 @@ export function formatLaunchCommand(cmd: string): string {
 			i += 1;
 		}
 	}
-	return lines.join(" \\\n");
+	return lines.join("\n");
 }
 
 export function formatUptime(startedAt: number | null): string {
