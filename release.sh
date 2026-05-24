@@ -107,15 +107,42 @@ npx esbuild src/index.ts \
 	--format=cjs \
 	--platform=node \
 	--target=node22 \
-	--minify=false
-
+	--minify=false \
+	--external:kokoro-js \
+	--external:@huggingface/transformers \
+	--external:onnxruntime-node
 # Compile to standalone binary with pkg
 cp "$REPO_ROOT/node_modules/better-sqlite3/build/Release/better_sqlite3.node" "$SERVER_DIR/dist/better_sqlite3.node"
-
 npx @yao-pkg/pkg dist/server.cjs \
 	--target "$PKG_TARGET" \
 	--output "dist/warpcore-server${SIDECAR_EXT}" \
 	--compress GZip
+mkdir -p "$SERVER_DIR/dist/node_modules/kokoro-js"
+mkdir -p "$SERVER_DIR/dist/node_modules/@huggingface/transformers"
+mkdir -p "$SERVER_DIR/dist/node_modules/onnxruntime-node"
+cp -r "$REPO_ROOT/node_modules/kokoro-js/." "$SERVER_DIR/dist/node_modules/kokoro-js/"
+cp -r "$REPO_ROOT/node_modules/@huggingface/transformers/." "$SERVER_DIR/dist/node_modules/@huggingface/transformers/"
+cp -r "$REPO_ROOT/node_modules/onnxruntime-node/." "$SERVER_DIR/dist/node_modules/onnxruntime-node/"
+case "$PLATFORM" in
+	windows) ORT_OS="win32"; ORT_ARCH="x64" ;;
+	linux)   ORT_OS="linux"; ORT_ARCH="x64" ;;
+	macos)
+		ORT_OS="darwin"
+		case "$TARGET_TRIPLE" in
+			aarch64*) ORT_ARCH="arm64" ;;
+			x86_64*)  ORT_ARCH="x64" ;;
+		esac
+		;;
+esac
+ORT_BIN_DIR="$SERVER_DIR/dist/node_modules/onnxruntime-node/bin/napi-v3"
+for d in "$ORT_BIN_DIR"/*/; do
+	os_name=$(basename "$d")
+	if [ "$os_name" != "$ORT_OS" ]; then rm -r "$d"; fi
+done
+for d in "$ORT_BIN_DIR/$ORT_OS"/*/; do
+	arch_name=$(basename "$d")
+	if [ "$arch_name" != "$ORT_ARCH" ]; then rm -r "$d"; fi
+done
 
 echo "Server binary: $SERVER_DIR/dist/warpcore-server"
 ls -lh "$SERVER_DIR/dist/warpcore-server"
@@ -125,6 +152,8 @@ echo "=== Step 3/4: Preparing Tauri sidecar ==="
 mkdir -p "$DESKTOP_DIR/binaries"
 cp "$SERVER_DIR/dist/warpcore-server${SIDECAR_EXT}" "$DESKTOP_DIR/binaries/warpcore-server-${TARGET_TRIPLE}${SIDECAR_EXT}"
 cp "$SERVER_DIR/dist/better_sqlite3.node" "$DESKTOP_DIR/binaries/better_sqlite3.node"
+mkdir -p "$DESKTOP_DIR/binaries/node_modules"
+cp -r "$SERVER_DIR/dist/node_modules/." "$DESKTOP_DIR/binaries/node_modules/"
 if [ "$PLATFORM" != "windows" ]; then
 	chmod +x "$DESKTOP_DIR/binaries/warpcore-server-${TARGET_TRIPLE}${SIDECAR_EXT}"
 fi

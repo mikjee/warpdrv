@@ -1,7 +1,7 @@
 import { EventSource } from 'eventsource';
 import { useEffect } from 'react';
 import { useStore } from '../store';
-import { getWorker, setKokoroCurrentRequestId } from '../pages/Chat/assistant-ui/KokoroTTS'; 
+import { setKokoroCurrentRequestId, startStream } from '../pages/Chat/assistant-ui/KokoroTTS';
 import type { IBridgeEvent } from '@warpcore/bridge';
 
 function findLastSentenceEnd(text: string): number {
@@ -79,12 +79,17 @@ case 'message.chunk':
 							const sentence = remaining.slice(0, lastEnd + 1);
 							console.log('[TTS auto] sentence:', JSON.stringify(sentence));
 							useStore.getState().ttsVadIncSent();
-							getWorker().postMessage({
-								type: 'stream',
-								requestId: useStore.getState().ttsVadRequestId,
-								text: sentence,
-								voice: state.settings.kokoroVoice || 'af_heart',
-							}); 
+							// getWorker().postMessage({
+							// 	type: 'stream',
+							// 	requestId: useStore.getState().ttsVadRequestId,
+							// 	text: sentence,
+							// 	voice: state.settings.kokoroVoice || 'af_heart',
+							// });
+							startStream(
+								useStore.getState().ttsVadRequestId,
+								sentence,
+								state.settings.kokoroVoice || 'af_heart',
+							).catch(() => {});
 							useStore.getState().ttsSetSpokenIndex(event.messageId, spoken + lastEnd + 1);
 						}
 					}

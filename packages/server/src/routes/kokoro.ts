@@ -2,7 +2,9 @@ import express, { Router } from 'express';
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
+import { createSession } from 'better-sse';
 import { startDownload } from '../services/downloadManager';
+import { isKokoroReady, registerStream, abortStream, consumeStream } from '../services/kokoroService';
 export const kokoroRouter = Router();
 const KOKORO_AUTHOR = 'onnx-community';
 const KOKORO_MODEL = 'Kokoro-82M-v1.0-ONNX';
@@ -58,6 +60,35 @@ kokoroRouter.get('/status', async (_req, res) => {
 		},
 		error: null,
 	});
+});
+kokoroRouter.post('/tts/start', express.json(), (req, res) => {
+	const { text, voice } = req.body || {};
+	if (!isKokoroReady()) {
+		res.json({ ok: false, data: null, error: 'kokoro not ready' });
+		return;
+	}
+	if (typeof text !== 'string' || typeof voice !== 'string') {
+		res.json({ ok: false, data: null, error: 'invalid params' });
+		return;
+	}
+	const streamId = registerStream(text, voice);
+	res.json({ ok: true, data: { streamId }, error: null });
+});
+kokoroRouter.get('/tts/stream/:streamId', async (req, res) => {
+	const { streamId } = req.params;
+	const session = await createSession(req, res);
+	try {
+		for await (const wav of consumeStream(streamId)) {
+			session.push({ audio: wav.toString('base64') }, 'chunk');
+		}
+		session.push({}, 'done');
+	} catch (err: any) {
+		session.push({ message: String(err?.message ?? err) }, 'error');
+	}
+});
+kokoroRouter.post('/tts/abort/:streamId', (req, res) => {
+	abortStream(req.params.streamId);
+	res.json({ ok: true, data: null, error: null });
 });
 kokoroRouter.post('/install', async (_req, res) => {
 	try {

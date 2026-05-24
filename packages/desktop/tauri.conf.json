@@ -45,6 +45,7 @@
 		],
 		"resources": [
 			"binaries/better_sqlite3.node",
+			"binaries/node_modules/**/*",
 			"app-dist/**/*",
 			"../../release.json"
 		],
