@@ -101,16 +101,22 @@ case 'message.chunk':
 				break;
 			case 'inference.started':
 				applyInferenceStarted(event.threadId, event.messageId);
-				useStore.getState().ttsSetSpokenIndex(event.messageId, 0);
-				useStore.getState().ttsVadReset();
-				const newId = useStore.getState().ttsVadNewRequestId();
-				setKokoroCurrentRequestId(newId);
-				useStore.getState().ttsStart(event.messageId, 'vad');
+				{
+					const s = useStore.getState();
+					if (!s.vadActive) break;
+					s.ttsSetSpokenIndex(event.messageId, 0);
+					s.ttsVadReset();
+					const newId = s.ttsVadNewRequestId();
+					setKokoroCurrentRequestId(newId);
+					s.ttsStart(event.messageId, 'vad');
+				}
 				break;
 case 'inference.ended':
 				console.log('[TTS auto] inference.ended');
 				applyInferenceEnded(event.threadId, event.messageId);
-				useStore.getState().ttsClearSpokenIndex(event.messageId);
+				if (useStore.getState().vadActive) {
+					useStore.getState().ttsClearSpokenIndex(event.messageId);
+				}
 				break;
 			case 'inference.error':
 				applyInferenceError(event.threadId, event.messageId, event.error);

@@ -43,7 +43,8 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 	const pttWaveformStreamRef = useRef<MediaStream | null>(null);
 
 	// VAD state (independent)
-	const [vadActive, setVadActive] = useState(false);
+	const vadActive = useStore(s => s.vadActive);
+	const setVadActive = useStore(s => s.setVadActive);
 	const [isVADTranscribing, setIsVADTranscribing] = useState(false);
 	const vadSessionRef = useRef<ReturnType<typeof createVADSession> | null>(null);
 	const vadWaveformStreamRef = useRef<MediaStream | null>(null);

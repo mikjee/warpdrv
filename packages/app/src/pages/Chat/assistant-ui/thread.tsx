@@ -62,8 +62,18 @@ import { EMcpServerStatus, IToolAttachment } from "@warpcore/bridge";
 import { encodingForModel } from 'js-tiktoken';
 import { IconButton } from '@chakra-ui/react';
 import { Elicitation } from './Elicitation';
+import { ConfirmDialog } from '@/components/dialogs/ConfirmDialog';
 
 const tokenEncoder = encodingForModel('gpt-4o');
+
+interface DeleteMessageState {
+	messageId: string | null;
+	isLoading: boolean;
+	open: (messageId: string) => void;
+	close: () => void;
+	confirm: () => Promise<void>;
+}
+const DeleteMessageContext = React.createContext<DeleteMessageState | null>(null);
 
 interface IServerStatusContext {
 	currentServerId: string | null;
@@ -79,12 +89,15 @@ export const ServerStatusContext = React.createContext<IServerStatusContext>({
 	supportsMultiModal: false,
 });
 
-export const Thread: FC<{ 
-	isLoading?: boolean, 
+export const Thread: FC<{
+	isLoading?: boolean,
 	currentServerId: TServerId | null
 }> = React.memo(({ isLoading = false, currentServerId }) => {
 	const ThreadMsgFn = useCallback(() => <ThreadMessage />, []);
 	const serversMap = useStore(s => s.servers);
+	const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+	const [deletingLoading, setDeletingLoading] = useState(false);
+
 	const currentServer = useMemo(() => currentServerId ? serversMap[currentServerId] || null : null, [
 		currentServerId,
 		serversMap
@@ -92,49 +105,85 @@ export const Thread: FC<{
 	const currentServerStatus = currentServer?.status || null;
 	const isValidServer = !!currentServerId && currentServer?.status === EServerStatus.RUNNING;
 	const supportsMultiModal = currentServer?.useMultiModal ?? false;
+
+	const deleteMessageCtx = useMemo<DeleteMessageState>(() => {
+		let resolveFn: (() => void) | null = null;
+		const handleConfirm = async () => {
+			setDeletingLoading(true);
+			try {
+				await deleteMessage(deletingMessageId!);
+			} finally {
+				setDeletingLoading(false);
+				setDeletingMessageId(null);
+				if (resolveFn) resolveFn();
+			}
+		};
+		return {
+			messageId: deletingMessageId,
+			isLoading: deletingLoading,
+			open: (messageId: string) => setDeletingMessageId(messageId),
+			close: () => setDeletingMessageId(null),
+			confirm: handleConfirm,
+		};
+	}, [deletingMessageId, deletingLoading]);
+
 	return (
 		<ServerStatusContext.Provider value={{ currentServerId, currentServerStatus, isValidServer, supportsMultiModal }}>
-			<ThreadPrimitive.Root
-			className="aui-root aui-thread-root @container flex h-full flex-col"
-			style={{
-				["--thread-max-width" as string]: "44rem",
-				["--composer-radius" as string]: "24px",
-				["--composer-padding" as string]: "10px",
-			}}
-		>
-			<ThreadPrimitive.Viewport
-				turnAnchor="bottom"
-				autoScroll={false}
-				className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-6 pt-4"
-				style={{ overflowAnchor: "none" }}
+			<DeleteMessageContext.Provider value={deleteMessageCtx}>
+				<ThreadPrimitive.Root
+				className="aui-root aui-thread-root @container flex h-full flex-col"
+				style={{
+					["--thread-max-width" as string]: "44rem",
+					["--composer-radius" as string]: "24px",
+					["--composer-padding" as string]: "10px",
+				}}
 			>
-				{isLoading ? (
-					<div className="flex h-full items-center justify-center">
-						<div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-600 border-t-transparent" />
-					</div>
-				) : (
-					<>
-						<AuiIf condition={(s) => s.thread.isEmpty}>
-							<ThreadWelcome />
-						</AuiIf>
+				<ThreadPrimitive.Viewport
+					turnAnchor="bottom"
+					autoScroll={false}
+					className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-6 pt-4"
+					style={{ overflowAnchor: "none" }}
+				>
+					{isLoading ? (
+						<div className="flex h-full items-center justify-center">
+							<div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-600 border-t-transparent" />
+						</div>
+					) : (
+						<>
+							<AuiIf condition={(s) => s.thread.isEmpty}>
+								<ThreadWelcome />
+							</AuiIf>
 
-						<ThreadPrimitive.Messages>
-							{ThreadMsgFn}
-						</ThreadPrimitive.Messages>
-					</>
-				)}
+							<ThreadPrimitive.Messages>
+								{ThreadMsgFn}
+							</ThreadPrimitive.Messages>
+						</>
+					)}
 
-				{!isLoading && (
-					<div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,var(--wc-bg-page)_35%,var(--wc-bg-page)_100%)]">
-						<ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer w-full max-w-(--thread-max-width) flex flex-col gap-4 overflow-visible">
-							<ThreadScrollToBottom />
-							<Elicitation />
-							<Composer />
-						</ThreadPrimitive.ViewportFooter>
-					</div>
+					{!isLoading && (
+						<div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,var(--wc-bg-page)_35%,var(--wc-bg-page)_100%)]">
+							<ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer w-full max-w-(--thread-max-width) flex flex-col gap-4 overflow-visible">
+								<ThreadScrollToBottom />
+								<Elicitation />
+								<Composer />
+							</ThreadPrimitive.ViewportFooter>
+						</div>
+					)}
+				</ThreadPrimitive.Viewport>
+				</ThreadPrimitive.Root>
+
+				{deletingMessageId && (
+					<ConfirmDialog
+						title="Delete Message"
+						message="Are you sure you want to delete this message?"
+						isOpen={true}
+						onConfirm={deleteMessageCtx.confirm}
+						onCancel={deleteMessageCtx.close}
+						isLoading={deletingLoading}
+						confirmLabel="Delete"
+					/>
 				)}
-			</ThreadPrimitive.Viewport>
-			</ThreadPrimitive.Root>
+			</DeleteMessageContext.Provider>
 		</ServerStatusContext.Provider>
 	);
 });
@@ -739,13 +788,9 @@ const ActionBarIcon: FC<{ children: React.ReactNode; onClick?: () => void }> = (
 );
 
 const DeleteMessageButton: FC<{ messageId: string }> = ({ messageId }) => {
-	const handleDelete = useCallback(async () => {
-		if (!confirm('Delete this message?')) return;
-		await deleteMessage(messageId);
-	}, [messageId]);
-
+	const ctx = useContext(DeleteMessageContext);
 	return (
-		<ActionBarIcon onClick={handleDelete}>
+		<ActionBarIcon onClick={() => ctx?.open(messageId)}>
 			<Trash2 size={14} />
 		</ActionBarIcon>
 	);

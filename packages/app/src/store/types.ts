@@ -108,6 +108,8 @@ export interface AppState {
 	ttsVadIncSent: () => void;
 	ttsVadIncDone: () => void;
 	ttsVadReset: () => void;
+	vadActive: boolean;
+	setVadActive: (v: boolean) => void;
 	ttsVadNewRequestId: () => number;
 
 	// Proxy (Phase 1)

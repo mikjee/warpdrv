@@ -19,6 +19,8 @@ interface TTSSlice {
 	ttsVadIncDone: () => void;
 	ttsVadReset: () => void;
 	ttsVadNewRequestId: () => number;
+	vadActive: boolean;
+	setVadActive: (v: boolean) => void;
 }
 
 export const ttsSlice = (
@@ -32,6 +34,7 @@ export const ttsSlice = (
 	ttsVadSentencesSent: 0,
 	ttsVadSentencesDone: 0,
 	ttsVadRequestId: 0,
+	vadActive: false,
 	ttsStart: (messageId, mode = 'button') => {
 		setState(draft => {
 			draft.ttsActiveMessageId = messageId;
@@ -100,5 +103,10 @@ export const ttsSlice = (
 			draft.ttsVadRequestId = id;
 		});
 		return id;
+	},
+	setVadActive: (v) => {
+		setState(draft => {
+			draft.vadActive = v;
+		});
 	},
 });
