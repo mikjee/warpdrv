@@ -117,12 +117,64 @@ npx @yao-pkg/pkg dist/server.cjs \
 	--target "$PKG_TARGET" \
 	--output "dist/warpcore-server${SIDECAR_EXT}" \
 	--compress GZip
-mkdir -p "$SERVER_DIR/dist/node_modules/kokoro-js"
-mkdir -p "$SERVER_DIR/dist/node_modules/@huggingface/transformers"
-mkdir -p "$SERVER_DIR/dist/node_modules/onnxruntime-node"
-cp -r "$REPO_ROOT/node_modules/kokoro-js/." "$SERVER_DIR/dist/node_modules/kokoro-js/"
-cp -r "$REPO_ROOT/node_modules/@huggingface/transformers/." "$SERVER_DIR/dist/node_modules/@huggingface/transformers/"
-cp -r "$REPO_ROOT/node_modules/onnxruntime-node/." "$SERVER_DIR/dist/node_modules/onnxruntime-node/"
+mkdir -p "$SERVER_DIR/dist/node_modules"
+node -e "
+const fs = require('fs');
+const path = require('path');
+const ROOT = '$REPO_ROOT/node_modules';
+const OUT = '$SERVER_DIR/dist/node_modules';
+const visited = new Set();
+function resolvePkgDir(name, fromDir) {
+	let dir = fromDir;
+	while (true) {
+		const candidate = path.join(dir, 'node_modules', name);
+		if (fs.existsSync(path.join(candidate, 'package.json'))) return candidate;
+		const parent = path.dirname(dir);
+		if (parent === dir) return null;
+		dir = parent;
+	}
+}
+function copyDir(src, dest) {
+	fs.mkdirSync(dest, { recursive: true });
+	for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+		if (entry.name === 'node_modules') continue;
+		const s = path.join(src, entry.name);
+		const d = path.join(dest, entry.name);
+		if (entry.isDirectory()) copyDir(s, d);
+		else if (entry.isSymbolicLink()) {
+			try { fs.symlinkSync(fs.readlinkSync(s), d); } catch (e) {}
+		}
+		else fs.copyFileSync(s, d);
+	}
+}
+function walk(pkgDir, relName) {
+	if (visited.has(relName)) return;
+	visited.add(relName);
+	if (!fs.existsSync(path.join(pkgDir, 'package.json'))) {
+		console.error('Skip (no package.json):', relName);
+		return;
+	}
+	const dest = path.join(OUT, relName);
+	copyDir(pkgDir, dest);
+	const pj = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'));
+	const deps = { ...(pj.dependencies || {}), ...(pj.optionalDependencies || {}), ...(pj.peerDependencies || {}) };
+	for (const depName of Object.keys(deps)) {
+		if (visited.has(depName)) continue;
+		const resolved = resolvePkgDir(depName, pkgDir);
+		if (!resolved) {
+			console.error('Cannot resolve dep:', depName, 'from', relName);
+			continue;
+		}
+		walk(resolved, depName);
+	}
+}
+for (const top of ['kokoro-js', '@huggingface/transformers', 'onnxruntime-node', 'sharp']) {
+	const dir = path.join(ROOT, top);
+	if (!fs.existsSync(dir)) { console.error('Missing top dep:', top); process.exit(1); }
+	walk(dir, top);
+}
+console.log('Runtime deps copied. Total packages:', visited.size);
+"
 case "$PLATFORM" in
 	windows) ORT_OS="win32"; ORT_ARCH="x64" ;;
 	linux)   ORT_OS="linux"; ORT_ARCH="x64" ;;

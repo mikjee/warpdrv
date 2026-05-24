@@ -1,5 +1,10 @@
 import path from 'path';
 import os from 'os';
+import { createRequire } from 'node:module';
+declare const __filename: string | undefined;
+const requireFn = (process as any).pkg && process.env.WARPCORE_RESOURCE_DIR
+	? createRequire(path.join(process.env.WARPCORE_RESOURCE_DIR, 'binaries', 'index.js'))
+	: createRequire(typeof __filename !== 'undefined' ? __filename : import.meta.url);
 let kokoroInstance: any = null;
 let isReady = false;
 const KOKORO_AUTHOR = 'onnx-community';
@@ -24,8 +29,10 @@ setInterval(() => {
 export async function initKokoroService(): Promise<void> {
 	if (isReady) return;
 	try {
-		const { KokoroTTS, setVoiceDataUrl, env: kokoroEnv } = await import('kokoro-js');
-		const { env } = await import('@huggingface/transformers');
+		const kokoroLib = requireFn('kokoro-js');
+		const transformersLib = requireFn('@huggingface/transformers');
+		const { KokoroTTS, setVoiceDataUrl } = kokoroLib;
+		const { env } = transformersLib;
 		const basePath = kokoroBasePath();
 		env.allowLocalModels = true;
 		env.localModelPath = path.join(os.homedir(), '.config', 'warpcore', 'kokoro');
@@ -42,6 +49,7 @@ export async function initKokoroService(): Promise<void> {
 		throw err;
 	}
 }
+// removed
 export function isKokoroReady(): boolean {
 	return isReady;
 }
@@ -59,7 +67,7 @@ export async function* consumeStream(streamId: string): AsyncGenerator<Buffer> {
 	if (!p) throw new Error('stream not found');
 	delete pendingStreams[streamId];
 	if (!isReady || !kokoroInstance) throw new Error('kokoro not ready');
-	const { TextSplitterStream } = await import('kokoro-js');
+	const { TextSplitterStream } = requireFn('kokoro-js');
 	const splitter = new TextSplitterStream();
 	const stream = kokoroInstance.stream(splitter, { voice: p.voice });
 	splitter.push(p.text);
