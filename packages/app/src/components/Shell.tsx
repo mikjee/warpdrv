@@ -349,7 +349,7 @@ export const Shell = React.memo(() => {
 						justifyContent="center"
 					>
 						<Flex w="32px" h="32px" borderRadius="md" overflow="hidden" flexShrink={0} alignItems="center" justifyContent="center">
-							<Image src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+							<Image src="/logo.png" alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
 						</Flex>
 					</HStack>
 

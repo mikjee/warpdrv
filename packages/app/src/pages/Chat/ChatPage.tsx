@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useDependantState } from '../../hooks/useDependantState';
-import { Box, Button, Flex, IconButton, Text, HStack } from '@chakra-ui/react';
+import { Box, Button, Flex, IconButton, Text, HStack, Popover, Portal, NativeSelect, NativeSelectField, Switch, Slider, VStack } from '@chakra-ui/react';
 import { MessageSquare, ChevronDown, PanelLeftClose, PanelLeftOpen, Plus } from 'lucide-react';
 import {
 	AssistantRuntimeProvider,
@@ -27,9 +27,11 @@ import { useThreadAttachedTools } from '@/hooks/useThreadAttachedTools';
 import { convertMessagesToOpenAIFormat } from '@warpcore/bridge';
 import { extractTextFromFile } from '@/hooks/useFileReader';
 import { useToast } from '../../components/ToastProvider';
+import { updateSettings } from '../../api/services';
 import { parseThreadMeta } from '@/pages/Chat/assistant-ui/ServerSelector';
 import { parseWhisperThreadMeta } from '@/pages/Chat/assistant-ui/WhisperServerSelector';
 import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff } from 'react-icons/vsc';
+import { RiFontSize } from 'react-icons/ri';
 import mermaid from 'mermaid';
 
 const getFileDataURL = (file: File): Promise<string> =>
@@ -639,10 +641,25 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 	);
 });
 export const ChatPage = React.memo(() => {
-	
+
 	const title = useStore(s => s.currentThreadId ? s.threads[s.currentThreadId]?.title || "New Chat" : "New Chat");
 	const setCurrentThreadId = useStore(s => s.setCurrentThreadId);
 	const [threadsListCollapsed, setThreadsListCollapsed] = useState(false);
+
+	const chatFontSize = useStore(s => s.settings.chatFontSize ?? 14);
+	const chatFontFamily = useStore(s => s.settings.chatFontFamily ?? '');
+	const chatFixedWidth = useStore(s => s.settings.chatFixedWidth ?? false);
+
+	const fontFamilyOptions = [
+		{ label: 'Inter', value: 'Inter Variable, sans-serif' },
+		{ label: 'Geist', value: '"Geist", sans-serif' },
+		{ label: 'Geist Mono', value: '"Geist Mono", monospace' },
+		{ label: 'Arial', value: 'Arial, sans-serif' },
+		{ label: 'Verdana', value: 'Verdana, sans-serif' },
+		{ label: 'Georgia', value: 'Georgia, serif' },
+		{ label: 'Times New Roman', value: '"Times New Roman", serif' },
+		{ label: 'Courier New', value: '"Courier New", monospace' },
+	];
 
 	return (
 		<Flex direction="column" h="100%" overflow="hidden">
@@ -650,21 +667,93 @@ export const ChatPage = React.memo(() => {
 				title="Chat"
 				icon={<MessageSquare size={20} />}
 				actionsRight={
-					<Button
-						size="sm"
-						bg="var(--wc-accent-blue-bg-12)"
-						color="var(--wc-accent-blue)"
-						borderWidth="1px"
-						borderColor="var(--wc-accent-blue-border)"
-						_hover={{ bg: 'var(--wc-accent-blue-hover-bg)' }}
-						borderRadius="lg"
-						fontSize="13px"
-						fontWeight="500"
-						onClick={() => setCurrentThreadId(globalThis.crypto.randomUUID())}
-					>
-						<Plus size={15} />
-						New Chat
-					</Button>
+					<Popover.Root>
+						<Popover.Trigger asChild>
+							<IconButton
+								aria-label="Chat settings"
+								variant="ghost"
+								size="sm"
+								color="var(--wc-text-secondary)"
+								_hover={{ color: 'var(--wc-text-heading)', bg: 'var(--wc-bg-active)' }}
+							>
+								<RiFontSize size={18} />
+							</IconButton>
+						</Popover.Trigger>
+						<Portal>
+							<Popover.Positioner>
+								<Popover.Content
+									w="260px"
+									bg="var(--wc-bg-elevated)"
+									borderWidth="1px"
+									borderColor="var(--wc-border-default)"
+									borderRadius="lg"
+									shadow="0 8px 32px rgba(0, 0, 0, 0.5)"
+								>
+									<Popover.Arrow>
+										<Popover.ArrowTip bg="var(--wc-bg-elevated)" borderColor="var(--wc-border-default)" />
+									</Popover.Arrow>
+									<Popover.Body p="3">
+										<VStack align="stretch" gap="3">
+											<Text fontSize="12px" fontWeight="600" color="var(--wc-text-heading)">Chat Appearance</Text>
+
+											<VStack align="stretch" gap="2">
+												<HStack justify="space-between">
+													<Text fontSize="11px" color="var(--wc-text-muted)">Font Size</Text>
+													<Text fontSize="11px" color="var(--wc-text-tertiary)">{chatFontSize}px</Text>
+												</HStack>
+												<Slider.Root
+													w="full"
+													size="sm"
+													colorPalette="blue"
+													value={[chatFontSize]}
+													min={10}
+													max={32}
+													onValueChange={(details) => updateSettings({ chatFontSize: details.value[0] })}
+												>
+													<Slider.Control>
+														<Slider.Track>
+															<Slider.Range />
+														</Slider.Track>
+														<Slider.Thumbs />
+													</Slider.Control>
+												</Slider.Root>
+											</VStack>
+
+											<VStack align="stretch" gap="2">
+												<Text fontSize="11px" color="var(--wc-text-muted)">Font Family</Text>
+												<NativeSelect.Root value={chatFontFamily}>
+													<NativeSelect.Field
+														size="sm"
+														bg="var(--wc-bg-card)"
+														borderColor="var(--wc-border-default)"
+														color="var(--wc-text-primary)"
+														fontSize="12px"
+														borderRadius="md"
+														onChange={(e) => updateSettings({ chatFontFamily: e.target.value })}
+													>
+														<option value="">Default (Inter)</option>
+														{fontFamilyOptions.map(f => (
+															<option key={f.value} value={f.value} style={{ fontFamily: f.value }}>{f.label}</option>
+														))}
+													</NativeSelect.Field>
+												</NativeSelect.Root>
+											</VStack>
+
+											<Switch.Root label="Fixed chat width" checked={chatFixedWidth} onCheckedChange={(details) => updateSettings({ chatFixedWidth: details.checked })}>
+												<Switch.HiddenInput />
+												<Switch.Control css={{ bg: chatFixedWidth ? 'var(--wc-accent-blue)' : 'surface.4' }}>
+													<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
+												</Switch.Control>
+												<Switch.Label ml="2" fontSize="12px" color={chatFixedWidth ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)'} userSelect="none">
+													Fixed width
+												</Switch.Label>
+											</Switch.Root>
+										</VStack>
+									</Popover.Body>
+								</Popover.Content>
+							</Popover.Positioner>
+						</Portal>
+					</Popover.Root>
 				}
 				actions={
 					<>
@@ -684,6 +773,21 @@ color="var(--wc-text-secondary)"
 							position: "fixed",
 							left: `calc(50% - (${title.length * 3.5}px - ${threadsListCollapsed ? "-20" : "100"}px)`
 						}}>{title}</span>
+						<Button
+							size="sm"
+							bg="var(--wc-accent-blue-bg-12)"
+							color="var(--wc-accent-blue)"
+							borderWidth="1px"
+							borderColor="var(--wc-accent-blue-border)"
+							_hover={{ bg: 'var(--wc-accent-blue-hover-bg)' }}
+							borderRadius="lg"
+							fontSize="13px"
+							fontWeight="500"
+							onClick={() => setCurrentThreadId(globalThis.crypto.randomUUID())}
+						>
+							<Plus size={15} />
+							New Chat
+						</Button>
 					</>
 				}
 			/>

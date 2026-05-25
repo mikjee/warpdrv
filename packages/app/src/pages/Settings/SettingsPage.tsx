@@ -75,6 +75,10 @@ export function SettingsPage() {
 	const [saved, setSaved] = useState(false);
 	const [isDirty, setIsDirty] = useState(false);
 	const [localTheme, setLocalTheme] = useDependantState(settings.theme ?? ETheme.DARK);
+	const [appZoomLevel, setAppZoomLevel] = useDependantState(settings.appZoomLevel ?? 1.0);
+	const [chatFontSize, setChatFontSize] = useDependantState(settings.chatFontSize ?? 14);
+	const [chatFontFamily, setChatFontFamily] = useDependantState(settings.chatFontFamily ?? '');
+	const [chatFixedWidth, setChatFixedWidth] = useDependantState(settings.chatFixedWidth ?? false);
 	const themeCollection = createListCollection({
 		items: [
 			{ label: 'Amoled', value: ETheme.AMOLED },
@@ -106,6 +110,20 @@ export function SettingsPage() {
 			{ label: 'Tokyo Night Light', value: ETheme.TOKYO_NIGHT_LIGHT },
 			{ label: 'Vesper', value: ETheme.VESPER },
 		].sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' })),
+		itemToString: (item) => item.label,
+		itemToValue: (item) => item.value,
+	});
+	const fontFamilyCollection = createListCollection({
+		items: [
+			{ label: 'Inter', value: 'Inter Variable, sans-serif' },
+			{ label: 'Geist', value: '"Geist", sans-serif' },
+			{ label: 'Geist Mono', value: '"Geist Mono", monospace' },
+			{ label: 'Arial', value: 'Arial, sans-serif' },
+			{ label: 'Verdana', value: 'Verdana, sans-serif' },
+			{ label: 'Georgia', value: 'Georgia, serif' },
+			{ label: 'Times New Roman', value: '"Times New Roman", serif' },
+			{ label: 'Courier New', value: '"Courier New", monospace' },
+		],
 		itemToString: (item) => item.label,
 		itemToValue: (item) => item.value,
 	});
@@ -261,6 +279,10 @@ const handleSave = async () => {
 			builtinMcpPort,
 			builtinMcpExposeExternal,
 			fsAllowedRoots,
+			appZoomLevel,
+			chatFontSize,
+			chatFontFamily,
+			chatFixedWidth,
 		}); 
 
 		if (saveMut.error) {
@@ -357,6 +379,73 @@ const handleSave = async () => {
 									</Combobox.Positioner>
 								</Portal>
 							</Combobox.Root>
+						</VStack>
+					</Card>
+
+					{/* Appearance */}
+					<Card>
+						<VStack align="stretch" gap="4">
+							<Box>
+								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">Appearance</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)">App zoom and chat message styling</Text>
+							</Box>
+
+							{/* App Zoom */}
+							<VStack align="stretch" gap="2">
+								<HStack justify="space-between">
+									<Text fontSize="13px" color="var(--wc-text-secondary)">App Zoom</Text>
+									<Text fontSize="12px" color="var(--wc-text-muted)" fontFamily='"Geist Mono", monospace'>{Math.round(appZoomLevel * 100)}%</Text>
+								</HStack>
+								<Box as="input" type="range" min="0.5" max="3" step="0.05" value={appZoomLevel} onChange={(e) => dirtySetter(setAppZoomLevel, Number(e.target.value))} style={{ width: '100%', accentColor: 'var(--wc-accent-blue)' }} />
+								<HStack justify="space-between">
+									<Text fontSize="10px" color="var(--wc-text-faint)">50%</Text>
+									<Text fontSize="10px" color="var(--wc-text-faint)">300%</Text>
+								</HStack>
+							</VStack>
+
+							{/* Chat Font Size */}
+							<VStack align="stretch" gap="2">
+								<Text fontSize="13px" color="var(--wc-text-secondary)">Chat Font Size</Text>
+								<HStack gap="2">
+									<Input value={chatFontSize} onChange={e => dirtySetter(setChatFontSize, Math.min(32, Math.max(10, Number(e.target.value))))} type="number" min={10} max={32} size="sm" w="80px" bg="var(--wc-bg-card)" borderColor="var(--wc-border-default)" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }} />
+									<Text fontSize="13px" color="var(--wc-text-muted)">px</Text>
+								</HStack>
+							</VStack>
+
+							{/* Chat Font Family */}
+							<VStack align="stretch" gap="2">
+								<Text fontSize="13px" color="var(--wc-text-secondary)">Chat Font Family</Text>
+								<NativeSelect.Root value={chatFontFamily}>
+									<NativeSelect.Field
+										size="sm"
+										bg="var(--wc-bg-card)"
+										borderColor="var(--wc-border-default)"
+										color="var(--wc-text-primary)"
+										fontSize="13px"
+										borderRadius="lg"
+										onChange={(e) => dirtySetter(setChatFontFamily, e.target.value)}
+									>
+										<option value="">Default (Inter)</option>
+										{fontFamilyCollection.items.map(f => (
+											<option key={f.value} value={f.value} style={{ fontFamily: f.value }}>{f.label}</option>
+										))}
+									</NativeSelect.Field>
+								</NativeSelect.Root>
+							</VStack>
+
+							{/* Fixed Chat Width */}
+							<HStack justify="space-between" alignItems="center">
+								<Box flex="1">
+									<Text fontSize="13px" color="var(--wc-text-secondary)">Fixed Chat Width</Text>
+									<Text fontSize="11px" color="var(--wc-text-muted)">Max-width 960px instead of full-width</Text>
+								</Box>
+								<Switch.Root label='Fixed chat width' checked={chatFixedWidth} onCheckedChange={(details) => dirtySetter(setChatFixedWidth, details.checked)}>
+									<Switch.HiddenInput />
+									<Switch.Control css={{ bg: chatFixedWidth ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
+										<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
+									</Switch.Control>
+								</Switch.Root>
+							</HStack>
 						</VStack>
 					</Card>
 

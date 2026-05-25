@@ -105,6 +105,7 @@ export const Thread: FC<{
 	const currentServerStatus = currentServer?.status || null;
 	const isValidServer = !!currentServerId && currentServer?.status === EServerStatus.RUNNING;
 	const supportsMultiModal = currentServer?.useMultiModal ?? false;
+	const chatFixedWidth = useStore(s => s.settings.chatFixedWidth ?? false);
 
 	const deleteMessageCtx = useMemo<DeleteMessageState>(() => {
 		let resolveFn: (() => void) | null = null;
@@ -142,7 +143,7 @@ export const Thread: FC<{
 					turnAnchor="bottom"
 					autoScroll={false}
 					className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-6 pt-4"
-					style={{ overflowAnchor: "none" }}
+					style={{ overflowAnchor: "none", maxWidth: chatFixedWidth ? "960px" : "100%", margin: "0 auto" }}
 				>
 					{isLoading ? (
 						<div className="flex h-full items-center justify-center">
@@ -162,7 +163,7 @@ export const Thread: FC<{
 
 					{!isLoading && (
 						<div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,var(--wc-bg-page)_35%,var(--wc-bg-page)_100%)]">
-							<ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer w-full max-w-(--thread-max-width) flex flex-col gap-4 overflow-visible">
+							<ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer flex flex-col gap-4 overflow-visible" style={{ width: "44rem" }}>
 								<ThreadScrollToBottom />
 								<Elicitation />
 								<Composer />
@@ -713,16 +714,21 @@ const AssistantMessage: FC = React.memo(() => {
 	const status = useAuiState((s) => s.message.status?.type);
 	const messageId = useAuiState((s) => s.message.id);
 	const startingTools = useStore((s) => s.startingToolsByMessage[messageId]);
+	const chatFontSize = useStore(s => s.settings.chatFontSize ?? 14);
+	const chatFontFamily = useStore(s => s.settings.chatFontFamily ?? '');
 	// Skip rendering empty assistant messages (converted TOOL messages)
 	// BUT render if status is "running" so the loading indicator appears during prompt processing
 	if (parts.length === 0 && status !== 'running') return null;
 
 	return (
 		<MessagePrimitive.Root
-			className="aui-assistant-message-root fade-in slide-in-from-bottom-1 relative mx-auto w-full  animate-in py-3 duration-150"
+			className="aui-assistant-message-root fade-in slide-in-from-bottom-1 relative mx-auto w-full animate-in py-3 duration-150"
 			data-role="assistant"
+			style={{
+				paddingRight: "100px",
+			}}
 		>
-			<div className="aui-assistant-message-content wrap-break-word px-2 text-[14px] leading-relaxed" style={{ color: 'var(--wc-text-primary)' }}>
+			<div className="aui-assistant-message-content wrap-break-word px-2 leading-relaxed" style={{ color: 'var(--wc-text-primary)', fontSize: `${chatFontSize}px`, fontFamily: chatFontFamily || undefined, backgroundColor: "var(--wc-bg-subtle)", padding: "15px", borderRadius: "15px" }}>
 				<MessagePrimitive.Parts
 					components={componentsMap}
 				/>
@@ -864,6 +870,8 @@ const AssistantActionBar: FC = () => {
 };
 
 const UserMessage: FC = () => {
+	const chatFontSize = useStore(s => s.settings.chatFontSize ?? 14);
+	const chatFontFamily = useStore(s => s.settings.chatFontFamily ?? '');
 	return (
 		<MessagePrimitive.Root
 			className="aui-user-message-root fade-in slide-in-from-bottom-1 mx-auto flex w-full flex-col gap-2 animate-in px-2 py-3 duration-150"
@@ -871,7 +879,7 @@ const UserMessage: FC = () => {
 		>
 			<UserMessageAttachments />
 			<div className="flex justify-end">
-				<div className="aui-user-message-content wrap-break-word peer rounded-2xl bg-muted px-4 py-2.5 text-foreground text-[14px] empty:hidden max-w-[80%]">
+				<div className="aui-user-message-content wrap-break-word peer rounded-2xl bg-muted px-4 py-2.5 text-foreground empty:hidden max-w-[80%]" style={{ fontSize: `${chatFontSize}px`, fontFamily: chatFontFamily || undefined }}>
 					<MessagePrimitive.Parts />
 				</div>
 			</div>

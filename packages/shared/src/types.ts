@@ -331,6 +331,10 @@ export interface ISettings {
 	builtinMcpPort?: number;
 	builtinMcpExposeExternal?: boolean;
 	fsAllowedRoots?: string[];
+	appZoomLevel?: number;
+	chatFontSize?: number;
+	chatFontFamily?: string;
+	chatFixedWidth?: boolean;
 }
 export const DEFAULT_SETTINGS: ISettings = {
 	modelRoots: [],
@@ -364,6 +368,10 @@ export const DEFAULT_SETTINGS: ISettings = {
 	builtinMcpPort: 11437,
 	builtinMcpExposeExternal: false,
 	fsAllowedRoots: [],
+	appZoomLevel: 1.0,
+	chatFontSize: 14,
+	chatFontFamily: '',
+	chatFixedWidth: false,
 };
 // ============================================================
 // VRAM Calculator
