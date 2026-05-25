@@ -232,7 +232,7 @@ bg="var(--wc-bg-subtle)"
 										</Popover.Positioner>
 									</Portal>
 								</Popover.Root>
-								{isRunning && <StatusBadge status={server.status as EServerStatus} port={server.port} />}
+								{isRunning || isLoading && <StatusBadge status={server.status as EServerStatus} port={server.port} />}
 								{isRunning && (
 									<HStack gap="1" color="var(--wc-text-muted)">
 										<Clock size={11} />
