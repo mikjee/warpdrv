@@ -15,7 +15,7 @@ interface IUpdateInfo {
 export function UpdateBanner() {
 	const [update, setUpdate] = useState<IUpdateInfo | null>(null);
 	const [dismissed, setDismissed] = useState(false);
-	const collapsed = useStore(s => s.settings.sidebarCollapsed);
+	const collapsed = true; // useStore(s => s.settings.sidebarCollapsed);
 
 	useEffect(() => {
 		// Check once on mount, then every 6 hours

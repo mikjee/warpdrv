@@ -53,13 +53,15 @@ function WindowButton({ onClick, children, isClose }: {
 }
 
 export const PageHeader = React.memo(({ title, subtitle, icon, actions, actionsRight }: IPageHeaderProps) => {
-	const isCollapsedSetting = useStore(s => s.settings.sidebarCollapsed);
-	const [collapsed, setCollapsed] = useDependantState(isCollapsedSetting);
+	// const isCollapsedSetting = useStore(s => s.settings.sidebarCollapsed);
+	// const [collapsed, setCollapsed] = useDependantState(isCollapsedSetting);
 
-	const handleCollapseChange = useCallback((newCollapsed: boolean) => {
-		setCollapsed(newCollapsed);
-		updateSettings({ sidebarCollapsed: newCollapsed });
-	}, []);
+	// const handleCollapseChange = useCallback((newCollapsed: boolean) => {
+	// 	setCollapsed(newCollapsed);
+	// 	updateSettings({ sidebarCollapsed: newCollapsed });
+	// }, []);
+
+	const collapsed = true;
 
 	const {
 		isTauri,
@@ -95,7 +97,7 @@ export const PageHeader = React.memo(({ title, subtitle, icon, actions, actionsR
 			 }}
 		>
 			<HStack gap="4" ml="2">
-				<Flex
+				{/* <Flex
 					as="button"
 					w="8"
 					h="8"
@@ -112,9 +114,9 @@ export const PageHeader = React.memo(({ title, subtitle, icon, actions, actionsR
 					className='no-drag'
 				>
 					{collapsed ? <RiMenuFold4Line size={20} /> : <RiMenuFold3Line size={20} />}
-				</Flex>
+				</Flex> */}
 				<Box mr="1" ml="-1">
-					<Text fontSize="14px" fontWeight="500" letterSpacing="-0.02em" color="var(--wc-text-header-title)">
+					<Text fontSize="14px" fontWeight="600" letterSpacing="-0.02em" color="var(--wc-text-header-title)">
 						{title}
 					</Text>
 					{/* {subtitle && (
@@ -123,11 +125,11 @@ export const PageHeader = React.memo(({ title, subtitle, icon, actions, actionsR
 						</Text>
 					)} */}
 				</Box>
-				{actions && <HStack gap="2" pl="5" borderLeft={`1px solid var(--wc-border-header)`} className='no-drag'>{actions}</HStack>}
+				{actions && <HStack gap="2" pl="0"  className='no-drag'>{actions}</HStack>}
 			</HStack>
 			<HStack gap="4" alignItems="center">
 				{actionsRight && <HStack gap="2" className='no-drag'>{actionsRight}</HStack>}
-				{isTauri && <HStack gap="0" mr="-2" borderLeft={`1px solid var(--wc-border-header)`} ml="2" pl="2" className='no-drag'>
+				{isTauri && <HStack gap="0" mr="-2"  ml="2" pl="2" className='no-drag'>
 					<WindowButton onClick={handleMinimize}>
 						<Minus size={14} />
 					</WindowButton>

@@ -352,7 +352,7 @@ export const DEFAULT_SETTINGS: ISettings = {
 	checkpointsSortField: 'recency',
 	checkpointsSortOrder: 'desc',
 	startMinimized: false,
-	sidebarCollapsed: false,
+	sidebarCollapsed: true,
 	windowWidth: 1100,
 	windowHeight: 750,
 	checkpointsPath: '',

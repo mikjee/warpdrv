@@ -249,7 +249,7 @@ function SidebarLink({
 			<Box
 				w="100%"
 				h="1px"
-				bg="rgba(255, 255, 255, 0.1)"
+				bg="rgba(255, 255, 255, 0.085)"
 				my="2"
 			/>
 		);
@@ -304,11 +304,11 @@ export const Shell = React.memo(() => {
 	const { data: summary } = useSummary();
 	const location = useLocation();
 	const currentPath = location.pathname;
-	const settings = useStore(s => s.settings);
+	// const settings = useStore(s => s.settings);
 	const sseConnected = useStore(s => s.sseConnected);
-	const [collapsed] = useDependantState(settings.sidebarCollapsed);
+	// const [collapsed] = useDependantState(settings.sidebarCollapsed);
 
-	const isCollapsed = collapsed;
+	const isCollapsed = true;
 
 	const {
 		installHook,
@@ -329,7 +329,7 @@ export const Shell = React.memo(() => {
 					borderRightWidth="1px"
 					borderColor="rgba(255, 255, 255, 0.1)"
 					px={isCollapsed ? '2' : '4'}
-					pt={'3'}
+					pt={'2'}
 					pb={("0")}
 					gap="0"
 					zIndex={100}
@@ -345,7 +345,7 @@ export const Shell = React.memo(() => {
 					<HStack
 						px={isCollapsed ? '0' : '2'}
 						py="2"
-						mb="4"
+						mb="3"
 						justifyContent="center"
 					>
 						<Flex w="32px" h="32px" borderRadius="md" overflow="hidden" flexShrink={0} alignItems="center" justifyContent="center">
