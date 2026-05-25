@@ -24,9 +24,6 @@ const ActionBarIcon: FC<{ children: React.ReactNode; onClick?: () => void }> = (
 	</Box>
 );
 
-// let ttsWorker: Worker | null = null;
-// let workerReady = false;
-// let workerReadyPromise: Promise<void> | null = null;
 let currentAudioEl: HTMLAudioElement | null = null;
 let playbackQueue: string[] = [];
 let isPlayingChunk = false;
@@ -43,53 +40,6 @@ function checkVadComplete() {
 	stopTTS();
 }
 
-// export function getWorker() {
-// 	if (!ttsWorker) {
-// 		ttsWorker = new Worker(
-// 			new URL('./KokoroTTS.worker.ts', import.meta.url),
-// 			{ type: 'module' }
-// 		);
-// 		const baseUrl = window.location.origin;
-// 		const modelUrl = `${baseUrl}/api/kokoro/kokoro-model`;
-// 		ttsWorker.postMessage({ type: 'init', baseUrl, modelUrl });
-// 		workerReadyPromise = new Promise((resolve, reject) => {
-// 			ttsWorker!.onmessage = (e) => {
-// 				const msg = e.data;
-// 				if (msg.type === 'ready') {
-// 					workerReady = true;
-// 					resolve();
-// 					return;
-// 				}
-// 				if (msg.requestId !== currentRequestId) {
-// 					return;
-// 				} 
-// 				if (msg.type === 'chunk') {
-// 					if (useStore.getState().ttsActiveMessageId === null) return;
-// 					const url = URL.createObjectURL(new Blob([msg.audio], { type: 'audio/wav' }));
-// 					playbackQueue.push(url);
-// 					tryPlayNext();
-// 				}  else if (msg.type === 'done') {
-// 					const s = useStore.getState();
-// 					if (s.ttsIsGenerating === 'button') {
-// 						s.ttsSetGenerating(null);
-// 						if (playbackQueue.length === 0 && !isPlayingChunk) {
-// 							s.ttsSetSpeaking(false);
-// 						}
-// 					} else if (s.ttsIsGenerating === 'vad') {
-// 						s.ttsVadIncDone();
-// 						checkVadComplete();
-// 					}
-// 				} else if (msg.type === 'error') {
-// 					console.error('[KokoroTTS] Worker error:', msg.message);
-// 					useStore.getState().ttsStop();
-// 					reject(new Error(msg.message));
-// 				}
-// 			};
-// 		});
-// 	}
-// 	return ttsWorker;
-// }
-export function getWorker(): null { return null; }
 export async function startStream(requestId: number, text: string, voice: string): Promise<void> {
 	const cleaned = removeMd(text).replace(emojiRegex(), '').replace(/\s+/g, ' ').trim();
 	if (!cleaned) return;
@@ -213,14 +163,8 @@ export function stopTTS() {
 		fetch(`/api/kokoro/tts/abort/${currentStreamAbortId}`, { method: 'POST' }).catch(() => {});
 		currentStreamAbortId = null;
 	}
-	// if (ttsWorker) {
-	// 	ttsWorker.postMessage({ type: 'stop' });
-	// }
 }
 
-export function initTTSWorker() {
-	// no-op
-}
 export function setKokoroCurrentRequestId(id: number) {
 	currentRequestId = id;
 }
@@ -259,9 +203,6 @@ export const KokoroTTSButton = React.memo(() => {
 		currentRequestId = requestId;
 		ttsStart(messageId);
 		try {
-			// await workerReadyPromise;
-			// const worker = getWorker();
-			// worker.postMessage({ type: 'stream', requestId, text: messageText, voice });
 			await startStream(requestId, messageText, voice);
 		} catch (err) {
 			console.error('[KokoroTTS] Stream failed:', err);

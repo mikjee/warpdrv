@@ -17,6 +17,7 @@
 	},
 	"devDependencies": {
 		"concurrently": "^9.1.2",
-		"cross-env": "^10.1.0"
+		"cross-env": "^10.1.0",
+		"patch-package": "^8.0.1"
 	}
 }

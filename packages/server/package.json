@@ -9,6 +9,7 @@
 	},
 	"dependencies": {
 		"@ai-sdk/openai": "^3.0.50",
+		"@huggingface/transformers": "^3.5.1",
 		"@huggingface/gguf": "^0.4.1",
 		"@huggingface/hub": "^2.11.0",
 		"@modelcontextprotocol/sdk": "^1.29.0",
@@ -20,6 +21,7 @@
 		"better-sse": "^0.16.1",
 		"busboy": "^1.6.0",
 		"cookie-parser": "^1.4.7",
+		"kokoro-js": "^1.2.1",
 		"cors": "^2.8.5",
 		"express": "^5.1.0",
 		"node-downloader-helper": "^2.1.11",

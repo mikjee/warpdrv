@@ -79,12 +79,6 @@ case 'message.chunk':
 							const sentence = remaining.slice(0, lastEnd + 1);
 							console.log('[TTS auto] sentence:', JSON.stringify(sentence));
 							useStore.getState().ttsVadIncSent();
-							// getWorker().postMessage({
-							// 	type: 'stream',
-							// 	requestId: useStore.getState().ttsVadRequestId,
-							// 	text: sentence,
-							// 	voice: state.settings.kokoroVoice || 'af_heart',
-							// });
 							startStream(
 								useStore.getState().ttsVadRequestId,
 								sentence,
