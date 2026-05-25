@@ -143,7 +143,7 @@ export const Thread: FC<{
 					turnAnchor="bottom"
 					autoScroll={false}
 					className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-6 pt-4"
-					style={{ overflowAnchor: "none", maxWidth: chatFixedWidth ? "960px" : "100%", margin: "0 auto" }}
+					style={{ overflowAnchor: "none" }}
 				>
 					{isLoading ? (
 						<div className="flex h-full items-center justify-center">
@@ -155,9 +155,11 @@ export const Thread: FC<{
 								<ThreadWelcome />
 							</AuiIf>
 
-							<ThreadPrimitive.Messages>
-								{ThreadMsgFn}
-							</ThreadPrimitive.Messages>
+							<div style={{ maxWidth: chatFixedWidth ? "960px" : "100%", margin: "0 auto", width: "100%" }}>
+								<ThreadPrimitive.Messages>
+									{ThreadMsgFn}
+								</ThreadPrimitive.Messages>
+							</div>
 						</>
 					)}
 
@@ -800,7 +802,7 @@ const DeleteMessageButton: FC<{ messageId: string }> = ({ messageId }) => {
 	const ctx = useContext(DeleteMessageContext);
 	return (
 		<ActionBarIcon onClick={() => ctx?.open(messageId)}>
-			<Trash2 size={14} />
+			<Trash2 size={14} color={"var(--wc-accent-red)"} />
 		</ActionBarIcon>
 	);
 };
@@ -862,6 +864,12 @@ const AssistantActionBar: FC = () => {
 					<RefreshCwIcon size={14} />
 				</ActionBarIcon>
 			</ActionBarPrimitive.Reload>
+
+			<ActionBarPrimitive.Edit asChild>
+				<ActionBarIcon>
+					<PencilIcon size={14} />
+				</ActionBarIcon>
+			</ActionBarPrimitive.Edit>
 
 			<DeleteMessageButton messageId={messageId} />
 

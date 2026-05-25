@@ -606,12 +606,12 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 				<Flex flex="1" h="100%" overflow="hidden" className="dark" style={{ background: "var(--wc-bg-page)" }}>
 						{!threadsListCollapsed && (
 						<Box
-							w="280px"
-							minW="280px"
+							w="300px"
+							minW="300px"
 							borderRightWidth="1px"
 							borderColor="var(--wc-border-subtle)"
 							h="full"
-							p="3"
+							py="3"
 							display="flex"
 							flexDirection="column"
 						>
@@ -672,11 +672,14 @@ export const ChatPage = React.memo(() => {
 							<IconButton
 								aria-label="Chat settings"
 								variant="ghost"
-								size="sm"
+								size="md"
+								borderWidth="1px"
+								borderColor="var(--wc-border-default)"
+								borderRadius="lg"
 								color="var(--wc-text-secondary)"
 								_hover={{ color: 'var(--wc-text-heading)', bg: 'var(--wc-bg-active)' }}
 							>
-								<RiFontSize size={18} />
+								<RiFontSize size={20} />
 							</IconButton>
 						</Popover.Trigger>
 						<Portal>
@@ -761,18 +764,13 @@ export const ChatPage = React.memo(() => {
 							aria-label="Toggle threads list"
 							variant="ghost"
 							size="sm"
-color="var(--wc-text-secondary)"
-						_hover={{ color: 'var(--wc-text-heading)', bg: 'var(--wc-bg-active)' }}
-							onClick={() => setThreadsListCollapsed(!threadsListCollapsed)}
+							mr="5"
+							color="var(--wc-text-secondary)"
+							_hover={{ color: 'var(--wc-text-heading)', bg: 'var(--wc-bg-active)' }}
+								onClick={() => setThreadsListCollapsed(!threadsListCollapsed)}
 						>
 							{threadsListCollapsed ? <VscLayoutSidebarLeftOff size={20} /> : <VscLayoutSidebarLeft size={20} />}
 						</IconButton>
-						<span style={{
-							fontSize: "13px",
-							color: "var(--wc-text-muted)",
-							position: "fixed",
-							left: `calc(50% - (${title.length * 3.5}px - ${threadsListCollapsed ? "-20" : "100"}px)`
-						}}>{title}</span>
 						<Button
 							size="sm"
 							bg="var(--wc-accent-blue-bg-12)"
@@ -788,6 +786,12 @@ color="var(--wc-text-secondary)"
 							<Plus size={15} />
 							New Chat
 						</Button>
+						<span style={{
+							fontSize: "13px",
+							color: "var(--wc-text-muted)",
+							position: "fixed",
+							left: `calc(50% - (${title.length * 3.5}px - ${threadsListCollapsed ? "-20" : "100"}px)`
+						}}>{title}</span>
 					</>
 				}
 			/>

@@ -234,7 +234,8 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect, onDelet
 		<Box
 			w="100%"
 			className={`group ${selected ? 'selected' : ''}`}
-				bg={selected ? 'var(--wc-bg-card)' : undefined}
+			bg={selected ? 'var(--wc-bg-card)' : undefined}
+			border={ selected ? '1px solid var(--wc-border-strong)' : undefined }
 			draggable
 			onDragStart={(e: any) => {
 				e.dataTransfer.setData('threadId', thread.id);
@@ -416,7 +417,7 @@ function FolderSection({
 						onCancel={() => setRenaming(false)}
 					/>
 				) : (
-					<Text flex="1" fontSize="13px" fontWeight="500" color="var(--wc-text-secondary)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" ml="1">
+					<Text flex="1" fontSize="14px" fontWeight="500" color="var(--wc-text-secondary)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" ml="1">
 						{folder.name}
 					</Text>
 				)}
@@ -617,7 +618,7 @@ export const ThreadList: FC = React.memo(() => {
 	return (
 		<ThreadListPrimitive.Root className="aui-root aui-thread-list-root flex flex-col flex-1 min-h-0">
 			{/* Fixed header */}
-			<Box flexShrink={0} mb="2">
+			<Box flexShrink={0} mb="2" px="3">
 				<HStack
 					gap="1" px="2" py="1"
 					borderRadius="md" borderWidth="1px"
@@ -643,7 +644,7 @@ size="2xs"
 				</HStack>
 			</Box>
 
-			<HStack gap="1" mb="2" px="1" justify="space-between" alignItems={"center"} flexShrink={0}>
+			<HStack px="3" gap="1" mb="2" justify="space-between" alignItems={"center"} flexShrink={0}>
 				<HStack gap="1">
 					<Box
 						as="button" px="2.5" py="1" borderRadius="md" fontSize="12px"
@@ -679,7 +680,7 @@ size="2xs"
 			</HStack>
 
 			{/* Scrollable thread list */}
-			<Box flex="1" overflowY="auto" css={{ '&::-webkit-scrollbar': { width: '4px' }, '&::-webkit-scrollbar-thumb': { background: 'var(--wc-text-disabled)', borderRadius: '2px' } }} borderTop="1px solid var(--wc-border-subtle)" pt="2" >
+			<Box px="3" flex="1" overflowY="auto" css={{ '&::-webkit-scrollbar': { width: '4px' }, '&::-webkit-scrollbar-thumb': { background: 'var(--wc-text-disabled)', borderRadius: '2px' } }} borderTop="1px solid var(--wc-border-subtle)" pt="2">
 				<VStack align="start" gap="0" w="full">
 				{threadsAPI.folders.map((f) => (
 					<FolderSection
