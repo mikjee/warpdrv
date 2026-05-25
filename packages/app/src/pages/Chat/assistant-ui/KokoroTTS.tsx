@@ -4,6 +4,8 @@ import { FaStop } from 'react-icons/fa';
 import { useAuiState } from '@assistant-ui/react';
 import { useStore } from '@/store';
 import { Box } from '@chakra-ui/react';
+import removeMd from 'remove-markdown';
+import emojiRegex from 'emoji-regex';
 
 const ActionBarIcon: FC<{ children: React.ReactNode; onClick?: () => void }> = ({ children, onClick }) => (
 	<Box
@@ -89,10 +91,12 @@ function checkVadComplete() {
 // }
 export function getWorker(): null { return null; }
 export async function startStream(requestId: number, text: string, voice: string): Promise<void> {
+	const cleaned = removeMd(text).replace(emojiRegex(), '').replace(/\s+/g, ' ').trim();
+	if (!cleaned) return;
 	const startRes = await fetch('/api/kokoro/tts/start', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ text, voice }),
+		body: JSON.stringify({ text: cleaned, voice }),
 	});
 	const startJson = await startRes.json();
 	if (!startJson.ok) throw new Error(startJson.error || 'tts start failed');

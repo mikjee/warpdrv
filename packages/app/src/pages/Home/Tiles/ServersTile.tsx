@@ -1,13 +1,21 @@
 import { Box, Text, HStack, VStack, Flex, Button } from '@chakra-ui/react';
-import { Server, Play } from 'lucide-react';
+import { Server, Play, Mic } from 'lucide-react';
 import React, { useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '@/store';
 import { useMutation } from '@/hooks/useQuery';
 import { restartServer } from '@/api/services';
-import { EServerStatus, type IServer } from '@warpcore/shared';
+import { restartWhisperServer } from '@/api/whisperServices';
+import { EServerStatus, EWhisperServerStatus, type IServer, type IWhisperServer } from '@warpcore/shared';
 import { StatusDot } from '../StatusDot';
 import { TileContainer } from '../TileContainer';
+
+type DisplayServer = {
+	id: string;
+	serverName: string;
+	status: EServerStatus | EWhisperServerStatus;
+	isWhisper: boolean;
+};
 
 const statusToState = (status: EServerStatus): 'online' | 'loading' | 'error' | 'offline' => {
 	if (status === EServerStatus.RUNNING) return 'online';
@@ -19,7 +27,11 @@ const statusToState = (status: EServerStatus): 'online' | 'loading' | 'error' | 
 export const ServersTile = React.memo(() => {
 	const navigate = useNavigate();
 	const servers = useStore((s) => s.servers);
+	const whisperServers = useStore((s) => s.whisperServers);
+
 	const serversArr = useMemo(() => Object.values(servers), [servers]);
+	const whisperArr = useMemo(() => Object.values(whisperServers), [whisperServers]);
+
 	const running = useMemo(
 		() => serversArr.filter((s) => s.status === EServerStatus.RUNNING),
 		[serversArr],
@@ -29,23 +41,57 @@ export const ServersTile = React.memo(() => {
 		[serversArr],
 	);
 
-	const lastUsed = useMemo(() => {
-		return serversArr
-			.sort((a, b) => {
-				const aTime = a.startedAt ?? 0;
-				const bTime = b.startedAt ?? 0;
-				return bTime - aTime;
-			})
+	const displayServers = useMemo((): DisplayServer[] => {
+		const llamaSorted = serversArr
+			.sort((a, b) => (b.startedAt ?? 0) - (a.startedAt ?? 0))
 			.slice(0, 3);
-	}, [serversArr]);
 
-	const { mutate: restartMut, loading } = useMutation<string, IServer | null>(
+		const whisperSorted = whisperArr
+			.sort((a, b) => (b.startedAt ?? 0) - (a.startedAt ?? 0));
+
+		const mostRecentWhisper = whisperSorted[0];
+
+		if (mostRecentWhisper) {
+			const llamaDisplay = llamaSorted.slice(0, 2).map((s) => ({
+				id: s.id,
+				serverName: s.serverName,
+				status: s.status,
+				isWhisper: false,
+			}));
+			llamaDisplay.push({
+				id: mostRecentWhisper.id,
+				serverName: mostRecentWhisper.serverName,
+				status: mostRecentWhisper.status,
+				isWhisper: true,
+			});
+			return llamaDisplay;
+		}
+
+		return llamaSorted.slice(0, 3).map((s) => ({
+			id: s.id,
+			serverName: s.serverName,
+			status: s.status,
+			isWhisper: false,
+		}));
+	}, [serversArr, whisperArr]);
+
+	const { mutate: restartMut, loading: loadingLlama } = useMutation<string, IServer | null>(
 		useCallback((id: string) => restartServer(id), [])
 	);
 
-	const handleStart = async (id: string) => {
-		await restartMut(id);
+	const { mutate: restartWhisperMut, loading: loadingWhisper } = useMutation<string, void>(
+		useCallback((id: string) => restartWhisperServer(id), [])
+	);
+
+	const handleStart = async (id: string, isWhisper: boolean) => {
+		if (isWhisper) {
+			await restartWhisperMut(id);
+		} else {
+			await restartMut(id);
+		}
 	};
+
+	const hasServers = displayServers.length > 0;
 
 	return (
 		<TileContainer
@@ -54,18 +100,22 @@ export const ServersTile = React.memo(() => {
 			statusDot={errors.length > 0 ? 'error' : running.length > 0 ? 'online' : 'offline'}
 			onClick={() => navigate('/servers')}
 		>
-			{lastUsed.length === 0 ? (
+			{!hasServers ? (
 				<Text fontSize="13px" color="var(--wc-text-muted)">
 					No servers configured
 				</Text>
 			) : (
 				<VStack align="stretch" gap="2" w="100%">
-					{lastUsed.map((srv) => {
+					{displayServers.map((srv) => {
 						const isRunning = srv.status === EServerStatus.RUNNING || srv.status === EServerStatus.LOADING;
 						return (
 							<Flex key={srv.id} align="center" justify="space-between" gap="2" h="28px">
 								<HStack gap="2" flex="1" minWidth={0}>
-									<StatusDot state={statusToState(srv.status)} />
+									{srv.isWhisper ? (
+										<Mic size={12} color={srv.status === EServerStatus.RUNNING ? 'var(--wc-accent-green)' : 'var(--wc-text-muted)'} />
+									) : (
+										<StatusDot state={statusToState(srv.status as EServerStatus)} />
+									)}
 									<Box overflow="hidden">
 										<Text fontSize="13px" color="var(--wc-text-tertiary)" noOfLines={1}>
 											{srv.serverName}
@@ -77,7 +127,7 @@ export const ServersTile = React.memo(() => {
 										size="xs"
 										variant="ghost"
 bg="var(--wc-accent-blue-bg-8)"
-									color="var(--wc-accent-blue)"
+										color="var(--wc-accent-blue)"
 										borderRadius="md"
 										p="1.5"
 										minW="auto"
@@ -86,9 +136,9 @@ bg="var(--wc-accent-blue-bg-8)"
 										_hover={{ bg: 'var(--wc-accent-blue-hover-bg)' }}
 										onClick={(e) => {
 											e.stopPropagation();
-											handleStart(srv.id);
+											handleStart(srv.id, srv.isWhisper);
 										}}
-										disabled={loading}
+										disabled={loadingLlama || loadingWhisper}
 									>
 										<Play size={12} />
 										Start

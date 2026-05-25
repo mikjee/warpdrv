@@ -492,7 +492,9 @@ const ToolsSelector: FC = React.memo(() => {
 									</Switch.Root>
 								</HStack>
 								<AccordionRoot collapsible defaultValue={[]}>
-									{connectedServers.map(([serverName, state]) => (
+							{connectedServers.map(([serverName, state]) => {
+									const activeCount = attachedTools.filter(t => t.serverName === serverName).length;
+									return (
 										<AccordionItemComp key={serverName} value={serverName} style={{ border: 'none' }}>
 											<AccordionItemTrigger
 												style={{
@@ -507,10 +509,10 @@ const ToolsSelector: FC = React.memo(() => {
 													width: '100%',
 												}}
 											>
-												<Text fontSize="11px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em">
+												<Text fontSize="11px" fontWeight="600" color={activeCount ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)'} textTransform="uppercase" letterSpacing="0.05em">
 													{serverName}
 												</Text>
-												<Text fontSize="10px" color="var(--wc-text-faint)">{state.tools.length}</Text>
+												<Text fontSize="10px" color={activeCount ? 'var(--wc-accent-blue)' : 'var(--wc-text-faint)'}>{state.tools.length}{activeCount ? ` (${activeCount})` : ''}</Text>
 											</AccordionItemTrigger>
 											<AccordionItemContent pt="1" pb="2" px="2" style={{ border: 'none' }}>
 												<VStack gap="1.5" align="stretch">
@@ -540,7 +542,8 @@ const ToolsSelector: FC = React.memo(() => {
 												</VStack>
 											</AccordionItemContent>
 										</AccordionItemComp>
-									))}
+									);
+								})}
 								</AccordionRoot>
 							</VStack>
 						)}

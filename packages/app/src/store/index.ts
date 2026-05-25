@@ -160,7 +160,10 @@ ttsActiveMessageId: tts.ttsActiveMessageId!,
 					currentThreadId: bridge.currentThreadId,
 					currentSystemPrompt: bridge.currentSystemPrompt,
 					currentInferenceParams: bridge.currentInferenceParams,
-					setCurrentThreadId: bridge.setCurrentThreadId,
+					setCurrentThreadId: (id: TThreadId | null) => {
+						bridge.setCurrentThreadId(id);
+						tts.setVadActive(false);
+					},
 					setCurrentSystemPrompt: bridge.setCurrentSystemPrompt,
 					setCurrentInferenceParams: bridge.setCurrentInferenceParams,
 					tempThreadServerId: bridge.tempThreadServerId,
