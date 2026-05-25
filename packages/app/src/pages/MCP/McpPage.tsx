@@ -79,7 +79,14 @@ export function McpPage() {
 		loadData();
 	}
 
-	const serverEntries = config?.mcpServers ?? {};
+	const fileServerEntries = config?.mcpServers ?? {};
+	const serverEntries = useMemo(() => {
+		const merged: Record<string, typeof fileServerEntries[string]> = { ...fileServerEntries };
+		for (const name of Object.keys(mcpServers)) {
+			if (!merged[name]) merged[name] = { url: '(built-in)' } as any;
+		}
+		return merged;
+	}, [fileServerEntries, mcpServers]);
 	const serverNames = useMemo(() => Object.keys(serverEntries), [serverEntries]);
 
 	return (

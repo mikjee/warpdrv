@@ -328,6 +328,9 @@ export interface ISettings {
 	theme?: ETheme;
 	micDeviceId?: string; // app-level mic device selection for STT
 	kokoroVoice?: string; // kokoro TTS voice selection
+	builtinMcpPort?: number;
+	builtinMcpExposeExternal?: boolean;
+	fsAllowedRoots?: string[];
 }
 export const DEFAULT_SETTINGS: ISettings = {
 	modelRoots: [],
@@ -358,6 +361,9 @@ export const DEFAULT_SETTINGS: ISettings = {
 	isOnboardingComplete: false,
 	theme: ETheme.DARK,
 	kokoroVoice: 'af_heart',
+	builtinMcpPort: 11437,
+	builtinMcpExposeExternal: false,
+	fsAllowedRoots: [],
 };
 // ============================================================
 // VRAM Calculator

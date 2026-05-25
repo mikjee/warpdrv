@@ -45,6 +45,30 @@ export function SettingsPage() {
 	const [disableTitleGen, setDisableTitleGen] = useDependantState(settings.disableTitleGen);
 	const [micDeviceId, setMicDeviceId] = useDependantState(settings.micDeviceId ?? '');
 	const [kokoroVoice, setKokoroVoice] = useDependantState(settings.kokoroVoice ?? 'af_heart');
+	const [builtinMcpPort, setBuiltinMcpPort] = useDependantState(settings.builtinMcpPort ?? 11437);
+	const [builtinMcpExposeExternal, setBuiltinMcpExposeExternal] = useDependantState(settings.builtinMcpExposeExternal ?? false);
+	const [fsAllowedRoots, setFsAllowedRoots] = useDependantState<string[]>(settings.fsAllowedRoots ?? []);
+	const [newFsRoot, setNewFsRoot] = useState('');
+	const handleBrowseFsRoot = async () => {
+		if (typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__) {
+			try {
+				const mod = await import('@tauri-apps/plugin-dialog');
+				const path = await mod.open({ directory: true, multiple: false });
+				if (path && typeof path === 'string') setNewFsRoot(path);
+			} catch (err) {
+				console.error('[Settings] Failed to open directory picker:', err);
+			}
+		} else if (typeof window !== 'undefined' && 'showDirectoryPicker' in window) {
+			try {
+				const handle = await (window as any).showDirectoryPicker();
+				if (handle) setNewFsRoot(handle.name);
+			} catch (err: any) {
+				if (err.name !== 'AbortError') console.error('[Settings] Failed to open directory picker:', err);
+			}
+		} else {
+			toast('error', 'Directory picker not supported in this browser. Please type the path manually.');
+		}
+	};
 	const [micDevices, setMicDevices] = useState<Array<{ id: string; label: string }>>([]);
 	const [micPermissionGranted, setMicPermissionGranted] = useState(false);
 	const [newRoot, setNewRoot] = useState('');
@@ -213,6 +237,11 @@ const handleSave = async () => {
 			dirtySetter(setModelRoots, [...modelRoots, pendingRoot]);
 			dirtySetter(setNewRoot, '');
 		}
+		const pendingFsRoot = newFsRoot.trim();
+		if (pendingFsRoot && !fsAllowedRoots.includes(pendingFsRoot)) {
+			dirtySetter(setFsAllowedRoots, [...fsAllowedRoots, pendingFsRoot]);
+			setNewFsRoot('');
+		}
 
 		const result = await saveMut.mutate({
 			modelRoots,
@@ -229,7 +258,10 @@ const handleSave = async () => {
 			theme: localTheme,
 			micDeviceId,
 			kokoroVoice,
-		});
+			builtinMcpPort,
+			builtinMcpExposeExternal,
+			fsAllowedRoots,
+		}); 
 
 		if (saveMut.error) {
 			toast('error', saveMut.error);
@@ -533,6 +565,57 @@ const handleSave = async () => {
 								<Text fontSize="13px" color="var(--wc-text-faint)">:</Text>
 								<Input value={apiPort} onChange={e => dirtySetter(setApiPort, Number(e.target.value))} type="number" size="sm" w="100px" bg="var(--wc-bg-card)" borderColor="var(--wc-border-default)" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }} />
 							</HStack>
+						</VStack>
+					</Card>
+					<Card>
+						<VStack align="stretch" gap="4">
+							<Box>
+								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">Built-in MCP Server (warpmcp)</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)">Exposes built-in tools (file_read, file_write, dir_list, shell_exec, fetch) via MCP. Restarts on port or exposure change.</Text>
+							</Box>
+							<HStack gap="3">
+								<Text fontSize="13px" color="var(--wc-text-muted)" w="100px">Port</Text>
+								<Input value={builtinMcpPort} onChange={e => dirtySetter(setBuiltinMcpPort, Number(e.target.value))} type="number" size="sm" w="100px" bg="var(--wc-bg-card)" borderColor="var(--wc-border-default)" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }} />
+							</HStack>
+							<HStack gap="3">
+								<Switch.Root label='Expose to external clients' checked={builtinMcpExposeExternal} onCheckedChange={(details) => dirtySetter(setBuiltinMcpExposeExternal, details.checked)}>
+									<Switch.HiddenInput />
+									<Switch.Control css={{ bg: builtinMcpExposeExternal ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
+										<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
+									</Switch.Control>
+									<Switch.Label ml="2" fontSize="13px" userSelect="none">
+										Bind on 0.0.0.0 (off = loopback only)
+									</Switch.Label>
+								</Switch.Root>
+							</HStack>
+							<Box>
+								<Text fontSize="13px" fontWeight="500" color="var(--wc-text-heading)" mb="1">File-system allowed roots</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)" mb="2">file_read, file_write, dir_list are disabled when empty. Paths checked after symlink resolution.</Text>
+								<VStack align="stretch" gap="2">
+									{fsAllowedRoots.map((root, idx) => (
+										<HStack key={idx} gap="2">
+											<Input value={root} readOnly size="sm" flex="1" bg="var(--wc-bg-card)" borderColor="var(--wc-border-default)" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" />
+											<Button size="sm" variant="ghost" onClick={() => dirtySetter(setFsAllowedRoots, fsAllowedRoots.filter((_, i) => i !== idx))}>
+												<Trash2 size={14} />
+											</Button>
+										</HStack>
+									))}
+									<HStack gap="2">
+										<Input value={newFsRoot} onChange={e => setNewFsRoot(e.target.value)} placeholder="/absolute/path" size="sm" flex="1" bg="var(--wc-bg-card)" borderColor="var(--wc-border-default)" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" />
+										<Button size="sm" variant="ghost" color="var(--wc-text-secondary)" _hover={{ color: 'var(--wc-accent-purple)', bg: 'var(--wc-accent-purple-hover-bg)' }} borderRadius="lg" minW="8" px="0" onClick={handleBrowseFsRoot} title="Browse directory">
+											<FolderOpen size={14} />
+										</Button>
+										<Button size="sm" variant="ghost" onClick={() => {
+											const p = newFsRoot.trim();
+											if (!p || fsAllowedRoots.includes(p)) return;
+											dirtySetter(setFsAllowedRoots, [...fsAllowedRoots, p]);
+											setNewFsRoot('');
+										}}>
+											<Plus size={14} />
+										</Button>
+									</HStack>
+								</VStack>
+							</Box>
 						</VStack>
 					</Card>
 

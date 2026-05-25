@@ -43,7 +43,6 @@ export function App() {
 		<Routes>
 			<Route element={<Shell />}>
 				<Route index element={<Navigate to="/home" replace />} />
-				{/* Routes exist for URL matching/navigation; Shell handles rendering via PAGE_REGISTRY */}
 				<Route path="/home" />
 				<Route path="/about" />
 				<Route path="/models" />
@@ -53,10 +52,10 @@ export function App() {
 				<Route path="/proxy" />
 				<Route path="/chat" />
 				<Route path="/settings" />
-<Route path="/mcp" />
-			<Route path="/recipes" />
-			<Route path="/checkpoints" />
-		</Route>
+				<Route path="/mcp" />
+				<Route path="/recipes" />
+				<Route path="/checkpoints" />
+			</Route>
 		</Routes>
 	);
 }

@@ -40,6 +40,7 @@ import { setRecipeRunnerSSE, getActiveRun } from './services/recipeRunner';
 import { listRecipes } from './services/recipeStore';
 import { getAllDownloads, getAllDownloadsRecord } from './services/downloadManager';
 import { SqlitePersistence, McpClientManager, McpConfig, PermissionManager, Orchestrator, SseBroadcaster } from '@warpcore/bridge/server';
+import { bootWarpmcp } from './warpmcpRunner';  
 import path from 'path';
 import os from 'os';
 
@@ -117,6 +118,7 @@ async function main() {
 		}
 		console.log(`[MCP] Initial connection phase complete`);
 	});
+	bootWarpmcp().catch(err => console.error('[warpmcp] Failed to start:', err)); 
 	initKokoroService().catch(() => {});
 
 	// Pending approvals will be handled by the orchestrator on next completion
