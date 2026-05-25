@@ -1,5 +1,9 @@
 import { api, login, logout, fetchAuthCheck, fetchAuthMe } from './client';
+import { useStore } from '../store';
 import type {
+	IHardwareInfo,
+	IBackendAsset,
+	IKokoroStatus,
 	IRecipe,
 	IRecipeCreatePayload,
 	IRecipeUpdatePayload,
@@ -15,6 +19,7 @@ import type {
 	IBackendGroupCreatePayload,
 	IBackendGroupUpdatePayload,
 	IModel,
+	IWhisperModel,
 	IServer,
 	IServerCreatePayload,
 	IPreset,
@@ -85,6 +90,31 @@ export async function deleteBackend(id: string) {
 export async function validateBackend(id: string) {
 	return api.post<IBackend>(`/backends/${id}/validate`);
 }
+export async function installBackend(assetKey: string, installRoot?: string) {
+	return api.post<IDownload>('/backends/install', { assetKey, installRoot });
+}
+export async function installWhisperBackend(assetKey: string, installRoot?: string) {
+	return api.post<IDownload>('/whisper-backends/install', { assetKey, installRoot });
+}
+export async function fetchHardware() {
+	return api.get<IHardwareInfo>('/hardware');
+}
+export async function fetchLlamaReleases(targetOs?: string) {
+	const qs = targetOs ? `?os=${encodeURIComponent(targetOs)}` : '';
+	return api.getList<IBackendAsset>(`/releases/llama${qs}`);
+}
+export async function fetchWhisperReleases(targetOs?: string) {
+	const qs = targetOs ? `?os=${encodeURIComponent(targetOs)}` : '';
+	return api.getList<IBackendAsset>(`/releases/whisper${qs}`);
+}
+export async function fetchKokoroStatus() {
+	const res = await api.get<IKokoroStatus>('/kokoro/status');
+	useStore.getState().setKokoroStatus(res.ok ? res.data : null);
+	return res.ok ? res.data : null;
+}
+export async function installKokoro() {
+	return api.post<{ groupKey: string; downloads: IDownload[] }>('/kokoro/install');
+}
 
 // ============================================================
 // Backend Groups
@@ -124,6 +154,10 @@ export async function fetchModels() {
 
 export async function scanModels() {
 	return api.post<IModel[]>('/models/scan');
+}
+
+export async function scanWhisperModels() {
+	return api.post<IWhisperModel[]>('/whisper-models/scan');
 }
 
 export async function fetchScanStatus() {

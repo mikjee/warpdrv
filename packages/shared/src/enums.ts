@@ -47,6 +47,7 @@ export enum ESpecType {
 	NGRAM_MAP_K = 'ngram-map-k',
 	NGRAM_MAP_K4V = 'ngram-map-k4v',
 	NGRAM_MOD = 'ngram-mod',
+	MTP = 'mtp',
 }
 
 // Re-export from hub-types

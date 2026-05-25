@@ -1,0 +1,117 @@
+diff --git a/node_modules/onnxruntime-node/README.md b/node_modules/onnxruntime-node/README.md
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/bin/napi-v3/darwin/arm64/libonnxruntime.1.21.0.dylib b/node_modules/onnxruntime-node/bin/napi-v3/darwin/arm64/libonnxruntime.1.21.0.dylib
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/bin/napi-v3/darwin/arm64/onnxruntime_binding.node b/node_modules/onnxruntime-node/bin/napi-v3/darwin/arm64/onnxruntime_binding.node
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/bin/napi-v3/darwin/x64/libonnxruntime.1.21.0.dylib b/node_modules/onnxruntime-node/bin/napi-v3/darwin/x64/libonnxruntime.1.21.0.dylib
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/bin/napi-v3/darwin/x64/onnxruntime_binding.node b/node_modules/onnxruntime-node/bin/napi-v3/darwin/x64/onnxruntime_binding.node
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/bin/napi-v3/linux/arm64/libonnxruntime.so.1 b/node_modules/onnxruntime-node/bin/napi-v3/linux/arm64/libonnxruntime.so.1
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/bin/napi-v3/linux/arm64/libonnxruntime.so.1.21.0 b/node_modules/onnxruntime-node/bin/napi-v3/linux/arm64/libonnxruntime.so.1.21.0
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/bin/napi-v3/linux/arm64/onnxruntime_binding.node b/node_modules/onnxruntime-node/bin/napi-v3/linux/arm64/onnxruntime_binding.node
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/bin/napi-v3/linux/x64/libonnxruntime.so.1 b/node_modules/onnxruntime-node/bin/napi-v3/linux/x64/libonnxruntime.so.1
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/bin/napi-v3/linux/x64/libonnxruntime.so.1.21.0 b/node_modules/onnxruntime-node/bin/napi-v3/linux/x64/libonnxruntime.so.1.21.0
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/bin/napi-v3/linux/x64/libonnxruntime_providers_shared.so b/node_modules/onnxruntime-node/bin/napi-v3/linux/x64/libonnxruntime_providers_shared.so
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/bin/napi-v3/linux/x64/onnxruntime_binding.node b/node_modules/onnxruntime-node/bin/napi-v3/linux/x64/onnxruntime_binding.node
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/bin/napi-v3/win32/arm64/DirectML.dll b/node_modules/onnxruntime-node/bin/napi-v3/win32/arm64/DirectML.dll
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/bin/napi-v3/win32/arm64/onnxruntime.dll b/node_modules/onnxruntime-node/bin/napi-v3/win32/arm64/onnxruntime.dll
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/bin/napi-v3/win32/arm64/onnxruntime_binding.node b/node_modules/onnxruntime-node/bin/napi-v3/win32/arm64/onnxruntime_binding.node
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/bin/napi-v3/win32/x64/DirectML.dll b/node_modules/onnxruntime-node/bin/napi-v3/win32/x64/DirectML.dll
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/bin/napi-v3/win32/x64/onnxruntime.dll b/node_modules/onnxruntime-node/bin/napi-v3/win32/x64/onnxruntime.dll
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/bin/napi-v3/win32/x64/onnxruntime_binding.node b/node_modules/onnxruntime-node/bin/napi-v3/win32/x64/onnxruntime_binding.node
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/dist/backend.d.ts b/node_modules/onnxruntime-node/dist/backend.d.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/dist/backend.js b/node_modules/onnxruntime-node/dist/backend.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/dist/backend.js.map b/node_modules/onnxruntime-node/dist/backend.js.map
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/dist/binding.d.ts b/node_modules/onnxruntime-node/dist/binding.d.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/dist/binding.js b/node_modules/onnxruntime-node/dist/binding.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/dist/binding.js.map b/node_modules/onnxruntime-node/dist/binding.js.map
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/dist/index.d.ts b/node_modules/onnxruntime-node/dist/index.d.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/dist/index.js b/node_modules/onnxruntime-node/dist/index.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/dist/index.js.map b/node_modules/onnxruntime-node/dist/index.js.map
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/dist/version.d.ts b/node_modules/onnxruntime-node/dist/version.d.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/dist/version.js b/node_modules/onnxruntime-node/dist/version.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/dist/version.js.map b/node_modules/onnxruntime-node/dist/version.js.map
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/lib/backend.ts b/node_modules/onnxruntime-node/lib/backend.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/lib/binding.ts b/node_modules/onnxruntime-node/lib/binding.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/lib/index.ts b/node_modules/onnxruntime-node/lib/index.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/lib/version.ts b/node_modules/onnxruntime-node/lib/version.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/script/build.js b/node_modules/onnxruntime-node/script/build.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/script/build.ts b/node_modules/onnxruntime-node/script/build.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/script/install.js b/node_modules/onnxruntime-node/script/install.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/script/prepack.js b/node_modules/onnxruntime-node/script/prepack.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/onnxruntime-node/script/prepack.ts b/node_modules/onnxruntime-node/script/prepack.ts
+old mode 100644
+new mode 100755

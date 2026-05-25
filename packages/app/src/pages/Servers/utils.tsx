@@ -1,7 +1,28 @@
 import { Box, HStack, Text } from '@chakra-ui/react';
 import React from 'react';
+import { parse } from "shell-quote";
 
 export { QUANT_COLORS } from '@/lib/constants';
+
+export function formatLaunchCommand(cmd: string): string {
+	const tokens = parse(cmd).filter((t): t is string => typeof t === "string");
+	if (tokens.length === 0) return "";
+
+	const lines: string[] = [tokens[0]];
+	let i = 1;
+	while (i < tokens.length) {
+		const tok = tokens[i]!;
+		const next = tokens[i + 1];
+		if (tok.startsWith("-") && next !== undefined && !next.startsWith("-")) {
+			lines.push(`\t${tok} ${next}`);
+			i += 2;
+		} else {
+			lines.push(`\t${tok}`);
+			i += 1;
+		}
+	}
+	return lines.join("\n");
+}
 
 export function formatUptime(startedAt: number | null): string {
 	if (!startedAt) return '-';

@@ -82,7 +82,7 @@ export const BashRenderer = React.memo((props: {
 
 export const BashRendererMeta: IToolCallRenderer = {
 	component: BashRenderer,
-	keywords: ['bash', 'shell', 'command', 'exec', 'execute', 'run', 'terminal', 'cmd'],
+	keywords: ['bash', 'shell', 'command', 'exec', 'execute', 'run', 'terminal', 'cmd', 'process'],
 	canRender: (args: Record<string, unknown>): TCanRenderResult => {
 		const command = args.command ?? args.cmd ?? args.script ?? args.bash;
 		if (typeof command !== 'string' || command.length === 0) return false;

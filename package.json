@@ -1,7 +1,7 @@
 {
 	"name": "warpcore",
 	"private": true,
-	"version": "0.4.8",
+	"version": "0.4.11",
 	"workspaces": [
 		"packages/*"
 	],
@@ -12,10 +12,12 @@
 		"dev:desktop": "npm run dev -w @warpcore/desktop",
 		"build": "npm run build -w @warpcore/app",
 		"build:desktop": "npm run build -w @warpcore/desktop",
-		"release": "bash release.sh"
+		"release": "bash release.sh",
+		"postinstall": "patch-package"
 	},
 	"devDependencies": {
 		"concurrently": "^9.1.2",
-		"cross-env": "^10.1.0"
+		"cross-env": "^10.1.0",
+		"patch-package": "^8.0.1"
 	}
 }

@@ -1,5 +1,5 @@
-import { Box, Text, HStack, VStack, Flex, Input, Button, Spinner, Switch, Combobox, createListCollection, Portal } from '@chakra-ui/react';
-import { Settings, FolderOpen, Plus, Trash2, Save, ChevronDown, FolderInput, BookOpen } from 'lucide-react';
+import { Box, Text, HStack, VStack, Flex, Input, Button, Spinner, Switch, Combobox, createListCollection, Portal, NativeSelect, NativeSelectField } from '@chakra-ui/react';
+import { Settings, FolderOpen, Plus, Trash2, Save, ChevronDown, FolderInput, BookOpen, Mic } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { useDependantState } from '../../hooks/useDependantState';
 import { PageHeader } from '../../components/PageHeader';
@@ -43,6 +43,10 @@ export function SettingsPage() {
 	const [checkpointsPath, setCheckpointsPath] = useDependantState(settings.checkpointsPath);
 	const [maxCheckpointDiskGB, setMaxCheckpointDiskGB] = useDependantState(settings.maxCheckpointDiskGB);
 	const [disableTitleGen, setDisableTitleGen] = useDependantState(settings.disableTitleGen);
+	const [micDeviceId, setMicDeviceId] = useDependantState(settings.micDeviceId ?? '');
+	const [kokoroVoice, setKokoroVoice] = useDependantState(settings.kokoroVoice ?? 'af_heart');
+	const [micDevices, setMicDevices] = useState<Array<{ id: string; label: string }>>([]);
+	const [micPermissionGranted, setMicPermissionGranted] = useState(false);
 	const [newRoot, setNewRoot] = useState('');
 	const [saved, setSaved] = useState(false);
 	const [isDirty, setIsDirty] = useState(false);
@@ -106,6 +110,56 @@ export function SettingsPage() {
 		};
 		checkOsAutoLaunch();
 	}, []);
+
+	// Check mic permission and enumerate devices
+	useEffect(() => {
+		const checkMicPermission = async () => {
+			try {
+				// Check permission state
+				const permission = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+				setMicPermissionGranted(permission.state === 'granted');
+
+				permission.addEventListener('change', () => {
+					setMicPermissionGranted(permission.state === 'granted');
+					if (permission.state === 'granted') enumerateMicDevices();
+				});
+			} catch {
+				// permissions.query not supported, try to enumerate
+				enumerateMicDevices();
+			}
+		};
+
+		const enumerateMicDevices = async () => {
+			try {
+				const devices = await navigator.mediaDevices.enumerateDevices();
+				const audioInputs = devices
+					.filter(d => d.kind === 'audioinput')
+					.map(d => ({ id: d.deviceId, label: d.label || `Microphone (${d.deviceId.slice(0, 8)}...)` }));
+				setMicDevices(audioInputs);
+			} catch {
+				setMicDevices([]);
+			}
+		};
+
+		checkMicPermission();
+	}, []);
+
+	const handleGrantMicPermission = async () => {
+		try {
+			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+			stream.getTracks().forEach(t => t.stop());
+			setMicPermissionGranted(true);
+			// Re-enumerate now that permission is granted
+			const devices = await navigator.mediaDevices.enumerateDevices();
+			const audioInputs = devices
+				.filter(d => d.kind === 'audioinput')
+				.map(d => ({ id: d.deviceId, label: d.label || `Microphone (${d.deviceId.slice(0, 8)}...)` }));
+			setMicDevices(audioInputs);
+			toast('success', 'Microphone access granted');
+		} catch (err) {
+			toast('error', 'Microphone access denied');
+		}
+	};
 
 	const handleAddRoot = () => {
 		const trimmed = newRoot.trim();
@@ -173,6 +227,8 @@ const handleSave = async () => {
 			maxCheckpointDiskGB,
 			disableTitleGen,
 			theme: localTheme,
+			micDeviceId,
+			kokoroVoice,
 		});
 
 		if (saveMut.error) {
@@ -391,6 +447,77 @@ const handleSave = async () => {
 									</Switch.Label>
 								</Switch.Root>
 							</HStack>
+						</VStack>
+					</Card>
+
+					{/* Voice / STT */}
+					<Card>
+						<VStack align="stretch" gap="4">
+							<Box>
+								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">Voice Input</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)">Microphone device for speech-to-text</Text>
+							</Box>
+							{!micPermissionGranted ? (
+								<Button
+									size="sm"
+									bg="var(--wc-accent-blue-bg-15)"
+									color="var(--wc-accent-blue)"
+									_hover={{ bg: 'var(--wc-accent-blue-bg-25)' }}
+									borderRadius="lg"
+									leftIcon={<Mic size={15} />}
+									onClick={handleGrantMicPermission}
+								>
+									Grant Microphone Access
+								</Button>
+							) : micDevices.length === 0 ? (
+								<Text fontSize="12px" color="var(--wc-text-faint)">No microphone devices found</Text>
+							) : (
+								<NativeSelect.Root value={micDeviceId}>
+									<NativeSelect.Field
+										size="sm"
+										bg="var(--wc-bg-card)"
+										borderColor="var(--wc-border-default)"
+										color="var(--wc-text-primary)"
+										fontSize="13px"
+										borderRadius="lg"
+										onChange={(e) => dirtySetter(setMicDeviceId, e.target.value)}
+									>
+										<option value="">Default Microphone</option>
+										{micDevices.map(d => (
+											<option key={d.id} value={d.id}>{d.label}</option>
+										))}
+									</NativeSelect.Field>
+								</NativeSelect.Root>
+							)}
+						</VStack>
+					</Card>
+
+					{/* Voice Output / TTS */}
+					<Card>
+						<VStack align="stretch" gap="4">
+							<Box>
+								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">Voice Output</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)">Kokoro TTS voice for reading assistant messages</Text>
+							</Box>
+							<NativeSelect.Root value={kokoroVoice}>
+								<NativeSelect.Field
+									size="sm"
+									bg="var(--wc-bg-card)"
+									borderColor="var(--wc-border-default)"
+									color="var(--wc-text-primary)"
+									fontSize="13px"
+									borderRadius="lg"
+									onChange={(e) => dirtySetter(setKokoroVoice, e.target.value)}
+								>
+									<option value="af_heart">Heart (Female, US)</option>
+									<option value="af_bella">Bella (Female, US)</option>
+									<option value="af_nicole">Nicole (Female, US)</option>
+									<option value="am_adam">Adam (Male, US)</option>
+									<option value="am_michael">Michael (Male, US)</option>
+									<option value="bf_emma">Emma (Female, UK)</option>
+									<option value="bm_george">George (Male, UK)</option>
+								</NativeSelect.Field>
+							</NativeSelect.Root>
 						</VStack>
 					</Card>
 

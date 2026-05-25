@@ -76,10 +76,12 @@ export function BackendRow({ backendId, onEdit, onDelete }: IBackendRowProps) {
 							<Box flex="1">
 								<HStack gap="2" align="center">
 									<Text fontSize="14px" fontWeight="600" color="var(--wc-special-row-name)">{backend.name}</Text>
-									<HStack gap="1" color={statusColor}>
-										{backend.validation === EValidationStatus.VALID ? <CheckCircle size={13} /> : <AlertCircle size={13} />}
-										<Text fontSize="11px" fontWeight="500">{backend.version || backend.validation}</Text>
-									</HStack>
+							<HStack gap="1" color={statusColor}>
+									{backend.validation === EValidationStatus.VALID ? <CheckCircle size={13} /> : <AlertCircle size={13} />}
+									<Text fontSize="11px" fontWeight="500">{backend.version}</Text>
+									{backend.buildNumber && <Text fontSize="11px" fontWeight="400" color="var(--wc-text-muted)">v.{backend.buildNumber}</Text>}
+									{backend.gitCommit && <Text fontSize="11px" fontWeight="400" fontFamily='"Geist Mono", monospace' color="var(--wc-text-faint)">[{backend.gitCommit.substring(0, 7)}]</Text>}
+								</HStack>
 									{deviceCount > 0 && (
 										<Badge size="sm" px="1.5" py="0.5" borderRadius="full" bg="var(--wc-accent-blue-bg-15)" color="var(--wc-accent-blue-hover)" fontSize="10px" fontWeight="600">{deviceCount} Device(s)</Badge>
 									)}

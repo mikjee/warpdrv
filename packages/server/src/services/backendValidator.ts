@@ -4,38 +4,82 @@ import fs from 'fs/promises';
 import type { IDevice } from '@warpcore/shared';
 import { EDeviceBackendType } from '@warpcore/shared';
 const execFileAsync = promisify(execFile);
+interface IBuildInfo {
+	buildNumber: string;
+	gitCommit: string;
+}
+
 interface IValidationResult {
 	valid: boolean;
 	version: string;
+	buildInfo: IBuildInfo | null;
 	devices: IDevice[];
 	error: string | null;
 }
-// Run llama-server --list-devices to detect compiled backends
-async function getVersion(binaryPath: string): Promise<string | null> {
+
+// Run llama-server --version to get build number and git commit hash
+async function getBuildInfo(binaryPath: string): Promise<IBuildInfo | null> {
+	try {
+		const { stdout, stderr } = await execFileAsync(binaryPath, ['--version'], {
+			timeout: 10000,
+		});
+		const output = stderr + stdout;
+		console.log(`[getBuildInfo] output for ${binaryPath}:`, JSON.stringify(output));
+		const match = output.match(/version:\s*(\d+)\s*\(([a-f0-9]+)\)/);
+		if (match) {
+			const info = { buildNumber: match[1]!, gitCommit: match[2]! };
+			console.log(`[getBuildInfo] matched:`, info);
+			return info;
+		}
+		console.log(`[getBuildInfo] no match for ${binaryPath}`);
+		return null;
+	} catch (err) {
+		console.log(`[getBuildInfo] error for ${binaryPath}:`, String(err));
+		return null;
+	}
+}
+
+// Run llama-cli --list-devices to detect compiled backends
+// New builds (>= 9100) only show Available devices section
+// Old builds show verbose CUDA/ROCm/Vulkan init lines
+async function getVersion(binaryPath: string, buildNumber: number): Promise<string | null> {
 	try {
 		const cliPath = binaryPath.replace(/llama-server$/, 'llama-cli');
 		const { stdout, stderr } = await execFileAsync(cliPath, ['--list-devices'], {
 			timeout: 10000,
 		});
 		const output = stderr + stdout;
+		console.log(`[getVersion] buildNumber=${buildNumber}, output for ${binaryPath}:`, JSON.stringify(output));
+
 		const parts: string[] = [];
-		// Detect CUDA - must say "CUDA devices" (not ROCm devices)
-		if (output.match(/ggml_cuda_init: found \d+ CUDA devices/)) {
-			parts.push('CUDA');
+
+		if (buildNumber >= 9100) {
+			// New builds: detect GPU backends from Available devices section
+			const deviceTypeMatch = output.match(/Available devices:.*\n\s+(CUDA|ROCm|Vulkan)\d:/s);
+			if (deviceTypeMatch) {
+				parts.push(deviceTypeMatch[1]);
+			}
+			console.log(`[getVersion] new build detection, parts:`, parts);
+		} else {
+			// Old builds: detect from verbose init lines
+			if (output.match(/ggml_cuda_init: found \d+ CUDA devices/)) {
+				parts.push('CUDA');
+			}
+			if (output.match(/ggml_cuda_init: found \d+ ROCm devices/) ||
+				output.match(/ggml_rocm_init/i) ||
+				output.match(/Available devices:.*\n.*ROCm\d:/s)) {
+				parts.push('ROCm');
+			}
+			if (output.match(/Found \d+ Vulkan devices/i) ||
+				output.includes('ggml_vulkan:')) {
+				parts.push('Vulkan');
+			}
+			console.log(`[getVersion] old build detection, parts:`, parts);
 		}
-		// Detect ROCm - can show as "ROCm devices" under ggml_cuda_init or ggml_rocm_init
-		if (output.match(/ggml_cuda_init: found \d+ ROCm devices/) ||
-			output.match(/ggml_rocm_init/i) ||
-			output.match(/Available devices:.*\n.*ROCm\d:/s)) {
-			parts.push('ROCm');
-		}
-		// Detect Vulkan - look for actual Vulkan device listings
-		if (output.match(/Found \d+ Vulkan devices/i) ||
-			output.includes('ggml_vulkan:')) {
-			parts.push('Vulkan');
-		}
+
 		return parts.length > 0 ? parts.join(', ') : 'unknown';
-	} catch {
+	} catch (err) {
+		console.log(`[getVersion] error for ${binaryPath}:`, String(err));
 		return null;
 	}
 }
@@ -153,20 +197,26 @@ async function listDevices(binaryPath: string, backendId: string): Promise<IDevi
 	}
 	return devices;
 }
-// Full validation: check binary exists, get version, discover devices
+// Full validation: check binary exists, get build info, version, discover devices
 export async function validateBackend(binaryPath: string, backendId: string): Promise<IValidationResult> {
 	// Check file exists
 	try {
 		await fs.access(binaryPath, fs.constants.X_OK);
 	} catch {
-		return { valid: false, version: '', devices: [], error: 'Binary not found or not executable' };
+		return { valid: false, version: '', buildInfo: null, devices: [], error: 'Binary not found or not executable' };
 	}
-	// Get version
-	const version = await getVersion(binaryPath);
+	// Get build info first (needed for version detection logic)
+	const buildInfo = await getBuildInfo(binaryPath);
+	const buildNumber = buildInfo ? parseInt(buildInfo.buildNumber, 10) : 0;
+	console.log(`[validateBackend] binary=${binaryPath}, buildNumber=${buildNumber}`);
+	// Get GPU backend version (uses buildNumber to choose detection logic)
+	const version = await getVersion(binaryPath, buildNumber);
 	if (!version) {
-		return { valid: false, version: '', devices: [], error: 'Failed to get version — binary may be invalid' };
+		return { valid: false, version: '', buildInfo, devices: [], error: 'Failed to get version — binary may be invalid' };
 	}
 	// Discover devices
 	const devices = await listDevices(binaryPath, backendId);
-	return { valid: true, version, devices, error: null };
+	const result = { valid: true, version, buildInfo, devices, error: null };
+	console.log(`[validateBackend] result for ${binaryPath}:`, JSON.stringify({ ...result, devices: result.devices.map(d => ({ ...d, backendId: d.backendId })) }));
+	return result;
 }

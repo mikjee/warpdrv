@@ -1,14 +1,18 @@
 import { Router } from 'express';
 import crypto from 'crypto';
+import path from 'path';
+import os from 'os';
 import { store } from '../util/store';
 import { validateBackend } from '../services/backendValidator';
-import type { IBackend, IBackendCreatePayload, IBackendUpdatePayload } from '@warpcore/shared';
-import { EValidationStatus } from '@warpcore/shared';
+import { startGenericDownload } from '../services/downloadManager';
+import { fetchLlamaReleases } from '../services/releases';
+import type { IBackend, IBackendCreatePayload, IBackendUpdatePayload, IDownloadPostAction } from '@warpcore/shared';
+import { EValidationStatus, EPostActionType, EPostActionStatus } from '@warpcore/shared';
 import { sseManager } from '../services/sseManagerInstance';
 
 const PREFIX = 'backends:';
 
-async function emitDevicesUpdate(): Promise<void> {
+export async function emitDevicesUpdate(): Promise<void> {
 	try {
 		const backends = await store.list<IBackend>(PREFIX);
 		const devices = backends.flatMap(b => b.detectedDevices ?? []);
@@ -59,6 +63,8 @@ backendsRouter.post('/', async (req, res) => {
 		description: payload.description ?? '',
 		validation: validation.valid ? EValidationStatus.VALID : EValidationStatus.INVALID,
 		version: validation.version,
+		buildNumber: validation.buildInfo?.buildNumber ?? '',
+		gitCommit: validation.buildInfo?.gitCommit ?? '',
 		detectedDevices: validation.devices,
 		createdAt: now,
 		updatedAt: now,
@@ -90,6 +96,8 @@ backendsRouter.put('/:id', async (req, res) => {
 		const validation = await validateBackend(payload.path, existing.id);
 		updated.validation = validation.valid ? EValidationStatus.VALID : EValidationStatus.INVALID;
 		updated.version = validation.version;
+		updated.buildNumber = validation.buildInfo?.buildNumber ?? '';
+		updated.gitCommit = validation.buildInfo?.gitCommit ?? '';
 		updated.detectedDevices = validation.devices;
 	}
 
@@ -123,6 +131,8 @@ backendsRouter.post('/:id/validate', async (req, res) => {
 	const validation = await validateBackend(existing.path, existing.id);
 	existing.validation = validation.valid ? EValidationStatus.VALID : EValidationStatus.INVALID;
 	existing.version = validation.version;
+	existing.buildNumber = validation.buildInfo?.buildNumber ?? '';
+	existing.gitCommit = validation.buildInfo?.gitCommit ?? '';
 	existing.detectedDevices = validation.devices;
 	existing.updatedAt = Date.now();
 
@@ -130,4 +140,62 @@ await store.put(PREFIX + existing.id, existing);
 	sseManager.emit('backends:update', existing);
 	await emitDevicesUpdate();
 	res.json({ ok: true, data: existing, validation: validation.error });
+});
+// POST /api/backends/install — download + install prebuilt backend by asset key
+backendsRouter.post('/install', async (req, res) => {
+	const { assetKey, installRoot } = req.body as { assetKey: string; installRoot?: string };
+	if (!assetKey) {
+		res.status(400).json({ ok: false, data: null, error: 'assetKey is required' });
+		return;
+	}
+	const assets = await fetchLlamaReleases();
+	const asset = assets.find(a => a.key === assetKey);
+	if (!asset) {
+		res.status(404).json({ ok: false, data: null, error: `Asset not found: ${assetKey}` });
+		return;
+	}
+	const root = installRoot ?? path.join(os.homedir(), '.config', 'warpcore', 'backends');
+	const installDir = path.join(root, asset.key);
+	const binaryName = asset.os === 'win' ? 'llama-server.exe' : 'llama-server';
+	const labelParts = [
+		'llama.cpp',
+		asset.backend.toUpperCase(),
+		asset.backendVersion ?? '',
+		asset.gpuArch ?? '',
+		`(${asset.llamaBuild})`,
+	].filter(p => p.length > 0);
+	const name = labelParts.join(' ');
+	const description = `Auto-installed from ${asset.source} ${asset.llamaBuild}`;
+	const postActions: IDownloadPostAction[] = [
+		{
+			type: EPostActionType.EXTRACT_ARCHIVE,
+			payload: { destDir: installDir },
+			status: EPostActionStatus.PENDING,
+			error: null,
+		},
+		{
+			type: EPostActionType.LOCATE_BINARY,
+			payload: { rootDir: installDir, binaryName, contextKey: 'binaryPath' },
+			status: EPostActionStatus.PENDING,
+			error: null,
+		},
+		{
+			type: EPostActionType.CHMOD_EXECUTABLE,
+			payload: { binaryPath: '__LOCATED__' },
+			status: EPostActionStatus.PENDING,
+			error: null,
+		},
+		{
+			type: EPostActionType.REGISTER_LLAMA_BACKEND,
+			payload: { binaryPath: '__LOCATED__', name, description, defaultArgs: [] },
+			status: EPostActionStatus.PENDING,
+			error: null,
+		},
+	];
+	try {
+		const dl = await startGenericDownload(asset.url, installDir, asset.filename, postActions);
+		res.json({ ok: true, data: dl, error: null });
+	} catch (err) {
+		res.json({ ok: false, data: null, error: String(err) });
+	}
 });

@@ -16,6 +16,7 @@
 		"@chakra-ui/react": "^3.22.2",
 		"@emotion/react": "^11.14.0",
 		"@fontsource-variable/inter": "^5.2.8",
+		"@ricky0123/vad-web": "^0.0.30",
 		"@tauri-apps/api": "^2",
 		"@tauri-apps/plugin-autostart": "^2.5.1",
 		"@tauri-apps/plugin-dialog": "^2.6.0",
@@ -27,6 +28,7 @@
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"dompurify": "^3.3.3",
+		"emoji-regex": "^8.0.0",
 		"eventsource": "^3.0.7",
 		"immer": "^11.1.4",
 		"js-tiktoken": "^1.0.21",
@@ -43,6 +45,7 @@
 		"react-icons": "^5.6.0",
 		"react-router-dom": "^7.6.2",
 		"remark-gfm": "^4.0.1",
+		"remove-markdown": "^0.6.4",
 		"shadcn": "^4.1.1",
 		"shell-quote": "^1.8.3",
 		"tailwind-merge": "^3.5.0",
@@ -60,6 +63,7 @@
 		"sass-embedded": "^1.99.0",
 		"tailwindcss": "^4.2.2",
 		"typescript": "^5.8.3",
-		"vite": "^6.3.5"
+		"vite": "^6.3.5",
+		"vite-plugin-static-copy": "^4.1.0"
 	}
 }

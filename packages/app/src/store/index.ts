@@ -8,11 +8,17 @@ import { serversSlice } from './slices/servers';
 import { downloadsSlice } from './slices/downloads';
 import { devicesSlice } from './slices/devices';
 import { backendsSlice } from './slices/backends';
+import { whisperBackendsSlice } from './slices/whisperBackends';
+import { whisperServersSlice } from './slices/whisperServers';
 import { modelsSlice } from './slices/models';
 import { settingsSlice } from './slices/settings';
 import { proxySlice } from './slices/proxy';
 import { recipesSlice } from './slices/recipes';
 import { checkpointsSlice } from './slices/checkpoints';
+import { hardwareSlice } from './slices/hardware';
+import { releasesSlice } from './slices/releases';
+import { kokoroSlice } from './slices/kokoro';
+import { ttsSlice } from './slices/tts';
 import { createChatStoreSlice } from '@warpcore/bridge/client';
 import { DiffRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/DiffRenderer';
 import { BashRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/BashRenderer';
@@ -29,11 +35,17 @@ export const useStore = create<AppState>()(
 				const downloads = downloadsSlice(set, get);
 				const devices = devicesSlice(set, get);
 				const backends = backendsSlice(set, get);
+			const whisperBackends = whisperBackendsSlice(set, get);
+			const whisperServers = whisperServersSlice(set, get);
 				const models = modelsSlice(set, get);
 				const settings = settingsSlice(set, get);
 				const proxy = proxySlice(set, get);
 				const recipes = recipesSlice(set, get);
 				const checkpoints = checkpointsSlice(set, get);
+				const hardware = hardwareSlice(set, get);
+				const releases = releasesSlice(set, get);
+				const kokoro = kokoroSlice(set, get);
+			const tts = ttsSlice(set, get);
 				const sseHandlers = sseHandlersSlice(set, get);
 				const bridge = createChatStoreSlice(set, get);
 
@@ -50,9 +62,39 @@ export const useStore = create<AppState>()(
 					devices: devices.devices!,
 					backends: backends.backends!,
 					backendGroups: backends.backendGroups!,
+				whisperBackends: whisperBackends.whisperBackends!,
+				whisperServers: whisperServers.whisperServers!,
+				whisperServerLogs: whisperServers.whisperServerLogs!,
+				tempThreadWhisperServerId: bridge.tempThreadWhisperServerId,
+				setTempThreadWhisperServerId: bridge.setTempThreadWhisperServerId,
 					models: models.models!,
 					settings: settings.settings!,
- 					proxyStatus: proxy.proxyStatus!,
+					hardware: hardware.hardware!,
+					llamaReleases: releases.llamaReleases!,
+					whisperReleases: releases.whisperReleases!,
+kokoroStatus: kokoro.kokoroStatus!,
+					setKokoroStatus: kokoro.setKokoroStatus!,
+ttsActiveMessageId: tts.ttsActiveMessageId!,
+				ttsIsGenerating: tts.ttsIsGenerating!,
+				ttsIsSpeaking: tts.ttsIsSpeaking!,
+				ttsSpokenByMessage: tts.ttsSpokenByMessage!,
+				ttsVadSentencesSent: tts.ttsVadSentencesSent!,
+				ttsVadSentencesDone: tts.ttsVadSentencesDone!,
+				ttsVadRequestId: tts.ttsVadRequestId!,
+				ttsStart: tts.ttsStart!,
+				ttsStop: tts.ttsStop!,
+				ttsSetGenerating: tts.ttsSetGenerating!,
+				ttsSetSpeaking: tts.ttsSetSpeaking!,
+				ttsSetActiveMessageId: tts.ttsSetActiveMessageId!,
+				ttsSetSpokenIndex: tts.ttsSetSpokenIndex!,
+				ttsClearSpokenIndex: tts.ttsClearSpokenIndex!,
+				ttsVadIncSent: tts.ttsVadIncSent!,
+				ttsVadIncDone: tts.ttsVadIncDone!,
+				ttsVadReset: tts.ttsVadReset!,
+				vadActive: tts.vadActive!,
+				setVadActive: tts.setVadActive!,
+				ttsVadNewRequestId: tts.ttsVadNewRequestId!,
+  					proxyStatus: proxy.proxyStatus!,
 					proxyRoutes: proxy.proxyRoutes!,
 					recipes: recipes.recipes!,
 					activeRun: recipes.activeRun!,
@@ -118,7 +160,10 @@ export const useStore = create<AppState>()(
 					currentThreadId: bridge.currentThreadId,
 					currentSystemPrompt: bridge.currentSystemPrompt,
 					currentInferenceParams: bridge.currentInferenceParams,
-					setCurrentThreadId: bridge.setCurrentThreadId,
+					setCurrentThreadId: (id: TThreadId | null) => {
+						bridge.setCurrentThreadId(id);
+						tts.setVadActive(false);
+					},
 					setCurrentSystemPrompt: bridge.setCurrentSystemPrompt,
 					setCurrentInferenceParams: bridge.setCurrentInferenceParams,
 					tempThreadServerId: bridge.tempThreadServerId,

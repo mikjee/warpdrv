@@ -59,6 +59,12 @@ export function getAllServerSlots(): Record<TServerId, IServerSlotsState> {
 
 // Parse a single log line and update state if it matches a known pattern
 export function parseLogLine(serverId: TServerId, line: string): void {
+	// New llama.cpp log format (0.26+) uses "slot print_timing:" module prefix
+	if (line.includes('slot print_timing')) {
+		parseNewFormatLine(serverId, line);
+		return;
+	}
+
 	const state = serversState[serverId];
 	if (state == null) return;
 
@@ -139,6 +145,63 @@ export function parseLogLine(serverId: TServerId, line: string): void {
 	if (releaseMatch) {
 		const slotId = parseInt(releaseMatch[1]!, 10);
 		updateSlot(serverId, slotId, {
+			isProcessing: false,
+			prefillProgress: null,
+			lastActivityAt: Date.now(),
+		});
+		return;
+	}
+}
+
+function parseNewFormatLine(serverId: TServerId, line: string): void {
+	const state = serversState[serverId];
+	if (state == null) return;
+
+	const slotIdMatch = line.match(/slot\s+\w+:\s*id\s+(\d+)/);
+	const slotId = slotIdMatch ? parseInt(slotIdMatch[1]!, 10) : null;
+	if (slotId === null) return;
+
+	// slot print_timing: id N | task M | prompt processing, n_tokens = X, progress = Z
+	const ppProgressMatch = line.match(/slot\s+print_timing:\s*id\s+\d+\s*\|\s*task\s+\d+\s*\|\s*prompt processing,\s*n_tokens\s*=\s*\d+,\s*progress\s*=\s*([\d.]+)/);
+	if (ppProgressMatch) {
+		const progress = parseFloat(ppProgressMatch[1]!);
+		updateSlot(serverId, slotId, {
+			prefillProgress: progress,
+			lastActivityAt: Date.now(),
+		});
+		return;
+	}
+
+	// slot print_timing: id N | task M | prompt eval time = ... (final summary = end of PP)
+	const ppDoneMatch = line.match(/slot\s+print_timing:\s*id\s+\d+\s*\|\s*task\s+\d+\s*\|\s*prompt eval time\s*=/);
+	if (ppDoneMatch) {
+		updateSlot(serverId, slotId, {
+			prefillProgress: null,
+			lastActivityAt: Date.now(),
+		});
+		return;
+	}
+
+	// slot print_timing: id N | task M | n_decoded = X, tg = Y t/s
+	const genMatch = line.match(/slot\s+print_timing:\s*id\s+\d+\s*\|\s*task\s+\d+\s*\|\s*n_decoded\s*=\s*(\d+),\s*tg\s*=\s*[\d.]+\s*t\/s/);
+	if (genMatch) {
+		const nDecoded = parseInt(genMatch[1]!, 10);
+		const slot = state.slots.find(s => s.slotId === slotId);
+		const cachedBase = slot ? slot.promptTokens : 0;
+		updateSlot(serverId, slotId, {
+			generatedTokens: nDecoded,
+			cachedTokens: cachedBase + nDecoded,
+			prefillProgress: null,
+			lastActivityAt: Date.now(),
+		});
+		return;
+	}
+
+	// slot      release: id N | task M | stop processing: n_tokens = X, truncated = Y
+	const releaseMatch = line.match(/slot\s+release:\s*id\s+(\d+)\s*\|\s*task\s+\d+\s*\|\s*stop processing/);
+	if (releaseMatch) {
+		const releaseSlotId = parseInt(releaseMatch[1]!, 10);
+		updateSlot(serverId, releaseSlotId, {
 			isProcessing: false,
 			prefillProgress: null,
 			lastActivityAt: Date.now(),

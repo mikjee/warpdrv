@@ -2,9 +2,10 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { DownloaderHelper } from 'node-downloader-helper';
-import { EDownloadStatus, type IDownload, type TDownloadId, type IResumeState } from '@warpcore/shared';
+import { EDownloadStatus, EDownloadType, type IDownload, type TDownloadId, type IResumeState, type IDownloadPostAction } from '@warpcore/shared';
 import { store } from '../util/store';
 import { sseManager } from './sseManagerInstance';
+import { runPostActions } from './postActions';
 
 const DOWNLOADS_PREFIX = 'downloads:';
 
@@ -43,6 +44,7 @@ export async function startDownload(
 	destRoot: string,
 	fileParts: string[] = [],
 	partIndex: number = 0,
+	groupKey?: string,
 ): Promise<IDownload> {
 	const id = makeDownloadId();
 
@@ -88,11 +90,11 @@ export async function startDownload(
 		error: null,
 		startedAt: Date.now(),
 		completedAt: null,
-		resumeState: null,
+resumeState: null,
 		fileParts: allParts,
 		partIndex,
+		groupKey,
 	};
-
 	const helper = new DownloaderHelper(url, destDir, {
 		fileName: path.basename(filename), // Only use basename for the actual file name
 		override: false,
@@ -118,16 +120,27 @@ export async function startDownload(
 		downloadState.set(dl.id, dl);
 	});
 
-	helper.on('end', async () => {
-		dl.status = EDownloadStatus.COMPLETED;
+helper.on('end', async () => {
 		dl.progress = 100;
-		dl.completedAt = Date.now();
 		dl.speedBps = 0;
 		activeDownloaders.delete(id);
+		if (dl.postActions && dl.postActions.length > 0) {
+			dl.status = EDownloadStatus.INSTALLING;
+			await persistDownload(dl);
+			emitDownloadUpdate(dl);
+		}
+		try {
+			await runPostActions(dl, persistDownload, emitDownloadUpdate);
+			dl.status = EDownloadStatus.COMPLETED;
+			dl.completedAt = Date.now();
+		} catch (err) {
+			dl.status = EDownloadStatus.FAILED;
+			dl.error = String(err);
+			dl.completedAt = Date.now();
+		}
 		await persistDownload(dl);
 		emitDownloadUpdate(dl);
 	});
-
 	helper.on('error', async (err) => {
 		dl.status = EDownloadStatus.FAILED;
 		const errorMsg = err.message ?? String(err);
@@ -234,16 +247,27 @@ export async function resumeDownload(id: TDownloadId): Promise<boolean> {
 		downloadState.set(dl.id, dl);
 	});
 
-	helper.on('end', async () => {
-		dl.status = EDownloadStatus.COMPLETED;
+helper.on('end', async () => {
 		dl.progress = 100;
-		dl.completedAt = Date.now();
 		dl.speedBps = 0;
 		activeDownloaders.delete(id);
+		if (dl.postActions && dl.postActions.length > 0) {
+			dl.status = EDownloadStatus.INSTALLING;
+			await persistDownload(dl);
+			emitDownloadUpdate(dl);
+		}
+		try {
+			await runPostActions(dl, persistDownload, emitDownloadUpdate);
+			dl.status = EDownloadStatus.COMPLETED;
+			dl.completedAt = Date.now();
+		} catch (err) {
+			dl.status = EDownloadStatus.FAILED;
+			dl.error = String(err);
+			dl.completedAt = Date.now();
+		}
 		await persistDownload(dl);
 		emitDownloadUpdate(dl);
 	});
-
 	helper.on('error', async (err) => {
 		dl.status = EDownloadStatus.FAILED;
 		dl.error = err.message ?? String(err);
@@ -252,7 +276,6 @@ export async function resumeDownload(id: TDownloadId): Promise<boolean> {
 		await persistDownload(dl);
 		emitDownloadUpdate(dl);
 	});
-
 	helper.on('stop', async () => {
 		dl.status = EDownloadStatus.PAUSED;
 		dl.speedBps = 0;
@@ -356,4 +379,113 @@ export function getAllDownloadsRecord(): Record<string, IDownload> {
 		result[id] = dl;
 	}
 	return result;
+}
+export async function startGenericDownload(
+	sourceUrl: string,
+	destDir: string,
+	filename: string,
+	postActions: IDownloadPostAction[] = [],
+	groupKey?: string,
+): Promise<IDownload> {
+	const id = makeDownloadId();
+	const destPath = path.join(destDir, filename);
+	fs.mkdirSync(destDir, { recursive: true });
+	const dl: IDownload = {
+		id,
+		downloadType: EDownloadType.GENERIC,
+		sourceUrl,
+		postActions,
+		groupKey,
+		author: '',
+		modelName: '',
+		filename,
+		quantType: '',
+		destRoot: destDir,
+		destPath,
+		fileSizeBytes: 0,
+		downloadedBytes: 0,
+		status: EDownloadStatus.DOWNLOADING,
+		speedBps: 0,
+		progress: 0,
+		error: null,
+		startedAt: Date.now(),
+		completedAt: null,
+		resumeState: null,
+		fileParts: [filename],
+		partIndex: 0,
+	};
+	const helper = new DownloaderHelper(sourceUrl, destDir, {
+		fileName: filename,
+		override: false,
+		removeOnStop: false,
+		removeOnFail: false,
+		resumeIfFileExists: true,
+		resumeOnIncomplete: true,
+		resumeOnIncompleteMaxRetry: 3,
+	});
+	helper.on('start', () => {
+		dl.status = EDownloadStatus.DOWNLOADING;
+		persistDownload(dl);
+	});
+	helper.on('progress', (stats) => {
+		dl.fileSizeBytes = stats.total ?? 0;
+		dl.downloadedBytes = stats.downloaded;
+		dl.progress = stats.progress;
+		dl.speedBps = stats.speed;
+		dl.status = EDownloadStatus.DOWNLOADING;
+		downloadState.set(dl.id, dl);
+	});
+	helper.on('end', async () => {
+		dl.progress = 100;
+		dl.speedBps = 0;
+		activeDownloaders.delete(id);
+		if (dl.postActions && dl.postActions.length > 0) {
+			dl.status = EDownloadStatus.INSTALLING;
+			await persistDownload(dl);
+			emitDownloadUpdate(dl);
+		}
+		try {
+			await runPostActions(dl, persistDownload, emitDownloadUpdate);
+			dl.status = EDownloadStatus.COMPLETED;
+			dl.completedAt = Date.now();
+		} catch (err) {
+			dl.status = EDownloadStatus.FAILED;
+			dl.error = String(err);
+			dl.completedAt = Date.now();
+		}
+		await persistDownload(dl);
+		emitDownloadUpdate(dl);
+	});
+	helper.on('error', async (err) => {
+		dl.status = EDownloadStatus.FAILED;
+		dl.error = err.message ?? String(err);
+		dl.speedBps = 0;
+		activeDownloaders.delete(id);
+		await persistDownload(dl);
+		emitDownloadUpdate(dl);
+	});
+	helper.on('stop', async () => {
+		dl.status = EDownloadStatus.PAUSED;
+		dl.speedBps = 0;
+		const resumeState = helper.getResumeState();
+		dl.resumeState = {
+			downloaded: resumeState.downloaded,
+			filePath: resumeState.filePath,
+			fileName: resumeState.fileName,
+			total: resumeState.total,
+		} as IResumeState;
+		activeDownloaders.delete(id);
+		await persistDownload(dl);
+		emitDownloadUpdate(dl);
+	});
+	activeDownloaders.set(id, helper);
+	await persistDownload(dl);
+	helper.start().catch(async (err) => {
+		dl.status = EDownloadStatus.FAILED;
+		dl.error = String(err);
+		activeDownloaders.delete(id);
+		await persistDownload(dl);
+		emitDownloadUpdate(dl);
+	});
+	return dl;
 }

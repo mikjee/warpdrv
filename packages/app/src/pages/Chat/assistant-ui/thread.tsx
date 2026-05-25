@@ -7,6 +7,7 @@ import { MarkdownText } from "./markdown-text";
 import { ToolFallback } from "./tool-fallback";
 import { ToolCallBlockWrapper } from "./ToolCallBlockWrapper";
 import { TooltipIconButton } from "./tooltip-icon-button";
+import { KokoroTTSButton } from "./KokoroTTS";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -23,7 +24,7 @@ import {
 	MessagePrimitive,
 	SuggestionPrimitive,
 	ThreadPrimitive,
-	useAuiState,
+	useAuiState, useAui,
 } from "@assistant-ui/react";
 import {
 	ArrowDownIcon,
@@ -44,11 +45,15 @@ import {
 	SquareIcon,
 	Timer,
 	Trash2,
+	Volume2,
 } from "lucide-react";
 import React, { useCallback, useContext, useMemo, useState, type FC } from "react";
 import { BranchTokensContext, ChatConfigContext } from "@/pages/Chat/ChatPage";
 import { useStore } from "@/store";
+import { VoiceWaveform } from "./VoiceWaveform";
 import { ThreadServerSelector } from "@/pages/Chat/assistant-ui/ServerSelector";
+import { ThreadWhisperServerSelector } from "@/pages/Chat/assistant-ui/WhisperServerSelector";
+import { VoiceInput } from "@/pages/Chat/assistant-ui/VoiceInput";
 import { deleteMessage } from "@/api/services";
 import { useMessageTiming } from "@assistant-ui/react";
 import { BrainCircuitIcon, ClockIcon } from "lucide-react";
@@ -57,8 +62,18 @@ import { EMcpServerStatus, IToolAttachment } from "@warpcore/bridge";
 import { encodingForModel } from 'js-tiktoken';
 import { IconButton } from '@chakra-ui/react';
 import { Elicitation } from './Elicitation';
+import { ConfirmDialog } from '@/components/dialogs/ConfirmDialog';
 
 const tokenEncoder = encodingForModel('gpt-4o');
+
+interface DeleteMessageState {
+	messageId: string | null;
+	isLoading: boolean;
+	open: (messageId: string) => void;
+	close: () => void;
+	confirm: () => Promise<void>;
+}
+const DeleteMessageContext = React.createContext<DeleteMessageState | null>(null);
 
 interface IServerStatusContext {
 	currentServerId: string | null;
@@ -74,12 +89,15 @@ export const ServerStatusContext = React.createContext<IServerStatusContext>({
 	supportsMultiModal: false,
 });
 
-export const Thread: FC<{ 
-	isLoading?: boolean, 
+export const Thread: FC<{
+	isLoading?: boolean,
 	currentServerId: TServerId | null
 }> = React.memo(({ isLoading = false, currentServerId }) => {
 	const ThreadMsgFn = useCallback(() => <ThreadMessage />, []);
 	const serversMap = useStore(s => s.servers);
+	const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+	const [deletingLoading, setDeletingLoading] = useState(false);
+
 	const currentServer = useMemo(() => currentServerId ? serversMap[currentServerId] || null : null, [
 		currentServerId,
 		serversMap
@@ -87,49 +105,85 @@ export const Thread: FC<{
 	const currentServerStatus = currentServer?.status || null;
 	const isValidServer = !!currentServerId && currentServer?.status === EServerStatus.RUNNING;
 	const supportsMultiModal = currentServer?.useMultiModal ?? false;
+
+	const deleteMessageCtx = useMemo<DeleteMessageState>(() => {
+		let resolveFn: (() => void) | null = null;
+		const handleConfirm = async () => {
+			setDeletingLoading(true);
+			try {
+				await deleteMessage(deletingMessageId!);
+			} finally {
+				setDeletingLoading(false);
+				setDeletingMessageId(null);
+				if (resolveFn) resolveFn();
+			}
+		};
+		return {
+			messageId: deletingMessageId,
+			isLoading: deletingLoading,
+			open: (messageId: string) => setDeletingMessageId(messageId),
+			close: () => setDeletingMessageId(null),
+			confirm: handleConfirm,
+		};
+	}, [deletingMessageId, deletingLoading]);
+
 	return (
 		<ServerStatusContext.Provider value={{ currentServerId, currentServerStatus, isValidServer, supportsMultiModal }}>
-			<ThreadPrimitive.Root
-			className="aui-root aui-thread-root @container flex h-full flex-col"
-			style={{
-				["--thread-max-width" as string]: "44rem",
-				["--composer-radius" as string]: "24px",
-				["--composer-padding" as string]: "10px",
-			}}
-		>
-			<ThreadPrimitive.Viewport
-				turnAnchor="bottom"
-				autoScroll={false}
-				className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-6 pt-4"
-				style={{ overflowAnchor: "none" }}
+			<DeleteMessageContext.Provider value={deleteMessageCtx}>
+				<ThreadPrimitive.Root
+				className="aui-root aui-thread-root @container flex h-full flex-col"
+				style={{
+					["--thread-max-width" as string]: "44rem",
+					["--composer-radius" as string]: "24px",
+					["--composer-padding" as string]: "10px",
+				}}
 			>
-				{isLoading ? (
-					<div className="flex h-full items-center justify-center">
-						<div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-600 border-t-transparent" />
-					</div>
-				) : (
-					<>
-						<AuiIf condition={(s) => s.thread.isEmpty}>
-							<ThreadWelcome />
-						</AuiIf>
+				<ThreadPrimitive.Viewport
+					turnAnchor="bottom"
+					autoScroll={false}
+					className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-6 pt-4"
+					style={{ overflowAnchor: "none" }}
+				>
+					{isLoading ? (
+						<div className="flex h-full items-center justify-center">
+							<div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-600 border-t-transparent" />
+						</div>
+					) : (
+						<>
+							<AuiIf condition={(s) => s.thread.isEmpty}>
+								<ThreadWelcome />
+							</AuiIf>
 
-						<ThreadPrimitive.Messages>
-							{ThreadMsgFn}
-						</ThreadPrimitive.Messages>
-					</>
-				)}
+							<ThreadPrimitive.Messages>
+								{ThreadMsgFn}
+							</ThreadPrimitive.Messages>
+						</>
+					)}
 
-				{!isLoading && (
-					<div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,var(--wc-bg-page)_35%,var(--wc-bg-page)_100%)]">
-						<ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer w-full max-w-(--thread-max-width) flex flex-col gap-4 overflow-visible">
-							<ThreadScrollToBottom />
-							<Elicitation />
-							<Composer />
-						</ThreadPrimitive.ViewportFooter>
-					</div>
+					{!isLoading && (
+						<div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,var(--wc-bg-page)_35%,var(--wc-bg-page)_100%)]">
+							<ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer w-full max-w-(--thread-max-width) flex flex-col gap-4 overflow-visible">
+								<ThreadScrollToBottom />
+								<Elicitation />
+								<Composer />
+							</ThreadPrimitive.ViewportFooter>
+						</div>
+					)}
+				</ThreadPrimitive.Viewport>
+				</ThreadPrimitive.Root>
+
+				{deletingMessageId && (
+					<ConfirmDialog
+						title="Delete Message"
+						message="Are you sure you want to delete this message?"
+						isOpen={true}
+						onConfirm={deleteMessageCtx.confirm}
+						onCancel={deleteMessageCtx.close}
+						isLoading={deletingLoading}
+						confirmLabel="Delete"
+					/>
 				)}
-			</ThreadPrimitive.Viewport>
-			</ThreadPrimitive.Root>
+			</DeleteMessageContext.Provider>
 		</ServerStatusContext.Provider>
 	);
 });
@@ -240,14 +294,15 @@ const ContextUsageBar: FC = () => {
 
 const Composer: FC = () => {
 	const { isValidServer } = useContext(ServerStatusContext);
-	
+	const [waveformStream, setWaveformStream] = useState<MediaStream | null>(null);
+
 	const handleSubmit = (e: React.FormEvent) => {
 		if (!isValidServer) {
 			e.preventDefault();
 			document.dispatchEvent(new CustomEvent('server-selector-shake'));
 		}
 	};
-	
+
 	return (
 		<ComposerPrimitive.Root onSubmit={handleSubmit} className="aui-composer-root relative flex w-full flex-col">
 			<ComposerPrimitive.AttachmentDropzone asChild>
@@ -270,8 +325,8 @@ const Composer: FC = () => {
 						aria-label="Message input"
 						autoComplete="off"
 					/>
-					<ComposerAction />
-					<ContextUsageBar />
+					<ComposerAction onStreamChange={setWaveformStream} />
+					{waveformStream ? <VoiceWaveform stream={waveformStream} width={680} /> : <ContextUsageBar />}
 				</div>
 			</ComposerPrimitive.AttachmentDropzone>
 		</ComposerPrimitive.Root>
@@ -437,7 +492,9 @@ const ToolsSelector: FC = React.memo(() => {
 									</Switch.Root>
 								</HStack>
 								<AccordionRoot collapsible defaultValue={[]}>
-									{connectedServers.map(([serverName, state]) => (
+							{connectedServers.map(([serverName, state]) => {
+									const activeCount = attachedTools.filter(t => t.serverName === serverName).length;
+									return (
 										<AccordionItemComp key={serverName} value={serverName} style={{ border: 'none' }}>
 											<AccordionItemTrigger
 												style={{
@@ -452,10 +509,10 @@ const ToolsSelector: FC = React.memo(() => {
 													width: '100%',
 												}}
 											>
-												<Text fontSize="11px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em">
+												<Text fontSize="11px" fontWeight="600" color={activeCount ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)'} textTransform="uppercase" letterSpacing="0.05em">
 													{serverName}
 												</Text>
-												<Text fontSize="10px" color="var(--wc-text-faint)">{state.tools.length}</Text>
+												<Text fontSize="10px" color={activeCount ? 'var(--wc-accent-blue)' : 'var(--wc-text-faint)'}>{state.tools.length}{activeCount ? ` (${activeCount})` : ''}</Text>
 											</AccordionItemTrigger>
 											<AccordionItemContent pt="1" pb="2" px="2" style={{ border: 'none' }}>
 												<VStack gap="1.5" align="stretch">
@@ -485,7 +542,8 @@ const ToolsSelector: FC = React.memo(() => {
 												</VStack>
 											</AccordionItemContent>
 										</AccordionItemComp>
-									))}
+									);
+								})}
 								</AccordionRoot>
 							</VStack>
 						)}
@@ -496,10 +554,11 @@ const ToolsSelector: FC = React.memo(() => {
 	);
 });
 
-const ComposerAction: FC = () => {
+const ComposerAction: FC<{ onStreamChange?: (stream: MediaStream | null) => void }> = ({ onStreamChange }) => {
 	const { isValidServer, supportsMultiModal } = useContext(ServerStatusContext);
 	const currentThreadId = useStore(s => s.currentThreadId);
 	const canAttach = isValidServer && supportsMultiModal;
+	const aui = useAui();
 
 	return (
 		<div className="aui-composer-action-wrapper relative flex items-center justify-between">
@@ -510,6 +569,18 @@ const ComposerAction: FC = () => {
 				<ToolsSelector />
 			</div>
 			<div className="flex items-center gap-2">
+				<VoiceInput threadId={currentThreadId} onTranscript={(text) => {
+					const input = document.querySelector('.aui-composer-input') as HTMLTextAreaElement;
+					if (!input) return;
+					const cursorPos = input.selectionStart ?? input.value.length;
+					const newText = input.value.slice(0, cursorPos) + text + input.value.slice(cursorPos);
+					aui.composer().setText(newText);
+					setTimeout(() => {
+						input.setSelectionRange(cursorPos + text.length, cursorPos + text.length);
+						input.focus();
+					}, 0);
+				}} aui={aui} onStreamChange={onStreamChange} />
+				<ThreadWhisperServerSelector threadId={currentThreadId} />
 				<ThreadServerSelector threadId={currentThreadId} />
 				<AuiIf condition={(s) => !s.thread.isRunning}>
 					<ComposerPrimitive.Send asChild>
@@ -720,27 +791,60 @@ const ActionBarIcon: FC<{ children: React.ReactNode; onClick?: () => void }> = (
 );
 
 const DeleteMessageButton: FC<{ messageId: string }> = ({ messageId }) => {
-	const handleDelete = useCallback(async () => {
-		if (!confirm('Delete this message?')) return;
-		await deleteMessage(messageId);
-	}, [messageId]);
-	
+	const ctx = useContext(DeleteMessageContext);
 	return (
-		<ActionBarIcon onClick={handleDelete}>
+		<ActionBarIcon onClick={() => ctx?.open(messageId)}>
 			<Trash2 size={14} />
 		</ActionBarIcon>
 	);
 };
 
+const BrowserTTS = React.memo(() => {
+	const [speaking, setSpeaking] = useState(false);
+	const parts = useAuiState((s) => s.message.content);
+	const messageText = useMemo(() => {
+		if (!parts || parts.length === 0) return '';
+		return parts
+			.filter((p: any) => p.type === 'text')
+			.map((p: any) => p.text)
+			.join('\n\n');
+	}, [parts]);
+
+	const handleSpeak = useCallback(() => {
+		if (speaking) {
+			window.speechSynthesis.cancel();
+			setSpeaking(false);
+			return;
+		}
+		if (!messageText.trim()) return;
+		window.speechSynthesis.cancel();
+		const utterance = new SpeechSynthesisUtterance(messageText);
+		utterance.onend = () => setSpeaking(false);
+		utterance.onerror = () => setSpeaking(false);
+		setSpeaking(true);
+		window.speechSynthesis.speak(utterance);
+	}, [speaking, messageText]);
+
+	return (
+		<ActionBarIcon onClick={handleSpeak}>
+			{speaking ? <SquareIcon size={14} /> : <Volume2 size={14} />}
+		</ActionBarIcon>
+	);
+});
+
 const AssistantActionBar: FC = () => {
 	const messageId = useAuiState((s) => s.message.id);
 	const isCopied = useAuiState((s) => s.message.isCopied);
+	const kokoroInstalled = useStore((s) => s.kokoroStatus?.installed);
 	
 	return (
 		<ActionBarPrimitive.Root
 			className="aui-assistant-action-bar-root col-start-3 row-start-2 -ml-1"
 			style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
 		>
+
+			{kokoroInstalled ? <KokoroTTSButton /> : <BrowserTTS />}
+
 			<ActionBarPrimitive.Copy asChild>
 				<ActionBarIcon>
 					{isCopied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
@@ -782,13 +886,16 @@ const UserMessage: FC = () => {
 
 const UserActionBar: FC = () => {
 	const messageId = useAuiState((s) => s.message.id);
-	const message = useAuiState((s) => s.message);
+	//const message = useAuiState((s) => s.message);
+	const kokoroInstalled = useStore((s) => s.kokoroStatus?.installed);
 	
 	return (
 		<ActionBarPrimitive.Root
 			className="aui-user-action-bar-root"
 			style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
 		>
+			{kokoroInstalled ? <KokoroTTSButton /> : <BrowserTTS />}
+
 			<ActionBarPrimitive.Edit asChild>
 				<ActionBarIcon>
 					<PencilIcon size={14} />

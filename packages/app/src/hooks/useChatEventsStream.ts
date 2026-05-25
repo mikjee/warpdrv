@@ -1,7 +1,20 @@
 import { EventSource } from 'eventsource';
 import { useEffect } from 'react';
 import { useStore } from '../store';
+import { setKokoroCurrentRequestId, startStream } from '../pages/Chat/assistant-ui/KokoroTTS';
 import type { IBridgeEvent } from '@warpcore/bridge';
+
+function findLastSentenceEnd(text: string): number {
+	for (let i = text.length - 1; i >= 0; i--) {
+		const c = text[i];
+		if (c === '.' || c === '!' || c === '?') {
+			if (i + 1 >= text.length || /\s/.test(text[i + 1])) {
+				return i;
+			}
+		}
+	}
+	return -1;
+}
 
 export function useChatEventsStream() {
 	const applyThreadCreated = useStore(s => s.applyThreadCreated);
@@ -49,8 +62,32 @@ export function useChatEventsStream() {
 			case 'message.deleted':
 				applyMessageDeleted(event.messageId, event.threadId);
 				break;
-			case 'message.chunk':
+case 'message.chunk':
 				applyMessageChunk(event.messageId, event.threadId, event.partId, event.deltaText);
+		if (event.partType === 'text') {
+					const state = useStore.getState();
+					if (state.ttsActiveMessageId !== event.messageId || state.ttsIsGenerating !== 'vad') break;
+					const msg = state.messagesByThread[event.threadId]?.[event.messageId];
+					if (msg) {
+						const part = msg.content.find((p: any) => p.id === event.partId);
+						const buffered = state.chunksByMessageId[event.messageId]?.chunk || '';
+						const fullText = (part?.text || '') + buffered;
+						const spoken = state.ttsSpokenByMessage[event.messageId] || 0;
+						const remaining = fullText.slice(spoken);
+						const lastEnd = findLastSentenceEnd(remaining);
+						if (lastEnd > -1) {
+							const sentence = remaining.slice(0, lastEnd + 1);
+							console.log('[TTS auto] sentence:', JSON.stringify(sentence));
+							useStore.getState().ttsVadIncSent();
+							startStream(
+								useStore.getState().ttsVadRequestId,
+								sentence,
+								state.settings.kokoroVoice || 'af_heart',
+							).catch(() => {});
+							useStore.getState().ttsSetSpokenIndex(event.messageId, spoken + lastEnd + 1);
+						}
+					}
+				}
 				break;
 			case 'tool_call.starting':
 				applyToolCallStarting(event.messageId, event.name);
@@ -63,9 +100,22 @@ export function useChatEventsStream() {
 				break;
 			case 'inference.started':
 				applyInferenceStarted(event.threadId, event.messageId);
+				{
+					const s = useStore.getState();
+					if (!s.vadActive) break;
+					s.ttsSetSpokenIndex(event.messageId, 0);
+					s.ttsVadReset();
+					const newId = s.ttsVadNewRequestId();
+					setKokoroCurrentRequestId(newId);
+					s.ttsStart(event.messageId, 'vad');
+				}
 				break;
-			case 'inference.ended':
+case 'inference.ended':
+				console.log('[TTS auto] inference.ended');
 				applyInferenceEnded(event.threadId, event.messageId);
+				if (useStore.getState().vadActive) {
+					useStore.getState().ttsClearSpokenIndex(event.messageId);
+				}
 				break;
 			case 'inference.error':
 				applyInferenceError(event.threadId, event.messageId, event.error);

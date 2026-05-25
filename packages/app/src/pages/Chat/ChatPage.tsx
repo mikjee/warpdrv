@@ -28,6 +28,7 @@ import { convertMessagesToOpenAIFormat } from '@warpcore/bridge';
 import { extractTextFromFile } from '@/hooks/useFileReader';
 import { useToast } from '../../components/ToastProvider';
 import { parseThreadMeta } from '@/pages/Chat/assistant-ui/ServerSelector';
+import { parseWhisperThreadMeta } from '@/pages/Chat/assistant-ui/WhisperServerSelector';
 import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff } from 'react-icons/vsc';
 import mermaid from 'mermaid';
 
@@ -134,16 +135,25 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 
 	// Get current thread state from store
 	const tempThreadServerId = useStore(s => s.tempThreadServerId);
+	const tempThreadWhisperServerId = useStore(s => s.tempThreadWhisperServerId);
 	const setCurrentThreadId = useStore(s => s.setCurrentThreadId);
 	const thread = useStore(s => s.currentThreadId ? s.threads[s.currentThreadId] : undefined);
 	const threadServerId = useMemo(() => 
 		thread?.meta ? parseThreadMeta(thread.meta).serverId : null, 
 		[thread]
 	);
+	const threadWhisperServerId = useMemo(() => 
+		thread?.meta ? parseWhisperThreadMeta(thread.meta).whisperServerId : null, 
+		[thread]
+	);
 
 	const currentServerId = useMemo(() => threadServerId ?? tempThreadServerId, [
 		threadServerId,
 		tempThreadServerId,
+	]);
+	const currentWhisperServerId = useMemo(() => threadWhisperServerId ?? tempThreadWhisperServerId, [
+		threadWhisperServerId,
+		tempThreadWhisperServerId,
 	]);
 
 	// Check if current server is valid (selected AND running)
@@ -480,6 +490,7 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 			userMessage: { content: text },
 			parentId: headMessageId,
 			serverId: currentServerId,
+			whisperServerId: currentWhisperServerId,
 			systemPrompt: currentSystemPrompt,
 			inferenceParams: currentInferenceParams,
 			presetId: selectedPresetId,
@@ -497,7 +508,7 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(body),
 		});
-	}, [currentThreadId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, currentServerId, isValidServer, attachAllTools, attachedTools]);
+	}, [currentThreadId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, currentServerId, currentWhisperServerId, isValidServer, attachAllTools, attachedTools]);
 
 	const onReloadV2 = useCallback(async (parentId: string | null) => {
 		if (!isValidServer || !parentId) return;
@@ -510,6 +521,7 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 				threadId: currentThreadId,
 				parentId,
 				serverId: currentServerId,
+				whisperServerId: currentWhisperServerId,
 				systemPrompt: currentSystemPrompt,
 				inferenceParams: currentInferenceParams,
 				presetId: selectedPresetId,
@@ -518,7 +530,7 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 				attachedTools: attachAllTools ? undefined : attachedTools,
 			}),
 		});
-	}, [currentThreadId, currentSystemPrompt, currentInferenceParams, currentServerId, isValidServer, attachAllTools, attachedTools]);
+	}, [currentThreadId, currentSystemPrompt, currentInferenceParams, currentServerId, currentWhisperServerId, isValidServer, attachAllTools, attachedTools]);
 
 	const onCancel = useCallback(async () => {
 		if (currentThreadId && isValidServer) {

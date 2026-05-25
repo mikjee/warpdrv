@@ -6,10 +6,35 @@ export type TDownloadId = string;
 
 export enum EDownloadStatus {
 	DOWNLOADING = 'DOWNLOADING',
+	INSTALLING = 'INSTALLING',
 	PAUSED = 'PAUSED',
 	COMPLETED = 'COMPLETED',
 	FAILED = 'FAILED',
 	CANCELLED = 'CANCELLED',
+}
+export enum EDownloadType {
+	HF_MODEL = 'HF_MODEL',
+	GENERIC = 'GENERIC',
+}
+export enum EPostActionType {
+	EXTRACT_ARCHIVE = 'EXTRACT_ARCHIVE',
+	LOCATE_BINARY = 'LOCATE_BINARY',
+	CHMOD_EXECUTABLE = 'CHMOD_EXECUTABLE',
+	REGISTER_LLAMA_BACKEND = 'REGISTER_LLAMA_BACKEND',
+	REGISTER_WHISPER_BACKEND = 'REGISTER_WHISPER_BACKEND',
+	RESCAN_MODELS = 'RESCAN_MODELS',
+}
+export enum EPostActionStatus {
+	PENDING = 'PENDING',
+	RUNNING = 'RUNNING',
+	COMPLETED = 'COMPLETED',
+	FAILED = 'FAILED',
+}
+export interface IDownloadPostAction {
+	type: EPostActionType;
+	payload: Record<string, unknown>;
+	status: EPostActionStatus;
+	error: string | null;
 }
 
 // Model from HF search results
@@ -30,6 +55,7 @@ export interface IHubFile {
 	filename: string; // Full path including directory (e.g., "models/file.gguf" or "file.gguf")
 	size: number;
 	isGguf: boolean;
+	isWhisperBin: boolean; // .bin whisper model file
 	quantType: string;
 	isDownloaded: boolean;
 	downloadedInRoot: string | null;
@@ -65,6 +91,10 @@ export interface IResumeState {
 // Active/historical download
 export interface IDownload {
 	id: TDownloadId;
+	downloadType?: EDownloadType;
+	sourceUrl?: string;
+	postActions?: IDownloadPostAction[];
+	groupKey?: string;
 	author: string;
 	modelName: string;
 	filename: string; // Primary file

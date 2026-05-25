@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, TStepId, IServerSlotsState, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings } from '@warpcore/shared';
+import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, TStepId, IServerSlotsState, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings, TWhisperBackendId, IWhisperBackend, TWhisperServerId, IWhisperServer, IWhisperModel, IHardwareInfo, IBackendAsset, IKokoroStatus } from '@warpcore/shared';
 import type { IProxyStatus, IStickyRouteInfo } from '@/api/services';
 export { type ImmerSet, type ImmerGet } from '@warpcore/bridge';
 
@@ -62,11 +62,55 @@ export interface AppState {
 	// Backend Groups (Phase 1)
 	backendGroups: Record<TBackendGroupId, IBackendGroup>;
 
+	// Whisper Backends
+	whisperBackends: Record<TWhisperBackendId, IWhisperBackend>;
+
+	// Whisper Servers
+	whisperServers: Record<TWhisperServerId, IWhisperServer>;
+	whisperServerLogs: Record<TWhisperServerId, string[]>;
+
+	// Whisper Models
+	whisperModels: Record<string, IWhisperModel>;
+
+	// Whisper chat state
+	tempThreadWhisperServerId: string | null;
+	setTempThreadWhisperServerId: (id: string | null) => void;
+
 	// Models
 	models: Record<TModelId, IModel>;
 
 	// Settings
 	settings: ISettings;
+	// Hardware detection
+	hardware: IHardwareInfo | null;
+	// Llama / Whisper backend releases
+	llamaReleases: Record<string, IBackendAsset>;
+	whisperReleases: Record<string, IBackendAsset>;
+	// Kokoro TTS install status
+	kokoroStatus: IKokoroStatus | null;
+	setKokoroStatus: (status: IKokoroStatus | null) => void;
+
+	// TTS playback state
+	ttsActiveMessageId: string | null;
+	ttsIsGenerating: 'button' | 'vad' | null;
+	ttsIsSpeaking: boolean;
+	ttsSpokenByMessage: Record<string, number>;
+	ttsVadSentencesSent: number;
+	ttsVadSentencesDone: number;
+	ttsVadRequestId: number;
+	ttsStart: (messageId: string, mode?: 'button' | 'vad') => void;
+	ttsStop: () => void;
+	ttsSetGenerating: (v: 'button' | 'vad' | null) => void;
+	ttsSetSpeaking: (v: boolean) => void;
+	ttsSetActiveMessageId: (messageId: string | null) => void;
+	ttsSetSpokenIndex: (messageId: string, index: number) => void;
+	ttsClearSpokenIndex: (messageId: string) => void;
+	ttsVadIncSent: () => void;
+	ttsVadIncDone: () => void;
+	ttsVadReset: () => void;
+	vadActive: boolean;
+	setVadActive: (v: boolean) => void;
+	ttsVadNewRequestId: () => number;
 
 	// Proxy (Phase 1)
 	proxyStatus: IProxyStatus | null;
