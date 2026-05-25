@@ -329,7 +329,7 @@ export function BackendsPage() {
 								</VStack>
 							</Flex>
 						) : (
-							<VStack align="stretch" gap="3">
+							<VStack align="stretch" gap="2">
 								{filteredAndSortedBackends.map(backend => (
 									<BackendRow
 										key={backend.id}

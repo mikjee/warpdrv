@@ -1,13 +1,13 @@
 :root.theme-min {
 	div#root {
-		background: #000000;
+		background: #050505;
 	}
 
 	// Semantic palette
-	--wc-bg-page: #000000;
+	--wc-bg-page: #050505;
 	--wc-bg-surface: rgba(255,255,255,0.02);
 	--wc-bg-subtle: rgba(255,255,255,0.03);
-	--wc-bg-card: rgba(255,255,255,0.02);
+	--wc-bg-card: rgba(255,255,255,0.01);
 	--wc-bg-interactive: rgba(255,255,255,0.06);
 	--wc-bg-hover: rgba(255,255,255,0.03);
 	--wc-bg-active: rgba(255,255,255,0.08);
@@ -16,20 +16,20 @@
 	--wc-bg-elevated: #040404;
 
 	--wc-border-subtle: rgba(255,255,255,0.05);
-	--wc-border-default: rgba(255,255,255,0.08);
-	--wc-border-overlay: rgba(255,255,255,0.12);
-	--wc-border-hover: rgba(255,255,255,0.15);
-	--wc-border-strong: rgba(255,255,255,0.2);
-	--wc-border-focus: rgba(255,255,255,0.3);
+	--wc-border-default: rgba(255,255,255,0.1);
+	--wc-border-overlay: rgba(255,255,255,0.15);
+	--wc-border-hover: rgba(255,255,255,0.18);
+	--wc-border-strong: rgba(255,255,255,0.25);
+	--wc-border-focus: rgba(255,255,255,0.35);
 
 	--wc-text-heading: #ffffff;
 	--wc-text-primary: #cccccc;
 	--wc-text-secondary: rgba(204,204,204,0.6);
 	--wc-text-tertiary: rgba(204,204,204,0.45);
-	--wc-text-muted: rgba(204,204,204,0.3);
-	--wc-text-faint: rgba(204,204,204,0.2);
-	--wc-text-placeholder: rgba(204,204,204,0.12);
-	--wc-text-disabled: rgba(204,204,204,0.08);
+	--wc-text-muted: rgba(204,204,204,0.35);
+	--wc-text-faint: rgba(204,204,204,0.25);
+	--wc-text-placeholder: rgba(204,204,204,0.2);
+	--wc-text-disabled: rgba(204,204,204,0.1);
 
 	--wc-overlay-modal: rgba(0,0,0,0.8);
 	--wc-overlay-dim: rgba(0,0,0,0.5);
@@ -53,7 +53,7 @@
 	--wc-accent-purple-strong: rgba(176,120,240,0.2);
 
 	--wc-accent-green: #42d692;
-	--wc-accent-green-bg-8: rgba(66,214,146,0.06);
+	--wc-accent-green-bg-8: rgba(66,214,146,0.08);
 	--wc-accent-green-bg-15: rgba(66,214,146,0.1);
 	--wc-accent-green-border: rgba(66,214,146,0.25);
 	--wc-accent-green-hover: #5ee0a3;
@@ -107,7 +107,7 @@
 	--wc-text-header-toggle: rgba(204,204,204,0.25);
 	--wc-text-header-close-bg: rgba(255,107,107,0.1);
 	--wc-text-header-close: #ff6b6b;
-	--wc-bg-header: rgba(0,0,0,0.85);
-	--wc-border-header: rgba(255,255,255,0.03);
+	--wc-bg-header: rgba(5,5,5,0.15);
+	--wc-border-header: rgba(255,255,255,0.085);
 
 }

@@ -66,22 +66,22 @@ export function BackendRow({ backendId, onEdit, onDelete }: IBackendRowProps) {
 
 	return (
 		<Collapsible.Root open={expanded} onOpenChange={(o) => setExpanded(typeof o === 'boolean' ? o : o.open)}>
-			<Box px="3" py="2" borderRadius="lg" bg="var(--wc-bg-surface)" borderWidth="1px" borderColor="var(--wc-border-subtle)" cursor={hasCollapsibleContent ? 'pointer' : 'default'} _hover={{ borderColor: 'var(--wc-border-overlay)' }} onClick={() => hasCollapsibleContent && setExpanded(prev => !prev)}>
+			<Box px="3" py="3" borderRadius="lg" bg="var(--wc-bg-surface)" borderWidth="1px" borderColor="var(--wc-border-subtle)" cursor={hasCollapsibleContent ? 'pointer' : 'default'} _hover={{ borderColor: 'var(--wc-border-overlay)' }} onClick={() => hasCollapsibleContent && setExpanded(prev => !prev)}>
 				<VStack align="stretch" gap="3">
 					<Flex justify="space-between" align="center">
-						<HStack gap="3" flex="1">
+						<HStack gap="4" flex="1">
 							<Flex w="10" h="10" borderRadius="lg" alignItems="center" justifyContent="center" bg="var(--wc-bg-card)">
 								<Blocks size={20} color="var(--wc-text-tertiary)" />
 							</Flex>
 							<Box flex="1">
-								<HStack gap="2" align="center">
-									<Text fontSize="14px" fontWeight="600" color="var(--wc-special-row-name)">{backend.name}</Text>
-							<HStack gap="1" color={statusColor}>
-									{backend.validation === EValidationStatus.VALID ? <CheckCircle size={13} /> : <AlertCircle size={13} />}
-									<Text fontSize="11px" fontWeight="500">{backend.version}</Text>
-									{backend.buildNumber && <Text fontSize="11px" fontWeight="400" color="var(--wc-text-muted)">v.{backend.buildNumber}</Text>}
-									{backend.gitCommit && <Text fontSize="11px" fontWeight="400" fontFamily='"Geist Mono", monospace' color="var(--wc-text-faint)">[{backend.gitCommit.substring(0, 7)}]</Text>}
-								</HStack>
+								<HStack gap="3" align="center">
+									<Text fontSize="14px" fontWeight="500" color="var(--wc-special-row-name)">{backend.name}</Text>
+									<HStack gap="1" color={statusColor}>
+										{backend.validation === EValidationStatus.VALID ? <CheckCircle size={13} /> : <AlertCircle size={13} />}
+										<Text fontSize="11px" fontWeight="500">{backend.version}</Text>
+										{backend.buildNumber && <Text fontSize="11px" fontWeight="400" color="var(--wc-text-muted)">v.{backend.buildNumber}</Text>}
+										{backend.gitCommit && <Text fontSize="11px" fontWeight="400" fontFamily='"Geist Mono", monospace' color="var(--wc-text-faint)">[{backend.gitCommit.substring(0, 7)}]</Text>}
+									</HStack>
 									{deviceCount > 0 && (
 										<Badge size="sm" px="1.5" py="0.5" borderRadius="full" bg="var(--wc-accent-blue-bg-15)" color="var(--wc-accent-blue-hover)" fontSize="10px" fontWeight="600">{deviceCount} Device(s)</Badge>
 									)}
@@ -92,7 +92,7 @@ export function BackendRow({ backendId, onEdit, onDelete }: IBackendRowProps) {
 										<Badge size="sm" px="1.5" py="0.5" borderRadius="full" bg="var(--wc-accent-green-bg-15)" color="var(--wc-accent-green)" border="1px solid var(--wc-accent-green)" fontSize="10px" fontWeight="600">{runningServerCount} Running</Badge>
 									)}
 								</HStack>
-								<Text fontSize="12px" color="var(--wc-text-muted)" fontFamily='"Geist Mono", monospace' lineClamp={1}>{backend.path}</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)" fontFamily='"Geist Mono", monospace' lineClamp={1} mt="1.5">{backend.path}</Text>
 							</Box>
 						</HStack>
 						<HStack gap="2">

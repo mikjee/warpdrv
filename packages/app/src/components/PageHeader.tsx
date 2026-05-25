@@ -86,14 +86,13 @@ export const PageHeader = React.memo(({ title, subtitle, icon, actions, actionsR
 			borderBottomWidth="1px"
 			borderColor="var(--wc-border-header)"
 			bg="var(--wc-bg-header)"
-			boxShadow={"4px 0px 10px rgba(0,0,0,0.2)"}
+			// boxShadow={"4px 0px 10px rgba(0,0,0,0.2)"}
 			className='drag'
 			onDoubleClick={handleDoubleClick}
 			style={{ userSelect: 'none', WebkitUserSelect: 'none', userDrag: 'none',
 				backdropFilter: "blur(10px)",
 				WebkitBackdropFilter: "blur(10px)",
 			 }}
-			// boxShadow={"0px 0px 10px #050505"}
 		>
 			<HStack gap="4" ml="2">
 				<Flex
@@ -118,11 +117,11 @@ export const PageHeader = React.memo(({ title, subtitle, icon, actions, actionsR
 					<Text fontSize="14px" fontWeight="500" letterSpacing="-0.02em" color="var(--wc-text-header-title)">
 						{title}
 					</Text>
-					{subtitle && (
+					{/* {subtitle && (
 						<Text fontSize="12px" color="var(--wc-text-header-subtitle)">
 							{subtitle}
 						</Text>
-					)}
+					)} */}
 				</Box>
 				{actions && <HStack gap="2" pl="5" borderLeft={`1px solid var(--wc-border-header)`} className='no-drag'>{actions}</HStack>}
 			</HStack>

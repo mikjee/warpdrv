@@ -41,9 +41,9 @@ export function formatCount(n: number): string {
 
 export function StatPill({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
 	return (
-		<HStack gap="1.5" px="1.5" py="0.5" borderRadius="lg" bg="var(--wc-bg-subtle)" borderWidth="1px" borderColor="var(--wc-border-subtle)"  title={label}>
-			<Box color="var(--wc-text-muted)">{icon}</Box>
-			<Text fontSize="11px" fontWeight="400" color="var(--wc-text-secondary)" fontFamily='"Geist Mono", monospace'>{value}</Text>
+		<HStack gap="1.5" title={label}>
+			<Box color="var(--wc-text-faint)">{icon}</Box>
+			<Text fontSize="11px" fontWeight="400" color="var(--wc-text-secondary)" >{value}</Text>
 		</HStack>
 	);
 }

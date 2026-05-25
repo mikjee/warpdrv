@@ -291,7 +291,7 @@ export const ServersPage = React.memo(() => {
 				}
 			/>
 
-			<Box pt="76px" px="4" pb="4">
+			<Box pt="76px" px="2" pb="2">
 				{filteredServers.length === 0 ? (
 					<Flex
 						h="300px" alignItems="center" justifyContent="center"
@@ -304,7 +304,7 @@ export const ServersPage = React.memo(() => {
 						</VStack>
 					</Flex>
 				) : (
-					<VStack align="stretch" gap="4">
+					<VStack align="stretch" gap="2">
 						{filteredServers.map(server => (
 							<ServerCard
 								key={server.id}

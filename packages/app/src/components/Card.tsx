@@ -22,10 +22,10 @@ export function Card({ children, variant = 'default', accentColor, onClick, sele
 		<Box
 			position="relative"
 			bg={hasGradient && gradientFrom && gradientTo ? undefined : bg ?? 'var(--wc-bg-card)'}
-			bgGradient={hasGradient && gradientFrom && gradientTo ? 'to-br' : undefined}
+			bgGradient={hasGradient && gradientFrom && gradientTo ? 'to-r' : undefined}
 			gradientFrom={hasGradient ? gradientFrom : undefined}
 			gradientTo={hasGradient ? gradientTo : undefined}
-			borderRadius="xl"
+			borderRadius="md"
 			borderWidth="1px"
 			borderColor={selected ? 'var(--wc-accent-blue-focus)' : borderColor ?? 'var(--wc-border-subtle)'}
 			p={p}

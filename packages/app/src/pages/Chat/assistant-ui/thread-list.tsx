@@ -249,7 +249,7 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect, onDelet
 			gap="1"
 			borderRadius="lg"
 			px="3"
-			py="0"
+			py="1"
 			_hover={{ bg: 'var(--wc-bg-hover)' }}
 		>
 			{renaming ? (
@@ -692,7 +692,7 @@ size="2xs"
 						onReorderFolder={handleReorderFolders}
 						w="full"
 					>
-						<VStack gap="0" align="start" w="full">
+						<VStack gap="1" align="start" w="full">
 							{(threadsByFolderMap[f.id] ?? []).map(thread => (
 								<ManualThreadListItem 
 									key={thread.id}
@@ -718,7 +718,7 @@ size="2xs"
 					w="full"
 					py="1"
 				>
-					<VStack gap="0" align="start" w="full">
+					<VStack gap="1" align="start" w="full">
 						{rootThreads.map(thread => (
 							<ManualThreadListItem 
 								key={thread.id}

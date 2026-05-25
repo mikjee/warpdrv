@@ -10,7 +10,7 @@ export const ServerSlots = React.memo(({ serverId }: {
 
 	if (!serverSlots || serverSlots.slots.length === 0) return null;
 	return (
-		<HStack gap="2.5" flexWrap="wrap" style={{ marginLeft: "50px" }}>
+		<HStack gap="2.5" flexWrap="wrap">
 			{serverSlots.slots.map(slot => (
 				<SlotPill
 					key={slot.slotId}
@@ -53,6 +53,7 @@ function SlotPill({ slot, metadata }: ISlotPillProps) {
 
 	const msgCount = metadata?.messageCount ?? null;
 
+	if (!isGen && !isPrompt) return null;
 	return (
 		<Box
 			position="relative"

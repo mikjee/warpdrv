@@ -326,14 +326,14 @@ export const Shell = React.memo(() => {
 					direction="column"
 					w={isCollapsed ? '60px' : '220px'}
 					minW={isCollapsed ? '60px' : '220px'}
-					// borderRightWidth="1px"
-					// borderColor="rgba(255, 255, 255, 0.065)"
+					borderRightWidth="1px"
+					borderColor="rgba(255, 255, 255, 0.1)"
 					px={isCollapsed ? '2' : '4'}
 					pt={'3'}
 					pb={("0")}
 					gap="0"
 					zIndex={100}
-					boxShadow={"0px 0px 10px rgba(0,0,0,0.5)"}
+					// boxShadow={"0px 0px 10px rgba(0,0,0,0.5)"}
 					style={{
 						userSelect: 'none',
 						userDrag: 'none',
