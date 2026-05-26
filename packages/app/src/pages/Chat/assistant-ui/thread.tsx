@@ -51,6 +51,7 @@ import React, { useCallback, useContext, useMemo, useState, type FC } from "reac
 import { BranchTokensContext, ChatConfigContext } from "@/pages/Chat/ChatPage";
 import { useStore } from "@/store";
 import { VoiceWaveform } from "./VoiceWaveform";
+import { TTSFlameWaveform } from "./TTSFlameWaveform";
 import { ThreadServerSelector } from "@/pages/Chat/assistant-ui/ServerSelector";
 import { ThreadWhisperServerSelector } from "@/pages/Chat/assistant-ui/WhisperServerSelector";
 import { VoiceInput } from "@/pages/Chat/assistant-ui/VoiceInput";
@@ -298,6 +299,7 @@ const ContextUsageBar: FC = () => {
 const Composer: FC = () => {
 	const { isValidServer } = useContext(ServerStatusContext);
 	const [waveformStream, setWaveformStream] = useState<MediaStream | null>(null);
+	const ttsIsSpeaking = useStore(s => s.ttsIsSpeaking); 
 
 	const handleSubmit = (e: React.FormEvent) => {
 		if (!isValidServer) {
@@ -308,6 +310,7 @@ const Composer: FC = () => {
 
 	return (
 		<ComposerPrimitive.Root onSubmit={handleSubmit} className="aui-composer-root relative flex w-full flex-col">
+			{ttsIsSpeaking ? <TTSFlameWaveform /> : null}
 			<ComposerPrimitive.AttachmentDropzone asChild>
 				<div
 					data-slot="composer-shell"

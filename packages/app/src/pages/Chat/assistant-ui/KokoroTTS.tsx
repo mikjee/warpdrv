@@ -30,6 +30,31 @@ let isPlayingChunk = false;
 let currentRequestId: number = 0;
 let currentEventSource: EventSource | null = null;
 let currentStreamAbortId: string | null = null;
+let ttsAudioCtx: AudioContext | null = null;
+let ttsAnalyser: AnalyserNode | null = null;
+let ttsAnalyserListeners: Array<(a: AnalyserNode | null) => void> = [];
+function ensureAnalyser(): AnalyserNode {
+	if (!ttsAudioCtx) ttsAudioCtx = new AudioContext();
+	if (ttsAudioCtx.state === 'suspended') ttsAudioCtx.resume().catch(() => {});
+	if (!ttsAnalyser) {
+		ttsAnalyser = ttsAudioCtx.createAnalyser();
+		ttsAnalyser.fftSize = 256;
+		ttsAnalyser.smoothingTimeConstant = 0.8;
+		ttsAnalyser.connect(ttsAudioCtx.destination);
+		for (const l of ttsAnalyserListeners) l(ttsAnalyser);
+	}
+	return ttsAnalyser;
+}
+export function getTTSAnalyser(): AnalyserNode | null {
+	return ttsAnalyser;
+}
+export function subscribeTTSAnalyser(cb: (a: AnalyserNode | null) => void): () => void {
+	ttsAnalyserListeners.push(cb);
+	cb(ttsAnalyser);
+	return () => {
+		ttsAnalyserListeners = ttsAnalyserListeners.filter(l => l !== cb);
+	};
+}
 function checkVadComplete() {
 	if (playbackQueue.length > 0 || isPlayingChunk) return;
 	const s = useStore.getState();
@@ -102,6 +127,13 @@ function tryPlayNext() {
 	isPlayingChunk = true;
 	const audioEl = new Audio(url);
 	currentAudioEl = audioEl;
+	try {
+		const analyser = ensureAnalyser();
+		const src = ttsAudioCtx!.createMediaElementSource(audioEl);
+		src.connect(analyser);
+	} catch (e) {
+		console.error('[KokoroTTS] analyser wire failed:', e);
+	}
 	if (!useStore.getState().ttsIsSpeaking) {
 		useStore.getState().ttsSetSpeaking(true);
 	}
