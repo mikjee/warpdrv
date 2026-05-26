@@ -38,9 +38,32 @@ export function TTSFlameWaveform({ height = 64 }: ITTSFlameWaveformProps) {
 		const binStart = 2;
 		const binEnd = Math.floor(bufferLength * 0.6);
 		const usableBins = binEnd - binStart;
+		let phase = 0;
+		const drawPass = (pts: Array<{ x: number; y: number }>, hueShift: number, alpha: number, yScale: number) => {
+			ctx.beginPath();
+			ctx.moveTo(0, 0);
+			ctx.lineTo(pts[0].x, pts[0].y * yScale);
+			for (let i = 0; i < pts.length - 1; i++) {
+				const p0 = pts[i];
+				const p1 = pts[i + 1];
+				const mx = (p0.x + p1.x) / 2;
+				const my = ((p0.y + p1.y) / 2) * yScale;
+				ctx.quadraticCurveTo(p0.x, p0.y * yScale, mx, my);
+			}
+			ctx.lineTo(width, 0);
+			ctx.closePath();
+			const grad = ctx.createLinearGradient(0, 0, width, height);
+			grad.addColorStop(0,    `hsla(${(190 + hueShift) % 360}, 90%, 65%, ${alpha})`);
+			grad.addColorStop(0.33, `hsla(${(270 + hueShift) % 360}, 85%, 65%, ${alpha})`);
+			grad.addColorStop(0.66, `hsla(${(320 + hueShift) % 360}, 90%, 65%, ${alpha})`);
+			grad.addColorStop(1,    `hsla(${(20  + hueShift) % 360}, 95%, 65%, ${alpha})`);
+			ctx.fillStyle = grad;
+			ctx.fill();
+		};
 		const draw = () => {
 			analyser.getByteFrequencyData(data);
 			ctx.clearRect(0, 0, width, height);
+			phase = (phase + 0.4) % 360;
 			const pts: Array<{ x: number; y: number }> = [];
 			const cx = samples / 2;
 			for (let i = 0; i <= samples; i++) {
@@ -52,25 +75,15 @@ export function TTSFlameWaveform({ height = 64 }: ITTSFlameWaveformProps) {
 				const x = (i / samples) * width;
 				pts.push({ x, y });
 			}
-			ctx.beginPath();
-			ctx.moveTo(0, 0);
-			ctx.lineTo(pts[0].x, pts[0].y);
-			for (let i = 0; i < pts.length - 1; i++) {
-				const p0 = pts[i];
-				const p1 = pts[i + 1];
-				const mx = (p0.x + p1.x) / 2;
-				const my = (p0.y + p1.y) / 2;
-				ctx.quadraticCurveTo(p0.x, p0.y, mx, my);
-			}
-			ctx.lineTo(width, 0);
-			ctx.closePath();
-			const grad = ctx.createLinearGradient(0, 0, 0, height);
-			grad.addColorStop(0, 'rgba(255, 240, 180, 0.95)');
-			grad.addColorStop(0.25, 'rgba(255, 180, 60, 0.75)');
-			grad.addColorStop(0.6, 'rgba(255, 90, 30, 0.45)');
-			grad.addColorStop(1, 'rgba(180, 20, 10, 0)');
-			ctx.fillStyle = grad;
-			ctx.fill();
+			ctx.globalCompositeOperation = 'lighter';
+			ctx.filter = 'blur(14px)';
+			drawPass(pts, phase, 0.35, 1.15);
+			ctx.filter = 'blur(7px)';
+			drawPass(pts, phase + 60, 0.30, 1.0);
+			ctx.filter = 'blur(2px)';
+			drawPass(pts, phase + 120, 0.25, 0.85);
+			ctx.filter = 'none';
+			ctx.globalCompositeOperation = 'source-over';
 			rafRef.current = requestAnimationFrame(draw);
 		};
 		draw();
