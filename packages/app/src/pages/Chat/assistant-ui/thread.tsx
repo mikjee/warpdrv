@@ -64,6 +64,7 @@ import { encodingForModel } from 'js-tiktoken';
 import { IconButton } from '@chakra-ui/react';
 import { Elicitation } from './Elicitation';
 import { ConfirmDialog } from '@/components/dialogs/ConfirmDialog';
+import { SelectionPopover } from './SelectionPopover';
 
 const tokenEncoder = encodingForModel('gpt-4o');
 
@@ -156,11 +157,12 @@ export const Thread: FC<{
 								<ThreadWelcome />
 							</AuiIf>
 
-							<div style={{ maxWidth: chatFixedWidth ? "960px" : "100%", margin: "0 auto", width: "100%" }}>
+                           <div style={{ maxWidth: chatFixedWidth ? "960px" : "100%", margin: "0 auto", width: "100%" }}>
 								<ThreadPrimitive.Messages>
 									{ThreadMsgFn}
 								</ThreadPrimitive.Messages>
 							</div>
+							<SelectionPopover />
 						</>
 					)}
 
