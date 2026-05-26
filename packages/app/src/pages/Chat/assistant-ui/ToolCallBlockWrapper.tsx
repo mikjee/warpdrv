@@ -41,6 +41,8 @@ export const ToolCallBlockWrapper = React.memo(({ toolCallId, toolName, serverNa
 	const toolCall = useStore(s => s.toolCallsById[toolCallId]);
 	const serverState = useStore(s => serverName ? s.mcpServers[serverName] : undefined);
 	const toolCallRenderers = useStore(s => s.toolCallRenderers);
+	const attachAllTools = useStore(s => s.attachAllTools);
+	const attachedTools = useStore(s => s.attachedTools);
 	const [deciding, setDeciding] = useState(false);
 
 	const handleDecision = useCallback(async (decision: 'approve' | 'deny') => {
@@ -50,12 +52,15 @@ export const ToolCallBlockWrapper = React.memo(({ toolCallId, toolName, serverNa
 		try {
 			await decideMcpToolCall(
 				toolCallId, decision, currentThreadId, currentServerId,
-				currentSystemPrompt, currentInferenceParams
+				currentSystemPrompt, currentInferenceParams,
+				undefined,
+				attachAllTools,
+				attachedTools
 			);
 		} finally {
 			setDeciding(false);
 		}
-	}, [toolCallId, currentThreadId, currentServerId, currentSystemPrompt, currentInferenceParams]);
+	}, [toolCallId, currentThreadId, currentServerId, currentSystemPrompt, currentInferenceParams, attachAllTools, attachedTools]);
 
 
 	const displayStatus: EToolCallStatus = toolCall?.status ?? (

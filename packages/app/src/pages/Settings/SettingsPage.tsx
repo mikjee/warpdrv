@@ -1,4 +1,4 @@
-import { Box, Text, HStack, VStack, Flex, Input, Button, Spinner, Switch, Combobox, createListCollection, Portal, NativeSelect, NativeSelectField } from '@chakra-ui/react';
+import { Box, Text, HStack, VStack, Flex, Input, Button, Spinner, Switch, Combobox, createListCollection, Portal, NativeSelect } from '@chakra-ui/react';
 import { Settings, FolderOpen, Plus, Trash2, Save, ChevronDown, FolderInput, BookOpen, Mic } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { useDependantState } from '../../hooks/useDependantState';
@@ -110,6 +110,19 @@ export function SettingsPage() {
 			{ label: 'Tokyo Night Light', value: ETheme.TOKYO_NIGHT_LIGHT },
 			{ label: 'Vesper', value: ETheme.VESPER },
 		].sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' })),
+		itemToString: (item) => item.label,
+		itemToValue: (item) => item.value,
+	});
+	const voiceCollection = createListCollection({
+		items: [
+			{ label: 'Heart (Female, US)', value: 'af_heart' },
+			{ label: 'Bella (Female, US)', value: 'af_bella' },
+			{ label: 'Nicole (Female, US)', value: 'af_nicole' },
+			{ label: 'Adam (Male, US)', value: 'am_adam' },
+			{ label: 'Michael (Male, US)', value: 'am_michael' },
+			{ label: 'Emma (Female, UK)', value: 'bf_emma' },
+			{ label: 'George (Male, UK)', value: 'bm_george' },
+		],
 		itemToString: (item) => item.label,
 		itemToValue: (item) => item.value,
 	});
@@ -620,25 +633,51 @@ const handleSave = async () => {
 								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">Voice Output</Text>
 								<Text fontSize="12px" color="var(--wc-text-muted)">Kokoro TTS voice for reading assistant messages</Text>
 							</Box>
-							<NativeSelect.Root value={kokoroVoice}>
-								<NativeSelect.Field
-									size="sm"
-									bg="var(--wc-bg-card)"
-									borderColor="var(--wc-border-default)"
-									color="var(--wc-text-primary)"
-									fontSize="13px"
-									borderRadius="lg"
-									onChange={(e) => dirtySetter(setKokoroVoice, e.target.value)}
-								>
-									<option value="af_heart">Heart (Female, US)</option>
-									<option value="af_bella">Bella (Female, US)</option>
-									<option value="af_nicole">Nicole (Female, US)</option>
-									<option value="am_adam">Adam (Male, US)</option>
-									<option value="am_michael">Michael (Male, US)</option>
-									<option value="bf_emma">Emma (Female, UK)</option>
-									<option value="bm_george">George (Male, UK)</option>
-								</NativeSelect.Field>
-							</NativeSelect.Root>
+							<Combobox.Root
+								collection={voiceCollection}
+								value={[kokoroVoice]}
+								onValueChange={(details) => {
+									dirtySetter(setKokoroVoice, details.value?.[0] as string || 'af_heart');
+								}}
+							>
+								<Combobox.Control>
+									<Combobox.Trigger asChild>
+										<Button
+											variant="outline"
+											size="sm"
+											justifyContent="space-between"
+											bg="var(--wc-bg-card)"
+											borderColor="var(--wc-border-default)"
+											color="var(--wc-text-primary)"
+											fontSize="13px"
+											borderRadius="lg"
+											fontWeight="500"
+										>
+											{voiceCollection.items.find(i => i.value === kokoroVoice)?.label ?? 'Heart (Female, US)'}
+											<ChevronDown size={14} />
+										</Button>
+									</Combobox.Trigger>
+								</Combobox.Control>
+								<Portal>
+									<Combobox.Positioner>
+										<Combobox.Content
+											bg="var(--wc-bg-elevated)"
+											borderWidth="1px"
+											borderColor="var(--wc-border-default)"
+											borderRadius="lg"
+											shadow="0 8px 32px rgba(0, 0, 0, 0.5)"
+											p="1"
+										>
+											{voiceCollection.items.map((item) => (
+												<Combobox.Item key={item.value} item={item} px="3" py="2" borderRadius="md" cursor="pointer" _hover={{ bg: 'var(--wc-bg-hover)' }} _highlighted={{ bg: 'var(--wc-bg-active)' }}>
+													<Text fontSize="12px" color="var(--wc-text-primary)">{item.label}</Text>
+													<Combobox.ItemIndicator />
+												</Combobox.Item>
+											))}
+										</Combobox.Content>
+									</Combobox.Positioner>
+								</Portal>
+							</Combobox.Root>
 						</VStack>
 					</Card>
 

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useDependantState } from '../../hooks/useDependantState';
-import { Box, Button, Flex, IconButton, Text, HStack, Popover, Portal, NativeSelect, NativeSelectField, Switch, Slider, VStack } from '@chakra-ui/react';
+import { Box, Button, Flex, IconButton, Text, HStack, Popover, Portal, Switch, Slider, VStack, Combobox, createListCollection } from '@chakra-ui/react';
 import { MessageSquare, ChevronDown, PanelLeftClose, PanelLeftOpen, Plus } from 'lucide-react';
 import {
 	AssistantRuntimeProvider,
@@ -650,16 +650,20 @@ export const ChatPage = React.memo(() => {
 	const chatFontFamily = useStore(s => s.settings.chatFontFamily ?? '');
 	const chatFixedWidth = useStore(s => s.settings.chatFixedWidth ?? false);
 
-	const fontFamilyOptions = [
-		{ label: 'Inter', value: 'Inter Variable, sans-serif' },
-		{ label: 'Geist', value: '"Geist", sans-serif' },
-		{ label: 'Geist Mono', value: '"Geist Mono", monospace' },
-		{ label: 'Arial', value: 'Arial, sans-serif' },
-		{ label: 'Verdana', value: 'Verdana, sans-serif' },
-		{ label: 'Georgia', value: 'Georgia, serif' },
-		{ label: 'Times New Roman', value: '"Times New Roman", serif' },
-		{ label: 'Courier New', value: '"Courier New", monospace' },
-	];
+	const fontFamilyCollection = createListCollection({
+		items: [
+			{ label: 'Inter', value: 'Inter Variable, sans-serif' },
+			{ label: 'Geist', value: '"Geist", sans-serif' },
+			{ label: 'Geist Mono', value: '"Geist Mono", monospace' },
+			{ label: 'Arial', value: 'Arial, sans-serif' },
+			{ label: 'Verdana', value: 'Verdana, sans-serif' },
+			{ label: 'Georgia', value: 'Georgia, serif' },
+			{ label: 'Times New Roman', value: '"Times New Roman", serif' },
+			{ label: 'Courier New', value: '"Courier New", monospace' },
+		],
+		itemToString: (item) => item.label,
+		itemToValue: (item) => item.value,
+	});
 
 	return (
 		<Flex direction="column" h="100%" overflow="hidden">
@@ -724,22 +728,55 @@ export const ChatPage = React.memo(() => {
 
 											<VStack align="stretch" gap="2">
 												<Text fontSize="11px" color="var(--wc-text-muted)">Font Family</Text>
-												<NativeSelect.Root value={chatFontFamily}>
-													<NativeSelect.Field
-														size="sm"
-														bg="var(--wc-bg-card)"
-														borderColor="var(--wc-border-default)"
-														color="var(--wc-text-primary)"
-														fontSize="12px"
-														borderRadius="md"
-														onChange={(e) => updateSettings({ chatFontFamily: e.target.value })}
-													>
-														<option value="">Default (Inter)</option>
-														{fontFamilyOptions.map(f => (
-															<option key={f.value} value={f.value} style={{ fontFamily: f.value }}>{f.label}</option>
-														))}
-													</NativeSelect.Field>
-												</NativeSelect.Root>
+												<Combobox.Root
+													collection={fontFamilyCollection}
+													value={[chatFontFamily || '']}
+													onValueChange={(details) => updateSettings({ chatFontFamily: details.value?.[0] || '' })}
+												>
+													<Combobox.Control>
+														<Combobox.Trigger asChild>
+															<Button
+																variant="outline"
+																size="sm"
+																justifyContent="space-between"
+																bg="var(--wc-bg-card)"
+																borderColor="var(--wc-border-default)"
+																color="var(--wc-text-primary)"
+																fontSize="12px"
+																borderRadius="md"
+																fontWeight="500"
+															>
+																{chatFontFamily ? (fontFamilyCollection.items.find(i => i.value === chatFontFamily)?.label || 'Default (Inter)') : 'Default (Inter)'}
+																<ChevronDown size={12} />
+															</Button>
+														</Combobox.Trigger>
+													</Combobox.Control>
+													<Portal>
+														<Combobox.Positioner>
+															<Combobox.Content
+																bg="var(--wc-bg-elevated)"
+																borderWidth="1px"
+																borderColor="var(--wc-border-default)"
+																borderRadius="md"
+																shadow="0 8px 32px rgba(0, 0, 0, 0.5)"
+																p="1"
+																maxH="200px"
+																overflowY="auto"
+															>
+																<Combobox.Item item={{ label: 'Default (Inter)', value: '' }} px="2" py="1.5" borderRadius="sm" cursor="pointer" _hover={{ bg: 'var(--wc-bg-hover)' }} _highlighted={{ bg: 'var(--wc-bg-active)' }}>
+																	<Text fontSize="11px" color="var(--wc-text-primary)">Default (Inter)</Text>
+																	<Combobox.ItemIndicator />
+																</Combobox.Item>
+																{fontFamilyCollection.items.map((item) => (
+																	<Combobox.Item key={item.value} item={item} px="2" py="1.5" borderRadius="sm" cursor="pointer" _hover={{ bg: 'var(--wc-bg-hover)' }} _highlighted={{ bg: 'var(--wc-bg-active)' }}>
+																		<Text fontSize="11px" color="var(--wc-text-primary)">{item.label}</Text>
+																		<Combobox.ItemIndicator />
+																	</Combobox.Item>
+																))}
+															</Combobox.Content>
+														</Combobox.Positioner>
+													</Portal>
+												</Combobox.Root>
 											</VStack>
 
 											<Switch.Root label="Fixed chat width" checked={chatFixedWidth} onCheckedChange={(details) => updateSettings({ chatFixedWidth: details.checked })}>

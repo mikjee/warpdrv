@@ -10,6 +10,7 @@ import type {
 	IToolPermission,
 	IServerPermission as IMcpServerPermission,
 	IToolCall,
+	IToolAttachment,
 	EToolApprovalMode,
 	TOpenAIMessage,
 } from '@warpcore/bridge';
@@ -125,6 +126,8 @@ export function decideMcpToolCall(
 	systemPrompt?: string,
 	inferenceParams?: Record<string, unknown>,
 	messages?: TOpenAIMessage[],
+	attachAllTools?: boolean,
+	attachedTools?: IToolAttachment[],
 ) {
 	return json<null>(`/api/chat/tool-calls/${toolCallId}/resume`, {
 		method: 'POST',
@@ -134,6 +137,8 @@ export function decideMcpToolCall(
 			serverId,
 			systemPrompt,
 			inferenceParams,
+			attachAllTools,
+			attachedTools,
 			...(messages ? { messages } : {}),
 		}),
 	});

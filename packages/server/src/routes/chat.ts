@@ -437,12 +437,14 @@ chatRouter.put('/folders/reorder', async (req, res) => {
 });
 
 chatRouter.post('/tool-calls/:id/resume', async (req, res) => {
-	const { decision, threadId, serverId, systemPrompt, inferenceParams } = req.body as {
+	const { decision, threadId, serverId, systemPrompt, inferenceParams, attachAllTools, attachedTools } = req.body as {
 		decision: 'approve' | 'deny';
 		threadId: string;
 		serverId: string;
 		systemPrompt?: string;
 		inferenceParams: Record<string, unknown>;
+		attachAllTools?: boolean;
+		attachedTools?: any[];
 	};
 
 	if (decision !== 'approve' && decision !== 'deny') {
@@ -467,6 +469,8 @@ chatRouter.post('/tool-calls/:id/resume', async (req, res) => {
 		serverId,
 		systemPrompt,
 		inferenceParams: inferenceParams as any,
+		attachAllTools,
+		attachedTools,
 	};
 
 	// Track abort for this resume — same pattern as completions route
