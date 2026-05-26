@@ -196,4 +196,10 @@ export interface AppState {
 	// Chat Folders
 	folders: IFolder[];
 	setFolders: (folders: IFolder[]) => void;
+
+	// Annotations
+	annotations: import('./slices/annotations').IAnnotation[];
+	addAnnotation: (selectedText: string, comment: string) => void;
+	removeAnnotation: (id: string) => void;
+	clearAnnotations: () => void;
 }

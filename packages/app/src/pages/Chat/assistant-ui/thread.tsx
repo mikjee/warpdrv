@@ -63,6 +63,7 @@ import { EMcpServerStatus, IToolAttachment } from "@warpcore/bridge";
 import { encodingForModel } from 'js-tiktoken';
 import { IconButton } from '@chakra-ui/react';
 import { Elicitation } from './Elicitation';
+import { AnnotationsBox } from './AnnotationsBox';
 import { ConfirmDialog } from '@/components/dialogs/ConfirmDialog';
 import { SelectionPopover } from './SelectionPopover';
 
@@ -171,6 +172,7 @@ export const Thread: FC<{
 							<ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer flex flex-col gap-4 overflow-visible" style={{ width: "44rem" }}>
 								<ThreadScrollToBottom />
 								<Elicitation />
+								<AnnotationsBox />
 								<Composer />
 							</ThreadPrimitive.ViewportFooter>
 						</div>
@@ -301,13 +303,23 @@ const ContextUsageBar: FC = () => {
 const Composer: FC = () => {
 	const { isValidServer } = useContext(ServerStatusContext);
 	const [waveformStream, setWaveformStream] = useState<MediaStream | null>(null);
-	const ttsIsSpeaking = useStore(s => s.ttsIsSpeaking); 
+	const ttsIsSpeaking = useStore(s => s.ttsIsSpeaking);
+	const annotations = useStore(s => s.annotations);
+	const clearAnnotations = useStore(s => s.clearAnnotations);
+	const aui = useAui();
+	const composerText = useAuiState(s => s.composer.text);
 
 	const handleSubmit = (e: React.FormEvent) => {
 		if (!isValidServer) {
 			e.preventDefault();
 			document.dispatchEvent(new CustomEvent('server-selector-shake'));
+			return;
 		}
+		if (annotations.length === 0) return;
+		const lines = annotations.map((a, i) => `${i + 1}. "${a.selectedText}"\n   ${a.comment}`);
+		const fullText = (lines.join('\n\n') + (composerText.trim() ? '\n\n' + composerText : '')).trim();
+		aui.composer().setText(fullText);
+		clearAnnotations();
 	};
 
 	return (
@@ -320,7 +332,7 @@ const Composer: FC = () => {
 					style={{
 						background: "var(--wc-bg-elevated)",
 						boxShadow: "0px 10px 10px 10px rgba(0,0,0,0.15)",
-						borderColor: "var(--wc-border-subtle)",
+						borderColor: "var(--wc-border-default)",
 					}}
 				>
 					<ComposerAttachments />
@@ -567,6 +579,22 @@ const ComposerAction: FC<{ onStreamChange?: (stream: MediaStream | null) => void
 	const currentThreadId = useStore(s => s.currentThreadId);
 	const canAttach = isValidServer && supportsMultiModal;
 	const aui = useAui();
+	const annotations = useStore(s => s.annotations);
+	const clearAnnotations = useStore(s => s.clearAnnotations);
+	const composerDisabled = useAuiState(s => s.composer.isEmpty || !s.composer.isEditing);
+	const composerText = useAuiState(s => s.composer.text);
+	const isSendDisabled = composerDisabled && annotations.length === 0;
+
+	const handleSend = useCallback(() => {
+		if (isSendDisabled) return;
+		if (annotations.length > 0) {
+			const lines = annotations.map((a, i) => `${i + 1}. "${a.selectedText}"\n   ${a.comment}`);
+			const fullText = (lines.join('\n\n') + (composerText.trim() ? '\n\n' + composerText : '')).trim();
+			aui.composer().setText(fullText);
+			clearAnnotations();
+		}
+		aui.composer().send({ startRun: true });
+	}, [isSendDisabled, annotations, composerText, clearAnnotations]);
 
 	return (
 		<div className="aui-composer-action-wrapper relative flex items-center justify-between">
@@ -591,24 +619,23 @@ const ComposerAction: FC<{ onStreamChange?: (stream: MediaStream | null) => void
 				<ThreadWhisperServerSelector threadId={currentThreadId} />
 				<ThreadServerSelector threadId={currentThreadId} />
 				<AuiIf condition={(s) => !s.thread.isRunning}>
-					<ComposerPrimitive.Send asChild>
-						<TooltipIconButton
-							disabled={!isValidServer}
-							tooltip={!isValidServer ? "Select and start a model first" : "Send message"}
-							side="bottom"
-							type="button"
-							variant="outline"
-							className={`${!isValidServer ? 'opacity-50 cursor-not-allowed' : ''} aui-composer-send size-9`}
-							aria-label={!isValidServer ? "Send message - model not selected" : "Send message"}
-							style={!isValidServer
-								? { color: 'var(--wc-text-muted)', borderColor: 'var(--wc-border-default)', backgroundColor: 'transparent' }
-								: { color: 'var(--wc-accent-blue)', borderColor: 'var(--wc-accent-blue-border)', backgroundColor: 'var(--wc-accent-blue-bg-8)' }
-							}
-							_hover={!isValidServer ? undefined : { color: 'var(--wc-accent-blue-hover)', borderColor: 'var(--wc-accent-blue-border)', backgroundColor: 'var(--wc-accent-blue-bg-10)' }}
-						>
-							<SendHorizonal className="aui-composer-send-icon size-4" />
-						</TooltipIconButton>
-					</ComposerPrimitive.Send>
+					<TooltipIconButton
+						onClick={handleSend}
+						disabled={!isValidServer || isSendDisabled}
+						tooltip={!isValidServer ? "Select and start a model first" : "Send message"}
+						side="bottom"
+						type="button"
+						variant="outline"
+						className={`${(!isValidServer || isSendDisabled) ? 'opacity-50 cursor-not-allowed' : ''} aui-composer-send size-9`}
+						aria-label={!isValidServer ? "Send message - model not selected" : "Send message"}
+						style={!isValidServer
+							? { color: 'var(--wc-text-muted)', borderColor: 'var(--wc-border-default)', backgroundColor: 'transparent' }
+							: { color: 'var(--wc-accent-blue)', borderColor: 'var(--wc-accent-blue-border)', backgroundColor: 'var(--wc-accent-blue-bg-8)' }
+						}
+						_hover={!isValidServer ? undefined : { color: 'var(--wc-accent-blue-hover)', borderColor: 'var(--wc-accent-blue-border)', backgroundColor: 'var(--wc-accent-blue-bg-10)' }}
+					>
+						<SendHorizonal className="aui-composer-send-icon size-4" />
+					</TooltipIconButton>
 				</AuiIf>
 				<AuiIf condition={(s) => s.thread.isRunning}>
 					<ComposerPrimitive.Cancel asChild>
@@ -849,7 +876,8 @@ const AssistantActionBar: FC = () => {
 	const messageId = useAuiState((s) => s.message.id);
 	const isCopied = useAuiState((s) => s.message.isCopied);
 	const kokoroInstalled = useStore((s) => s.kokoroStatus?.installed);
-	
+	const clearAnnotations = useStore((s) => s.clearAnnotations);
+
 	return (
 		<ActionBarPrimitive.Root
 			className="aui-assistant-action-bar-root col-start-3 row-start-2 -ml-1"
@@ -865,7 +893,7 @@ const AssistantActionBar: FC = () => {
 			</ActionBarPrimitive.Copy>
 
 			<ActionBarPrimitive.Reload asChild>
-				<ActionBarIcon>
+				<ActionBarIcon onClick={clearAnnotations}>
 					<RefreshCwIcon size={14} />
 				</ActionBarIcon>
 			</ActionBarPrimitive.Reload>

@@ -19,6 +19,7 @@ import { hardwareSlice } from './slices/hardware';
 import { releasesSlice } from './slices/releases';
 import { kokoroSlice } from './slices/kokoro';
 import { ttsSlice } from './slices/tts';
+import { annotationsSlice } from './slices/annotations';
 import { createChatStoreSlice } from '@warpcore/bridge/client';
 import { DiffRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/DiffRenderer';
 import { BashRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/BashRenderer';
@@ -46,6 +47,7 @@ export const useStore = create<AppState>()(
 				const releases = releasesSlice(set, get);
 				const kokoro = kokoroSlice(set, get);
 			const tts = ttsSlice(set, get);
+			const annotations = annotationsSlice(set, get);
 				const sseHandlers = sseHandlersSlice(set, get);
 				const bridge = createChatStoreSlice(set, get);
 
@@ -62,38 +64,38 @@ export const useStore = create<AppState>()(
 					devices: devices.devices!,
 					backends: backends.backends!,
 					backendGroups: backends.backendGroups!,
-				whisperBackends: whisperBackends.whisperBackends!,
-				whisperServers: whisperServers.whisperServers!,
-				whisperServerLogs: whisperServers.whisperServerLogs!,
-				tempThreadWhisperServerId: bridge.tempThreadWhisperServerId,
-				setTempThreadWhisperServerId: bridge.setTempThreadWhisperServerId,
+					whisperBackends: whisperBackends.whisperBackends!,
+					whisperServers: whisperServers.whisperServers!,
+					whisperServerLogs: whisperServers.whisperServerLogs!,
+					tempThreadWhisperServerId: bridge.tempThreadWhisperServerId,
+					setTempThreadWhisperServerId: bridge.setTempThreadWhisperServerId,
 					models: models.models!,
 					settings: settings.settings!,
 					hardware: hardware.hardware!,
 					llamaReleases: releases.llamaReleases!,
 					whisperReleases: releases.whisperReleases!,
-kokoroStatus: kokoro.kokoroStatus!,
+					kokoroStatus: kokoro.kokoroStatus!,
 					setKokoroStatus: kokoro.setKokoroStatus!,
-ttsActiveMessageId: tts.ttsActiveMessageId!,
-				ttsIsGenerating: tts.ttsIsGenerating!,
-				ttsIsSpeaking: tts.ttsIsSpeaking!,
-				ttsSpokenByMessage: tts.ttsSpokenByMessage!,
-				ttsVadSentencesSent: tts.ttsVadSentencesSent!,
-				ttsVadSentencesDone: tts.ttsVadSentencesDone!,
-				ttsVadRequestId: tts.ttsVadRequestId!,
-				ttsStart: tts.ttsStart!,
-				ttsStop: tts.ttsStop!,
-				ttsSetGenerating: tts.ttsSetGenerating!,
-				ttsSetSpeaking: tts.ttsSetSpeaking!,
-				ttsSetActiveMessageId: tts.ttsSetActiveMessageId!,
-				ttsSetSpokenIndex: tts.ttsSetSpokenIndex!,
-				ttsClearSpokenIndex: tts.ttsClearSpokenIndex!,
-				ttsVadIncSent: tts.ttsVadIncSent!,
-				ttsVadIncDone: tts.ttsVadIncDone!,
-				ttsVadReset: tts.ttsVadReset!,
-				vadActive: tts.vadActive!,
-				setVadActive: tts.setVadActive!,
-				ttsVadNewRequestId: tts.ttsVadNewRequestId!,
+					ttsActiveMessageId: tts.ttsActiveMessageId!,
+					ttsIsGenerating: tts.ttsIsGenerating!,
+					ttsIsSpeaking: tts.ttsIsSpeaking!,
+					ttsSpokenByMessage: tts.ttsSpokenByMessage!,
+					ttsVadSentencesSent: tts.ttsVadSentencesSent!,
+					ttsVadSentencesDone: tts.ttsVadSentencesDone!,
+					ttsVadRequestId: tts.ttsVadRequestId!,
+					ttsStart: tts.ttsStart!,
+					ttsStop: tts.ttsStop!,
+					ttsSetGenerating: tts.ttsSetGenerating!,
+					ttsSetSpeaking: tts.ttsSetSpeaking!,
+					ttsSetActiveMessageId: tts.ttsSetActiveMessageId!,
+					ttsSetSpokenIndex: tts.ttsSetSpokenIndex!,
+					ttsClearSpokenIndex: tts.ttsClearSpokenIndex!,
+					ttsVadIncSent: tts.ttsVadIncSent!,
+					ttsVadIncDone: tts.ttsVadIncDone!,
+					ttsVadReset: tts.ttsVadReset!,
+					vadActive: tts.vadActive!,
+					setVadActive: tts.setVadActive!,
+					ttsVadNewRequestId: tts.ttsVadNewRequestId!,
   					proxyStatus: proxy.proxyStatus!,
 					proxyRoutes: proxy.proxyRoutes!,
 					recipes: recipes.recipes!,
@@ -123,7 +125,7 @@ ttsActiveMessageId: tts.ttsActiveMessageId!,
 					toolPermissions: bridge.toolPermissions,
 					setMcpServers: bridge.setMcpServers,
 					setPermissions: bridge.setPermissions,
-				toolCallRenderers: {
+					toolCallRenderers: {
 						DiffRenderer: DiffRendererMeta,
 						BashRenderer: BashRendererMeta,
 						FetchRenderer: FetchRendererMeta,
@@ -163,6 +165,7 @@ ttsActiveMessageId: tts.ttsActiveMessageId!,
 					setCurrentThreadId: (id: TThreadId | null) => {
 						bridge.setCurrentThreadId(id);
 						tts.setVadActive(false);
+						annotations.clearAnnotations();
 					},
 					setCurrentSystemPrompt: bridge.setCurrentSystemPrompt,
 					setCurrentInferenceParams: bridge.setCurrentInferenceParams,
@@ -177,6 +180,12 @@ ttsActiveMessageId: tts.ttsActiveMessageId!,
 					// Chat Folders
 					folders: [],
 					setFolders: (folders) => set(s => { s.folders = folders; }),
+
+					// Annotations
+					annotations: annotations.annotations!,
+					addAnnotation: annotations.addAnnotation!,
+					removeAnnotation: annotations.removeAnnotation!,
+					clearAnnotations: annotations.clearAnnotations!,
 				};
 		}),
 	),
