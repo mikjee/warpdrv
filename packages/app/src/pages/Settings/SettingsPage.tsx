@@ -1,4 +1,4 @@
-import { Box, Text, HStack, VStack, Flex, Input, Button, Spinner, Switch, Combobox, createListCollection, Portal, NativeSelect } from '@chakra-ui/react';
+import { Box, Text, HStack, VStack, Flex, Input, Button, Spinner, Switch, Combobox, createListCollection, Portal, NativeSelect, Slider } from '@chakra-ui/react';
 import { Settings, FolderOpen, Plus, Trash2, Save, ChevronDown, FolderInput, BookOpen, Mic } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { useDependantState } from '../../hooks/useDependantState';
@@ -45,6 +45,7 @@ export function SettingsPage() {
 	const [disableTitleGen, setDisableTitleGen] = useDependantState(settings.disableTitleGen);
 	const [micDeviceId, setMicDeviceId] = useDependantState(settings.micDeviceId ?? '');
 	const [kokoroVoice, setKokoroVoice] = useDependantState(settings.kokoroVoice ?? 'af_heart');
+	const [kokoroSpeed, setKokoroSpeed] = useDependantState(settings.kokoroSpeed ?? 1);
 	const [builtinMcpPort, setBuiltinMcpPort] = useDependantState(settings.builtinMcpPort ?? 11437);
 	const [builtinMcpExposeExternal, setBuiltinMcpExposeExternal] = useDependantState(settings.builtinMcpExposeExternal ?? false);
 	const [fsAllowedRoots, setFsAllowedRoots] = useDependantState<string[]>(settings.fsAllowedRoots ?? []);
@@ -288,7 +289,8 @@ const handleSave = async () => {
 			disableTitleGen,
 			theme: localTheme,
 			micDeviceId,
-			kokoroVoice,
+kokoroVoice,
+			kokoroSpeed,
 			builtinMcpPort,
 			builtinMcpExposeExternal,
 			fsAllowedRoots,
@@ -678,6 +680,29 @@ const handleSave = async () => {
 									</Combobox.Positioner>
 								</Portal>
 							</Combobox.Root>
+							<VStack align="stretch" gap="2">
+								<HStack justify="space-between">
+									<Text fontSize="11px" color="var(--wc-text-muted)">TTS Speed</Text>
+									<Text fontSize="11px" color="var(--wc-text-tertiary)">{kokoroSpeed.toFixed(1)}x</Text>
+								</HStack>
+								<Slider.Root
+									w="full"
+									size="sm"
+									colorPalette="blue"
+									value={[kokoroSpeed]}
+									min={0.5}
+									max={3}
+									step={0.1}
+									onValueChange={(details) => dirtySetter(setKokoroSpeed, details.value[0])}
+								>
+									<Slider.Control>
+										<Slider.Track>
+											<Slider.Range />
+										</Slider.Track>
+										<Slider.Thumbs />
+									</Slider.Control>
+								</Slider.Root>
+							</VStack>
 						</VStack>
 					</Card>
 

@@ -1,6 +1,10 @@
 import path from 'path';
 import os from 'os';
 import { createRequire } from 'node:module';
+import { store } from '../util/store';
+import type { ISettings } from '@warpcore/shared';
+import { DEFAULT_SETTINGS } from '@warpcore/shared';
+const SETTINGS_KEY = 'settings:general';
 declare const __filename: string | undefined;
 const requireFn = (process as any).pkg && process.env.WARPCORE_RESOURCE_DIR
 	? createRequire(path.join(process.env.WARPCORE_RESOURCE_DIR, 'binaries', 'index.js'))
@@ -69,7 +73,9 @@ export async function* consumeStream(streamId: string): AsyncGenerator<Buffer> {
 	if (!isReady || !kokoroInstance) throw new Error('kokoro not ready');
 	const { TextSplitterStream } = requireFn('kokoro-js');
 	const splitter = new TextSplitterStream();
-	const stream = kokoroInstance.stream(splitter, { voice: p.voice });
+	const settings = await store.get<ISettings>(SETTINGS_KEY) ?? DEFAULT_SETTINGS;
+	const speed = settings.kokoroSpeed ?? 1;
+	const stream = kokoroInstance.stream(splitter, { voice: p.voice, speed });
 	splitter.push(p.text);
 	splitter.close();
 	for await (const chunk of stream) {

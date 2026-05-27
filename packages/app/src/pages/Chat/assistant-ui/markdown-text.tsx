@@ -4,6 +4,7 @@ import "@assistant-ui/react-markdown/styles/dot.css";
 
 import {
   type CodeHeaderProps,
+  type SyntaxHighlighterProps,
   MarkdownTextPrimitive,
   unstable_memoizeMarkdownComponents as memoizeMarkdownComponents,
   useIsMarkdownCodeBlock,
@@ -11,6 +12,8 @@ import {
 import remarkGfm from "remark-gfm";
 import { type FC, memo, useState } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
+import { Prism } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 import { TooltipIconButton } from "./tooltip-icon-button";
 import { MermaidDiagram } from "./mermaid-diagram";
@@ -244,4 +247,9 @@ const defaultComponents = memoizeMarkdownComponents({
     );
   },
   CodeHeader,
+  SyntaxHighlighter: ({ components: { Pre, Code }, language, code }: SyntaxHighlighterProps) => (
+    <Prism language={language} PreTag={Pre} CodeTag={Code} style={oneDark} showLineNumbers={false}>
+      {code}
+    </Prism>
+  ),
 });

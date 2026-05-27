@@ -273,16 +273,25 @@ export function useDerivedMsgsForUI(
 				if (!headMessageId) return 0;
 
 				let tokenCount = 0;
+				const branchMsgIds = new Set<string>();
 				let msg: IChatMessage | undefined = derivedMsgsRef.current[headMessageId];
 				while (msg) {
+					branchMsgIds.add(msg.id);
 					tokenCount += msg.stats?.actualTokens || 0;
 					msg = msg.parentId ? derivedMsgsRef.current[msg.parentId] : undefined;
+				}
+
+				// Add tool call arguments + result tokens for tool calls in this branch
+				for (const tc of Object.values(toolCallsById)) {
+					if (branchMsgIds.has(tc.messageId)) {
+						tokenCount += Math.ceil((tc.arguments.length + (tc.result?.length || 0)) / 4);
+					}
 				}
 
 				return tokenCount;
 			})()
 		};
-	}, [sortedMsgs, headMessageId, isRunning]);
+	}, [sortedMsgs, headMessageId, isRunning, toolCallsById]);
 }
 
 // Build message chain from a starting point to root (for backend API calls)

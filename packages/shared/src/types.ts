@@ -328,6 +328,7 @@ export interface ISettings {
 	theme?: ETheme;
 	micDeviceId?: string; // app-level mic device selection for STT
 	kokoroVoice?: string; // kokoro TTS voice selection
+	kokoroSpeed?: number; // kokoro TTS speed multiplier
 	builtinMcpPort?: number;
 	builtinMcpExposeExternal?: boolean;
 	fsAllowedRoots?: string[];
@@ -365,6 +366,7 @@ export const DEFAULT_SETTINGS: ISettings = {
 	isOnboardingComplete: false,
 	theme: ETheme.DARK,
 	kokoroVoice: 'af_heart',
+	kokoroSpeed: 1.0,
 	builtinMcpPort: 11437,
 	builtinMcpExposeExternal: false,
 	fsAllowedRoots: [],

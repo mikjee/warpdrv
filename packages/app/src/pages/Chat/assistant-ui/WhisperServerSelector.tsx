@@ -1,9 +1,9 @@
-import { Box, Text, HStack } from '@chakra-ui/react';
+import { Box, Text, HStack, Slider } from '@chakra-ui/react';
 import { Mic, ChevronDown } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStore } from '@/store';
 import { EWhisperServerStatus, TWhisperServerId } from '@warpcore/shared';
-import { updateThread } from '@/api/services';
+import { updateThread, updateSettings } from '@/api/services';
 
 export function parseWhisperThreadMeta(meta: string): { whisperServerId: string | null } {
 	try {
@@ -48,6 +48,9 @@ export const ThreadWhisperServerSelector = React.memo(({
 		whisperServerId,
 		whisperServersMap
 	]);
+
+	const kokoroInstalled = useStore((s) => s.kokoroStatus?.installed);
+	const kokoroSpeed = useStore(s => s.settings.kokoroSpeed ?? 1);
 
 	const handleSelect = useCallback(async (serverId: string) => {
 		setOpen(false);
@@ -102,9 +105,37 @@ export const ThreadWhisperServerSelector = React.memo(({
 					py="1"
 					maxH="200px"
 					overflowY="auto"
-		minW="130px"
-				maxW="130px"
+					minW="180px"
+					maxW="180px"
 				>
+					{kokoroInstalled && (
+						<>
+							<Box px="3" py="2">
+								<HStack justify="space-between" mb="1">
+									<Text fontSize="11px" color="var(--wc-text-muted)">TTS Speed</Text>
+									<Text fontSize="11px" color="var(--wc-text-tertiary)">{kokoroSpeed.toFixed(1)}x</Text>
+								</HStack>
+								<Slider.Root
+									w="full"
+									size="sm"
+									colorPalette="blue"
+									value={[kokoroSpeed]}
+									min={0.5}
+									max={3}
+									step={0.1}
+									onValueChange={(details) => updateSettings({ kokoroSpeed: details.value[0] })}
+								>
+									<Slider.Control>
+										<Slider.Track>
+											<Slider.Range />
+										</Slider.Track>
+										<Slider.Thumbs />
+									</Slider.Control>
+								</Slider.Root>
+							</Box>
+							<Box borderBottom="1px" borderColor="var(--wc-border-subtle)" mx="3" />
+						</>
+					)}
 					{whisperServers.map((s) => (
 						<HStack
 							key={s.id}
