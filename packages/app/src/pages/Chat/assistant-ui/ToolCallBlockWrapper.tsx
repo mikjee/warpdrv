@@ -1,12 +1,13 @@
 import React, { useState, useContext, useCallback, useMemo } from 'react';
 import { Box, Text, HStack } from '@chakra-ui/react';
-import { Wrench, Check, Ban, Loader, AlertCircle, X } from 'lucide-react';
+import { Wrench, Check, Ban, Loader, AlertCircle, X, Lock } from 'lucide-react';
 import { ToolCallBlock } from '@/pages/Chat/assistant-ui/ToolCallBlock';
 import { useStore } from '@/store';
-import { EToolCallStatus } from '@warpcore/bridge';
+import { EToolCallStatus, EToolApprovalMode } from '@warpcore/bridge';
 import { ServerStatusContext } from './thread';
 import { autoResolveRenderer } from './tool-renderers/resolver';
 import { RendererErrorBoundary } from './tool-renderers/RendererErrorBoundary';
+import { useToast } from '@/components/ToastProvider';
 
 interface IToolCallBlockWrapperProps {
 	toolCallId: string;
@@ -44,6 +45,7 @@ export const ToolCallBlockWrapper = React.memo(({ toolCallId, toolName, serverNa
 	const attachAllTools = useStore(s => s.attachAllTools);
 	const attachedTools = useStore(s => s.attachedTools);
 	const [deciding, setDeciding] = useState(false);
+	const toast = useToast();
 
 	const handleDecision = useCallback(async (decision: 'approve' | 'deny') => {
 		if (!currentThreadId || !currentServerId) return;
@@ -61,6 +63,27 @@ export const ToolCallBlockWrapper = React.memo(({ toolCallId, toolName, serverNa
 			setDeciding(false);
 		}
 	}, [toolCallId, currentThreadId, currentServerId, currentSystemPrompt, currentInferenceParams, attachAllTools, attachedTools]);
+
+	const handleAlwaysApprove = useCallback(async () => {
+		if (!currentThreadId || !currentServerId || !serverName) return;
+		setDeciding(true);
+		try {
+			const { setThreadToolPermission, fetchThreadPermissions, decideMcpToolCall } = await import('@/api/mcpServices');
+			await setThreadToolPermission(currentThreadId, serverName, toolName, true, EToolApprovalMode.ALLOWED);
+			const res = await fetchThreadPermissions(currentThreadId);
+			if (res.ok) useStore.getState().setThreadToolPermissions(currentThreadId, res.data.threadOverrides);
+			await decideMcpToolCall(
+				toolCallId, 'approve', currentThreadId, currentServerId,
+				currentSystemPrompt, currentInferenceParams,
+				undefined,
+				attachAllTools,
+				attachedTools
+			);
+			toast({ title: `"${toolName}" will always be approved for this thread`, status: 'success', duration: 3000 });
+		} finally {
+			setDeciding(false);
+		}
+	}, [toolCallId, toolName, serverName, currentThreadId, currentServerId, currentSystemPrompt, currentInferenceParams, attachAllTools, attachedTools, toast]);
 
 
 	const displayStatus: EToolCallStatus = toolCall?.status ?? (
@@ -148,11 +171,14 @@ export const ToolCallBlockWrapper = React.memo(({ toolCallId, toolName, serverNa
 
 			{isPending && !deciding && (
 				<HStack gap="2" px="3" py="2" justify="flex-end" borderTopWidth="1px" borderColor="var(--wc-border-subtle)">
+					<Box as="button" px="3" py="1" fontSize="12px" borderRadius="sm" bg="var(--wc-accent-green-bg-15)" color="var(--wc-accent-green)" _hover={{ bg: 'var(--wc-accent-green-hover)' }} onClick={() => handleDecision('approve')}>
+						<HStack gap="1"><Check size={12} /><Text fontSize="12px">Allow Once</Text></HStack>
+					</Box>
+					<Box as="button" px="3" py="1" fontSize="12px" borderRadius="sm" bg="var(--wc-accent-yellow-bg-8)" color="var(--wc-accent-yellow-strong)" _hover={{ bg: 'var(--wc-accent-yellow-hover-bg)' }} onClick={() => handleAlwaysApprove()}>
+						<HStack gap="1"><Lock size={12} /><Text fontSize="12px">Allow Always</Text></HStack>
+					</Box>
 					<Box as="button" px="3" py="1" fontSize="12px" borderRadius="sm" bg="var(--wc-accent-red-bg-12)" color="var(--wc-accent-red-alt)" _hover={{ bg: 'var(--wc-accent-red-hover)' }} onClick={() => handleDecision('deny')}>
 						<HStack gap="1"><X size={12} /><Text fontSize="12px">Deny</Text></HStack>
-					</Box>
-					<Box as="button" px="3" py="1" fontSize="12px" borderRadius="sm" bg="var(--wc-accent-green-bg-15)" color="var(--wc-accent-green)" _hover={{ bg: 'var(--wc-accent-green-hover)' }} onClick={() => handleDecision('approve')}>
-						<HStack gap="1"><Check size={12} /><Text fontSize="12px">Approve</Text></HStack>
 					</Box>
 				</HStack>
 			)}

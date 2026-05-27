@@ -4,6 +4,7 @@
 
 import { Router } from 'express';
 import { mcpClient, persistence, broadcaster } from '../index';
+import { sseManager } from '../services/sseManagerInstance';
 import type { IMcpConfigFile, IMcpServerEntry } from '@warpcore/shared';
 import { EToolApprovalMode } from '@warpcore/bridge';
 import type { IElicitationResponse } from '@warpcore/bridge';
@@ -136,6 +137,13 @@ mcpRouter.post('/reload', async (req, res) => {
 // Permissions — use bridge persistence
 // ============================================================
 
+async function emitPermissionsUpdate() {
+	sseManager.emit('mcp:permissions:update', {
+		servers: await persistence.getAllServerPermissions(),
+		tools: await persistence.getAllToolPermissions(),
+	});
+}
+
 mcpRouter.get('/permissions', async (_req, res) => {
 	try {
 		const serverPerms = await persistence.getAllServerPermissions();
@@ -150,6 +158,7 @@ mcpRouter.put('/permissions/server/:name', async (req, res) => {
 	try {
 		const { enabled } = req.body as { enabled: boolean };
 		await persistence.setServerPermission(req.params.name, enabled);
+		await emitPermissionsUpdate();
 		res.json({ ok: true, data: null, error: null });
 	} catch (err) {
 		res.status(500).json({ ok: false, data: null, error: String(err) });
@@ -165,6 +174,48 @@ mcpRouter.put('/permissions/tool', async (req, res) => {
 			approvalMode: EToolApprovalMode;
 		};
 		await persistence.setToolPermission(serverName, toolName, enabled, approvalMode);
+		await emitPermissionsUpdate();
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+// Thread-level tool permissions
+mcpRouter.get('/permissions/thread/:threadId', async (req, res) => {
+	try {
+		const threadOverrides = await persistence.getAllThreadToolPermissions(req.params.threadId);
+		const globalPerms = await persistence.getAllToolPermissions();
+		res.json({ ok: true, data: { threadOverrides, global: globalPerms }, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+mcpRouter.put('/permissions/thread/tool', async (req, res) => {
+	try {
+		const { threadId, serverName, toolName, enabled, approvalMode } = req.body as {
+			threadId: string;
+			serverName: string;
+			toolName: string;
+			enabled: boolean;
+			approvalMode: EToolApprovalMode;
+		};
+		await persistence.setThreadToolPermission(threadId, serverName, toolName, enabled, approvalMode);
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+mcpRouter.delete('/permissions/thread/tool', async (req, res) => {
+	try {
+		const { threadId, serverName, toolName } = req.body as {
+			threadId: string;
+			serverName: string;
+			toolName: string;
+		};
+		await persistence.deleteThreadToolPermission(threadId, serverName, toolName);
 		res.json({ ok: true, data: null, error: null });
 	} catch (err) {
 		res.status(500).json({ ok: false, data: null, error: String(err) });

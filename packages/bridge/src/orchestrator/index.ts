@@ -582,7 +582,9 @@ export class Orchestrator {
 		for (const tc of finalToolCalls) {
 			if (abortSignal.aborted) return { hadToolCalls: true, needsAsk: false, lastToolMessageId };
 
-			const serverName = this.mcpClient.findToolServer(tc.name);
+			const enabledTool = enabledTools.find(t => t.name === tc.name);
+			const serverName = enabledTool?.serverName ?? this.mcpClient.findToolServer(tc.name);
+			console.log('[Orch] tool call:', { toolName: tc.name, serverName, threadId: request.threadId });
 			let args: Record<string, unknown> = {};
 			try { args = JSON.parse(tc.arguments || '{}'); } catch { /* empty */ }
 
@@ -665,7 +667,8 @@ export class Orchestrator {
 				continue;
 			}
 
-			const approvalMode = await this.permissions.getToolApprovalMode(serverName!, tc.name);
+			const approvalMode = await this.permissions.getToolApprovalMode(request.threadId, serverName!, tc.name);
+			console.log('[Orch] approvalMode:', approvalMode);
 
 			if (approvalMode === EToolApprovalMode.ASK) {
 				needsAsk = true;
@@ -962,14 +965,14 @@ export class Orchestrator {
 		const allTools = this.mcpClient.getAllTools();
 
 		if (attachAllTools) {
-			return this.permissions.getEnabledTools(allTools);
+			return this.permissions.getEnabledTools(request.threadId, allTools);
 		}
 
 		if (attachedTools && attachedTools.length > 0) {
 			const filtered = allTools.filter(t =>
 				attachedTools.some(a => a.serverName === t.serverName && a.toolName === t.name)
 			);
-			return this.permissions.getEnabledTools(filtered);
+			return this.permissions.getEnabledTools(request.threadId, filtered);
 		}
 
 		return [];

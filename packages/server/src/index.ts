@@ -293,6 +293,11 @@ async function main() {
 			return Object.keys(states).length > 0 ? states : null;
 		}, 1000);
 
+		sseManager.onConnect('mcp:permissions:init', async () => ({
+			servers: await persistence.getAllServerPermissions(),
+			tools: await persistence.getAllToolPermissions(),
+		}));
+
 		// Phase 1: Backends
 		sseManager.onConnect('backends:init', async () => {
 			const backends = await store.list<IBackend>(BACKENDS_PREFIX);

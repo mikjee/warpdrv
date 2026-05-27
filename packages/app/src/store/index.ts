@@ -123,8 +123,10 @@ export const useStore = create<AppState>()(
 					mcpServers: bridge.mcpServers,
 					serverPermissions: bridge.serverPermissions,
 					toolPermissions: bridge.toolPermissions,
+					threadToolPermissions: bridge.threadToolPermissions,
 					setMcpServers: bridge.setMcpServers,
 					setPermissions: bridge.setPermissions,
+					setThreadToolPermissions: bridge.setThreadToolPermissions,
 					toolCallRenderers: {
 						DiffRenderer: DiffRendererMeta,
 						BashRenderer: BashRendererMeta,

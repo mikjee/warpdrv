@@ -8,6 +8,7 @@ import type { IMcpConfigFile, IMcpServerEntry } from '@warpcore/shared';
 import type {
 	IMcpServerState,
 	IToolPermission,
+	IThreadToolPermission,
 	IServerPermission as IMcpServerPermission,
 	IToolCall,
 	IToolAttachment,
@@ -150,4 +151,31 @@ export function fetchPendingToolCalls() {
 
 export function fetchThreadToolCalls(threadId: string) {
 	return json<IToolCall[]>(`/api/mcp/tool-calls/thread/${threadId}`);
+}
+
+// ============================================================
+// Thread-level tool permissions
+// ============================================================
+export function fetchThreadPermissions(threadId: string) {
+	return json<{ global: IToolPermission[]; threadOverrides: IThreadToolPermission[] }>(`/api/mcp/permissions/thread/${threadId}`);
+}
+
+export function setThreadToolPermission(
+	threadId: string,
+	serverName: string,
+	toolName: string,
+	enabled: boolean,
+	approvalMode: EToolApprovalMode,
+) {
+	return json<null>('/api/mcp/permissions/thread/tool', {
+		method: 'PUT',
+		body: JSON.stringify({ threadId, serverName, toolName, enabled, approvalMode }),
+	});
+}
+
+export function resetThreadToolPermission(threadId: string, serverName: string, toolName: string) {
+	return json<null>('/api/mcp/permissions/thread/tool', {
+		method: 'DELETE',
+		body: JSON.stringify({ threadId, serverName, toolName }),
+	});
 }

@@ -18,6 +18,7 @@ import type {
 	IMcpServerState,
 	IServerPermission,
 	IToolPermission,
+	IThreadToolPermission,
 	IThreadPatch,
 	IElicitationRequest,
 } from '../types';
@@ -64,6 +65,7 @@ export interface IChatStoreState {
 	mcpServers: Record<string, IMcpServerState>;
 	serverPermissions: IServerPermission[];
 	toolPermissions: IToolPermission[];
+	threadToolPermissions: Record<TThreadId, IThreadToolPermission[]>;
 
 	// Current chat state (for active thread context)
 	currentThreadId: TThreadId | null;
@@ -111,6 +113,7 @@ export interface IChatStoreState {
 	// MCP Actions
 	setMcpServers: (servers: Record<string, IMcpServerState>) => void;
 	setPermissions: (serverPerms: IServerPermission[], toolPerms: IToolPermission[]) => void;
+	setThreadToolPermissions: (threadId: TThreadId, perms: IThreadToolPermission[]) => void;
 
 	reset: () => void;
 }
@@ -137,6 +140,7 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 		mcpServers: {} as Record<string, IMcpServerState>,
 		serverPermissions: [] as IServerPermission[],
 		toolPermissions: [] as IToolPermission[],
+		threadToolPermissions: {} as Record<TThreadId, IThreadToolPermission[]>,
 		currentThreadId: null as TThreadId | null,
 		currentSystemPrompt: '',
 		currentInferenceParams: {} as Record<string, unknown>,
@@ -496,6 +500,11 @@ setActiveThread: (id: TThreadId | null) =>
 			set((draft) => {
 				draft.serverPermissions = serverPerms;
 				draft.toolPermissions = toolPerms;
+			}),
+
+		setThreadToolPermissions: (threadId: TThreadId, perms: IThreadToolPermission[]) =>
+			set((draft) => {
+				draft.threadToolPermissions[threadId] = perms;
 			}),
 
 		// Reset

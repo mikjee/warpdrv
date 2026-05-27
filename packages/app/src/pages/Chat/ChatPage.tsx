@@ -630,6 +630,7 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 						configParams={currentInferenceParams}
 						configSystemPrompt={currentSystemPrompt}
 						configSelectedPresetId={selectedPresetId}
+						activeThreadId={currentThreadId}
 						onConfigParamsChange={handleParamsChange}
 						onConfigSystemPromptChange={handleSystemPromptChange}
 						onConfigPresetSelect={handlePresetSelect}

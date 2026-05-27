@@ -21,6 +21,7 @@ export interface IToolCallRenderer {
 import type {
 	IMcpServerState,
 	IToolPermission,
+	IThreadToolPermission,
 	IToolAttachment,
 	IServerPermission as IMcpServerPermission,
 	IFolder,
@@ -128,8 +129,10 @@ export interface AppState {
 	mcpServers: Record<string, IMcpServerState>;
 	serverPermissions: IMcpServerPermission[];
 	toolPermissions: IToolPermission[];
+	threadToolPermissions: Record<TThreadId, IThreadToolPermission[]>;
 	setMcpServers: (servers: Record<string, IMcpServerState>) => void;
 	setPermissions: (serverPerms: IMcpServerPermission[], toolPerms: IToolPermission[]) => void;
+	setThreadToolPermissions: (threadId: TThreadId, perms: IThreadToolPermission[]) => void;
 	toolCallRenderers: Record<string, IToolCallRenderer>;
 	registerToolCallRenderer: (name: string, entry: IToolCallRenderer) => void;
 

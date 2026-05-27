@@ -257,6 +257,14 @@ export interface IToolPermission {
 	approvalMode: EToolApprovalMode;
 }
 
+export interface IThreadToolPermission {
+	threadId: TThreadId;
+	serverName: string;
+	toolName: string;
+	enabled: boolean;
+	approvalMode: EToolApprovalMode;
+}
+
 // ============================================================
 // MCP Server
 // ============================================================

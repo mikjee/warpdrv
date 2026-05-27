@@ -19,6 +19,7 @@ import type {
 	IToolAttachment,
 	IServerPermission,
 	IToolPermission,
+	IThreadToolPermission,
 	TFolderId,
 	TThreadId,
 	TMessageId,
@@ -49,6 +50,7 @@ function buildTableNames(prefix: string) {
 		toolCalls: `${prefix}tool_calls`,
 		serverPermissions: `${prefix}mcp_server_permissions`,
 		toolPermissions: `${prefix}mcp_tool_permissions`,
+		threadToolPermissions: `${prefix}thread_tool_permissions`,
 		threadAttachedTools: `${prefix}thread_attached_tools`,
 	};
 }
@@ -123,6 +125,14 @@ function buildSchema(t: ReturnType<typeof buildTableNames>): string {
 			enabled INTEGER NOT NULL DEFAULT 1,
 			approvalMode TEXT NOT NULL DEFAULT 'ASK',
 			PRIMARY KEY (serverName, toolName)
+		);
+		CREATE TABLE IF NOT EXISTS ${t.threadToolPermissions} (
+			threadId TEXT NOT NULL,
+			serverName TEXT NOT NULL,
+			toolName TEXT NOT NULL,
+			enabled INTEGER NOT NULL DEFAULT 1,
+			approvalMode TEXT NOT NULL DEFAULT 'ASK',
+			PRIMARY KEY (threadId, serverName, toolName)
 		);
 		CREATE TABLE IF NOT EXISTS ${t.threadAttachedTools} (
 			threadId TEXT PRIMARY KEY,
@@ -518,6 +528,49 @@ export class SqlitePersistence implements IPersistence {
 	async getAllToolPermissions(): Promise<IToolPermission[]> {
 		const rows = this.db!.prepare(`SELECT * FROM ${this.t.toolPermissions}`).all() as Array<{ serverName: string; toolName: string; enabled: number; approvalMode: string }>;
 		return rows.map(r => ({
+			serverName: r.serverName,
+			toolName: r.toolName,
+			enabled: r.enabled === 1,
+			approvalMode: r.approvalMode as EToolApprovalMode,
+		}));
+	}
+
+	// ============================================================
+	// Permissions — thread-level tool overrides
+	// ============================================================
+	async getThreadToolPermission(threadId: TThreadId, serverName: string, toolName: string): Promise<IThreadToolPermission | null> {
+		const row = this.db!.prepare(
+			`SELECT * FROM ${this.t.threadToolPermissions} WHERE threadId = ? AND serverName = ? AND toolName = ?`
+		).get(threadId, serverName, toolName) as { threadId: string; serverName: string; toolName: string; enabled: number; approvalMode: string } | undefined;
+		if (!row) return null;
+		return {
+			threadId: row.threadId,
+			serverName: row.serverName,
+			toolName: row.toolName,
+			enabled: row.enabled === 1,
+			approvalMode: row.approvalMode as EToolApprovalMode,
+		};
+	}
+
+	async setThreadToolPermission(threadId: TThreadId, serverName: string, toolName: string, enabled: boolean, approvalMode: EToolApprovalMode): Promise<void> {
+		this.db!.prepare(
+			`INSERT INTO ${this.t.threadToolPermissions} (threadId, serverName, toolName, enabled, approvalMode) VALUES (?, ?, ?, ?, ?)
+			 ON CONFLICT(threadId, serverName, toolName) DO UPDATE SET enabled = excluded.enabled, approvalMode = excluded.approvalMode`
+		).run(threadId, serverName, toolName, enabled ? 1 : 0, approvalMode);
+	}
+
+	async deleteThreadToolPermission(threadId: TThreadId, serverName: string, toolName: string): Promise<void> {
+		this.db!.prepare(
+			`DELETE FROM ${this.t.threadToolPermissions} WHERE threadId = ? AND serverName = ? AND toolName = ?`
+		).run(threadId, serverName, toolName);
+	}
+
+	async getAllThreadToolPermissions(threadId: TThreadId): Promise<IThreadToolPermission[]> {
+		const rows = this.db!.prepare(
+			`SELECT * FROM ${this.t.threadToolPermissions} WHERE threadId = ?`
+		).all(threadId) as Array<{ threadId: string; serverName: string; toolName: string; enabled: number; approvalMode: string }>;
+		return rows.map(r => ({
+			threadId: r.threadId,
 			serverName: r.serverName,
 			toolName: r.toolName,
 			enabled: r.enabled === 1,

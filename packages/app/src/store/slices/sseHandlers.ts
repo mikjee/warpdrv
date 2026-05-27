@@ -168,6 +168,14 @@ export const sseHandlersSlice = (
 		// MCP
 		'mcp:init': (data) => setState((state) => { state.mcpServers = data; }),
 		'mcp:servers': (data) => setState((state) => { state.mcpServers = data; }),
+		'mcp:permissions:init': (data) => setState((state) => {
+			state.serverPermissions = data.servers;
+			state.toolPermissions = data.tools;
+		}),
+		'mcp:permissions:update': (data) => setState((state) => {
+			state.serverPermissions = data.servers;
+			state.toolPermissions = data.tools;
+		}),
 
 		// Recipes
 		'recipes:init': (data: IRecipesInitPayload) => setState((state) => {

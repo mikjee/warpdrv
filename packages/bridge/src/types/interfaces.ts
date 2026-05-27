@@ -21,6 +21,7 @@ import type {
 	IToolAttachment,
 	IServerPermission,
 	IToolPermission,
+	IThreadToolPermission,
 	IMcpServerState,
 	IMcpConfigFile,
 	IMcpServerEntry,
@@ -86,6 +87,12 @@ export interface IPersistence {
 	setToolPermission(serverName: string, toolName: string, enabled: boolean, approvalMode: EToolApprovalMode): Promise<void>;
 	getAllToolPermissions(): Promise<IToolPermission[]>;
 
+	// Permissions — thread-level tool overrides
+	getThreadToolPermission(threadId: TThreadId, serverName: string, toolName: string): Promise<IThreadToolPermission | null>;
+	setThreadToolPermission(threadId: TThreadId, serverName: string, toolName: string, enabled: boolean, approvalMode: EToolApprovalMode): Promise<void>;
+	deleteThreadToolPermission(threadId: TThreadId, serverName: string, toolName: string): Promise<void>;
+	getAllThreadToolPermissions(threadId: TThreadId): Promise<IThreadToolPermission[]>;
+
 	// Thread attached tools
 	saveThreadAttachedTools(threadId: TThreadId, attachAllTools: boolean, tools: IToolAttachment[]): Promise<void>;
 	getThreadAttachedTools(threadId: TThreadId): Promise<{ attachAllTools: boolean; tools: IToolAttachment[] } | null>;
@@ -134,8 +141,8 @@ export interface IMcpConfig {
 // ============================================================
 export interface IPermissions {
 	isServerEnabled(serverName: string): Promise<boolean>;
-	getToolApprovalMode(serverName: string, toolName: string): Promise<EToolApprovalMode>;
-	getEnabledTools(allTools: IToolDefinition[]): Promise<IToolDefinition[]>;
+	getToolApprovalMode(threadId: TThreadId | undefined, serverName: string, toolName: string): Promise<EToolApprovalMode>;
+	getEnabledTools(threadId: TThreadId | undefined, allTools: IToolDefinition[]): Promise<IToolDefinition[]>;
 	setServerEnabled(serverName: string, enabled: boolean): Promise<void>;
 	setToolPermission(serverName: string, toolName: string, enabled: boolean, approvalMode: EToolApprovalMode): Promise<void>;
 }

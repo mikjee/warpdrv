@@ -12,6 +12,7 @@ interface IChatSidebarProps {
 	configParams: IChatInferenceParams;
 	configSystemPrompt: string;
 	configSelectedPresetId: string | null;
+	activeThreadId?: string | null;
 	onConfigParamsChange: (params: IChatInferenceParams) => void;
 	onConfigSystemPromptChange: (prompt: string) => void;
 	onConfigPresetSelect: (presetId: string | null, preset: IChatPreset | null) => void;
@@ -21,6 +22,7 @@ export const ChatSidebar = React.memo(({
 	configParams,
 	configSystemPrompt,
 	configSelectedPresetId,
+	activeThreadId,
 	onConfigParamsChange,
 	onConfigSystemPromptChange,
 	onConfigPresetSelect,
@@ -51,7 +53,7 @@ export const ChatSidebar = React.memo(({
 							onPresetSelect={onConfigPresetSelect}
 						/>
 					) : (
-						<ChatToolsContentPanel />
+						<ChatToolsContentPanel threadId={activeThreadId} />
 					)}
 				</Box>
 			)}

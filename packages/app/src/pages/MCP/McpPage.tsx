@@ -11,7 +11,6 @@ import {
 	restartMcpServer,
 	refreshMcpServerTools,
 	reloadMcpServers,
-	fetchMcpPermissions,
 	setMcpServerPermission,
 	setMcpToolPermission,
 } from '../../api/mcpServices';
@@ -20,40 +19,32 @@ import { AddServerForm } from './AddServerForm';
 import { JsonEditorView } from './JsonEditorView';
 import { ToolListSidebar } from './ToolListSidebar';
 import type { IMcpConfigFile, IMcpServerEntry } from '@warpcore/shared';
-import type { IMcpServerState, IToolPermission, IServerPermission as IMcpServerPermission } from '@warpcore/bridge';
 import { EToolApprovalMode } from '@warpcore/bridge';
 
 export function McpPage() {
 	const mcpServers = useStore((s) => s.mcpServers);
+	const serverPerms = useStore((s) => s.serverPermissions);
+	const toolPerms = useStore((s) => s.toolPermissions);
 	const [config, setConfig] = useState<IMcpConfigFile | null>(null);
 	const [showAddForm, setShowAddForm] = useState(false);
 	const [viewMode, setViewMode] = useState<'cards' | 'json'>('cards');
-	const [serverPerms, setServerPerms] = useState<IMcpServerPermission[]>([]);
-	const [toolPerms, setToolPerms] = useState<IToolPermission[]>([]);
 
-	const loadData = useCallback(async () => {
-		const [configRes, permRes] = await Promise.all([
-			fetchMcpConfig(),
-			fetchMcpPermissions(),
-		]);
+	const loadConfig = useCallback(async () => {
+		const configRes = await fetchMcpConfig();
 		if (configRes.ok) setConfig(configRes.data);
-		if (permRes.ok) {
-			setServerPerms(permRes.data.servers);
-			setToolPerms(permRes.data.tools);
-		}
 	}, []);
 
-	useEffect(() => { loadData(); }, [loadData]);
+	useEffect(() => { loadConfig(); }, [loadConfig]);
 
 	async function handleAddServer(name: string, entry: IMcpServerEntry) {
 		await addMcpServer(name, entry);
 		setShowAddForm(false);
-		loadData();
+		loadConfig();
 	}
 
 	async function handleRemoveServer(name: string) {
 		await removeMcpServerEntry(name);
-		loadData();
+		loadConfig();
 	}
 
 	async function handleRestart(name: string) {
@@ -66,17 +57,15 @@ export function McpPage() {
 
 	async function handleSaveConfig(newConfig: IMcpConfigFile) {
 		await updateMcpConfig(newConfig);
-		loadData();
+		loadConfig();
 	}
 
 	async function handleToggleServer(name: string, enabled: boolean) {
 		await setMcpServerPermission(name, enabled);
-		loadData();
 	}
 
 	async function handleSetToolPermission(serverName: string, toolName: string, enabled: boolean, mode: EToolApprovalMode) {
 		await setMcpToolPermission(serverName, toolName, enabled, mode);
-		loadData();
 	}
 
 	const fileServerEntries = config?.mcpServers ?? {};
