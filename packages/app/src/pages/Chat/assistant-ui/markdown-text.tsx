@@ -13,11 +13,59 @@ import remarkGfm from "remark-gfm";
 import { type FC, memo, useState } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
 import { Prism } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import {
+  atomDark,
+  dark,
+  dracula,
+  gruvboxDark,
+  lucario,
+  nightOwl,
+  nord,
+  okaidia,
+  oneDark,
+  oneLight,
+  pojoaque,
+  solarizedDarkAtom,
+  solarizedlight,
+  vscDarkPlus,
+} from "react-syntax-highlighter/dist/esm/styles/prism";
 
+import { useStore } from "@/store";
 import { TooltipIconButton } from "./tooltip-icon-button";
 import { MermaidDiagram } from "./mermaid-diagram";
 import { cn } from "@/lib/utils";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const PRISM_THEME_MAP: Record<string, any> = {
+  "dark": vscDarkPlus,
+  "light": oneLight,
+  "github-dark": vscDarkPlus,
+  "github-light": oneLight,
+  "one-dark": oneDark,
+  "one-light": oneLight,
+  "dracula-dark": dracula,
+  "dracula-light": oneLight,
+  "catppuccin-mocha": oneDark,
+  "catppuccin-latte": oneLight,
+  "nord": nord,
+  "nord-light": oneLight,
+  "tokyo-night": nightOwl,
+  "tokyo-night-light": oneLight,
+  "amoled": dark,
+  "vesper": oneDark,
+  "min": vscDarkPlus,
+  "gruvbox-hard": gruvboxDark,
+  "rose-pine": lucario,
+  "kanagawa": oneDark,
+  "obsidian": okaidia,
+  "monokai-pro": atomDark,
+  "palenight": nightOwl,
+  "solarized-dark": solarizedDarkAtom,
+  "gruvbox": gruvboxDark,
+  "kimbie-dark": pojoaque,
+  "everforest-hard": oneDark,
+  "solarized-light": solarizedlight,
+};
 
 const MarkdownTextImpl = () => {
   return (
@@ -71,6 +119,16 @@ const useCopyToClipboard = ({
   };
 
   return { isCopied, copyToClipboard };
+};
+
+const SyntaxHighlighter: FC<SyntaxHighlighterProps> = ({ components: { Pre, Code }, language, code }) => {
+  const theme = useStore(s => s.settings.theme);
+  const style = PRISM_THEME_MAP[theme ?? "dark"] ?? vscDarkPlus;
+  return (
+    <Prism language={language} PreTag={Pre} CodeTag={Code} style={style} showLineNumbers={false}>
+      {code}
+    </Prism>
+  );
 };
 
 const defaultComponents = memoizeMarkdownComponents({
@@ -247,9 +305,5 @@ const defaultComponents = memoizeMarkdownComponents({
     );
   },
   CodeHeader,
-  SyntaxHighlighter: ({ components: { Pre, Code }, language, code }: SyntaxHighlighterProps) => (
-    <Prism language={language} PreTag={Pre} CodeTag={Code} style={oneDark} showLineNumbers={false}>
-      {code}
-    </Prism>
-  ),
+  SyntaxHighlighter,
 });
