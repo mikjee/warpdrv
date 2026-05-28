@@ -168,6 +168,7 @@ export const useStore = create<AppState>()(
 						bridge.setCurrentThreadId(id);
 						tts.setVadActive(false);
 						annotations.clearAnnotations();
+						annotations.setAnnotatorVisible(false);
 					},
 					setCurrentSystemPrompt: bridge.setCurrentSystemPrompt,
 					setCurrentInferenceParams: bridge.setCurrentInferenceParams,
@@ -185,9 +186,11 @@ export const useStore = create<AppState>()(
 
 					// Annotations
 					annotations: annotations.annotations!,
+					annotatorVisible: annotations.annotatorVisible!,
 					addAnnotation: annotations.addAnnotation!,
 					removeAnnotation: annotations.removeAnnotation!,
 					clearAnnotations: annotations.clearAnnotations!,
+					setAnnotatorVisible: annotations.setAnnotatorVisible!,
 				};
 		}),
 	),

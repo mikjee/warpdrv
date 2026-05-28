@@ -36,7 +36,7 @@ async function transcribeAudioRaw(serverId: string, _server: any, audioBlob: Blo
 }
 
 export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamChange }: IVoiceInputProps) => {
-	const { setWaveformStream, isActive: dictationActive, source: dictationSource, isTranscribing: dictationTranscribing, start: startDictation, stop: stopDictation, setIsActive, setSource } = useDictation();
+	const { setWaveformStream, isActive: dictationActive, source: dictationSource, isTranscribing: dictationTranscribing, start: startDictation, stop: stopDictation, setIsActive, setSource, sendTextToPopover } = useDictation();
 	// PTT state (independent)
 	const [isPTTRecording, setIsPTTRecording] = useState(false);
 	const [isPTTTranscribing, setIsPTTTranscribing] = useState(false);
@@ -195,8 +195,19 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 					const wavBlob = float32ToWavBlob(audio);
 					const text = await transcribeAudioRaw(activeWhisperServerId, activeWhisperServer, wavBlob);
 					if (text) {
-						aui.composer().setText(text);
-						aui.composer().send({ startRun: true });
+						if (useStore.getState().annotatorVisible) {
+							sendTextToPopover(text);
+						} else {
+							const annotations = useStore.getState().annotations;
+							let fullText = text;
+							if (annotations.length > 0) {
+								const lines = annotations.map((a, i) => `${i + 1}. "${a.selectedText}"\n   ${a.comment}`);
+								fullText = lines.join('\n\n') + '\n\n' + text;
+								useStore.getState().clearAnnotations();
+							}
+							aui.composer().setText(fullText);
+							aui.composer().send({ startRun: true });
+						}
 					}
 				} catch (err) {
 					console.error('[VoiceInput] VAD transcription error:', err);
@@ -216,7 +227,7 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 			await session.start();
 			setVadActive(true);
 		}
-	}, [vadActive, isWhisperReady, activeWhisperServerId, activeWhisperServer, aui, micDeviceId, setWaveformStream]);
+	}, [vadActive, isWhisperReady, activeWhisperServerId, activeWhisperServer, aui, micDeviceId, setWaveformStream, sendTextToPopover]);
 
 	// Cleanup on unmount
 	useEffect(() => {

@@ -202,7 +202,9 @@ export interface AppState {
 
 	// Annotations
 	annotations: import('./slices/annotations').IAnnotation[];
+	annotatorVisible: boolean;
 	addAnnotation: (selectedText: string, comment: string) => void;
 	removeAnnotation: (id: string) => void;
 	clearAnnotations: () => void;
+	setAnnotatorVisible: (v: boolean) => void;
 }

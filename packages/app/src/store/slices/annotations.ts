@@ -8,9 +8,11 @@ export interface IAnnotation {
 
 interface AnnotationsSlice {
 	annotations: IAnnotation[];
+	annotatorVisible: boolean;
 	addAnnotation: (selectedText: string, comment: string) => void;
 	removeAnnotation: (id: string) => void;
 	clearAnnotations: () => void;
+	setAnnotatorVisible: (v: boolean) => void;
 }
 
 export const annotationsSlice = (
@@ -18,6 +20,7 @@ export const annotationsSlice = (
 	_getState: ImmerGet<AppState>,
 ): Partial<AppState> => ({
 	annotations: [],
+	annotatorVisible: false,
 	addAnnotation: (selectedText, comment) => {
 		setState(draft => {
 			draft.annotations.push({
@@ -35,6 +38,11 @@ export const annotationsSlice = (
 	clearAnnotations: () => {
 		setState(draft => {
 			draft.annotations = [];
+		});
+	},
+	setAnnotatorVisible: (v) => {
+		setState(draft => {
+			draft.annotatorVisible = v;
 		});
 	},
 });

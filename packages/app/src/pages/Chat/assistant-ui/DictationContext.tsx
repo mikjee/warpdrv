@@ -22,8 +22,7 @@ interface IDictationContext {
 	start: (source: 'composer' | 'popover') => void;
 	stop: () => void;
 	subscribeTranscript: (fn: (text: string) => void) => () => void;
-	popoverVisible: boolean;
-	setPopoverVisible: (v: boolean) => void;
+	sendTextToPopover: (text: string) => void;
 }
 
 const DictationContext = createContext<IDictationContext | null>(null);
@@ -39,19 +38,21 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 	const [isTranscribing, setIsTranscribing] = useState(false);
 	const [source, setSource] = useState<DictationSource>(null);
 	const [waveformStream, setWaveformStream] = useState<MediaStream | null>(null);
-	const [popoverVisible, setPopoverVisible] = useState(false);
 
 	const vadSessionRef = useRef<IVADSession | null>(null);
 	const audioStreamRef = useRef<MediaStream | null>(null);
 	const callbacksRef = useRef<Set<(text: string) => void>>(new Set());
 	const isStartingRef = useRef(false);
 	const shouldStopRef = useRef(false);
+	const vadActiveRef = useRef(false);
 
 	const whisperServers = useStore(s => s.whisperServers);
 	const currentThreadId = useStore(s => s.currentThreadId);
 	const tempWhisperServerId = useStore(s => s.tempThreadWhisperServerId);
 	const thread = useStore(s => currentThreadId ? s.threads[currentThreadId] : null);
 	const micDeviceId = useStore(s => s.settings.micDeviceId);
+	const vadActive = useStore(s => s.vadActive);
+	useEffect(() => { vadActiveRef.current = vadActive; }, [vadActive]);
 
 	const assignedWhisperServerId = React.useMemo(
 		() => thread?.meta ? parseWhisperThreadMeta(thread.meta).whisperServerId : null,
@@ -162,6 +163,10 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 		};
 	}, []);
 
+	const sendTextToPopover = useCallback((text: string) => {
+		callbacksRef.current.forEach(cb => cb(text));
+	}, []);
+
 	// Cleanup on unmount
 	useEffect(() => {
 		return () => {
@@ -181,16 +186,19 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if (e.key !== dictationPTTKey) return;
 			if (isKeyDownRef.current) return;
+			if (vadActiveRef.current) return;
 			isKeyDownRef.current = true;
 			e.preventDefault();
 			e.stopPropagation();
+			const src = useStore.getState().annotatorVisible ? 'popover' : 'composer';
 			setIsActive(true);
-			setSource(popoverVisible ? 'popover' : 'composer');
-			start(popoverVisible ? 'popover' : 'composer');
+			setSource(src);
+			start(src);
 		};
 
 		const handleKeyUp = (e: KeyboardEvent) => {
 			if (e.key !== dictationPTTKey) return;
+			if (vadActiveRef.current) return;
 			isKeyDownRef.current = false;
 			e.preventDefault();
 			e.stopPropagation();
@@ -203,7 +211,7 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 			document.removeEventListener('keydown', handleKeyDown, true);
 			document.removeEventListener('keyup', handleKeyUp, true);
 		};
-	}, [dictationPTTKey, popoverVisible, start, stop]);
+	}, [dictationPTTKey, start, stop]);
 
 	const value = React.useMemo<IDictationContext>(() => ({
 		isActive,
@@ -216,9 +224,8 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 		start,
 		stop,
 		subscribeTranscript,
-		popoverVisible,
-		setPopoverVisible,
-	}), [isActive, isTranscribing, source, waveformStream, start, stop, subscribeTranscript, popoverVisible]);
+		sendTextToPopover,
+	}), [isActive, isTranscribing, source, waveformStream, start, stop, subscribeTranscript, sendTextToPopover]);
 
 	return (
 		<DictationContext.Provider value={value}>

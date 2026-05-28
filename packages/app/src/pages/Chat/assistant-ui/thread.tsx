@@ -305,7 +305,8 @@ const ContextUsageBar: FC = () => {
 
 const Composer: FC = () => {
 	const { isValidServer } = useContext(ServerStatusContext);
-	const { waveformStream, setWaveformStream, subscribeTranscript, popoverVisible } = useDictation();
+	const { waveformStream, setWaveformStream, subscribeTranscript } = useDictation();
+	const annotatorVisible = useStore(s => s.annotatorVisible);
 	const ttsIsSpeaking = useStore(s => s.ttsIsSpeaking);
 	const annotations = useStore(s => s.annotations);
 	const clearAnnotations = useStore(s => s.clearAnnotations);
@@ -314,7 +315,7 @@ const Composer: FC = () => {
 
 	// Subscribe to dictation transcripts — only act when popover is not visible
 	useEffect(() => {
-		if (popoverVisible) return;
+		if (annotatorVisible) return;
 		const unsubscribe = subscribeTranscript((text: string) => {
 			const input = document.querySelector('.aui-composer-input') as HTMLTextAreaElement;
 			if (!input) return;
@@ -327,7 +328,7 @@ const Composer: FC = () => {
 			}, 0);
 		});
 		return unsubscribe;
-	}, [popoverVisible, subscribeTranscript, aui]);
+	}, [annotatorVisible, subscribeTranscript, aui]);
 
 	const handleSubmit = (e: React.FormEvent) => {
 		if (!isValidServer) {

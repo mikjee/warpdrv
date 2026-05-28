@@ -24,13 +24,14 @@ export const SelectionPopover = () => {
 	const isGenerating = useStore(s => s.ttsIsGenerating);
 	const addAnnotation = useStore(s => s.addAnnotation);
 
-	const { isActive: dictationActive, isTranscribing: dictationTranscribing, source: dictationSource, start: startDictation, stop: stopDictation, subscribeTranscript, popoverVisible: popoverIsVisible, setPopoverVisible, setIsActive, setSource } = useDictation();
+	const { isActive: dictationActive, isTranscribing: dictationTranscribing, source: dictationSource, start: startDictation, stop: stopDictation, subscribeTranscript, setIsActive, setSource } = useDictation();
+	const setAnnotatorVisible = useStore(s => s.setAnnotatorVisible);
 
 	useEffect(() => { visibleRef.current = visible; }, [visible]);
 	useEffect(() => { isMyTTSRef.current = isMyTTS; }, [isMyTTS]);
 	useEffect(() => { dirtyRef.current = inputText !== '' || isMyTTS; }, [inputText, isMyTTS]);
 	useEffect(() => { selectedTextRef.current = selectedText; }, [selectedText]);
-	useEffect(() => { setPopoverVisible(visible); }, [visible, setPopoverVisible]);
+	useEffect(() => { setAnnotatorVisible(visible); }, [visible, setAnnotatorVisible]);
 
 	// Register transcript callback while popover is visible
 	useEffect(() => {
@@ -70,7 +71,7 @@ export const SelectionPopover = () => {
 					if (role === 'user' || role === 'assistant') {
 						const rect = selection.getRangeAt(0).getBoundingClientRect();
 						if (rect.height > 0) {
-							stopTTS();
+							if (visibleRef.current) stopTTS();
 							setSelectedText(text);
 							setInputText('');
 							setPosition({ left: rect.left, top: rect.bottom + 6 });
