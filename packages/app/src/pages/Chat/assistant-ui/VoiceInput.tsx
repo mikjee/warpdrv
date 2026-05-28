@@ -7,6 +7,7 @@ import { EWhisperServerStatus } from '@warpcore/shared';
 import { createVADSession, float32ToWavBlob } from './VADManager';
 import { stopTTS } from './KokoroTTS';
 import { parseWhisperThreadMeta } from './WhisperServerSelector';
+import { useDictation } from './DictationContext';
 import type { AssistantClient } from '@assistant-ui/react';
 
 interface IVoiceInputProps {
@@ -35,6 +36,7 @@ async function transcribeAudioRaw(serverId: string, _server: any, audioBlob: Blo
 }
 
 export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamChange }: IVoiceInputProps) => {
+	const { setWaveformStream, isActive: dictationActive, source: dictationSource, isTranscribing: dictationTranscribing, start: startDictation, stop: stopDictation } = useDictation();
 	// PTT state (independent)
 	const [isPTTRecording, setIsPTTRecording] = useState(false);
 	const [isPTTTranscribing, setIsPTTTranscribing] = useState(false);
@@ -137,13 +139,14 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 	// VAD flow (independent)
 	// ============================================================
 	const handleVADToggle = useCallback(async () => {
+		if (dictationActive) return;
 		if (vadActive) {
 			stopTTS();
 			vadSessionRef.current?.destroy();
 			vadSessionRef.current = null;
 			vadWaveformStreamRef.current?.getTracks().forEach(t => t.stop());
 			vadWaveformStreamRef.current = null;
-			onStreamChange?.(null);
+			setWaveformStream(null);
 			setVadActive(false);
 			return;
 		}
@@ -161,7 +164,7 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 			}
 			const waveformStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
 			vadWaveformStreamRef.current = waveformStream;
-			onStreamChange?.(waveformStream);
+			setWaveformStream(waveformStream);
 		} catch (err) {
 			console.error('[VoiceInput] Failed to get waveform stream:', err);
 			return;
@@ -203,7 +206,7 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 			await session.start();
 			setVadActive(true);
 		}
-	}, [vadActive, isWhisperReady, activeWhisperServerId, activeWhisperServer, aui, micDeviceId, onStreamChange]);
+	}, [vadActive, isWhisperReady, activeWhisperServerId, activeWhisperServer, aui, micDeviceId, setWaveformStream]);
 
 	// Cleanup on unmount
 	useEffect(() => {
@@ -224,7 +227,38 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 
 	return (
 		<HStack gap="2">
-			{/* PTT Button - disabled when VAD active */}
+			{/* PTT Button — replaced by VAD dictation, hidden */}
+			<Box display="none">
+				<Box
+					as="button"
+					type="button"
+					display="flex"
+					alignItems="center"
+					justifyContent="center"
+					w="36px"
+					h="36px"
+					borderRadius="lg"
+					borderWidth="1px"
+					borderColor={isPTTRecording ? 'var(--wc-accent-red)' : 'var(--wc-border-default)'}
+					bg={isPTTRecording ? 'var(--wc-accent-red-bg-15)' : 'var(--wc-bg-surface)'}
+					cursor={vadActive ? 'not-allowed' : 'pointer'}
+					opacity={vadActive ? 0.4 : 1}
+					_hover={{ bg: vadActive ? undefined : 'var(--wc-bg-hover)' }}
+					onClick={isPTTRecording ? handlePTTEnd : handlePTTStart}
+					disabled={vadActive}
+					title={vadActive ? 'Dictation disabled during voice chat' : isPTTRecording ? 'Stop recording' : 'Start recording (dictation)'}
+				>
+					{isPTTRecording ? (
+						<Square size={16} color="var(--wc-accent-red)" fill="var(--wc-accent-red)" />
+					) : isPTTTranscribing ? (
+						<Loader2 size={16} color="var(--wc-accent-blue)" className="animate-spin" />
+					) : (
+						<Mic size={16} color="var(--wc-text-muted)" />
+					)}
+				</Box>
+			</Box>
+
+			{/* VAD Dictation Button */}
 			<Box
 				as="button"
 				type="button"
@@ -235,25 +269,23 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 				h="36px"
 				borderRadius="lg"
 				borderWidth="1px"
-				borderColor={isPTTRecording ? 'var(--wc-accent-red)' : 'var(--wc-border-default)'}
-				bg={isPTTRecording ? 'var(--wc-accent-red-bg-15)' : 'var(--wc-bg-surface)'}
-				cursor={vadActive ? 'not-allowed' : 'pointer'}
-				opacity={vadActive ? 0.4 : 1}
-				_hover={{ bg: vadActive ? undefined : 'var(--wc-bg-hover)' }}
-				onClick={isPTTRecording ? handlePTTEnd : handlePTTStart}
-				disabled={vadActive}
-				title={vadActive ? 'Dictation disabled during voice chat' : isPTTRecording ? 'Stop recording' : 'Start recording (dictation)'}
+				borderColor={dictationActive ? 'var(--wc-accent-red)' : 'var(--wc-border-default)'}
+				bg={dictationActive ? 'var(--wc-accent-red-bg-15)' : 'var(--wc-bg-surface)'}
+				cursor="pointer"
+				_hover={{ bg: 'var(--wc-bg-hover)' }}
+				onClick={() => dictationActive ? stopDictation() : startDictation('composer')}
+				title={dictationActive ? 'Stop dictation' : 'Start dictation'}
 			>
-				{isPTTRecording ? (
-					<Square size={16} color="var(--wc-accent-red)" fill="var(--wc-accent-red)" />
-				) : isPTTTranscribing ? (
+				{dictationTranscribing ? (
 					<Loader2 size={16} color="var(--wc-accent-blue)" className="animate-spin" />
+				) : dictationActive ? (
+					<Square size={16} color="var(--wc-accent-red)" fill="var(--wc-accent-red)" />
 				) : (
 					<Mic size={16} color="var(--wc-text-muted)" />
 				)}
 			</Box>
 
-			{/* VAD Toggle - disabled when PTT recording */}
+			{/* VAD Chat Toggle — disabled when dictation active */}
 			<Box
 				as="button"
 				type="button"
@@ -266,12 +298,12 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 				borderWidth="1px"
 				borderColor={vadActive ? 'var(--wc-accent-green)' : 'var(--wc-border-default)'}
 				bg={vadActive ? 'var(--wc-accent-green-bg-15)' : 'var(--wc-bg-surface)'}
-				cursor={isPTTRecording ? 'not-allowed' : 'pointer'}
-				opacity={isPTTRecording ? 0.4 : 1}
-				_hover={{ bg: isPTTRecording ? undefined : 'var(--wc-bg-hover)' }}
+				cursor={dictationActive ? 'not-allowed' : 'pointer'}
+				opacity={dictationActive ? 0.4 : 1}
+				_hover={{ bg: dictationActive ? undefined : 'var(--wc-bg-hover)' }}
 				onClick={handleVADToggle}
-				disabled={isPTTRecording}
-				title={isPTTRecording ? 'Voice chat disabled during dictation' : vadActive ? 'Voice chat active (click to stop)' : 'Toggle voice chat mode'}
+				disabled={dictationActive}
+				title={dictationActive ? 'Voice chat disabled during dictation' : vadActive ? 'Voice chat active (click to stop)' : 'Toggle voice chat mode'}
 			>
 				{isVADTranscribing ? (
 					<Loader2 size={16} color="var(--wc-accent-green)" className="animate-spin" />

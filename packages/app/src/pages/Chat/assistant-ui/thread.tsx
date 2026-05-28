@@ -47,7 +47,7 @@ import {
 	Trash2,
 	Volume2,
 } from "lucide-react";
-import React, { useCallback, useContext, useMemo, useState, type FC } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useState, type FC } from "react";
 import { BranchTokensContext, ChatConfigContext } from "@/pages/Chat/ChatPage";
 import { useStore } from "@/store";
 import { VoiceWaveform } from "./VoiceWaveform";
@@ -66,6 +66,7 @@ import { Elicitation } from './Elicitation';
 import { AnnotationsBox } from './AnnotationsBox';
 import { ConfirmDialog } from '@/components/dialogs/ConfirmDialog';
 import { SelectionPopover } from './SelectionPopover';
+import { DictationProvider, useDictation } from './DictationContext';
 
 const tokenEncoder = encodingForModel('gpt-4o');
 
@@ -134,63 +135,65 @@ export const Thread: FC<{
 	return (
 		<ServerStatusContext.Provider value={{ currentServerId, currentServerStatus, isValidServer, supportsMultiModal }}>
 			<DeleteMessageContext.Provider value={deleteMessageCtx}>
-				<ThreadPrimitive.Root
-				className="aui-root aui-thread-root @container flex h-full flex-col"
-				style={{
-					["--thread-max-width" as string]: "44rem",
-					["--composer-radius" as string]: "24px",
-					["--composer-padding" as string]: "10px",
-				}}
-			>
-				<ThreadPrimitive.Viewport
-					turnAnchor="bottom"
-					autoScroll={false}
-					className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-6 pt-4"
-					style={{ overflowAnchor: "none" }}
+				<DictationProvider>
+					<ThreadPrimitive.Root
+					className="aui-root aui-thread-root @container flex h-full flex-col"
+					style={{
+						["--thread-max-width" as string]: "44rem",
+						["--composer-radius" as string]: "24px",
+						["--composer-padding" as string]: "10px",
+					}}
 				>
-					{isLoading ? (
-						<div className="flex h-full items-center justify-center">
-							<div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-600 border-t-transparent" />
-						</div>
-					) : (
-						<>
-							<AuiIf condition={(s) => s.thread.isEmpty}>
-								<ThreadWelcome />
-							</AuiIf>
-
-                           <div style={{ maxWidth: chatFixedWidth ? "960px" : "100%", margin: "0 auto", width: "100%" }}>
-								<ThreadPrimitive.Messages>
-									{ThreadMsgFn}
-								</ThreadPrimitive.Messages>
+					<ThreadPrimitive.Viewport
+						turnAnchor="bottom"
+						autoScroll={false}
+						className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-6 pt-4"
+						style={{ overflowAnchor: "none" }}
+					>
+						{isLoading ? (
+							<div className="flex h-full items-center justify-center">
+								<div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-600 border-t-transparent" />
 							</div>
-							<SelectionPopover />
-						</>
-					)}
+						) : (
+							<>
+								<AuiIf condition={(s) => s.thread.isEmpty}>
+									<ThreadWelcome />
+								</AuiIf>
 
-					{!isLoading && (
-						<div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,var(--wc-bg-page)_35%,var(--wc-bg-page)_100%)]">
-							<ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer flex flex-col gap-4 overflow-visible" style={{ width: "44rem" }}>
-								<ThreadScrollToBottom />
-								<Elicitation />
-								<AnnotationsBox />
-								<Composer />
-							</ThreadPrimitive.ViewportFooter>
-						</div>
-					)}
-				</ThreadPrimitive.Viewport>
-				</ThreadPrimitive.Root>
+								<div style={{ maxWidth: chatFixedWidth ? "960px" : "100%", margin: "0 auto", width: "100%" }}>
+									<ThreadPrimitive.Messages>
+										{ThreadMsgFn}
+									</ThreadPrimitive.Messages>
+								</div>
+								<SelectionPopover />
+							</>
+						)}
 
-				{deletingMessageId && (
-					<ConfirmDialog
-						title="Delete Message"
-						message="Are you sure you want to delete this message?"
-						isOpen={true}
-						onConfirm={deleteMessageCtx.confirm}
-						onCancel={deleteMessageCtx.close}
-						isLoading={deletingLoading}
-						confirmLabel="Delete"
-					/>
-				)}
+						{!isLoading && (
+							<div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,var(--wc-bg-page)_35%,var(--wc-bg-page)_100%)]">
+								<ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer flex flex-col gap-4 overflow-visible" style={{ width: "44rem" }}>
+									<ThreadScrollToBottom />
+									<Elicitation />
+									<AnnotationsBox />
+									<Composer />
+								</ThreadPrimitive.ViewportFooter>
+							</div>
+						)}
+					</ThreadPrimitive.Viewport>
+					</ThreadPrimitive.Root>
+
+					{deletingMessageId && (
+						<ConfirmDialog
+							title="Delete Message"
+							message="Are you sure you want to delete this message?"
+							isOpen={true}
+							onConfirm={deleteMessageCtx.confirm}
+							onCancel={deleteMessageCtx.close}
+							isLoading={deletingLoading}
+							confirmLabel="Delete"
+						/>
+					)}
+				</DictationProvider>
 			</DeleteMessageContext.Provider>
 		</ServerStatusContext.Provider>
 	);
@@ -302,12 +305,29 @@ const ContextUsageBar: FC = () => {
 
 const Composer: FC = () => {
 	const { isValidServer } = useContext(ServerStatusContext);
-	const [waveformStream, setWaveformStream] = useState<MediaStream | null>(null);
+	const { waveformStream, setWaveformStream, subscribeTranscript, popoverVisible } = useDictation();
 	const ttsIsSpeaking = useStore(s => s.ttsIsSpeaking);
 	const annotations = useStore(s => s.annotations);
 	const clearAnnotations = useStore(s => s.clearAnnotations);
 	const aui = useAui();
 	const composerText = useAuiState(s => s.composer.text);
+
+	// Subscribe to dictation transcripts — only act when popover is not visible
+	useEffect(() => {
+		if (popoverVisible) return;
+		const unsubscribe = subscribeTranscript((text: string) => {
+			const input = document.querySelector('.aui-composer-input') as HTMLTextAreaElement;
+			if (!input) return;
+			const cursorPos = input.selectionStart ?? input.value.length;
+			const newText = input.value.slice(0, cursorPos) + (input.value.slice(0, cursorPos).endsWith(' ') ? '' : ' ') + text + input.value.slice(cursorPos);
+			aui.composer().setText(newText);
+			setTimeout(() => {
+				input.setSelectionRange(cursorPos + (input.value.slice(0, cursorPos).endsWith(' ') ? 0 : 1) + text.length, cursorPos + (input.value.slice(0, cursorPos).endsWith(' ') ? 0 : 1) + text.length);
+				input.focus();
+			}, 0);
+		});
+		return unsubscribe;
+	}, [popoverVisible, subscribeTranscript, aui]);
 
 	const handleSubmit = (e: React.FormEvent) => {
 		if (!isValidServer) {

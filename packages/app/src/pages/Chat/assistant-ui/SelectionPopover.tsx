@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Check, Loader2, Volume2 } from 'lucide-react';
+import { Check, Loader2, Mic, Volume2 } from 'lucide-react';
 import { FaStop } from 'react-icons/fa';
 import { Box } from '@chakra-ui/react';
 import TextareaAutosize from 'react-textarea-autosize';
 import { useStore } from '@/store';
 import { setKokoroCurrentRequestId, startStream, stopTTS } from './KokoroTTS';
+import { useDictation } from './DictationContext';
 
 export const SelectionPopover = () => {
 	const ref = useRef<HTMLDivElement>(null);
@@ -23,10 +24,31 @@ export const SelectionPopover = () => {
 	const isGenerating = useStore(s => s.ttsIsGenerating);
 	const addAnnotation = useStore(s => s.addAnnotation);
 
+	const { isActive: dictationActive, isTranscribing: dictationTranscribing, source: dictationSource, start: startDictation, stop: stopDictation, subscribeTranscript, popoverVisible: popoverIsVisible, setPopoverVisible } = useDictation();
+
 	useEffect(() => { visibleRef.current = visible; }, [visible]);
 	useEffect(() => { isMyTTSRef.current = isMyTTS; }, [isMyTTS]);
 	useEffect(() => { dirtyRef.current = inputText !== '' || isMyTTS; }, [inputText, isMyTTS]);
 	useEffect(() => { selectedTextRef.current = selectedText; }, [selectedText]);
+	useEffect(() => { setPopoverVisible(visible); }, [visible, setPopoverVisible]);
+
+	// Register transcript callback while popover is visible
+	useEffect(() => {
+		if (!visible) return;
+		const unsubscribe = subscribeTranscript((text: string) => {
+			setInputText(prev => prev ? prev + ' ' + text : text);
+		});
+		return unsubscribe;
+	}, [visible, subscribeTranscript]);
+
+	// Stop dictation when popover closes if source was popover
+	const prevVisibleRef = useRef(false);
+	useEffect(() => {
+		if (prevVisibleRef.current && !visible && dictationSource === 'popover' && dictationActive) {
+			stopDictation();
+		}
+		prevVisibleRef.current = visible;
+	}, [visible, dictationSource, dictationActive, stopDictation]);
 
 	useEffect(() => {
 		const handleMouseUp = (e: MouseEvent) => {
@@ -76,8 +98,15 @@ export const SelectionPopover = () => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if (e.key === 'Escape') {
 				if (isMyTTSRef.current) stopTTS();
+				if (dictationSource === 'popover' && dictationActive) {
+					stopDictation();
+				}
 				setVisible(false);
 			}
+		};
+
+		const handleHidePopover = () => {
+			setVisible(false);
 		};
 
 		document.addEventListener('mouseup', handleMouseUp);
@@ -96,8 +125,9 @@ export const SelectionPopover = () => {
 		if (!inputText.trim()) { setVisible(false); return; }
 		addAnnotation(selectedText, inputText);
 		setInputText('');
+		if (dictationSource === 'popover') stopDictation();
 		setVisible(false);
-	}, [inputText, selectedText, addAnnotation]);
+	}, [inputText, selectedText, addAnnotation, dictationSource, stopDictation]);
 
 	const handleTTS = useCallback(async () => {
 		if (isMyTTS) { stopTTS(); return; }
@@ -149,6 +179,26 @@ export const SelectionPopover = () => {
 						? <FaStop style={{ fontSize: 14, color: 'var(--wc-accent-green)', animation: 'pulse 1.5s ease infinite' }} />
 						: isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Volume2 size={14} />)
 					: <Volume2 size={14} />}
+			</Box>
+			<Box
+				as="button"
+				w="28px" h="28px" display="flex" alignItems="center" justifyContent="center"
+				border="none" bg="transparent" borderRadius="6px" cursor="pointer"
+				color="var(--wc-text-secondary)" flexShrink={0}
+				_hover={{ bg: 'var(--wc-bg-selected)', color: 'var(--wc-text-heading)' }}
+				onClick={() => {
+					if (dictationActive && dictationSource === 'popover') stopDictation();
+					else if (!dictationActive) startDictation('popover');
+				}}
+				title={dictationActive && dictationSource === 'popover' ? 'Stop dictation' : dictationActive ? 'Dictation active (composer)' : 'Dictate…'}
+			>
+				{dictationTranscribing
+					? <Loader2 size={14} className="animate-spin" color="var(--wc-accent-blue)" />
+					: dictationActive && dictationSource === 'popover'
+						? <Mic size={14} color="var(--wc-accent-red)" />
+						: dictationActive
+							? <Mic size={14} color="var(--wc-accent-green)" />
+							: <Mic size={14} />}
 			</Box>
 			<TextareaAutosize
 				value={inputText}
