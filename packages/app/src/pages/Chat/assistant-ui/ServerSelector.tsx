@@ -77,11 +77,11 @@ export const ThreadServerSelector = React.memo(({
 		return {
 			color: isPrompt ? 'var(--wc-accent-yellow)' : 'var(--wc-accent-blue)',
 			bg: isPrompt
-				? 'color-mix(in srgb, var(--wc-accent-yellow) 10%, transparent)'
-				: 'color-mix(in srgb, var(--wc-accent-blue) 10%, transparent)',
-			border: isPrompt
 				? 'color-mix(in srgb, var(--wc-accent-yellow) 20%, transparent)'
 				: 'color-mix(in srgb, var(--wc-accent-blue) 20%, transparent)',
+			border: isPrompt
+				? 'color-mix(in srgb, var(--wc-accent-yellow) 30%, transparent)'
+				: 'color-mix(in srgb, var(--wc-accent-blue) 30%, transparent)',
 			progress: isPrompt ? (active.prefillProgress ?? 0) : 0,
 		};
 	}, [displayServer, serverSlots]);
@@ -136,7 +136,7 @@ export const ThreadServerSelector = React.memo(({
 						bottom="0"
 						height="2px"
 						bg="var(--wc-bg-interactive)"
-						opacity="0.3"
+						opacity="0.5"
 					>
 						<Box
 							height="100%"

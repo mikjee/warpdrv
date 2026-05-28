@@ -1,27 +1,23 @@
 import { Box, Text, HStack, Slider } from '@chakra-ui/react';
-import { Mic, ChevronDown } from 'lucide-react';
+import { Mic, ChevronDown, MicOff } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStore } from '@/store';
 import { EWhisperServerStatus, TWhisperServerId } from '@warpcore/shared';
-import { updateThread, updateSettings } from '@/api/services';
+import { updateSettings } from '@/api/services';
 
-export function parseWhisperThreadMeta(meta: string): { whisperServerId: string | null } {
-	try {
-		const parsed = JSON.parse(meta);
-		return { whisperServerId: parsed.whisperServerId ?? null };
-	} catch {
-		return { whisperServerId: null };
-	}
-}
+// COMMENTED OUT: per-thread whisper server selection no longer used
+// export function parseWhisperThreadMeta(meta: string): { whisperServerId: string | null } {
+// 	try {
+// 		const parsed = JSON.parse(meta);
+// 		return { whisperServerId: parsed.whisperServerId ?? null };
+// 	} catch {
+// 		return { whisperServerId: null };
+// 	}
+// }
 
-export const ThreadWhisperServerSelector = React.memo(({
-	threadId,
-}: {
-	threadId: string | null;
-}) => {
+export const ThreadWhisperServerSelector = React.memo(() => {
 	const [open, setOpen] = useState(false);
 
-	const thread = useStore(s => threadId ? s.threads[threadId] : undefined);
 	const whisperServersMap = useStore(s => s.whisperServers);
 	const whisperServers = useMemo(() => Object.values(whisperServersMap).sort((a, b) => {
 		const isARunning = a.status === EWhisperServerStatus.RUNNING;
@@ -31,21 +27,18 @@ export const ThreadWhisperServerSelector = React.memo(({
 		return 0;
 	}), [whisperServersMap]);
 
-	const tempWhisperServerId = useStore(s => s.tempThreadWhisperServerId);
-	const setTempWhisperServerId = useStore(s => s.setTempThreadWhisperServerId);
+	const selectedWhisperServerId = useStore(s => s.selectedWhisperServerId);
+	const setSelectedWhisperServerId = useStore(s => s.setSelectedWhisperServerId);
 
-	const assignedWhisperServerId = useMemo(() =>
-		thread?.meta ? parseWhisperThreadMeta(thread.meta).whisperServerId : null,
-		[thread]
-	);
+	// COMMENTED OUT: per-thread whisper server reading no longer used
+	// const thread = useStore(s => threadId ? s.threads[threadId] : undefined);
+	// const assignedWhisperServerId = useMemo(() =>
+	// 	thread?.meta ? parseWhisperThreadMeta(thread.meta).whisperServerId : null,
+	// 	[thread]
+	// );
 
-	const whisperServerId = useMemo(() => assignedWhisperServerId ?? tempWhisperServerId, [
-		tempWhisperServerId,
-		assignedWhisperServerId,
-	]);
-
-	const displayServer = useMemo(() => whisperServerId ? whisperServersMap[whisperServerId] : null, [
-		whisperServerId,
+	const displayServer = useMemo(() => selectedWhisperServerId ? whisperServersMap[selectedWhisperServerId] : null, [
+		selectedWhisperServerId,
 		whisperServersMap
 	]);
 
@@ -54,9 +47,10 @@ export const ThreadWhisperServerSelector = React.memo(({
 
 	const handleSelect = useCallback(async (serverId: string) => {
 		setOpen(false);
-		setTempWhisperServerId(serverId);
-		if (threadId) await updateThread(threadId, { whisperServerId: serverId });
-	}, [threadId, setTempWhisperServerId]);
+		setSelectedWhisperServerId(serverId);
+		// COMMENTED OUT: per-thread whisper server writing no longer used
+		// if (threadId) await updateThread(threadId, { whisperServerId: serverId });
+	}, [setSelectedWhisperServerId]);
 
 	return (
 		<Box position="relative">
@@ -71,25 +65,14 @@ export const ThreadWhisperServerSelector = React.memo(({
 				onClick={() => setOpen(!open)}
 				fontSize="12px"
 				color="var(--wc-text-primary)"
-				minW="150px"
-					maxW="150px"
+				minW="55px"
+				maxW="55px"
 			>
-				<Mic size={14} color={displayServer?.status === EWhisperServerStatus.RUNNING ? 'var(--wc-accent-green)' : 'var(--wc-text-muted)'} />
-				{displayServer ? (
-					<>
-						<Text flex="1" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" fontSize="12px">
-							{displayServer.serverName}
-						</Text>
-						<ChevronDown size={12} style={{ opacity: 0.4 }} />
-					</>
-				) : (
-					<>
-						<Text flex="1" color="var(--wc-text-faint)" fontSize="12px">
-							STT Server
-						</Text>
-						<ChevronDown size={12} style={{ opacity: 0.4 }} />
-					</>
-				)}
+				{displayServer?.status === EWhisperServerStatus.RUNNING ? 
+					<Mic size={14} color={'var(--wc-accent-green)'} /> :
+					<MicOff size={14} color={'var(--wc-text-muted)'} />
+				}
+				<ChevronDown size={12} style={{ opacity: 0.4 }} />
 			</HStack>
 			{open && (
 				<Box
@@ -143,7 +126,7 @@ export const ThreadWhisperServerSelector = React.memo(({
 							px="3"
 							py="2"
 							cursor="pointer"
-							bg={assignedWhisperServerId === s.id ? 'var(--wc-bg-selected)' : 'transparent'}
+							bg={selectedWhisperServerId === s.id ? 'var(--wc-bg-selected)' : 'transparent'}
 							_hover={{ bg: 'var(--wc-bg-card)' }}
 							onClick={() => handleSelect(s.id)}
 							fontSize="12px"

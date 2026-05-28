@@ -637,7 +637,7 @@ const ComposerAction: FC<{ onStreamChange?: (stream: MediaStream | null) => void
 						input.focus();
 					}, 0);
 				}} aui={aui} onStreamChange={onStreamChange} />
-				<ThreadWhisperServerSelector threadId={currentThreadId} />
+				<ThreadWhisperServerSelector />
 				<ThreadServerSelector threadId={currentThreadId} />
 				<AuiIf condition={(s) => !s.thread.isRunning}>
 					<TooltipIconButton

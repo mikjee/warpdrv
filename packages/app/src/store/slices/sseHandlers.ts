@@ -1,6 +1,6 @@
 import type { AppState, ImmerSet, ImmerGet } from '../types';
 import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, IRecipesInitPayload, IRunsStepStartedPayload, IRunsStepOutputPayload, IRunsStepFinishedPayload, IRunsFinishedPayload, ERecipeStreamKind, ISseSlotStatePayload, ISseServerSlotsSnapshotPayload, IServerSlotsState, ISseCheckpointPayload, ISseCheckpointDeletedPayload, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings, TWhisperBackendId, IWhisperBackend, TWhisperServerId, IWhisperServer, IWhisperModel } from '@warpcore/shared';
-import { ERecipeStepStatus, EServerStatus } from '@warpcore/shared';
+import { ERecipeStepStatus, EServerStatus, EWhisperServerStatus } from '@warpcore/shared';
 
 interface SSEHandlersSlice {
 	SSEHandlers: Record<string, (data: any) => void>;
@@ -127,6 +127,20 @@ export const sseHandlersSlice = (
 		'whisperServers:update': (data: Record<TWhisperServerId, IWhisperServer>) => setState((state) => {
 			for (const [id, server] of Object.entries(data)) {
 				state.whisperServers[id] = server;
+			}
+			// Auto-select when a server becomes running and no server is selected or selected one isn't running
+			for (const [id, server] of Object.entries(data)) {
+				if (server.status === EWhisperServerStatus.RUNNING) {
+					const currentId = state.selectedWhisperServerId;
+					if (!currentId) {
+						state.selectedWhisperServerId = id;
+					} else {
+						const currentServer = state.whisperServers[currentId];
+						if (!currentServer || currentServer.status !== EWhisperServerStatus.RUNNING) {
+							state.selectedWhisperServerId = id;
+						}
+					}
+				}
 			}
 		}),
 		'whisperServers:delete': (data: Record<TWhisperServerId, null>) => setState((state) => {

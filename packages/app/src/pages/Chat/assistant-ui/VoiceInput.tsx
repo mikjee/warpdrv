@@ -6,7 +6,8 @@ import { useStore } from '@/store';
 import { EWhisperServerStatus } from '@warpcore/shared';
 import { createVADSession, float32ToWavBlob } from './VADManager';
 import { stopTTS } from './KokoroTTS';
-import { parseWhisperThreadMeta } from './WhisperServerSelector';
+// COMMENTED OUT: per-thread whisper server selection no longer used
+// import { parseWhisperThreadMeta } from './WhisperServerSelector';
 import { useDictation } from './DictationContext';
 import type { AssistantClient } from '@assistant-ui/react';
 
@@ -52,18 +53,22 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 	const vadWaveformStreamRef = useRef<MediaStream | null>(null);
 
 	const whisperServers = useStore(s => s.whisperServers);
-	const tempWhisperServerId = useStore(s => s.tempThreadWhisperServerId);
-	const thread = useStore(s => threadId ? s.threads[threadId] : null);
+	const selectedWhisperServerId = useStore(s => s.selectedWhisperServerId);
 	const micDeviceId = useStore(s => s.settings.micDeviceId);
 
-	const assignedWhisperServerId = useMemo(
-		() => thread?.meta ? parseWhisperThreadMeta(thread.meta).whisperServerId : null,
-		[thread]
-	);
-	const activeWhisperServerId = useMemo(
-		() => assignedWhisperServerId ?? tempWhisperServerId,
-		[assignedWhisperServerId, tempWhisperServerId]
-	);
+	// COMMENTED OUT: per-thread whisper server selection no longer used
+	// const tempWhisperServerId = useStore(s => s.tempThreadWhisperServerId);
+	// const thread = useStore(s => threadId ? s.threads[threadId] : null);
+	// const assignedWhisperServerId = useMemo(
+	// 	() => thread?.meta ? parseWhisperThreadMeta(thread.meta).whisperServerId : null,
+	// 	[thread]
+	// );
+	// const activeWhisperServerId = useMemo(
+	// 	() => assignedWhisperServerId ?? tempWhisperServerId,
+	// 	[assignedWhisperServerId, tempWhisperServerId]
+	// );
+
+	const activeWhisperServerId = selectedWhisperServerId;
 	const activeWhisperServer = useMemo(
 		() => activeWhisperServerId ? whisperServers[activeWhisperServerId] : null,
 		[activeWhisperServerId, whisperServers]

@@ -74,8 +74,8 @@ export interface AppState {
 	whisperModels: Record<string, IWhisperModel>;
 
 	// Whisper chat state
-	tempThreadWhisperServerId: string | null;
-	setTempThreadWhisperServerId: (id: string | null) => void;
+	selectedWhisperServerId: string | null;
+	setSelectedWhisperServerId: (id: string | null) => void;
 
 	// Models
 	models: Record<TModelId, IModel>;

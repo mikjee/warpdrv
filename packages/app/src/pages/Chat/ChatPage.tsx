@@ -29,7 +29,8 @@ import { extractTextFromFile } from '@/hooks/useFileReader';
 import { useToast } from '../../components/ToastProvider';
 import { updateSettings } from '../../api/services';
 import { parseThreadMeta } from '@/pages/Chat/assistant-ui/ServerSelector';
-import { parseWhisperThreadMeta } from '@/pages/Chat/assistant-ui/WhisperServerSelector';
+// COMMENTED OUT: per-thread whisper server selection no longer used
+// import { parseWhisperThreadMeta } from '@/pages/Chat/assistant-ui/WhisperServerSelector';
 import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff } from 'react-icons/vsc';
 import { RiFontSize } from 'react-icons/ri';
 import mermaid from 'mermaid';
@@ -137,26 +138,25 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 
 	// Get current thread state from store
 	const tempThreadServerId = useStore(s => s.tempThreadServerId);
-	const tempThreadWhisperServerId = useStore(s => s.tempThreadWhisperServerId);
+	const selectedWhisperServerId = useStore(s => s.selectedWhisperServerId);
 	const setCurrentThreadId = useStore(s => s.setCurrentThreadId);
 	const thread = useStore(s => s.currentThreadId ? s.threads[s.currentThreadId] : undefined);
-	const threadServerId = useMemo(() => 
-		thread?.meta ? parseThreadMeta(thread.meta).serverId : null, 
+	const threadServerId = useMemo(() =>
+		thread?.meta ? parseThreadMeta(thread.meta).serverId : null,
 		[thread]
 	);
-	const threadWhisperServerId = useMemo(() => 
-		thread?.meta ? parseWhisperThreadMeta(thread.meta).whisperServerId : null, 
-		[thread]
-	);
+
+	// COMMENTED OUT: per-thread whisper server selection no longer used
+	// const threadWhisperServerId = useMemo(() =>
+	// 	thread?.meta ? parseWhisperThreadMeta(thread.meta).whisperServerId : null,
+	// 	[thread]
+	// );
 
 	const currentServerId = useMemo(() => threadServerId ?? tempThreadServerId, [
 		threadServerId,
 		tempThreadServerId,
 	]);
-	const currentWhisperServerId = useMemo(() => threadWhisperServerId ?? tempThreadWhisperServerId, [
-		threadWhisperServerId,
-		tempThreadWhisperServerId,
-	]);
+	const currentWhisperServerId = selectedWhisperServerId;
 
 	// Check if current server is valid (selected AND running)
 	const serversMap = useStore(s => s.servers);

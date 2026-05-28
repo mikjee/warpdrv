@@ -1,7 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useStore } from '@/store';
 import { transcribeAudio, float32ToWavBlob } from './WhisperTranscribe';
-import { parseWhisperThreadMeta } from './WhisperServerSelector';
+// COMMENTED OUT: per-thread whisper server selection no longer used
+// import { parseWhisperThreadMeta } from './WhisperServerSelector';
 import { EWhisperServerStatus } from '@warpcore/shared';
 
 type DictationSource = 'composer' | 'popover' | null;
@@ -47,24 +48,27 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 	const vadActiveRef = useRef(false);
 
 	const whisperServers = useStore(s => s.whisperServers);
-	const currentThreadId = useStore(s => s.currentThreadId);
-	const tempWhisperServerId = useStore(s => s.tempThreadWhisperServerId);
-	const thread = useStore(s => currentThreadId ? s.threads[currentThreadId] : null);
+	const selectedWhisperServerId = useStore(s => s.selectedWhisperServerId);
 	const micDeviceId = useStore(s => s.settings.micDeviceId);
 	const vadActive = useStore(s => s.vadActive);
 	useEffect(() => { vadActiveRef.current = vadActive; }, [vadActive]);
 
-	const assignedWhisperServerId = React.useMemo(
-		() => thread?.meta ? parseWhisperThreadMeta(thread.meta).whisperServerId : null,
-		[thread]
-	);
-	const activeWhisperServerId = React.useMemo(
-		() => assignedWhisperServerId ?? tempWhisperServerId,
-		[assignedWhisperServerId, tempWhisperServerId]
-	);
+	// COMMENTED OUT: per-thread whisper server selection no longer used
+	// const currentThreadId = useStore(s => s.currentThreadId);
+	// const tempWhisperServerId = useStore(s => s.tempThreadWhisperServerId);
+	// const thread = useStore(s => currentThreadId ? s.threads[currentThreadId] : null);
+	// const assignedWhisperServerId = React.useMemo(
+	// 	() => thread?.meta ? parseWhisperThreadMeta(thread.meta).whisperServerId : null,
+	// 	[thread]
+	// );
+	// const activeWhisperServerId = React.useMemo(
+	// 	() => assignedWhisperServerId ?? tempWhisperServerId,
+	// 	[assignedWhisperServerId, tempWhisperServerId]
+	// );
+
 	const activeWhisperServer = React.useMemo(
-		() => activeWhisperServerId ? whisperServers[activeWhisperServerId] : null,
-		[activeWhisperServerId, whisperServers]
+		() => selectedWhisperServerId ? whisperServers[selectedWhisperServerId] : null,
+		[selectedWhisperServerId, whisperServers]
 	);
 
 	const stop = useCallback(() => {
@@ -82,9 +86,9 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 	}, []);
 
 	const start = useCallback(async (src: 'composer' | 'popover') => {
-		console.log('[Dictation] start called, isActive:', isActive, 'serverId:', activeWhisperServerId, 'serverStatus:', activeWhisperServer?.status);
+		console.log('[Dictation] start called, isActive:', isActive, 'serverId:', selectedWhisperServerId, 'serverStatus:', activeWhisperServer?.status);
 		if (isActiveRef.current) { console.log('[Dictation] start skipped: already active'); return; }
-		if (!activeWhisperServerId || !activeWhisperServer) { console.log('[Dictation] start skipped: no server'); return; }
+		if (!selectedWhisperServerId || !activeWhisperServer) { console.log('[Dictation] start skipped: no server'); return; }
 		if (activeWhisperServer.status !== EWhisperServerStatus.RUNNING) { console.log('[Dictation] start skipped: server not running'); return; }
 
 		isStartingRef.current = true;
@@ -111,7 +115,7 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 					setIsTranscribing(true);
 					try {
 						const wavBlob = float32ToWavBlob(audio);
-						const text = await transcribeAudio(activeWhisperServerId, wavBlob);
+						const text = await transcribeAudio(selectedWhisperServerId, wavBlob);
 						if (text) {
 							callbacksRef.current.forEach(cb => cb(text));
 						}
@@ -154,7 +158,7 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 		} finally {
 			isStartingRef.current = false;
 		}
-	}, [activeWhisperServerId, activeWhisperServer, micDeviceId, stop]);
+	}, [selectedWhisperServerId, activeWhisperServer, micDeviceId, stop]);
 
 	const subscribeTranscript = useCallback((fn: (text: string) => void) => {
 		callbacksRef.current.add(fn);
