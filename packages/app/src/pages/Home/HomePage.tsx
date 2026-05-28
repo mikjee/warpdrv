@@ -17,6 +17,7 @@ import { DownloadsTile } from './Tiles/DownloadsTile';
 import { ProxyTile } from './Tiles/ProxyTile';
 import { McpTile } from './Tiles/McpTile';
 import { AppServerTile } from './Tiles/AppServerTile';
+import { KokoroTile } from './Tiles/KokoroTile';
 import { UpdateBanner } from '@/components/UpdateBanner';
 
 export const HomePage = React.memo(() => {
@@ -109,11 +110,12 @@ color="var(--wc-text-muted)"
 					>
 						<ServersTile />
 						<ProxyTile />
+						<KokoroTile />
 						<AppServerTile />
+						<McpTile />
 						<BackendsTile />
 						<ModelsTile />
 						<DownloadsTile />
-						<McpTile />
 					</Box>
 
 
