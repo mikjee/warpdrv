@@ -37,6 +37,7 @@ import { McpPage } from '../pages/MCP/McpPage';
 import { RecipesPage } from '../pages/Recipes/RecipesPage';
 import { CheckpointsPage } from '../pages/Checkpoints/CheckpointsPage';
 import { useTauriWindow } from '@/hooks/useTauriWindow';
+import { ResizeHandles } from './ResizeHandles';
 
 // Page lifecycle config: closeOnSwitch=false means page persists (hidden but not unmounted)
 type TPageConfig = {
@@ -318,7 +319,8 @@ export const Shell = React.memo(() => {
 	installHook();
 
 	return (
-		<Flex direction="column" h="100%" overflow="hidden">
+		<Flex direction="column" h="100%" overflow="hidden" position="relative">
+			<ResizeHandles />
 			<Flex flex="1" overflow="hidden">
 				{/* Sidebar */}
 				<Flex

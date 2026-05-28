@@ -119,6 +119,12 @@ export const useTauriWindow = () => {
 		getCurrentWindow().hide();
 	}, []);
 
+	const handleResizeStart = useCallback(async (direction: string) => {
+		if (!isTauri) return;
+		const { getCurrentWindow } = await import('@tauri-apps/api/window');
+		getCurrentWindow().startResizeDragging(direction).catch((err) => console.error(err));
+	}, []);
+
 	// ---
 
 	return {
@@ -132,6 +138,7 @@ export const useTauriWindow = () => {
 		handleMinimize,
 		handleMaximize,
 		handleClose,
+		handleResizeStart,
 	};
 
 }
