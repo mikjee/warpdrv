@@ -336,6 +336,7 @@ export interface ISettings {
 	chatFontSize?: number;
 	chatFontFamily?: string;
 	chatFixedWidth?: boolean;
+	dictationPTTKey?: string;
 }
 export const DEFAULT_SETTINGS: ISettings = {
 	modelRoots: [],
@@ -374,6 +375,7 @@ export const DEFAULT_SETTINGS: ISettings = {
 	chatFontSize: 14,
 	chatFontFamily: '',
 	chatFixedWidth: false,
+	dictationPTTKey: 'Insert',
 };
 // ============================================================
 // VRAM Calculator

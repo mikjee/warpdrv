@@ -36,7 +36,7 @@ async function transcribeAudioRaw(serverId: string, _server: any, audioBlob: Blo
 }
 
 export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamChange }: IVoiceInputProps) => {
-	const { setWaveformStream, isActive: dictationActive, source: dictationSource, isTranscribing: dictationTranscribing, start: startDictation, stop: stopDictation } = useDictation();
+	const { setWaveformStream, isActive: dictationActive, source: dictationSource, isTranscribing: dictationTranscribing, start: startDictation, stop: stopDictation, setIsActive, setSource } = useDictation();
 	// PTT state (independent)
 	const [isPTTRecording, setIsPTTRecording] = useState(false);
 	const [isPTTTranscribing, setIsPTTTranscribing] = useState(false);
@@ -69,6 +69,16 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 		[activeWhisperServerId, whisperServers]
 	);
 	const isWhisperReady = activeWhisperServer?.status === EWhisperServerStatus.RUNNING;
+
+	const handleDictationToggle = useCallback(() => {
+		if (dictationActive) {
+			stopDictation();
+		} else {
+			setIsActive(true);
+			setSource('composer');
+			startDictation('composer');
+		}
+	}, [dictationActive, stopDictation, setIsActive, setSource, startDictation]);
 
 	// ============================================================
 	// PTT flow (independent)
@@ -273,8 +283,9 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 				bg={dictationActive ? 'var(--wc-accent-red-bg-15)' : 'var(--wc-bg-surface)'}
 				cursor="pointer"
 				_hover={{ bg: 'var(--wc-bg-hover)' }}
-				onClick={() => dictationActive ? stopDictation() : startDictation('composer')}
+				onClick={handleDictationToggle}
 				title={dictationActive ? 'Stop dictation' : 'Start dictation'}
+				data-dictation-btn="composer"
 			>
 				{dictationTranscribing ? (
 					<Loader2 size={16} color="var(--wc-accent-blue)" className="animate-spin" />

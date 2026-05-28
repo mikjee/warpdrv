@@ -17,6 +17,8 @@ interface IDictationContext {
 	source: DictationSource;
 	waveformStream: MediaStream | null;
 	setWaveformStream: (stream: MediaStream | null) => void;
+	setIsActive: (v: boolean) => void;
+	setSource: (s: DictationSource) => void;
 	start: (source: 'composer' | 'popover') => void;
 	stop: () => void;
 	subscribeTranscript: (fn: (text: string) => void) => () => void;
@@ -42,6 +44,8 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 	const vadSessionRef = useRef<IVADSession | null>(null);
 	const audioStreamRef = useRef<MediaStream | null>(null);
 	const callbacksRef = useRef<Set<(text: string) => void>>(new Set());
+	const isStartingRef = useRef(false);
+	const shouldStopRef = useRef(false);
 
 	const whisperServers = useStore(s => s.whisperServers);
 	const currentThreadId = useStore(s => s.currentThreadId);
@@ -63,19 +67,27 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 	);
 
 	const stop = useCallback(() => {
+		setIsActive(false);
+		setSource(null);
+		if (isStartingRef.current) {
+			shouldStopRef.current = true;
+			return;
+		}
 		vadSessionRef.current?.destroy();
 		vadSessionRef.current = null;
 		audioStreamRef.current?.getTracks().forEach(t => t.stop());
 		audioStreamRef.current = null;
 		setWaveformStream(null);
-		setIsActive(false);
-		setSource(null);
 	}, []);
 
 	const start = useCallback(async (src: 'composer' | 'popover') => {
-		if (isActive) return;
-		if (!activeWhisperServerId || !activeWhisperServer) return;
-		if (activeWhisperServer.status !== EWhisperServerStatus.RUNNING) return;
+		console.log('[Dictation] start called, isActive:', isActive, 'serverId:', activeWhisperServerId, 'serverStatus:', activeWhisperServer?.status);
+		if (isActiveRef.current) { console.log('[Dictation] start skipped: already active'); return; }
+		if (!activeWhisperServerId || !activeWhisperServer) { console.log('[Dictation] start skipped: no server'); return; }
+		if (activeWhisperServer.status !== EWhisperServerStatus.RUNNING) { console.log('[Dictation] start skipped: server not running'); return; }
+
+		isStartingRef.current = true;
+		shouldStopRef.current = false;
 
 		try {
 			const audioConstraints: MediaTrackConstraints = {
@@ -87,14 +99,13 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 				(audioConstraints as any).deviceId = { exact: micDeviceId };
 			}
 			const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+			if (shouldStopRef.current) { stream.getTracks().forEach(t => t.stop()); return; }
 			audioStreamRef.current = stream;
 			setWaveformStream(stream);
 
 			const { MicVAD } = await import('@ricky0123/vad-web');
 			const vad = await MicVAD.new({
-				onSpeechStart: () => {
-					// No-op for dictation mode
-				},
+				onSpeechStart: () => {},
 				onSpeechEnd: async (audio: Float32Array) => {
 					setIsTranscribing(true);
 					try {
@@ -119,18 +130,30 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 				startOnLoad: false,
 				submitUserSpeechOnPause: true,
 			});
+			if (shouldStopRef.current) { stream.getTracks().forEach(t => t.stop()); audioStreamRef.current = null; setWaveformStream(null); return; }
 
 			vadSessionRef.current = {
 				start: async () => vad.start(),
 				destroy: () => vad.destroy(),
 			};
 			await vad.start();
-			setIsActive(true);
-			setSource(src);
+			if (shouldStopRef.current) {
+				vadSessionRef.current?.destroy();
+				vadSessionRef.current = null;
+				stream.getTracks().forEach(t => t.stop());
+				audioStreamRef.current = null;
+				setWaveformStream(null);
+				setIsActive(false);
+				setSource(null);
+				return;
+			}
+			console.log('[Dictation] start succeeded');
 		} catch (err) {
-			console.error('[Dictation] Failed to start:', err);
+			console.error('[Dictation] start error:', err);
+		} finally {
+			isStartingRef.current = false;
 		}
-	}, [isActive, activeWhisperServerId, activeWhisperServer, micDeviceId, stop]);
+	}, [activeWhisperServerId, activeWhisperServer, micDeviceId, stop]);
 
 	const subscribeTranscript = useCallback((fn: (text: string) => void) => {
 		callbacksRef.current.add(fn);
@@ -146,12 +169,50 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 		};
 	}, [stop]);
 
+	// PTT keyboard shortcut
+	const dictationPTTKey = useStore(s => s.settings.dictationPTTKey);
+	const isActiveRef = useRef(false);
+	const isKeyDownRef = useRef(false);
+	useEffect(() => { isActiveRef.current = isActive; }, [isActive]);
+
+	useEffect(() => {
+		if (!dictationPTTKey) return;
+
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key !== dictationPTTKey) return;
+			if (isKeyDownRef.current) return;
+			isKeyDownRef.current = true;
+			e.preventDefault();
+			e.stopPropagation();
+			setIsActive(true);
+			setSource(popoverVisible ? 'popover' : 'composer');
+			start(popoverVisible ? 'popover' : 'composer');
+		};
+
+		const handleKeyUp = (e: KeyboardEvent) => {
+			if (e.key !== dictationPTTKey) return;
+			isKeyDownRef.current = false;
+			e.preventDefault();
+			e.stopPropagation();
+			stop();
+		};
+
+		document.addEventListener('keydown', handleKeyDown, true);
+		document.addEventListener('keyup', handleKeyUp, true);
+		return () => {
+			document.removeEventListener('keydown', handleKeyDown, true);
+			document.removeEventListener('keyup', handleKeyUp, true);
+		};
+	}, [dictationPTTKey, popoverVisible, start, stop]);
+
 	const value = React.useMemo<IDictationContext>(() => ({
 		isActive,
 		isTranscribing,
 		source,
 		waveformStream,
 		setWaveformStream,
+		setIsActive,
+		setSource,
 		start,
 		stop,
 		subscribeTranscript,

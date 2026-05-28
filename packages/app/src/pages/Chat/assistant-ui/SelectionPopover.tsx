@@ -24,7 +24,7 @@ export const SelectionPopover = () => {
 	const isGenerating = useStore(s => s.ttsIsGenerating);
 	const addAnnotation = useStore(s => s.addAnnotation);
 
-	const { isActive: dictationActive, isTranscribing: dictationTranscribing, source: dictationSource, start: startDictation, stop: stopDictation, subscribeTranscript, popoverVisible: popoverIsVisible, setPopoverVisible } = useDictation();
+	const { isActive: dictationActive, isTranscribing: dictationTranscribing, source: dictationSource, start: startDictation, stop: stopDictation, subscribeTranscript, popoverVisible: popoverIsVisible, setPopoverVisible, setIsActive, setSource } = useDictation();
 
 	useEffect(() => { visibleRef.current = visible; }, [visible]);
 	useEffect(() => { isMyTTSRef.current = isMyTTS; }, [isMyTTS]);
@@ -53,6 +53,7 @@ export const SelectionPopover = () => {
 	useEffect(() => {
 		const handleMouseUp = (e: MouseEvent) => {
 			if (visibleRef.current && ref.current && ref.current.contains(e.target as Node)) return;
+			if (dirtyRef.current) return;
 			const selection = window.getSelection();
 			if (!selection || selection.isCollapsed || !selection.rangeCount) {
 				setVisible(false);
@@ -139,6 +140,16 @@ export const SelectionPopover = () => {
 		catch (err) { console.error('[SelectionPopover] TTS failed:', err); useStore.getState().ttsStop(); }
 	}, [isMyTTS, selectedText, voice]);
 
+	const handleDictationToggle = useCallback(() => {
+		if (dictationActive && dictationSource === 'popover') {
+			stopDictation();
+		} else if (!dictationActive) {
+			setIsActive(true);
+			setSource('popover');
+			startDictation('popover');
+		}
+	}, [dictationActive, dictationSource, stopDictation, setIsActive, setSource, startDictation]);
+
 	if (!visible || !position) return null;
 
 	return (
@@ -186,11 +197,9 @@ export const SelectionPopover = () => {
 				border="none" bg="transparent" borderRadius="6px" cursor="pointer"
 				color="var(--wc-text-secondary)" flexShrink={0}
 				_hover={{ bg: 'var(--wc-bg-selected)', color: 'var(--wc-text-heading)' }}
-				onClick={() => {
-					if (dictationActive && dictationSource === 'popover') stopDictation();
-					else if (!dictationActive) startDictation('popover');
-				}}
+				onClick={handleDictationToggle}
 				title={dictationActive && dictationSource === 'popover' ? 'Stop dictation' : dictationActive ? 'Dictation active (composer)' : 'Dictate…'}
+				data-dictation-btn="popover"
 			>
 				{dictationTranscribing
 					? <Loader2 size={14} className="animate-spin" color="var(--wc-accent-blue)" />

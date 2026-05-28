@@ -6,6 +6,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { Card } from '../../components/Card';
 import { useMutation } from '../../hooks/useQuery';
 import { ConfirmDialog } from '../../components/dialogs/ConfirmDialog';
+import { KeyCapture } from '../../components/KeyCapture';
 import { updateSettings, startProxy, stopProxy } from '../../api/services';
 import type { ISettings } from '@warpcore/shared';
 import { ETheme } from '@warpcore/shared';
@@ -80,6 +81,7 @@ export function SettingsPage() {
 	const [chatFontSize, setChatFontSize] = useDependantState(settings.chatFontSize ?? 14);
 	const [chatFontFamily, setChatFontFamily] = useDependantState(settings.chatFontFamily ?? '');
 	const [chatFixedWidth, setChatFixedWidth] = useDependantState(settings.chatFixedWidth ?? false);
+	const [dictationPTTKey, setDictationPTTKey] = useDependantState(settings.dictationPTTKey ?? 'Insert');
 	const themeCollection = createListCollection({
 		items: [
 			{ label: 'Amoled', value: ETheme.AMOLED },
@@ -298,6 +300,7 @@ kokoroVoice,
 			chatFontSize,
 			chatFontFamily,
 			chatFixedWidth,
+			dictationPTTKey,
 		}); 
 
 		if (saveMut.error) {
@@ -703,6 +706,21 @@ kokoroVoice,
 									</Slider.Control>
 								</Slider.Root>
 							</VStack>
+						</VStack>
+					</Card>
+
+					{/* Dictation */}
+					<Card>
+						<VStack align="stretch" gap="4">
+							<Box>
+								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">Dictation</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)">Push-to-talk key for voice dictation. Held to record, released to stop.</Text>
+							</Box>
+							<KeyCapture
+								value={dictationPTTKey}
+								onChange={(key) => dirtySetter(setDictationPTTKey, key)}
+								onDisable={() => dirtySetter(setDictationPTTKey, '')}
+							/>
 						</VStack>
 					</Card>
 
