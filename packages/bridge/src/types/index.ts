@@ -120,6 +120,35 @@ export interface IListThreadsOptions {
 }
 
 // ============================================================
+// FTS Search
+// ============================================================
+export type ESearchMode = 'everywhere' | 'threads' | 'thread';
+
+export interface ISearchOptions {
+	mode: ESearchMode;
+	threadId?: string;
+	limit?: number;
+	offset?: number;
+}
+
+export interface ISearchResult {
+	type: 'message' | 'thread';
+	threadId: string;
+	threadTitle: string;
+	messageId?: string;
+	snippet?: string;
+	role?: string;
+	createdAt: number;
+}
+
+export interface ISearchThreadResult {
+	threadId: string;
+	threadTitle: string;
+	matchCount: number;
+	lastMatchAt: number;
+}
+
+// ============================================================
 // Thread Patch — for patch-based updates to threads
 // ============================================================
 export interface IThreadPatch {

@@ -24,6 +24,9 @@ import type {
 	TThreadId,
 	TMessageId,
 	TToolCallId,
+	ISearchOptions,
+	ISearchResult,
+	ISearchThreadResult,
 } from '../types';
 import {
 	EChatRole,
@@ -52,6 +55,8 @@ function buildTableNames(prefix: string) {
 		toolPermissions: `${prefix}mcp_tool_permissions`,
 		threadToolPermissions: `${prefix}thread_tool_permissions`,
 		threadAttachedTools: `${prefix}thread_attached_tools`,
+		threadFts: `${prefix}threads_fts`,
+		messagePartsFts: `${prefix}message_parts_fts`,
 	};
 }
 
@@ -147,6 +152,53 @@ function buildSchema(t: ReturnType<typeof buildTableNames>): string {
 		CREATE INDEX IF NOT EXISTS idx_${t.toolCalls}_message ON ${t.toolCalls}(messageId);
 		CREATE INDEX IF NOT EXISTS idx_${t.toolCalls}_thread ON ${t.toolCalls}(threadId);
 		CREATE INDEX IF NOT EXISTS idx_${t.toolCalls}_status ON ${t.toolCalls}(status);
+
+		-- FTS5 — full-text search on thread titles and message content
+		-- External-content mode: snippet() reads from backing table, no storage duplication
+		-- NOTE: rowid stability assumed (better-sqlite3 does not auto-vacuum).
+		-- If VACUUM is ever run manually, re-initialize to re-backfill FTS tables.
+		CREATE VIRTUAL TABLE IF NOT EXISTS ${t.threadFts} USING fts5(
+			title,
+			tokenize = 'porter unicode61'
+		);
+		CREATE VIRTUAL TABLE IF NOT EXISTS ${t.messagePartsFts} USING fts5(
+			text,
+			tokenize = 'porter unicode61'
+		);
+
+		-- Triggers: threads_fts
+		CREATE TRIGGER IF NOT EXISTS threads_ai AFTER INSERT ON ${t.threads} BEGIN
+			INSERT INTO ${t.threadFts}(rowid, title) VALUES (new.rowid, new.title);
+		END;
+		CREATE TRIGGER IF NOT EXISTS threads_ad AFTER DELETE ON ${t.threads} BEGIN
+			DELETE FROM ${t.threadFts} WHERE rowid = old.rowid;
+		END;
+		CREATE TRIGGER IF NOT EXISTS threads_au AFTER UPDATE ON ${t.threads} BEGIN
+			DELETE FROM ${t.threadFts} WHERE rowid = old.rowid;
+			INSERT INTO ${t.threadFts}(rowid, title) VALUES (new.rowid, new.title);
+		END;
+
+		-- Triggers: message_parts_fts
+		-- Only index TEXT, REASONING, and ATTACHMENT.extractedText
+		CREATE TRIGGER IF NOT EXISTS mp_ai AFTER INSERT ON ${t.messageParts}
+		WHEN (new.type IN ('text','reasoning') AND new.text IS NOT NULL AND length(new.text) > 0)
+		   OR (new.type = 'attachment' AND new.extractedText IS NOT NULL AND length(new.extractedText) > 0)
+		BEGIN
+			INSERT INTO ${t.messagePartsFts}(rowid, text)
+			VALUES (new.rowid, CASE WHEN new.type = 'attachment' THEN new.extractedText ELSE new.text END);
+		END;
+		CREATE TRIGGER IF NOT EXISTS mp_ad AFTER DELETE ON ${t.messageParts} BEGIN
+			DELETE FROM ${t.messagePartsFts} WHERE rowid = old.rowid;
+		END;
+		CREATE TRIGGER IF NOT EXISTS mp_au AFTER UPDATE ON ${t.messageParts}
+		WHEN (old.type IN ('text','reasoning','attachment') OR new.type IN ('text','reasoning','attachment'))
+		BEGIN
+			DELETE FROM ${t.messagePartsFts} WHERE rowid = old.rowid;
+			INSERT INTO ${t.messagePartsFts}(rowid, text)
+			SELECT new.rowid, CASE WHEN new.type = 'attachment' THEN new.extractedText ELSE new.text END
+			WHERE (new.type IN ('text','reasoning') AND new.text IS NOT NULL AND length(new.text) > 0)
+			   OR (new.type = 'attachment' AND new.extractedText IS NOT NULL AND length(new.extractedText) > 0);
+		END;
 	`;
 }
 
@@ -193,6 +245,29 @@ export class SqlitePersistence implements IPersistence {
 			} catch {
 				// Column already exists (SQLite returns error on duplicate ADD COLUMN)
 			}
+		}
+
+		// FTS5 — standard mode, populate index via INSERT
+		try {
+			const txn = this.db!.transaction(() => {
+				this.db!.prepare(
+					`INSERT INTO ${this.t.threadFts}(rowid, title) SELECT rowid, title FROM ${this.t.threads}`
+				).run();
+				this.db!.prepare(
+					`INSERT INTO ${this.t.messagePartsFts}(rowid, text)
+					 SELECT rowid, CASE WHEN type IN ('text','reasoning') THEN text ELSE extractedText END
+					 FROM ${this.t.messageParts}
+					 WHERE (type IN ('text','reasoning') AND text IS NOT NULL AND length(text) > 0)
+					    OR (type = 'attachment' AND extractedText IS NOT NULL AND length(extractedText) > 0)`
+				).run();
+			});
+			txn();
+
+			const mpCount = this.db!.prepare(`SELECT count(*) as c FROM ${this.t.messagePartsFts}`).get() as { c: number };
+			const thCount = this.db!.prepare(`SELECT count(*) as c FROM ${this.t.threadFts}`).get() as { c: number };
+			console.log(`[FTS5] Indexed ${mpCount.c} message parts, ${thCount.c} threads`);
+		} catch (err) {
+			console.error('[FTS5] Index build failed:', err);
 		}
 	}
 
@@ -597,5 +672,150 @@ export class SqlitePersistence implements IPersistence {
 			attachAllTools: row.attachAllTools === 1,
 			tools: JSON.parse(row.tools) as IToolAttachment[],
 		};
+	}
+
+	// ============================================================
+	// FTS Search
+	// ============================================================
+
+	private preprocessQuery(q: string): string {
+		// Strip FTS5 special chars, split whitespace, append * for prefix matching
+		const stripped = q.replace(/[\"\(\)\:\^\-\*]/g, ' ');
+		return stripped
+			.split(/\s+/)
+			.map(t => t.trim().toLowerCase())
+			.filter(t => t.length > 0)
+			.map(t => t + '*')
+			.join(' ');
+	}
+
+	async searchMessages(q: string, options: ISearchOptions): Promise<ISearchResult[]> {
+		const processed = this.preprocessQuery(q);
+		if (!processed) return [];
+		console.log(`[FTS5] searchMessages: mode=${options.mode}, query="${q}" -> processed="${processed}"`);
+
+		const limit = Math.min(options.limit ?? 50, 200);
+		const offset = options.offset ?? 0;
+
+		if (options.mode === 'thread') {
+			if (!options.threadId) return [];
+			const rows = this.db!.prepare(
+				`SELECT m.id as messageId, m.threadId, thr.title as threadTitle,
+				       snippet(${this.t.messagePartsFts}, 0, '<mark>', '</mark>', '...', 64) as snippet,
+				       m.role, m.createdAt
+				 FROM ${this.t.messagePartsFts}
+				 JOIN ${this.t.messageParts} mp ON mp.rowid = ${this.t.messagePartsFts}.rowid
+				 JOIN ${this.t.messages} m ON m.id = mp.messageId
+				 JOIN ${this.t.threads} thr ON thr.id = m.threadId
+				 WHERE ${this.t.messagePartsFts} MATCH ? AND m.threadId = ?
+				 ORDER BY bm25(${this.t.messagePartsFts}), m.createdAt DESC
+				 LIMIT ? OFFSET ?`
+			).all(processed, options.threadId, limit, offset) as Array<Record<string, unknown>>;
+			console.log(`[FTS5] thread mode: ${rows.length} results`);
+			return rows.map(r => ({
+				type: 'message' as const,
+				threadId: r.threadId as string,
+				threadTitle: r.threadTitle as string,
+				messageId: r.messageId as string,
+				snippet: r.snippet as string,
+				role: r.role as string,
+				createdAt: r.createdAt as number,
+			}));
+		}
+
+		if (options.mode === 'everywhere') {
+			const halfLimit = Math.ceil(limit / 2);
+
+			// Thread branch
+			const threadRows = this.db!.prepare(
+				`SELECT t.id as threadId, t.title as threadTitle, t.updatedAt as createdAt
+				 FROM ${this.t.threadFts}
+				 JOIN ${this.t.threads} t ON t.rowid = ${this.t.threadFts}.rowid
+				 WHERE ${this.t.threadFts} MATCH ?
+				 ORDER BY bm25(${this.t.threadFts}), t.updatedAt DESC
+				 LIMIT ?`
+			).all(processed, halfLimit) as Array<Record<string, unknown>>;
+			console.log(`[FTS5] everywhere: ${threadRows.length} thread results`);
+
+			// Message branch
+			const msgRows = this.db!.prepare(
+				`SELECT m.id as messageId, m.threadId, thr.title as threadTitle,
+				       snippet(${this.t.messagePartsFts}, 0, '<mark>', '</mark>', '...', 64) as snippet,
+				       m.role, m.createdAt
+				 FROM ${this.t.messagePartsFts}
+				 JOIN ${this.t.messageParts} mp ON mp.rowid = ${this.t.messagePartsFts}.rowid
+				 JOIN ${this.t.messages} m ON m.id = mp.messageId
+				 JOIN ${this.t.threads} thr ON thr.id = m.threadId
+				 WHERE ${this.t.messagePartsFts} MATCH ?
+				 ORDER BY bm25(${this.t.messagePartsFts}), m.createdAt DESC
+				 LIMIT ?`
+			).all(processed, halfLimit) as Array<Record<string, unknown>>;
+			console.log(`[FTS5] everywhere: ${msgRows.length} message results`);
+
+			const results: ISearchResult[] = [];
+
+			results.push(...threadRows.map(r => ({
+				type: 'thread' as const,
+				threadId: r.threadId as string,
+				threadTitle: r.threadTitle as string,
+				createdAt: r.createdAt as number,
+			})));
+
+			results.push(...msgRows.map(r => ({
+				type: 'message' as const,
+				threadId: r.threadId as string,
+				threadTitle: r.threadTitle as string,
+				messageId: r.messageId as string,
+				snippet: r.snippet as string,
+				role: r.role as string,
+				createdAt: r.createdAt as number,
+			})));
+
+			return results;
+		}
+
+		// Default: return empty (shouldn't reach here with valid enum)
+		return [];
+	}
+
+	async searchThreads(q: string, options?: { limit?: number; offset?: number }): Promise<ISearchThreadResult[]> {
+		const processed = this.preprocessQuery(q);
+		if (!processed) return [];
+
+		const limit = Math.min(options?.limit ?? 50, 200);
+		const offset = options?.offset ?? 0;
+
+		const rows = this.db!.prepare(
+			`SELECT m.threadId, thr.title as threadTitle, COUNT(DISTINCT m.id) as matchCount, MAX(m.createdAt) as lastMatchAt, 0 as sortPriority
+			 FROM ${this.t.messagePartsFts}
+			 JOIN ${this.t.messageParts} mp ON mp.rowid = ${this.t.messagePartsFts}.rowid
+			 JOIN ${this.t.messages} m ON m.id = mp.messageId
+			 JOIN ${this.t.threads} thr ON thr.id = m.threadId
+			 WHERE ${this.t.messagePartsFts} MATCH ?
+			 GROUP BY m.threadId
+
+			 UNION ALL
+
+			 SELECT t.id, t.title, 0 as matchCount, t.updatedAt as lastMatchAt, 1 as sortPriority
+			 FROM ${this.t.threadFts}
+			 JOIN ${this.t.threads} t ON t.rowid = ${this.t.threadFts}.rowid
+			 WHERE ${this.t.threadFts} MATCH ?
+			   AND NOT EXISTS (
+				 SELECT 1 FROM ${this.t.messagePartsFts}
+				 JOIN ${this.t.messageParts} mp2 ON mp2.rowid = ${this.t.messagePartsFts}.rowid
+				 JOIN ${this.t.messages} m2 ON m2.id = mp2.messageId AND m2.threadId = t.id
+				 WHERE ${this.t.messagePartsFts} MATCH ?
+			 )
+
+			 ORDER BY sortPriority DESC, matchCount DESC, lastMatchAt DESC
+			 LIMIT ? OFFSET ?`
+		).all(processed, processed, processed, limit, offset) as Array<Record<string, unknown>>;
+
+		return rows.map(r => ({
+			threadId: r.threadId as string,
+			threadTitle: r.threadTitle as string,
+			matchCount: Number(r.matchCount),
+			lastMatchAt: r.lastMatchAt as number,
+		}));
 	}
 }

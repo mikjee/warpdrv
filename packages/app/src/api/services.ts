@@ -49,6 +49,8 @@ import type {
 	IChatThread,
 	IChatMessage,
 	IFolder as IChatFolder,
+	ISearchResult,
+	ISearchThreadResult,
 } from '@warpcore/bridge';
 
 // ============================================================
@@ -432,4 +434,15 @@ export async function updateCheckpoint(id: TCheckpointId, data: { name?: string;
 }
 export async function deleteCheckpoint(id: TCheckpointId) {
 	return api.del<{ id: TCheckpointId }>(`/checkpoints/${id}`);
+}
+
+// ============================================================
+// FTS Search
+// ============================================================
+export async function searchChatMessages(q: string, mode: string, options?: { threadId?: string; limit?: number; offset?: number }) {
+	const params = new URLSearchParams({ q, mode });
+	if (options?.threadId) params.set('threadId', options.threadId);
+	if (options?.limit) params.set('limit', String(options.limit));
+	if (options?.offset) params.set('offset', String(options.offset));
+	return api.getList<ISearchResult | ISearchThreadResult>(`/chat/search?${params}`);
 }

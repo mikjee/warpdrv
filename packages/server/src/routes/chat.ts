@@ -121,6 +121,42 @@ chatRouter.delete('/threads/:id', async (req, res) => {
 });
 
 // ============================================================
+// FTS Search
+// ============================================================
+
+// GET /api/chat/search
+chatRouter.get('/search', async (req, res) => {
+	try {
+		const q = req.query.q as string;
+		const mode = req.query.mode as string;
+		const threadId = req.query.threadId as string | undefined;
+		const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+		const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : undefined;
+
+		if (!q || !q.trim()) {
+			return res.json({ ok: true, data: [], total: 0, error: null });
+		}
+		if (!mode || !['everywhere', 'threads', 'thread'].includes(mode)) {
+			return res.status(400).json({ ok: false, data: null, error: 'Invalid or missing mode' });
+		}
+		if (mode === 'thread' && !threadId) {
+			return res.status(400).json({ ok: false, data: null, error: 'threadId required for thread mode' });
+		}
+
+		if (mode === 'threads') {
+			const data = await persistence.searchThreads(q, { limit, offset });
+			return res.json({ ok: true, data, total: data.length, error: null });
+		}
+
+		const data = await persistence.searchMessages(q, { mode: mode as 'everywhere' | 'thread', threadId, limit, offset });
+		res.json({ ok: true, data, total: data.length, error: null });
+	} catch (err) {
+		console.error('[Server] GET /api/chat/search - error:', err);
+		res.status(500).json({ ok: false, data: [], total: 0, error: String(err) });
+	}
+});
+
+// ============================================================
 // Messages
 // ============================================================
 

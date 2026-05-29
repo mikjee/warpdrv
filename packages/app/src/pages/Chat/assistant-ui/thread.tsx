@@ -779,6 +779,7 @@ const AssistantMessage: FC = React.memo(() => {
 		<MessagePrimitive.Root
 			className="aui-assistant-message-root fade-in slide-in-from-bottom-1 relative mx-auto w-full animate-in py-3 duration-150"
 			data-role="assistant"
+			data-message-id={messageId}
 			style={{
 				paddingRight: "100px",
 			}}
@@ -934,10 +935,12 @@ const AssistantActionBar: FC = () => {
 const UserMessage: FC = () => {
 	const chatFontSize = useStore(s => s.settings.chatFontSize ?? 14);
 	const chatFontFamily = useStore(s => s.settings.chatFontFamily ?? '');
+	const messageId = useAuiState((s) => s.message.id);
 	return (
 		<MessagePrimitive.Root
 			className="aui-user-message-root fade-in slide-in-from-bottom-1 mx-auto flex w-full flex-col gap-2 animate-in px-2 py-3 duration-150"
 			data-role="user"
+			data-message-id={messageId}
 		>
 			<UserMessageAttachments />
 			<div className="flex justify-end">

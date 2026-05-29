@@ -30,6 +30,9 @@ import type {
 	EToolApprovalMode,
 	EToolCallStatus,
 	IBridgeEvent,
+	ISearchOptions,
+	ISearchResult,
+	ISearchThreadResult,
 } from './index';
 
 // ============================================================
@@ -96,6 +99,10 @@ export interface IPersistence {
 	// Thread attached tools
 	saveThreadAttachedTools(threadId: TThreadId, attachAllTools: boolean, tools: IToolAttachment[]): Promise<void>;
 	getThreadAttachedTools(threadId: TThreadId): Promise<{ attachAllTools: boolean; tools: IToolAttachment[] } | null>;
+
+	// FTS search
+	searchMessages(q: string, options: ISearchOptions): Promise<ISearchResult[]>;
+	searchThreads(q: string, options?: { limit?: number; offset?: number }): Promise<ISearchThreadResult[]>;
 }
 
 // ============================================================

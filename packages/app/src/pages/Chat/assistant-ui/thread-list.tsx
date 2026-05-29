@@ -474,7 +474,7 @@ function FolderSection({
 // Main ThreadList component
 // ============================================================
 
-export const ThreadList: FC = React.memo(() => {
+export const ThreadList: FC<{ onOpenSearch?: () => void }> = React.memo(({ onOpenSearch }) => {
 	const threadsAPI = useThreadsAndFolders();
 	const [search, setSearch] = useState('');
 	const [sortField, setSortField] = useState<TSortField>('updatedAt');
@@ -666,6 +666,18 @@ size="2xs"
 					</Box>
 				</HStack>
 				<HStack gap="1">
+					{onOpenSearch && (
+						<Box
+							as="button" p="1" borderRadius="md"
+							color="var(--wc-text-faint)"
+							_hover={{ color: 'var(--wc-text-secondary)' }}
+							onClick={onOpenSearch}
+							title="Search"
+							mt="1"
+						>
+							<SearchIcon size={16} />
+						</Box>
+					)}
 					<Box
 						as="button" p="1" borderRadius="md"
 						color="var(--wc-text-faint)"

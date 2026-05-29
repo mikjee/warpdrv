@@ -10,6 +10,7 @@ import {
 } from '@assistant-ui/react';
 import { Thread } from './assistant-ui/thread';
 import { ThreadList, useThreadsAndFolders } from './assistant-ui/thread-list';
+import { ChatSearchDialog } from './assistant-ui/ChatSearchDialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { PageHeader } from '../../components/PageHeader';
 import { useStore } from '../../store';
@@ -94,7 +95,7 @@ export const BranchTokensContext = React.createContext(0);
 // ChatInner — main chat layout using bridge store
 // ============================================================
 const emptyMsgs = {};
-const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: boolean }) => {
+const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsListCollapsed: boolean; onOpenSearch?: () => void }) => {
 	const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
 	const generateTitle = useStore(s => !s.settings.disableTitleGen);
 
@@ -616,7 +617,7 @@ const ChatInner = React.memo(({ threadsListCollapsed }: { threadsListCollapsed: 
 							flexDirection="column"
 						>
 							<Flex flex="1" flexDirection="column" overflow="hidden" gap="3">
-								<ThreadList />
+								<ThreadList onOpenSearch={onOpenSearch} />
 							</Flex>
 						</Box>
 						)}
@@ -645,7 +646,9 @@ export const ChatPage = React.memo(() => {
 
 	const title = useStore(s => s.currentThreadId ? s.threads[s.currentThreadId]?.title || "New Chat" : "New Chat");
 	const setCurrentThreadId = useStore(s => s.setCurrentThreadId);
+	const currentThreadId = useStore(s => s.currentThreadId);
 	const [threadsListCollapsed, setThreadsListCollapsed] = useState(false);
+	const [searchOpen, setSearchOpen] = useState(false);
 
 	const chatFontSize = useStore(s => s.settings.chatFontSize ?? 14);
 	const chatFontFamily = useStore(s => s.settings.chatFontFamily ?? '');
@@ -835,9 +838,10 @@ export const ChatPage = React.memo(() => {
 			/>
 			<Flex flex="1" overflow="hidden" pt="60px">
 				<Flex flex="1" overflow="hidden">
-					<ChatInner threadsListCollapsed={threadsListCollapsed} />
+					<ChatInner threadsListCollapsed={threadsListCollapsed} onOpenSearch={() => setSearchOpen(true)} />
 				</Flex>
 			</Flex>
+			<ChatSearchDialog isOpen={searchOpen} onClose={() => setSearchOpen(false)} currentThreadId={currentThreadId} />
 		</Flex>
 	);
 });
