@@ -11,6 +11,7 @@ import { fileWriteDefinition, fileWriteHandler } from './tools/file_write';
 import { dirListDefinition, dirListHandler } from './tools/dir_list';
 import { shellExecDefinition, shellExecHandler } from './tools/shell_exec';
 import { fetchDefinition, fetchHandler } from './tools/fetch';
+import { embeddingSearchDefinition, embeddingSearchHandler } from './tools/embedding_search';
 const SERVER_NAME = 'warpmcp';
 let httpServer: Server | null = null;
 let currentPort: number | null = null;
@@ -22,6 +23,7 @@ function buildMcpServer(deps: IWarpmcpDeps): McpServer {
 		{ def: dirListDefinition, handler: (a: any) => dirListHandler(deps, a) },
 		{ def: shellExecDefinition, handler: (a: any) => shellExecHandler(a) },
 		{ def: fetchDefinition, handler: (a: any) => fetchHandler(a) },
+		{ def: embeddingSearchDefinition, handler: (a: any) => embeddingSearchHandler(deps, a) },
 	];
 	const server = new McpServer({ name: SERVER_NAME, version: '0.1.0' }, { capabilities: { tools: {} } });
 	server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: tools.map(t => t.def) }));
@@ -92,4 +94,4 @@ export function getStatus(): { running: boolean; port: number | null; bindHost: 
 	return { running: httpServer !== null, port: currentPort, bindHost: currentBindHost };
 }
 export const SERVER_NAME_CONST = SERVER_NAME;
-export type { IStartArgs, IStartResult, IWarpmcpDeps } from './types';
+export type { IStartArgs, IStartResult, IWarpmcpDeps, IEmbeddingSearchResult } from './types';

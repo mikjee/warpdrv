@@ -207,4 +207,10 @@ export interface AppState {
 	removeAnnotation: (id: string) => void;
 	clearAnnotations: () => void;
 	setAnnotatorVisible: (v: boolean) => void;
+
+	// Embedding
+	selectedEmbeddingServerId: string | null;
+	embeddingEnabled: boolean;
+	setSelectedEmbeddingServerId: (id: string | null) => void;
+	setEmbeddingEnabled: (v: boolean) => void;
 }

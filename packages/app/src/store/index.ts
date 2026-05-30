@@ -20,6 +20,7 @@ import { releasesSlice } from './slices/releases';
 import { kokoroSlice } from './slices/kokoro';
 import { ttsSlice } from './slices/tts';
 import { annotationsSlice } from './slices/annotations';
+import { embeddingSlice } from './slices/embedding';
 import { createChatStoreSlice } from '@warpcore/bridge/client';
 import { DiffRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/DiffRenderer';
 import { BashRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/BashRenderer';
@@ -48,6 +49,7 @@ export const useStore = create<AppState>()(
 				const kokoro = kokoroSlice(set, get);
 			const tts = ttsSlice(set, get);
 			const annotations = annotationsSlice(set, get);
+			const embedding = embeddingSlice(set, get);
 				const sseHandlers = sseHandlersSlice(set, get);
 				const bridge = createChatStoreSlice(set, get);
 
@@ -191,6 +193,12 @@ export const useStore = create<AppState>()(
 					removeAnnotation: annotations.removeAnnotation!,
 					clearAnnotations: annotations.clearAnnotations!,
 					setAnnotatorVisible: annotations.setAnnotatorVisible!,
+
+					// Embedding
+					selectedEmbeddingServerId: embedding.selectedEmbeddingServerId!,
+					embeddingEnabled: embedding.embeddingEnabled!,
+					setSelectedEmbeddingServerId: embedding.setSelectedEmbeddingServerId!,
+					setEmbeddingEnabled: embedding.setEmbeddingEnabled!,
 				};
 		}),
 	),

@@ -9,9 +9,9 @@
 	},
 	"dependencies": {
 		"@ai-sdk/openai": "^3.0.50",
-		"@huggingface/transformers": "^3.5.1",
 		"@huggingface/gguf": "^0.4.1",
 		"@huggingface/hub": "^2.11.0",
+		"@huggingface/transformers": "^3.5.1",
 		"@modelcontextprotocol/sdk": "^1.29.0",
 		"@warpcore/bridge": "*",
 		"@warpcore/shared": "*",
@@ -22,10 +22,11 @@
 		"better-sse": "^0.16.1",
 		"busboy": "^1.6.0",
 		"cookie-parser": "^1.4.7",
-		"kokoro-js": "^1.2.1",
 		"cors": "^2.8.5",
 		"express": "^5.1.0",
+		"kokoro-js": "^1.2.1",
 		"node-downloader-helper": "^2.1.11",
+		"sqlite-vec": "^0.1.9",
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {

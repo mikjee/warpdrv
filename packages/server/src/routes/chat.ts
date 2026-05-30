@@ -5,6 +5,7 @@ import { store } from '../util/store';
 import type { IChatThreadCreatePayload, IChatMessageCreatePayload } from '@warpcore/shared';
 import { EChatRole, EMessagePartType, ICompletionRequest, type IFolder } from '@warpcore/bridge';
 import type { IServer } from '@warpcore/shared';
+import { embeddingManager } from '../services/embeddingManager';
 
 export const chatRouter = Router();
 const activeAborts = new Map<string, AbortController>();
@@ -351,6 +352,17 @@ chatRouter.post('/completions', async (req, res) => {
 		return;
 	}
 	const inferenceUrl = `http://127.0.0.1:${server.port}`;
+
+	// Configure embedding if enabled
+	if (body.embeddingEnabled && body.selectedEmbeddingServerId) {
+		try {
+			const { getDataDir } = await import('../util/mcpConfig');
+			const dataDir = getDataDir();
+			await embeddingManager.configure(body.selectedEmbeddingServerId, dataDir);
+		} catch (err) {
+			console.error('[Embedding] Failed to configure:', err);
+		}
+	}
 
 	// Fire and forget — return immediately, all updates flow via broadcaster
 	res.json({ ok: true, data: null, error: null });

@@ -196,6 +196,7 @@ export function buildArgs(
 	if (params.noWarmup && !argsSet.has('--no-warmup')) args.push('--no-warmup');
 	if (params.jinja && !argsSet.has('--jinja')) args.push('--jinja');
 	if (params.swaFull && !argsSet.has('--swa-full')) args.push('--swa-full');
+	if (params.useEmbedding && !argsSet.has('--embedding')) args.push('--embedding');
 	if (params.kvQuantK !== EKvQuantType.F16) args.push('--cache-type-k', params.kvQuantK);
 	if (params.kvQuantV !== EKvQuantType.F16) args.push('--cache-type-v', params.kvQuantV);
 	if (params.chatTemplate) args.push('--chat-template', params.chatTemplate);

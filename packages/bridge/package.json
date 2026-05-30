@@ -16,10 +16,11 @@
 		"./mcp/config": "./src/mcp/config.ts",
 		"./orchestrator": "./src/orchestrator/index.ts",
 		"./persistence": "./src/persistence/betterSqlite.ts",
+		"./persistence/embeddingService": "./src/persistence/embeddingService.ts",
 		"./permissions": "./src/permissions/index.ts",
 		"./validation": "./src/validation/index.ts",
 		"./transport": "./src/transport/fetch.ts",
-		"./broadcaster" : "./src/broadcaster/sseBroadcaster.ts",
+		"./broadcaster": "./src/broadcaster/sseBroadcaster.ts",
 		"./inferParamNames": "./src/types/inferParamNames.ts"
 	},
 	"dependencies": {
@@ -27,9 +28,10 @@
 		"ajv": "^8.17.0"
 	},
 	"peerDependencies": {
-		"zustand": ">=4.0.0",
 		"better-sqlite3": "^12.8.0",
-		"better-sse": "^0.16.0"
+		"better-sse": "^0.16.0",
+		"sqlite-vec": "^0.1.9",
+		"zustand": ">=4.0.0"
 	},
 	"peerDependenciesMeta": {
 		"zustand": {

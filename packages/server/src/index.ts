@@ -52,6 +52,7 @@ export let mcpClient: McpClientManager;
 export let orchestrator: Orchestrator;
 export let mcpConfig: McpConfig;
 export let broadcaster: SseBroadcaster;
+export let embeddingManager: typeof import('./services/embeddingManager').embeddingManager;
 
 import { execSync } from 'child_process';
 import { launchAutoStartServers, reconcileServers } from './services/processManager';
@@ -105,6 +106,14 @@ async function main() {
 	mcpClient = new McpClientManager(undefined, broadcaster);
 	const permissions = new PermissionManager(persistence);
 	orchestrator = new Orchestrator({ mcpClient, permissions, persistence, broadcaster });
+
+	// Initialize embedding manager
+	const { embeddingManager: em } = await import('./services/embeddingManager');
+	embeddingManager = em;
+	await embeddingManager.initialize(persistence, broadcaster);
+	// Update warpmcp with embedding search
+	const { updateEmbeddingSearch } = await import('./warpmcpRunner');
+	updateEmbeddingSearch((query, topK) => embeddingManager.search(query, topK));
 
 	// Connect MCP servers in parallel (non-blocking)
 	const mcpCfg = mcpConfig.read();

@@ -1,8 +1,14 @@
 import type { IAccessToken } from '@warpcore/shared';
+export interface IEmbeddingSearchResult {
+	messageId: string;
+	text: string;
+	distance: number;
+}
 export interface IWarpmcpDeps {
 	isRemote: (req: { ip: string; connection: { remoteAddress: string } }) => boolean;
 	validateBearerToken: (authHeader: string | undefined) => Promise<IAccessToken | null>;
 	getFsAllowedRoots: () => string[];
+	embeddingSearch?: (query: string, topK: number) => Promise<IEmbeddingSearchResult[]>;
 }
 export interface IStartArgs extends IWarpmcpDeps {
 	port: number;

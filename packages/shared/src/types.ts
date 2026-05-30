@@ -192,6 +192,7 @@ export interface ILaunchParams {
 	splitMode?: ESplitMode; // layer | row | tensor
 	gpuSplitValues?: number[]; // per-GPU proportions, zeros exclude devices
 	mainGpu?: number; // -1 = default, >=0 = explicit GPU index
+	useEmbedding?: boolean; // enables --embedding flag for embedding-capable server
 }
 // Default launch params
 export const DEFAULT_LAUNCH_PARAMS: ILaunchParams = {
@@ -216,6 +217,7 @@ export const DEFAULT_LAUNCH_PARAMS: ILaunchParams = {
 	extraArgs: '',
 	parallelSlots: 4,
 	specDecode: { ...DEFAULT_SPEC_DECODE_PARAMS },
+	useEmbedding: false,
 };
 // ============================================================
 // Running Servers

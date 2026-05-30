@@ -8,6 +8,7 @@ import { ToolFallback } from "./tool-fallback";
 import { ToolCallBlockWrapper } from "./ToolCallBlockWrapper";
 import { TooltipIconButton } from "./tooltip-icon-button";
 import { KokoroTTSButton } from "./KokoroTTS";
+import { EmbeddingToggle } from "./EmbeddingToggle";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -624,6 +625,7 @@ const ComposerAction: FC<{ onStreamChange?: (stream: MediaStream | null) => void
 				<ReasoningEffortToggle />
 				{/* <ToolsToggle /> */}
 				<ToolsSelector />
+				<EmbeddingToggle />
 			</div>
 			<div className="flex items-center gap-2">
 				<VoiceInput threadId={currentThreadId} onTranscript={(text) => {
