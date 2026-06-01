@@ -863,4 +863,17 @@ export class SqlitePersistence implements IPersistence {
 			`SELECT messageId, modelId FROM ${this.t.embeddingStatus} WHERE status = 'PENDING'`
 		).all() as Array<{ messageId: string; modelId: string }>;
 	}
+
+	async deleteEmbeddingStatus(messageId: string): Promise<void> {
+		this.db!.prepare(
+			`DELETE FROM ${this.t.embeddingStatus} WHERE messageId = ?`
+		).run(messageId);
+	}
+
+	async getMessageIdsByThreadId(threadId: TThreadId): Promise<string[]> {
+		const rows = this.db!.prepare(
+			`SELECT id FROM ${this.t.messages} WHERE threadId = ?`
+		).all(threadId) as Array<{ id: string }>;
+		return rows.map(r => r.id);
+	}
 }

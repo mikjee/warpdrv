@@ -66,7 +66,9 @@ case 'message.chunk':
 				applyMessageChunk(event.messageId, event.threadId, event.partId, event.deltaText);
 		if (event.partType === 'text') {
 					const state = useStore.getState();
-					if (state.ttsActiveMessageId !== event.messageId || state.ttsIsGenerating !== 'vad') break;
+					const guardPass = state.ttsActiveMessageId === event.messageId && state.ttsIsGenerating === 'vad';
+					console.log('[TTS SSE] chunk: messageId=', event.messageId, 'ttsActiveMsg=', state.ttsActiveMessageId, 'generating=', state.ttsIsGenerating, 'guardPass=', guardPass);
+					if (!guardPass) break;
 					const msg = state.messagesByThread[event.threadId]?.[event.messageId];
 					if (msg) {
 						const part = msg.content.find((p: any) => p.id === event.partId);
@@ -77,14 +79,17 @@ case 'message.chunk':
 						const lastEnd = findLastSentenceEnd(remaining);
 						if (lastEnd > -1) {
 							const sentence = remaining.slice(0, lastEnd + 1);
-							console.log('[TTS auto] sentence:', JSON.stringify(sentence));
+							const reqId = useStore.getState().ttsVadRequestId;
+							console.log('[TTS SSE] calling startStream: requestId=', reqId, 'sentence=', JSON.stringify(sentence.slice(0, 60)));
 							useStore.getState().ttsVadIncSent();
 							startStream(
-								useStore.getState().ttsVadRequestId,
+								reqId,
 								sentence,
 								state.settings.kokoroVoice || 'af_heart',
-							).catch(() => {});
+							).catch((err) => { console.error('[TTS SSE] startStream ERROR:', err); });
 							useStore.getState().ttsSetSpokenIndex(event.messageId, spoken + lastEnd + 1);
+						} else {
+							console.log('[TTS SSE] no sentence boundary found in remaining text');
 						}
 					}
 				}
@@ -102,7 +107,8 @@ case 'message.chunk':
 				applyInferenceStarted(event.threadId, event.messageId);
 				{
 					const s = useStore.getState();
-					if (!s.vadActive) break;
+					console.log('[TTS SSE] inference.started: vadActive=', s.vadActive, 'messageId=', event.messageId);
+					if (!s.vadActive) { console.log('[TTS SSE] inference.started: vadActive is FALSE, skipping TTS setup'); break; }
 					s.ttsSetSpokenIndex(event.messageId, 0);
 					s.ttsVadReset();
 					const newId = s.ttsVadNewRequestId();
@@ -111,9 +117,10 @@ case 'message.chunk':
 				}
 				break;
 case 'inference.ended':
-				console.log('[TTS auto] inference.ended');
 				applyInferenceEnded(event.threadId, event.messageId);
-				if (useStore.getState().vadActive) {
+				const vadActive = useStore.getState().vadActive;
+				console.log('[TTS SSE] inference.ended: vadActive=', vadActive);
+				if (vadActive) {
 					useStore.getState().ttsClearSpokenIndex(event.messageId);
 				}
 				break;

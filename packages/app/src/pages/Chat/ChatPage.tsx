@@ -10,7 +10,7 @@ import {
 } from '@assistant-ui/react';
 import { Thread } from './assistant-ui/thread';
 import { ThreadList, useThreadsAndFolders } from './assistant-ui/thread-list';
-import { ChatSearchDialog } from './assistant-ui/ChatSearchDialog';
+import { ChatSearchDialog } from './ChatSearchDialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { PageHeader } from '../../components/PageHeader';
 import { useStore } from '../../store';
@@ -649,6 +649,25 @@ export const ChatPage = React.memo(() => {
 	const currentThreadId = useStore(s => s.currentThreadId);
 	const [threadsListCollapsed, setThreadsListCollapsed] = useState(false);
 	const [searchOpen, setSearchOpen] = useState(false);
+	const openChatSidebarTab = useStore(s => s.openChatSidebarTab);
+
+	// Ctrl+F / Cmd+F — open search in right sidebar
+	useEffect(() => {
+		const handler = (e: KeyboardEvent) => {
+			const isCtrl = e.ctrlKey || e.metaKey;
+			if (isCtrl && e.key === 'f') {
+				e.preventDefault();
+				openChatSidebarTab('search');
+				// Focus the search input after render
+				setTimeout(() => {
+					const input = document.querySelector('[placeholder="Search in thread..."]') as HTMLInputElement | null;
+					input?.focus();
+				}, 50);
+			}
+		};
+		document.addEventListener('keydown', handler);
+		return () => document.removeEventListener('keydown', handler);
+	}, [openChatSidebarTab]);
 
 	const chatFontSize = useStore(s => s.settings.chatFontSize ?? 14);
 	const chatFontFamily = useStore(s => s.settings.chatFontFamily ?? '');

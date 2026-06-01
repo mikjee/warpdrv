@@ -25,7 +25,7 @@ interface TTSSlice {
 
 export const ttsSlice = (
 	setState: ImmerSet<AppState>,
-	_getState: ImmerGet<AppState>,
+	getState: ImmerGet<AppState>,
 ): Partial<AppState> => ({
 	ttsActiveMessageId: null,
 	ttsIsGenerating: null,
@@ -36,6 +36,7 @@ export const ttsSlice = (
 	ttsVadRequestId: 0,
 	vadActive: false,
 	ttsStart: (messageId, mode = 'button') => {
+		console.log('[Store] ttsStart: messageId=', messageId, 'mode=', mode);
 		setState(draft => {
 			draft.ttsActiveMessageId = messageId;
 			draft.ttsIsGenerating = mode;
@@ -43,6 +44,7 @@ export const ttsSlice = (
 		});
 	},
 	ttsStop: () => {
+		console.log('[Store] ttsStop: clearing all TTS state');
 		setState(draft => {
 			draft.ttsActiveMessageId = null;
 			draft.ttsIsGenerating = null;
@@ -105,6 +107,8 @@ export const ttsSlice = (
 		return id;
 	},
 	setVadActive: (v) => {
+		const old = getState().vadActive;
+		console.log('[Store] vadActive:', old, '→', v);
 		setState(draft => {
 			draft.vadActive = v;
 		});

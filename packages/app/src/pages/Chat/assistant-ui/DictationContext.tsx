@@ -72,6 +72,7 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 	);
 
 	const stop = useCallback(() => {
+		console.log('[Dictation] stopping: isActive→false, destroying session, stopping tracks');
 		setIsActive(false);
 		setSource(null);
 		if (isStartingRef.current) {
@@ -110,23 +111,28 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
 			const { MicVAD } = await import('@ricky0123/vad-web');
 			const vad = await MicVAD.new({
-				onSpeechStart: () => {},
+				onSpeechStart: () => { console.log('[Dictation] speech started'); },
 				onSpeechEnd: async (audio: Float32Array) => {
+					console.log('[Dictation] speech ended: isTranscribing:', isTranscribing);
 					setIsTranscribing(true);
 					try {
 						const wavBlob = float32ToWavBlob(audio);
 						const text = await transcribeAudio(selectedWhisperServerId, wavBlob);
 						if (text) {
+							console.log('[Dictation] transcribed:', JSON.stringify(text.slice(0, 80)));
 							callbacksRef.current.forEach(cb => cb(text));
+						} else {
+							console.log('[Dictation] empty transcription');
 						}
 					} catch (err) {
 						console.error('[Dictation] Transcription error:', err);
 					} finally {
+						console.log('[Dictation] transcription complete, isTranscribing → false');
 						setIsTranscribing(false);
 					}
 				},
 				onError: (err: Error) => {
-					console.error('[Dictation] VAD error:', err);
+					console.error('[Dictation] ERROR — calling stop():', err);
 					stop();
 				},
 				baseAssetPath: '/vad/',
@@ -143,6 +149,7 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 			};
 			await vad.start();
 			if (shouldStopRef.current) {
+				console.log('[Dictation] stop requested during start, cleaning up');
 				vadSessionRef.current?.destroy();
 				vadSessionRef.current = null;
 				stream.getTracks().forEach(t => t.stop());
@@ -152,7 +159,7 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 				setSource(null);
 				return;
 			}
-			console.log('[Dictation] start succeeded');
+			console.log('[Dictation] vad started successfully');
 		} catch (err) {
 			console.error('[Dictation] start error:', err);
 		} finally {
@@ -190,11 +197,12 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if (e.key !== dictationPTTKey) return;
 			if (isKeyDownRef.current) return;
-			if (vadActiveRef.current) return;
+			if (vadActiveRef.current) { console.log('[Dictation] PTT keydown blocked: vadActive'); return; }
 			isKeyDownRef.current = true;
 			e.preventDefault();
 			e.stopPropagation();
 			const src = useStore.getState().annotatorVisible ? 'popover' : 'composer';
+			console.log('[Dictation] PTT keydown: src=', src, 'isActive→true');
 			setIsActive(true);
 			setSource(src);
 			start(src);
@@ -206,6 +214,7 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 			isKeyDownRef.current = false;
 			e.preventDefault();
 			e.stopPropagation();
+			console.log('[Dictation] PTT keyup: calling stop');
 			stop();
 		};
 

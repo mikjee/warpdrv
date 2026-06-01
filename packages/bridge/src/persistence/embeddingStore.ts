@@ -75,10 +75,10 @@ export class EmbeddingStore {
 			return existing.rowid;
 		}
 
-		const rowid = Date.now() % 2147483647 + Math.floor(Math.random() * 10000);
 		this.db.prepare(
-			`INSERT INTO embeddings (rowid, embedding) VALUES (?, ?)`
-		).run(rowid, vectorBlob);
+			`INSERT INTO embeddings (embedding) VALUES (?)`
+		).run(vectorBlob);
+		const rowid = Number(this.db.lastInsertRowid);
 		this.db.prepare(
 			`INSERT INTO embedding_meta (rowid, messageId, text) VALUES (?, ?, ?)`
 		).run(rowid, messageId, text);

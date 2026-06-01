@@ -77,8 +77,10 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 
 	const handleDictationToggle = useCallback(() => {
 		if (dictationActive) {
+			console.log('[Dictation] toggle clicked: stopping dictation');
 			stopDictation();
 		} else {
+			console.log('[Dictation] toggle clicked: starting dictation, isActive→true, source=composer');
 			setIsActive(true);
 			setSource('composer');
 			startDictation('composer');
@@ -154,8 +156,10 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 	// VAD flow (independent)
 	// ============================================================
 	const handleVADToggle = useCallback(async () => {
-		if (dictationActive) return;
+		console.log('[VAD Chat] toggle clicked, vadActive:', vadActive, 'dictationActive:', dictationActive);
+		if (dictationActive) { console.log('[VAD Chat] blocked: dictation active'); return; }
 		if (vadActive) {
+			console.log('[VAD Chat] stopping: destroying session, stopping tracks, setting vadActive=false');
 			stopTTS();
 			vadSessionRef.current?.destroy();
 			vadSessionRef.current = null;
@@ -166,7 +170,7 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 			return;
 		}
 
-		if (!isWhisperReady) return;
+		if (!isWhisperReady) { console.log('[VAD Chat] blocked: whisper not ready'); return; }
 
 		try {
 			const audioConstraints: MediaTrackConstraints = {
@@ -177,30 +181,34 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 			if (micDeviceId) {
 				(audioConstraints as any).deviceId = { exact: micDeviceId };
 			}
+			console.log('[VAD Chat] starting: getting mic, serverId:', activeWhisperServerId);
 			const waveformStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
 			vadWaveformStreamRef.current = waveformStream;
 			setWaveformStream(waveformStream);
 		} catch (err) {
-			console.error('[VoiceInput] Failed to get waveform stream:', err);
+			console.error('[VAD Chat] failed to get waveform stream:', err);
 			return;
 		}
 
 		const session = await createVADSession({
 			onSpeechStart: () => {
-				// Cancel inference if running
+				console.log('[VAD Chat] speech started: cancelling inference, stopping TTS');
 				if (aui.composer().canCancel) {
 					aui.composer().cancel();
 				}
 				stopTTS();
 			},
 			onSpeechEnd: async (audio: Float32Array) => {
+				console.log('[VAD Chat] speech ended: isVADTranscribing:', isVADTranscribing, 'serverId:', activeWhisperServerId);
 				setIsVADTranscribing(true);
 				try {
-					if (!activeWhisperServerId || !activeWhisperServer) return;
+					if (!activeWhisperServerId || !activeWhisperServer) { console.log('[VAD Chat] no active server, skipping'); return; }
 					const wavBlob = float32ToWavBlob(audio);
 					const text = await transcribeAudioRaw(activeWhisperServerId, activeWhisperServer, wavBlob);
 					if (text) {
+						console.log('[VAD Chat] transcribed:', JSON.stringify(text.slice(0, 80)));
 						if (useStore.getState().annotatorVisible) {
+							console.log('[VAD Chat] annotator visible, sending to popover');
 							sendTextToPopover(text);
 						} else {
 							const annotations = useStore.getState().annotations;
@@ -210,19 +218,22 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 								fullText = lines.join('\n\n') + '\n\n' + text;
 								useStore.getState().clearAnnotations();
 							}
+							console.log('[VAD Chat] sending message via composer');
 							aui.composer().setText(fullText);
 							aui.composer().send({ startRun: true });
 						}
+					} else {
+						console.log('[VAD Chat] empty transcription');
 					}
 				} catch (err) {
-					console.error('[VoiceInput] VAD transcription error:', err);
+					console.error('[VAD Chat] transcription error:', err);
 				} finally {
+					console.log('[VAD Chat] transcription complete, isVADTranscribing → false');
 					setIsVADTranscribing(false);
-					// vadActive stays true - conversation loop continues
 				}
 			},
 			onError: (err) => {
-				console.error('[VoiceInput] VAD error:', err);
+				console.error('[VAD Chat] ERROR — setting vadActive=false:', err);
 				setVadActive(false);
 			},
 		});
@@ -230,7 +241,10 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 		if (session) {
 			vadSessionRef.current = session;
 			await session.start();
+			console.log('[VAD Chat] session started, setting vadActive=true');
 			setVadActive(true);
+		} else {
+			console.log('[VAD Chat] session creation returned null');
 		}
 	}, [vadActive, isWhisperReady, activeWhisperServerId, activeWhisperServer, aui, micDeviceId, setWaveformStream, sendTextToPopover]);
 

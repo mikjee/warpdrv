@@ -25,6 +25,7 @@ export interface IEmbeddingTask {
 
 export class EmbeddingService {
 	private queue: IEmbeddingTask[] = [];
+	private queuedIds = new Set<string>();
 	private processing = false;
 	private config: IEmbeddingConfig | null = null;
 	private store: EmbeddingStore | null = null;
@@ -61,10 +62,12 @@ export class EmbeddingService {
 	async queueMessage(message: IChatMessage): Promise<void> {
 		if (!this.config || !this.persistence) return;
 		if (message.role === EChatRole.TOOL) return;
+		if (this.queuedIds.has(message.id)) return;
 		const text = this.extractEmbeddableText(message);
 		if (!text || text.trim().length === 0) return;
 		const modelId = this.config.modelId;
 		await this.persistence.upsertEmbeddingStatus(message.id, modelId, 'PENDING');
+		this.queuedIds.add(message.id);
 		this.queue.push({ messageId: message.id, text, modelId });
 		setImmediate(() => this.processQueue());
 	}
@@ -82,6 +85,8 @@ export class EmbeddingService {
 			} catch (err) {
 				console.error(`[embedding] Failed to embed message ${task.messageId}:`, err);
 				await this.persistence.upsertEmbeddingStatus(task.messageId, this.config.modelId, 'FAILED');
+			} finally {
+				this.queuedIds.delete(task.messageId);
 			}
 		}
 		this.processing = false;
@@ -109,6 +114,15 @@ export class EmbeddingService {
 		if (!this.config || !this.store) throw new Error('EmbeddingService not configured');
 		const vector = await this.getEmbedding(query);
 		return this.store.search(vector, topK);
+	}
+
+	async deleteByMessageId(messageId: string): Promise<void> {
+		if (!this.store) return;
+		await this.store.deleteByMessageId(messageId);
+		if (this.persistence) {
+			await this.persistence.deleteEmbeddingStatus(messageId);
+		}
+		this.queuedIds.delete(messageId);
 	}
 
 	private extractEmbeddableText(message: IChatMessage): string {

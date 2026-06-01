@@ -618,7 +618,7 @@ export const ThreadList: FC<{ onOpenSearch?: () => void }> = React.memo(({ onOpe
 	return (
 		<ThreadListPrimitive.Root className="aui-root aui-thread-list-root flex flex-col flex-1 min-h-0">
 			{/* Fixed header */}
-			<Box flexShrink={0} mb="2" px="3">
+			{/* <Box flexShrink={0} mb="2" px="3">
 				<HStack
 					gap="1" px="2" py="1"
 					borderRadius="md" borderWidth="1px"
@@ -642,7 +642,33 @@ size="2xs"
 						</Box>
 					)}
 				</HStack>
-			</Box>
+			</Box> */}
+			{onOpenSearch && (
+				<Box flexShrink={0} mb="2" px="3">
+					<Box
+						as="button"
+						w="full"
+						px="3"
+						py="2"
+						borderRadius="md"
+						borderWidth="1px"
+						borderColor="var(--wc-border-subtle)"
+						bg="var(--wc-bg-card)"
+						color="var(--wc-text-muted)"
+						_hover={{ bg: 'var(--wc-bg-hover)', color: 'var(--wc-text-primary)' }}
+						display="flex"
+						alignItems="center"
+						justifyContent="center"
+						gap="2"
+						fontSize="13px"
+						cursor="pointer"
+						onClick={onOpenSearch}
+					>
+						<SearchIcon size={15} />
+						<Text>Search</Text>
+					</Box>
+				</Box>
+			)}
 
 			<HStack px="3" gap="1" mb="2" justify="space-between" alignItems={"center"} flexShrink={0}>
 				<HStack gap="1">
@@ -666,7 +692,7 @@ size="2xs"
 					</Box>
 				</HStack>
 				<HStack gap="1">
-					{onOpenSearch && (
+					{/* {onOpenSearch && (
 						<Box
 							as="button" p="1" borderRadius="md"
 							color="var(--wc-text-faint)"
@@ -677,7 +703,7 @@ size="2xs"
 						>
 							<SearchIcon size={16} />
 						</Box>
-					)}
+					)} */}
 					<Box
 						as="button" p="1" borderRadius="md"
 						color="var(--wc-text-faint)"

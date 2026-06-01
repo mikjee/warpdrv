@@ -56,18 +56,27 @@ export function subscribeTTSAnalyser(cb: (a: AnalyserNode | null) => void): () =
 	};
 }
 function checkVadComplete() {
-	if (playbackQueue.length > 0 || isPlayingChunk) return;
 	const s = useStore.getState();
-	if (s.ttsIsGenerating !== 'vad') return;
-	if (s.ttsVadSentencesSent !== s.ttsVadSentencesDone) return;
+	const queueLen = playbackQueue.length;
+	const playing = isPlayingChunk;
+	const generating = s.ttsIsGenerating;
+	const sent = s.ttsVadSentencesSent;
+	const done = s.ttsVadSentencesDone;
 	const threadId = s.activeThreadId;
-	if (threadId && s.isRunningByThread[threadId]) return;
+	const running = threadId ? s.isRunningByThread[threadId] : false;
+	console.log('[TTS vad] checkVadComplete: queue=', queueLen, 'playing=', playing, 'generating=', generating, 'sent=', sent, 'done=', done, 'running=', running);
+	if (queueLen > 0 || playing) return;
+	if (generating !== 'vad') return;
+	if (sent !== done) return;
+	if (threadId && running) return;
+	console.log('[TTS vad] checkVadComplete: all done, calling stopTTS');
 	stopTTS();
 }
 
 export async function startStream(requestId: number, text: string, voice: string): Promise<void> {
 	const cleaned = removeMd(text).replace(emojiRegex(), '').replace(/\s+/g, ' ').trim();
-	if (!cleaned) return;
+	if (!cleaned) { console.log('[TTS] startStream: cleaned text is empty'); return; }
+	console.log('[TTS] startStream: requestId=', requestId, 'text=', JSON.stringify(cleaned.slice(0, 60)));
 	const startRes = await fetch('/api/kokoro/tts/start', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
@@ -77,16 +86,25 @@ export async function startStream(requestId: number, text: string, voice: string
 	if (!startJson.ok) throw new Error(startJson.error || 'tts start failed');
 	const streamId = startJson.data.streamId as string;
 	if (requestId !== currentRequestId) {
+		console.log('[TTS] startStream: requestId mismatch after fetch, requestId=', requestId, 'currentRequestId=', currentRequestId, 'aborting');
 		fetch(`/api/kokoro/tts/abort/${streamId}`, { method: 'POST' }).catch(() => {});
 		return;
 	}
+	console.log('[TTS] startStream: streamId=', streamId, 'setting up SSE');
 	currentStreamAbortId = streamId;
 	const { EventSource } = await import('eventsource');
 	const es = new EventSource(`/api/kokoro/tts/stream/${streamId}`);
 	currentEventSource = es;
 	es.addEventListener('chunk', (e: MessageEvent) => {
-		if (requestId !== currentRequestId) return;
-		if (useStore.getState().ttsActiveMessageId === null) return;
+		if (requestId !== currentRequestId) {
+			console.log('[TTS] chunk DROPPED: requestId', requestId, '!== currentRequestId', currentRequestId);
+			return;
+		}
+		const activeMsg = useStore.getState().ttsActiveMessageId;
+		if (activeMsg === null) {
+			console.log('[TTS] chunk DROPPED: ttsActiveMessageId is null');
+			return;
+		}
 		const payload = JSON.parse(e.data);
 		const bin = atob(payload.audio);
 		const bytes = new Uint8Array(bin.length);
@@ -96,6 +114,7 @@ export async function startStream(requestId: number, text: string, voice: string
 		tryPlayNext();
 	});
 	es.addEventListener('done', () => {
+		console.log('[TTS] stream done: requestId=', requestId, 'currentRequestId=', currentRequestId, 'generating=', useStore.getState().ttsIsGenerating);
 		es.close();
 		if (currentEventSource === es) currentEventSource = null;
 		currentStreamAbortId = null;
@@ -121,6 +140,7 @@ export async function startStream(requestId: number, text: string, voice: string
 }
 
 function tryPlayNext() {
+	console.log('[TTS] tryPlayNext: queue=', playbackQueue.length, 'playing=', isPlayingChunk);
 	if (isPlayingChunk || playbackQueue.length === 0) return;
 	const url = playbackQueue.shift();
 	if (!url) return;
@@ -171,6 +191,7 @@ function tryPlayNext() {
 }
 
 export function stopTTS() {
+	console.log('[TTS] stopTTS: requestId→0, clearing queue, closing EventSource, aborting stream');
 	currentRequestId = 0;
 	if (currentAudioEl) {
 		currentAudioEl.pause();

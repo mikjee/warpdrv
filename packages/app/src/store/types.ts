@@ -213,4 +213,11 @@ export interface AppState {
 	embeddingEnabled: boolean;
 	setSelectedEmbeddingServerId: (id: string | null) => void;
 	setEmbeddingEnabled: (v: boolean) => void;
+
+	// Chat sidebar state
+	chatSidebarOpen: boolean;
+	chatSidebarTab: 'config' | 'tools' | 'search';
+	setChatSidebarOpen: (v: boolean) => void;
+	setChatSidebarTab: (tab: 'config' | 'tools' | 'search') => void;
+	openChatSidebarTab: (tab: 'config' | 'tools' | 'search') => void;
 }

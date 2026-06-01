@@ -21,6 +21,7 @@ import { kokoroSlice } from './slices/kokoro';
 import { ttsSlice } from './slices/tts';
 import { annotationsSlice } from './slices/annotations';
 import { embeddingSlice } from './slices/embedding';
+import { chatSidebarSlice } from './slices/chatSidebar';
 import { createChatStoreSlice } from '@warpcore/bridge/client';
 import { DiffRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/DiffRenderer';
 import { BashRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/BashRenderer';
@@ -50,6 +51,7 @@ export const useStore = create<AppState>()(
 			const tts = ttsSlice(set, get);
 			const annotations = annotationsSlice(set, get);
 			const embedding = embeddingSlice(set, get);
+				const chatSidebar = chatSidebarSlice(set, get);
 				const sseHandlers = sseHandlersSlice(set, get);
 				const bridge = createChatStoreSlice(set, get);
 
@@ -167,8 +169,14 @@ export const useStore = create<AppState>()(
 					currentSystemPrompt: bridge.currentSystemPrompt,
 					currentInferenceParams: bridge.currentInferenceParams,
 					setCurrentThreadId: (id: TThreadId | null) => {
+						const current = bridge.currentThreadId;
+						const switching = current != null && id !== current;
+						console.log('[Store] setCurrentThreadId:', id, 'current=', current, 'switching=', switching);
 						bridge.setCurrentThreadId(id);
-						tts.setVadActive(false);
+						if (switching) {
+							console.log('[Store] thread switch detected, setting vadActive=false');
+							tts.setVadActive(false);
+						}
 						annotations.clearAnnotations();
 						annotations.setAnnotatorVisible(false);
 					},
@@ -199,6 +207,13 @@ export const useStore = create<AppState>()(
 					embeddingEnabled: embedding.embeddingEnabled!,
 					setSelectedEmbeddingServerId: embedding.setSelectedEmbeddingServerId!,
 					setEmbeddingEnabled: embedding.setEmbeddingEnabled!,
+
+					// Chat sidebar state
+					chatSidebarOpen: chatSidebar.chatSidebarOpen!,
+					chatSidebarTab: chatSidebar.chatSidebarTab!,
+					setChatSidebarOpen: chatSidebar.setChatSidebarOpen!,
+					setChatSidebarTab: chatSidebar.setChatSidebarTab!,
+					openChatSidebarTab: chatSidebar.openChatSidebarTab!,
 				};
 		}),
 	),
