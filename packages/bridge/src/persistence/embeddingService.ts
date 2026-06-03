@@ -1,9 +1,5 @@
-// ============================================================
-// bridge/src/persistence/embeddingService.ts
-// Embedding queue, text stripping, HTTP client for /v1/embeddings
-// ============================================================
 import path from 'path';
-import type { IChatMessage, IMessagePart } from '../types';
+import type { IChatMessage } from '../types';
 import { EChatRole, EMessagePartType } from '../types';
 import type { SqlitePersistence } from './betterSqlite';
 import { EmbeddingStore } from './embeddingStore';
@@ -13,38 +9,66 @@ export interface IEmbeddingConfig {
 	embeddingServerUrl: string;
 	modelId: string;
 	embeddingDim: number;
-	dataDir: string;
 	topic: string;
+	onStatusChange: (messageId: string, threadId: string, modelId: string, topic: string) => void;
 }
 
 export interface IEmbeddingTask {
 	messageId: string;
+	threadId: string;
 	text: string;
 	modelId: string;
+	topic: string;
+	serverUrl: string;
+	dim: number;
 }
 
 export class EmbeddingService {
 	private queue: IEmbeddingTask[] = [];
 	private queuedIds = new Set<string>();
 	private processing = false;
-	private config: IEmbeddingConfig | null = null;
 	private store: EmbeddingStore | null = null;
+	private currentInfo: { modelId: string; topic: string; serverUrl: string; dim: number } | null = null;
 	private persistence: SqlitePersistence | null = null;
+	private dataDir: string | null = null;
+	private onStatusChange: ((messageId: string, threadId: string, modelId: string, topic: string) => void) | null = null;
 
 	constructor() {}
 
-	async initialize(config: IEmbeddingConfig, persistence: SqlitePersistence): Promise<void> {
-		this.config = config;
+	initialize(persistence: SqlitePersistence, dataDir: string): void {
 		this.persistence = persistence;
-		const modelName = path.basename(config.modelId, '.gguf');
-		const dbPath = path.join(config.dataDir, 'embeddings', `${config.topic}-${modelName}.db`);
-		this.store = new EmbeddingStore(dbPath, config.embeddingDim);
-		await this.processQueue();
+		this.dataDir = dataDir;
 	}
 
-	async configure(config: IEmbeddingConfig, persistence: SqlitePersistence): Promise<void> {
-		await this.close();
-		await this.initialize(config, persistence);
+	setOnStatusChange(fn: (messageId: string, threadId: string, modelId: string, topic: string) => void): void {
+		this.onStatusChange = fn;
+	}
+
+	async configure(modelId: string, topic: string, serverUrl: string, dim: number): Promise<void> {
+		if (this.currentInfo &&
+			this.currentInfo.modelId === modelId &&
+			this.currentInfo.topic === topic &&
+			this.currentInfo.serverUrl === serverUrl) {
+			return;
+		}
+		await this.getOrCreateStore(modelId, topic, dim);
+		this.currentInfo = { modelId, topic, serverUrl, dim };
+	}
+
+	async getOrCreateStore(modelId: string, topic: string, dim: number): Promise<EmbeddingStore> {
+		if (this.currentInfo &&
+			this.currentInfo.modelId === modelId &&
+			this.currentInfo.topic === topic) {
+			return this.store!;
+		}
+		if (this.store) {
+			await this.store.close();
+		}
+		const modelName = path.basename(modelId, '.gguf');
+		const dbPath = path.join(this.dataDir!, 'embeddings', `${topic}-${modelName}.db`);
+		this.store = new EmbeddingStore(dbPath, dim);
+		console.log('[embedding] Store loaded:', dbPath);
+		return this.store;
 	}
 
 	async close(): Promise<void> {
@@ -52,39 +76,83 @@ export class EmbeddingService {
 			await this.store.close();
 			this.store = null;
 		}
-		this.config = null;
+		this.currentInfo = null;
+		this.onStatusChange = null;
 	}
 
-	getConfig(): IEmbeddingConfig | null {
-		return this.config;
+	async embedMessage(messageId: string, modelId: string, topic: string, serverUrl: string, dim: number): Promise<void> {
+		await this.configure(modelId, topic, serverUrl, dim);
+		const message = await this.persistence!.getMessage(messageId);
+		if (!message) throw new Error(`Message ${messageId} not found`);
+		if (message.role === EChatRole.TOOL) throw new Error('Cannot embed TOOL messages');
+		const text = this.extractEmbeddableText(message);
+		if (!text || text.trim().length === 0) throw new Error('No embeddable text in message');
+
+		const store = await this.getOrCreateStore(modelId, topic, dim);
+		const vector = await this.getEmbeddingFromUrl(text, serverUrl, modelId);
+		await store.insertVector(messageId, text, vector);
+		await this.persistence!.insertEmbeddingStatus(messageId, message.threadId, modelId, topic);
+		this.onStatusChange?.(messageId, message.threadId, modelId, topic);
+		console.log('[embedding] Embedded message:', messageId);
 	}
 
-	async queueMessage(message: IChatMessage): Promise<void> {
-		if (!this.config || !this.persistence) return;
+	async deleteByMessageId(messageId: string, modelId: string, topic: string, serverUrl: string, dim: number): Promise<void> {
+		await this.configure(modelId, topic, serverUrl, dim);
+		console.log('[embedding] Deleting embedding:', messageId, topic);
+		const store = await this.getOrCreateStore(modelId, topic, dim);
+		await store.deleteByMessageId(messageId);
+		if (this.persistence) {
+			await this.persistence.deleteEmbeddingStatus(messageId, modelId, topic);
+		}
+		this.queuedIds.delete(messageId);
+	}
+
+	async search(query: string, topK: number): Promise<IEmbeddingSearchResult[]> {
+		console.log('[embedding] service.search called, store:', this.store ? 'loaded' : null, 'currentInfo:', this.currentInfo ? { modelId: this.currentInfo.modelId, serverUrl: this.currentInfo.serverUrl } : null);
+		if (!this.store) throw new Error('No store loaded');
+		if (!this.currentInfo) throw new Error('Not configured');
+		const vector = await this.getEmbeddingFromUrl(query, this.currentInfo.serverUrl, this.currentInfo.modelId);
+		const results = await this.store.search(vector, topK);
+		console.log('[embedding] Search returned', results.length, 'results');
+		return results;
+	}
+
+	async queueMessage(message: IChatMessage, config: IEmbeddingConfig): Promise<void> {
+		if (!this.persistence) return;
 		if (message.role === EChatRole.TOOL) return;
 		if (this.queuedIds.has(message.id)) return;
 		const text = this.extractEmbeddableText(message);
 		if (!text || text.trim().length === 0) return;
-		const modelId = this.config.modelId;
-		await this.persistence.upsertEmbeddingStatus(message.id, modelId, 'PENDING');
 		this.queuedIds.add(message.id);
-		this.queue.push({ messageId: message.id, text, modelId });
+		this.queue.push({
+			messageId: message.id,
+			threadId: message.threadId,
+			text,
+			modelId: config.modelId,
+			topic: config.topic,
+			serverUrl: config.embeddingServerUrl,
+			dim: config.embeddingDim,
+		});
 		setImmediate(() => this.processQueue());
 	}
 
-	private async processQueue(): Promise<void> {
-		if (this.processing || !this.config || !this.store || !this.persistence) return;
+	async processQueue(): Promise<void> {
+		if (this.processing || !this.persistence || !this.onStatusChange) return;
 		this.processing = true;
+		console.log('[embedding] Queue processing, pending:', this.queue.length);
 		while (this.queue.length > 0) {
 			const task = this.queue.shift();
 			if (!task) continue;
 			try {
-				const vector = await this.getEmbedding(task.text);
-				const vectorId = await this.store.insertVector(task.messageId, task.text, vector);
-				await this.persistence.upsertEmbeddingStatus(task.messageId, this.config.modelId, 'EMBEDDED', vectorId);
+				await this.configure(task.modelId, task.topic, task.serverUrl, task.dim);
+				const store = await this.getOrCreateStore(task.modelId, task.topic, task.dim);
+				const vector = await this.getEmbeddingFromUrl(task.text, task.serverUrl, task.modelId);
+				await store.insertVector(task.messageId, task.text, vector);
+				await this.persistence.insertEmbeddingStatus(task.messageId, task.threadId, task.modelId, task.topic);
+				this.onStatusChange(task.messageId, task.threadId, task.modelId, task.topic);
+				console.log('[embedding] Queue done:', task.messageId);
 			} catch (err) {
 				console.error(`[embedding] Failed to embed message ${task.messageId}:`, err);
-				await this.persistence.upsertEmbeddingStatus(task.messageId, this.config.modelId, 'FAILED');
 			} finally {
 				this.queuedIds.delete(task.messageId);
 			}
@@ -92,12 +160,11 @@ export class EmbeddingService {
 		this.processing = false;
 	}
 
-	private async getEmbedding(text: string): Promise<number[]> {
-		if (!this.config) throw new Error('EmbeddingService not configured');
-		const res = await fetch(`${this.config.embeddingServerUrl}/v1/embeddings`, {
+	private async getEmbeddingFromUrl(text: string, serverUrl: string, modelId: string): Promise<number[]> {
+		const res = await fetch(`${serverUrl}/v1/embeddings`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ input: text, model: this.config.modelId }),
+			body: JSON.stringify({ input: text, model: modelId }),
 		});
 		if (!res.ok) {
 			const body = await res.text();
@@ -108,21 +175,6 @@ export class EmbeddingService {
 			return data.data[0].embedding;
 		}
 		throw new Error('Unexpected embedding response format');
-	}
-
-	async search(query: string, topK: number): Promise<IEmbeddingSearchResult[]> {
-		if (!this.config || !this.store) throw new Error('EmbeddingService not configured');
-		const vector = await this.getEmbedding(query);
-		return this.store.search(vector, topK);
-	}
-
-	async deleteByMessageId(messageId: string): Promise<void> {
-		if (!this.store) return;
-		await this.store.deleteByMessageId(messageId);
-		if (this.persistence) {
-			await this.persistence.deleteEmbeddingStatus(messageId);
-		}
-		this.queuedIds.delete(messageId);
 	}
 
 	private extractEmbeddableText(message: IChatMessage): string {
@@ -136,7 +188,6 @@ export class EmbeddingService {
 					parts.push(stripped.trim());
 				}
 			}
-			// Skip TOOL_CALL, ATTACHMENT
 		}
 		return parts.join('\n').trim();
 	}

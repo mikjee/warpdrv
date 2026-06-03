@@ -1,11 +1,11 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { gguf } from '@huggingface/gguf';
 import type { IWhisperModelMetadata, IWhisperModelFile, TWhisperModelSize, TWhisperFtype } from '@warpcore/shared';
 
 // Parse whisper model metadata from GGUF header (dead code - GGUF scanning disabled)
 export async function parseWhisperMetadata(filePath: string): Promise<IWhisperModelMetadata | null> {
 	try {
-		const { gguf } = await import('@huggingface/gguf');
 		const ggufData = await gguf(filePath, { allowLocalFile: true });
 		const meta = ggufData.metadata as Record<string, unknown>;
 

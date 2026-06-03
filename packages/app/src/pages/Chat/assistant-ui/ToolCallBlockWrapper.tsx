@@ -8,6 +8,7 @@ import { ServerStatusContext } from './thread';
 import { autoResolveRenderer } from './tool-renderers/resolver';
 import { RendererErrorBoundary } from './tool-renderers/RendererErrorBoundary';
 import { useToast } from '@/components/ToastProvider';
+import { decideMcpToolCall, setThreadToolPermission, fetchThreadPermissions } from '@/api/mcpServices';
 
 interface IToolCallBlockWrapperProps {
 	toolCallId: string;
@@ -49,7 +50,6 @@ export const ToolCallBlockWrapper = React.memo(({ toolCallId, toolName, serverNa
 
 	const handleDecision = useCallback(async (decision: 'approve' | 'deny') => {
 		if (!currentThreadId || !currentServerId) return;
-		const { decideMcpToolCall } = await import('@/api/mcpServices');
 		setDeciding(true);
 		try {
 			await decideMcpToolCall(
@@ -68,7 +68,6 @@ export const ToolCallBlockWrapper = React.memo(({ toolCallId, toolName, serverNa
 		if (!currentThreadId || !currentServerId || !serverName) return;
 		setDeciding(true);
 		try {
-			const { setThreadToolPermission, fetchThreadPermissions, decideMcpToolCall } = await import('@/api/mcpServices');
 			await setThreadToolPermission(currentThreadId, serverName, toolName, true, EToolApprovalMode.ALLOWED);
 			const res = await fetchThreadPermissions(currentThreadId);
 			if (res.ok) useStore.getState().setThreadToolPermissions(currentThreadId, res.data.threadOverrides);
@@ -166,6 +165,12 @@ export const ToolCallBlockWrapper = React.memo(({ toolCallId, toolName, serverNa
 					)}
 				</HStack>
 			</HStack>
+
+			{displayStatus === EToolCallStatus.ERROR && toolCall?.error && (
+				<Box px="3" py="2" borderTopWidth="1px" borderColor="var(--wc-border-subtle)">
+					<Text fontSize="11px" color="var(--wc-accent-red)" whiteSpace="pre-wrap" wordBreak="break-word">{toolCall.error}</Text>
+				</Box>
+			)}
 
 			{body}
 

@@ -331,7 +331,7 @@ export const ServersPage = React.memo(() => {
 							justifyContent="center"
 						>
 							<Play size={15} />
-							Launch Server
+							Launch LLaMa
 						</Button>
 						<Button
 							size="sm"

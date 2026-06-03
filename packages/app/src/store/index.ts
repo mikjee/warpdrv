@@ -122,6 +122,7 @@ export const useStore = create<AppState>()(
 					isRunningByThread: bridge.isRunningByThread,
 					activeThreadId: bridge.activeThreadId,
 					inferenceError: bridge.inferenceError,
+					embeddingStatusByMessage: bridge.embeddingStatusByMessage,
 
 					// Bridge MCP State
 					mcpServers: bridge.mcpServers,
@@ -159,6 +160,11 @@ export const useStore = create<AppState>()(
 					applyInferenceStarted: bridge.applyInferenceStarted,
 					applyInferenceEnded: bridge.applyInferenceEnded,
 					applyInferenceError: bridge.applyInferenceError,
+					applyEmbeddingError: bridge.applyEmbeddingError,
+					setThreadEmbeddingStatuses: bridge.setThreadEmbeddingStatuses,
+					applyEmbeddingEmbedded: bridge.applyEmbeddingEmbedded,
+					removeEmbeddingStatus: bridge.removeEmbeddingStatus,
+					clearEmbeddingStatuses: bridge.clearEmbeddingStatuses,
 					seedThreadMessages: bridge.seedThreadMessages,
 					setThreads: bridge.setThreads,
 					setActiveThread: bridge.setActiveThread,
@@ -184,6 +190,8 @@ export const useStore = create<AppState>()(
 					setCurrentInferenceParams: bridge.setCurrentInferenceParams,
 					tempThreadServerId: bridge.tempThreadServerId,
 					setTempThreadServerId: bridge.setTempThreadServerId,
+					tempAutoEmbed: bridge.tempAutoEmbed,
+					setTempAutoEmbed: bridge.setTempAutoEmbed,
 
 					// Attached tools
 					attachAllTools: bridge.attachAllTools,
@@ -204,9 +212,7 @@ export const useStore = create<AppState>()(
 
 					// Embedding
 					selectedEmbeddingServerId: embedding.selectedEmbeddingServerId!,
-					embeddingEnabled: embedding.embeddingEnabled!,
 					setSelectedEmbeddingServerId: embedding.setSelectedEmbeddingServerId!,
-					setEmbeddingEnabled: embedding.setEmbeddingEnabled!,
 
 					// Chat sidebar state
 					chatSidebarOpen: chatSidebar.chatSidebarOpen!,

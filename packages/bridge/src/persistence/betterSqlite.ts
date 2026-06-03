@@ -55,7 +55,7 @@ function buildTableNames(prefix: string) {
 		toolPermissions: `${prefix}mcp_tool_permissions`,
 		threadToolPermissions: `${prefix}thread_tool_permissions`,
 		threadAttachedTools: `${prefix}thread_attached_tools`,
-		embeddingStatus: `${prefix}embedding_status`,
+		embeddingIndex: `${prefix}embedding_index`,
 		threadFts: `${prefix}threads_fts`,
 		messagePartsFts: `${prefix}message_parts_fts`,
 	};
@@ -145,15 +145,15 @@ function buildSchema(t: ReturnType<typeof buildTableNames>): string {
 			attachAllTools INTEGER NOT NULL DEFAULT 1,
 			tools TEXT NOT NULL DEFAULT '[]'
 		);
-		CREATE TABLE IF NOT EXISTS ${t.embeddingStatus} (
+		CREATE TABLE IF NOT EXISTS ${t.embeddingIndex} (
 			messageId TEXT NOT NULL,
+			threadId TEXT NOT NULL,
 			modelId TEXT NOT NULL,
-			status TEXT NOT NULL DEFAULT 'PENDING',
-			vectorId INTEGER,
-			embeddedAt INTEGER,
-			PRIMARY KEY (messageId, modelId)
+			topic TEXT NOT NULL,
+			embeddedAt INTEGER NOT NULL,
+			PRIMARY KEY (messageId, modelId, topic)
 		);
-		CREATE INDEX IF NOT EXISTS idx_${t.embeddingStatus}_status ON ${t.embeddingStatus}(status);
+		CREATE INDEX IF NOT EXISTS idx_${t.embeddingIndex}_thread ON ${t.embeddingIndex}(threadId, modelId, topic);
 		CREATE INDEX IF NOT EXISTS idx_${t.threads}_folder ON ${t.threads}(folderId);
 		CREATE INDEX IF NOT EXISTS idx_${t.threads}_updated ON ${t.threads}(updatedAt);
 		CREATE INDEX IF NOT EXISTS idx_${t.messages}_thread ON ${t.messages}(threadId);
@@ -830,44 +830,26 @@ export class SqlitePersistence implements IPersistence {
 	}
 
 	// ============================================================
-	// Embedding Status
+	// Embedding Index
 	// ============================================================
-	async getEmbeddingStatus(messageId: string, modelId: string): Promise<{ status: string; vectorId: number | null; embeddedAt: number | null } | null> {
-		const row = this.db!.prepare(
-			`SELECT status, vectorId, embeddedAt FROM ${this.t.embeddingStatus} WHERE messageId = ? AND modelId = ?`
-		).get(messageId, modelId) as Record<string, unknown> | undefined;
-		if (!row) return null;
-		return {
-			status: row.status as string,
-			vectorId: row.vectorId as number | null,
-			embeddedAt: row.embeddedAt as number | null,
-		};
-	}
-
-	async upsertEmbeddingStatus(messageId: string, modelId: string, status: string, vectorId?: number | null): Promise<void> {
-		const embeddedAt = status === 'EMBEDDED' ? Date.now() : null;
+	async insertEmbeddingStatus(messageId: string, threadId: string, modelId: string, topic: string): Promise<void> {
 		this.db!.prepare(
-			`INSERT INTO ${this.t.embeddingStatus} (messageId, modelId, status, vectorId, embeddedAt)
-			 VALUES (?, ?, ?, ?, ?)
-			 ON CONFLICT(messageId, modelId) DO UPDATE SET status = ?, vectorId = ?, embeddedAt = ?`
-		).run(messageId, modelId, status, vectorId ?? null, embeddedAt, status, vectorId ?? null, embeddedAt);
+			`INSERT OR IGNORE INTO ${this.t.embeddingIndex} (messageId, threadId, modelId, topic, embeddedAt)
+			 VALUES (?, ?, ?, ?, ?)`
+		).run(messageId, threadId, modelId, topic, Date.now());
 	}
 
-	async getPendingEmbeddings(modelId?: string): Promise<{ messageId: string; modelId: string }[]> {
-		if (modelId) {
-			return this.db!.prepare(
-				`SELECT messageId, modelId FROM ${this.t.embeddingStatus} WHERE status = 'PENDING' AND modelId = ?`
-			).all(modelId) as Array<{ messageId: string; modelId: string }>;
-		}
-		return this.db!.prepare(
-			`SELECT messageId, modelId FROM ${this.t.embeddingStatus} WHERE status = 'PENDING'`
-		).all() as Array<{ messageId: string; modelId: string }>;
+	async getThreadEmbeddingStatuses(threadId: TThreadId, modelId: string, topic: string): Promise<Set<string>> {
+		const rows = this.db!.prepare(
+			`SELECT messageId FROM ${this.t.embeddingIndex} WHERE threadId = ? AND modelId = ? AND topic = ?`
+		).all(threadId, modelId, topic) as Array<{ messageId: string }>;
+		return new Set(rows.map(r => r.messageId));
 	}
 
-	async deleteEmbeddingStatus(messageId: string): Promise<void> {
+	async deleteEmbeddingStatus(messageId: string, modelId: string, topic: string): Promise<void> {
 		this.db!.prepare(
-			`DELETE FROM ${this.t.embeddingStatus} WHERE messageId = ?`
-		).run(messageId);
+			`DELETE FROM ${this.t.embeddingIndex} WHERE messageId = ? AND modelId = ? AND topic = ?`
+		).run(messageId, modelId, topic);
 	}
 
 	async getMessageIdsByThreadId(threadId: TThreadId): Promise<string[]> {

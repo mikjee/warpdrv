@@ -179,3 +179,10 @@ export function resetThreadToolPermission(threadId: string, serverName: string, 
 		body: JSON.stringify({ threadId, serverName, toolName }),
 	});
 }
+
+export function configureEmbedding(serverId: string) {
+	return json<null>('/api/chat/embedding/configure', {
+		method: 'POST',
+		body: JSON.stringify({ serverId }),
+	});
+}

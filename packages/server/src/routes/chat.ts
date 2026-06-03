@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import crypto from 'crypto';
+import { createSession } from 'better-sse';
 import { persistence, orchestrator, broadcaster } from '../index';
 import { store } from '../util/store';
 import type { IChatThreadCreatePayload, IChatMessageCreatePayload } from '@warpcore/shared';
+import { EServerStatus } from '@warpcore/shared';
 import { EChatRole, EMessagePartType, ICompletionRequest, type IFolder } from '@warpcore/bridge';
 import type { IServer } from '@warpcore/shared';
 import { embeddingManager } from '../services/embeddingManager';
@@ -40,7 +42,7 @@ chatRouter.get('/threads', async (req, res) => {
 				title: body.title ?? 'New Chat',
 				folderId: body.folderId ?? null,
 				systemPrompt: body.systemPrompt ?? '',
-				meta: JSON.stringify({ serverId: body.serverId ?? null, whisperServerId: body.whisperServerId ?? null, tags: body.tags ?? [] }),
+				meta: JSON.stringify({ serverId: body.serverId ?? null, whisperServerId: body.whisperServerId ?? null, tags: body.tags ?? [], enableAutoEmbed: body.enableAutoEmbed ?? false }),
 				totalPromptTokens: body.totalPromptTokens ?? 0,
 				totalCompletionTokens: body.totalCompletionTokens ?? 0,
 				createdAt: now,
@@ -67,6 +69,48 @@ chatRouter.get('/threads/:id', async (req, res) => {
 	}
 });
 
+// GET /api/chat/threads/:threadId/embeddings
+chatRouter.get('/threads/:threadId/embeddings', async (req, res) => {
+	try {
+		const threadId = req.params.threadId;
+		const serverId = req.query.serverId as string;
+		if (!serverId) {
+			res.status(400).json({ ok: false, data: null, error: 'serverId required' });
+			return;
+		}
+		const server = await store.get<IServer>(`servers:${serverId}`);
+		if (!server) {
+			res.status(404).json({ ok: false, data: null, error: 'Server not found' });
+			return;
+		}
+		const statuses = await persistence.getThreadEmbeddingStatuses(threadId, server.modelPath, 'global');
+		res.json({ ok: true, data: { messageIds: Array.from(statuses) }, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+// POST /api/chat/embedding/configure
+chatRouter.post('/embedding/configure', async (req, res) => {
+	try {
+		const { serverId } = req.body as { serverId: string };
+		if (!serverId) {
+			return res.status(400).json({ ok: false, error: 'serverId required' });
+		}
+		const server = await store.get<IServer>(`servers:${serverId}`);
+		if (!server) {
+			return res.status(404).json({ ok: false, error: 'Server not found' });
+		}
+		if (server.status !== EServerStatus.RUNNING) {
+			return res.status(400).json({ ok: false, error: 'Server not running' });
+		}
+		await embeddingManager.configure(serverId);
+		res.json({ ok: true, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, error: String(err) });
+	}
+});
+
 // PUT /api/chat/threads/:id
 chatRouter.put('/threads/:id', async (req, res) => {
 	try {
@@ -81,6 +125,7 @@ chatRouter.put('/threads/:id', async (req, res) => {
 			serverId: body.serverId ?? meta.serverId,
 			whisperServerId: body.whisperServerId ?? meta.whisperServerId,
 			tags: body.tags ?? meta.tags,
+			enableAutoEmbed: body.enableAutoEmbed ?? meta.enableAutoEmbed,
 		});
 
 		await persistence.updateThread(req.params.id, {
@@ -191,6 +236,42 @@ chatRouter.post('/threads/:id/messages', async (req, res) => {
 		}
 		res.json({ ok: true, data: messages, error: null });
 	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+// POST /api/chat/messages/:messageId/embed
+chatRouter.post('/messages/:messageId/embed', async (req, res) => {
+	try {
+		const messageId = req.params.messageId;
+		const serverId = req.query.serverId as string;
+		const topic = req.query.topic as string;
+		if (!serverId || !topic) {
+			return res.status(400).json({ ok: false, data: null, error: 'serverId and topic required' });
+		}
+		console.log('[embedding] POST embed:', messageId, serverId, topic);
+		await embeddingManager.embedMessage(messageId, serverId, topic);
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		console.error('[embedding] POST embed error:', err);
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+// DELETE /api/chat/messages/:messageId/embed
+chatRouter.delete('/messages/:messageId/embed', async (req, res) => {
+	try {
+		const messageId = req.params.messageId;
+		const serverId = req.query.serverId as string;
+		const topic = req.query.topic as string;
+		if (!serverId || !topic) {
+			return res.status(400).json({ ok: false, data: null, error: 'serverId and topic required' });
+		}
+		console.log('[embedding] DELETE embed:', messageId, serverId, topic);
+		await embeddingManager.deleteEmbedding(messageId, serverId, topic);
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		console.error('[embedding] DELETE embed error:', err);
 		res.status(500).json({ ok: false, data: null, error: String(err) });
 	}
 });
@@ -353,17 +434,6 @@ chatRouter.post('/completions', async (req, res) => {
 	}
 	const inferenceUrl = `http://127.0.0.1:${server.port}`;
 
-	// Configure embedding if enabled
-	if (body.embeddingEnabled && body.selectedEmbeddingServerId) {
-		try {
-			const { getDataDir } = await import('../util/mcpConfig');
-			const dataDir = getDataDir();
-			await embeddingManager.configure(body.selectedEmbeddingServerId, dataDir);
-		} catch (err) {
-			console.error('[Embedding] Failed to configure:', err);
-		}
-	}
-
 	// Fire and forget — return immediately, all updates flow via broadcaster
 	res.json({ ok: true, data: null, error: null });
 
@@ -393,7 +463,6 @@ chatRouter.post('/cancel/:threadId', (req, res) => {
 // GET /api/chat/events — global SSE channel for all bridge events
 chatRouter.get('/events', async (req, res) => {
 	console.log('[Chat SSE] New client connection');
-	const { createSession } = await import('better-sse');
 	const session = await createSession(req, res);
 	const channel = (broadcaster as any).getChannel();
 	channel.register(session);

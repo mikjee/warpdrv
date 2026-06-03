@@ -40,7 +40,10 @@ import { setRecipeRunnerSSE, getActiveRun } from './services/recipeRunner';
 import { listRecipes } from './services/recipeStore';
 import { getAllDownloads, getAllDownloadsRecord } from './services/downloadManager';
 import { SqlitePersistence, McpClientManager, McpConfig, PermissionManager, Orchestrator, SseBroadcaster } from '@warpcore/bridge/server';
-import { bootWarpmcp } from './warpmcpRunner';  
+import { bootWarpmcp } from './warpmcpRunner';
+import { embeddingManager } from './services/embeddingManager';
+import { getDataDir } from './util/mcpConfig';
+import { serveStaticApp } from './middleware/serveStatic';
 import path from 'path';
 import os from 'os';
 
@@ -52,7 +55,6 @@ export let mcpClient: McpClientManager;
 export let orchestrator: Orchestrator;
 export let mcpConfig: McpConfig;
 export let broadcaster: SseBroadcaster;
-export let embeddingManager: typeof import('./services/embeddingManager').embeddingManager;
 
 import { execSync } from 'child_process';
 import { launchAutoStartServers, reconcileServers } from './services/processManager';
@@ -95,7 +97,6 @@ async function main() {
 	await reconcileServers();
 
 	// Initialize bridge persistence
-	const { getDataDir } = await import('./util/mcpConfig');
 	const dataDir = getDataDir();
 	persistence = new SqlitePersistence(path.join(dataDir, 'chat.db'));
 	await persistence.init();
@@ -108,12 +109,7 @@ async function main() {
 	orchestrator = new Orchestrator({ mcpClient, permissions, persistence, broadcaster });
 
 	// Initialize embedding manager
-	const { embeddingManager: em } = await import('./services/embeddingManager');
-	embeddingManager = em;
-	await embeddingManager.initialize(persistence, broadcaster);
-	// Update warpmcp with embedding search
-	const { updateEmbeddingSearch } = await import('./warpmcpRunner');
-	updateEmbeddingSearch((query, topK) => embeddingManager.search(query, topK));
+	await embeddingManager.initialize(persistence, broadcaster, dataDir);
 
 	// Connect MCP servers in parallel (non-blocking)
 	const mcpCfg = mcpConfig.read();
@@ -200,7 +196,6 @@ async function main() {
 	});
 
 	// Static frontend serving (production only)
-	const { serveStaticApp } = await import('./middleware/serveStatic');
 	serveStaticApp(app);
 
 	// Health check

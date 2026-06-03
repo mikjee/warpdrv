@@ -524,7 +524,6 @@ export function getTrackedServerIds(): string[] {
 // Auto-load latest compatible checkpoint if enabled on this server
 async function maybeAutoLoadCheckpoint(serverId: string): Promise<void> {
 	try {
-		const { store } = await import('../util/store');
 		const server = await store.get<IServer>(`servers:${serverId}`);
 		if (!server || !server.autoLoadCheckpointOnStart) return;
 		const all = await listCheckpoints({ serverId: null, threadId: null });
@@ -545,7 +544,6 @@ async function maybeAutoLoadCheckpoint(serverId: string): Promise<void> {
 // Auto-save all slots as a bundle if enabled on this server
 async function maybeAutoSaveCheckpoint(serverId: string): Promise<void> {
 	try {
-		const { store } = await import('../util/store');
 		const server = await store.get<IServer>(`servers:${serverId}`);
 		if (!server || !server.autoSaveCheckpointOnStop) return;
 		await saveCheckpoint({

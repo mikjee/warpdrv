@@ -16,6 +16,22 @@ function findLastSentenceEnd(text: string): number {
 	return -1;
 }
 
+export function tryAutoEmbed(messageId: string, threadId: string) {
+	const s = useStore.getState();
+	const serverId = s.selectedEmbeddingServerId;
+	if (!serverId) return;
+	const server = s.servers[serverId];
+	if (!server || server.status !== 'RUNNING') return;
+	const thread = s.threads[threadId];
+	if (!thread?.meta) return;
+	let autoEmbed = false;
+	try { autoEmbed = JSON.parse(thread.meta).enableAutoEmbed; } catch { /* ignore */ }
+	if (!autoEmbed) return;
+	if (s.embeddingStatusByMessage[messageId]) return;
+	fetch(`/api/chat/messages/${messageId}/embed?serverId=${encodeURIComponent(serverId)}&topic=global`, { method: 'POST' })
+		.catch(err => useStore.getState().applyEmbeddingError(String(err)));
+}
+
 export function useChatEventsStream() {
 	const applyThreadCreated = useStore(s => s.applyThreadCreated);
 	const applyThreadUpdated = useStore(s => s.applyThreadUpdated);
@@ -32,6 +48,9 @@ export function useChatEventsStream() {
 	const applyInferenceError = useStore(s => s.applyInferenceError);
 	const applyElicitationRequest = useStore(s => s.applyElicitationRequest);
 	const applyElicitationResolved = useStore(s => s.applyElicitationResolved);
+	const applyEmbeddingError = useStore(s => s.applyEmbeddingError);
+	const applyEmbeddingEmbedded = useStore(s => s.applyEmbeddingEmbedded);
+	const removeEmbeddingStatus = useStore(s => s.removeEmbeddingStatus);
 
 	useEffect(() => {
 		console.log('[Chat SSE] Creating EventSource connection to /api/chat/events');
@@ -55,6 +74,9 @@ export function useChatEventsStream() {
 				break;
 			case 'message.created':
 					applyMessageCreated(event.message);
+					if (event.message.role === 'user') {
+						tryAutoEmbed(event.message.id, event.message.threadId);
+					}
 					break;
 			case 'message.patched':
 				applyMessagePatched(event.messageId, event.threadId, event.updates);
@@ -118,6 +140,7 @@ case 'message.chunk':
 				break;
 case 'inference.ended':
 				applyInferenceEnded(event.threadId, event.messageId);
+				tryAutoEmbed(event.messageId, event.threadId);
 				const vadActive = useStore.getState().vadActive;
 				console.log('[TTS SSE] inference.ended: vadActive=', vadActive);
 				if (vadActive) {
@@ -132,6 +155,29 @@ case 'inference.ended':
 				break;
 			case 'elicitation_resolved':
 				applyElicitationResolved(event.id);
+				break;
+			case 'embedding.error':
+				applyEmbeddingError(event.error);
+				break;
+			case 'embedding.embedded':
+				{
+					const state = useStore.getState();
+					const selectedServerId = state.selectedEmbeddingServerId;
+					const selectedServer = selectedServerId ? state.servers[selectedServerId] : null;
+					if (selectedServer?.modelPath === event.modelId && event.topic === 'global' && state.currentThreadId === event.threadId) {
+						applyEmbeddingEmbedded(event.messageId);
+					}
+				}
+				break;
+			case 'embedding.removed':
+				{
+					const state = useStore.getState();
+					const selectedServerId = state.selectedEmbeddingServerId;
+					const selectedServer = selectedServerId ? state.servers[selectedServerId] : null;
+					if (selectedServer?.modelPath === event.modelId && event.topic === 'global') {
+						removeEmbeddingStatus(event.messageId);
+					}
+				}
 				break;
 			default:
 				// Unknown event type, ignore
@@ -155,6 +201,9 @@ case 'inference.ended':
 		es.addEventListener('inference.error', handleEvent);
 		es.addEventListener('elicitation_request', handleEvent);
 		es.addEventListener('elicitation_resolved', handleEvent);
+		es.addEventListener('embedding.error', handleEvent);
+		es.addEventListener('embedding.embedded', handleEvent);
+		es.addEventListener('embedding.removed', handleEvent);
 		es.onerror = (err) => {
 			console.error('[Chat SSE] ❌ Connection error:', err);
 		};
@@ -179,5 +228,8 @@ case 'inference.ended':
 		applyInferenceError,
 		applyElicitationRequest,
 		applyElicitationResolved,
+		applyEmbeddingError,
+		applyEmbeddingEmbedded,
+		removeEmbeddingStatus,
 	]);
 }

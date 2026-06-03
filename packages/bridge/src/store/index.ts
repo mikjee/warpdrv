@@ -61,6 +61,16 @@ export interface IChatStoreState {
 	// Last inference error (cleared after toast is shown)
 	inferenceError: { threadId: TThreadId; messageId: TMessageId; error: string } | null;
 
+	// Last embedding error (cleared after toast is shown)
+	embeddingError: { error: string } | null;
+
+	// Embedding status - messageIds that have embeddings for current selection
+	embeddingStatusByMessage: Record<TMessageId, true>;
+	setThreadEmbeddingStatuses: (messageIds: string[]) => void;
+	applyEmbeddingEmbedded: (messageId: string) => void;
+	removeEmbeddingStatus: (messageId: string) => void;
+	clearEmbeddingStatuses: () => void;
+
 	// MCP State
 	mcpServers: Record<string, IMcpServerState>;
 	serverPermissions: IServerPermission[];
@@ -72,6 +82,7 @@ export interface IChatStoreState {
 	currentSystemPrompt: string;
 	currentInferenceParams: Record<string, unknown>;
 	tempThreadServerId: string | null;
+	tempAutoEmbed: boolean;
 	selectedWhisperServerId: string | null;
 
 	// Attached tools (for active thread context)
@@ -93,6 +104,7 @@ export interface IChatStoreState {
 	applyInferenceStarted: (threadId: TThreadId, messageId: TMessageId) => void;
 	applyInferenceEnded: (threadId: TThreadId, messageId: TMessageId) => void;
 	applyInferenceError: (threadId: TThreadId, messageId: TMessageId, error: string) => void;
+	applyEmbeddingError: (error: string) => void;
 	applyElicitationRequest: (threadId: TThreadId, request: IElicitationRequest) => void;
 	applyElicitationResolved: (id: string) => void;
 	seedThreadMessages: (threadId: TThreadId, messages: IChatMessage[]) => void;
@@ -105,6 +117,7 @@ export interface IChatStoreState {
 	setCurrentSystemPrompt: (prompt: string) => void;
 	setCurrentInferenceParams: (params: Record<string, unknown>) => void;
 	setTempThreadServerId: (id: string | null) => void;
+	setTempAutoEmbed: (v: boolean) => void;
 	setSelectedWhisperServerId: (id: string | null) => void;
 
 	// Attached tools actions
@@ -137,6 +150,8 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 		toolCallsById: {} as Record<TToolCallId, IToolCall>,
 		isRunningByThread: {} as Record<TThreadId, boolean>,
 		inferenceError: null,
+		embeddingError: null,
+		embeddingStatusByMessage: {} as Record<TMessageId, true>,
 		mcpServers: {} as Record<string, IMcpServerState>,
 		serverPermissions: [] as IServerPermission[],
 		toolPermissions: [] as IToolPermission[],
@@ -145,6 +160,7 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 		currentSystemPrompt: '',
 		currentInferenceParams: {} as Record<string, unknown>,
 		tempThreadServerId: null,
+		tempAutoEmbed: false,
 		selectedWhisperServerId: null,
 		attachAllTools: false,
 		attachedTools: [] as IToolAttachment[],
@@ -402,6 +418,29 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 				draft.inferenceError = { threadId, messageId, error };
 				delete draft.startingToolsByMessage[messageId];
 			}),
+		applyEmbeddingError: (error: string) =>
+			set((draft) => {
+				draft.embeddingError = { error };
+			}),
+		setThreadEmbeddingStatuses: (messageIds: string[]) =>
+			set((draft) => {
+				draft.embeddingStatusByMessage = {};
+				for (const id of messageIds) {
+					draft.embeddingStatusByMessage[id] = true;
+				}
+			}),
+		applyEmbeddingEmbedded: (messageId: string) =>
+			set((draft) => {
+				draft.embeddingStatusByMessage[messageId] = true;
+			}),
+		removeEmbeddingStatus: (messageId: string) =>
+			set((draft) => {
+				delete draft.embeddingStatusByMessage[messageId];
+			}),
+		clearEmbeddingStatuses: () =>
+			set((draft) => {
+				draft.embeddingStatusByMessage = {};
+			}),
 		applyElicitationRequest: (threadId: TThreadId, request: IElicitationRequest) =>
 			set((draft) => {
 				draft.elicitationByThread[threadId] = request;
@@ -460,6 +499,7 @@ setActiveThread: (id: TThreadId | null) =>
 			set((draft) => {
 				draft.currentThreadId = id;
 				draft.tempThreadServerId = null;
+				draft.tempAutoEmbed = false;
 			}),
 
 		setCurrentSystemPrompt: (prompt: string) =>
@@ -475,6 +515,11 @@ setActiveThread: (id: TThreadId | null) =>
 		setTempThreadServerId: (id: string | null) =>
 			set((draft) => {
 				draft.tempThreadServerId = id;
+			}),
+
+		setTempAutoEmbed: (v: boolean) =>
+			set((draft) => {
+				draft.tempAutoEmbed = v;
 			}),
 
 		setSelectedWhisperServerId: (id: string | null) =>

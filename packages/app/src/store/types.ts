@@ -155,6 +155,16 @@ export interface AppState {
 	// Inference error tracking
 	inferenceError: { threadId: TThreadId; messageId: TMessageId; error: string } | null;
 
+	// Embedding error tracking
+	embeddingError: { error: string } | null;
+
+	// Embedding status - messageIds that have embeddings for current selection
+	embeddingStatusByMessage: Record<TMessageId, true>;
+	setThreadEmbeddingStatuses: (messageIds: string[]) => void;
+	applyEmbeddingEmbedded: (messageId: string) => void;
+	removeEmbeddingStatus: (messageId: string) => void;
+	clearEmbeddingStatuses: () => void;
+
 	// Bridge Actions
 	applyThreadCreated: (thread: IChatThread) => void;
 	applyThreadUpdated: (threadId: TThreadId, updates: IThreadPatch) => void;
@@ -169,6 +179,7 @@ export interface AppState {
 	applyInferenceStarted: (threadId: TThreadId, messageId: TMessageId) => void;
 	applyInferenceEnded: (threadId: TThreadId, messageId: TMessageId) => void;
 	applyInferenceError: (threadId: TThreadId, messageId: TMessageId, error: string) => void;
+	applyEmbeddingError: (error: string) => void;
 	seedThreadMessages: (threadId: TThreadId, messages: IChatMessage[]) => void;
 	setThreads: (threads: Record<TThreadId, IChatThread>) => void;
 	setActiveThread: (id: TThreadId | null) => void;
@@ -183,6 +194,8 @@ export interface AppState {
 	setCurrentInferenceParams: (params: Record<string, unknown>) => void;
 	tempThreadServerId: string | null;
 	setTempThreadServerId: (id: string | null) => void;
+	tempAutoEmbed: boolean;
+	setTempAutoEmbed: (v: boolean) => void;
 
 	// Attached tools
 	attachAllTools: boolean;
@@ -210,9 +223,7 @@ export interface AppState {
 
 	// Embedding
 	selectedEmbeddingServerId: string | null;
-	embeddingEnabled: boolean;
 	setSelectedEmbeddingServerId: (id: string | null) => void;
-	setEmbeddingEnabled: (v: boolean) => void;
 
 	// Chat sidebar state
 	chatSidebarOpen: boolean;

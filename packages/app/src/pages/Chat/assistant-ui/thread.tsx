@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { VscTools } from "react-icons/vsc";
+import { LuDatabaseZap } from "react-icons/lu";
 import { Box, Image, Popover, Switch, AccordionRoot, AccordionItem as AccordionItemComp, AccordionItemTrigger, AccordionItemContent, HStack, VStack, Text } from '@chakra-ui/react';
 import {
 	ActionBarMorePrimitive,
@@ -724,6 +725,49 @@ const StatsTooltip: FC = () => {
 	);
 };
 
+const EmbeddingStatus: FC = () => {
+	const messageId = useAuiState(s => s.message.id);
+	const embedded = useStore(s => s.embeddingStatusByMessage[messageId]);
+	const selectedServerId = useStore(s => s.selectedEmbeddingServerId);
+	const servers = useStore(s => s.servers);
+	const applyEmbeddingEmbedded = useStore(s => s.applyEmbeddingEmbedded);
+	const removeEmbeddingStatus = useStore(s => s.removeEmbeddingStatus);
+	const [loading, setLoading] = useState(false);
+	const selectedServer = selectedServerId ? servers[selectedServerId] : null;
+
+	const handleClick = useCallback(async () => {
+		if (!selectedServer || loading) return;
+		setLoading(true);
+		try {
+			if (embedded) {
+				const res = await fetch(`/api/chat/messages/${messageId}/embed?serverId=${encodeURIComponent(selectedServer.id)}&topic=global`, { method: 'DELETE' });
+				if (res.ok) removeEmbeddingStatus(messageId);
+			} else {
+				const res = await fetch(`/api/chat/messages/${messageId}/embed?serverId=${encodeURIComponent(selectedServer.id)}&topic=global`, { method: 'POST' });
+				if (res.ok) applyEmbeddingEmbedded(messageId);
+			}
+		} catch { /* ignore */ }
+		finally { setLoading(false); }
+	}, [messageId, embedded, selectedServer, loading, applyEmbeddingEmbedded, removeEmbeddingStatus]);
+
+	if (!selectedServer || selectedServer.status !== EServerStatus.RUNNING) return null;
+
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<div className="cursor-pointer p-1 rounded hover:bg-muted/50 transition-colors" style={{ margin: "0 8px 0 0", opacity: loading ? 0.5 : 1 }} onClick={handleClick}>
+					<LuDatabaseZap size={16} style={{ color: embedded ? "var(--wc-accent-purple)" : "var(--wc-text-muted)" }} />
+				</div>
+			</TooltipTrigger>
+			<TooltipContent align="start" sideOffset={4} side="bottom">
+				<div className="text-sm" style={{ color: 'var(--wc-special-white)', boxShadow: "0 0 10px black" }}>
+					<span>{embedded ? 'Embedded (click to remove)' : 'Embed message'}</span>
+				</div>
+			</TooltipContent>
+		</Tooltip>
+	);
+};
+
 const ToolCallRenderer: FC = () => {
 	const part = useAuiState(s => s.part);
 	
@@ -800,6 +844,7 @@ const AssistantMessage: FC = React.memo(() => {
 
 			<div className="aui-assistant-message-footer mt-1 ml-2 flex min-h-6 items-center gap-1">
 				 <StatsTooltip />
+				 <EmbeddingStatus />
 				 <BranchPicker />
 				 <AssistantActionBar />
 			 </div>
@@ -952,6 +997,7 @@ const UserMessage: FC = () => {
 			</div>
 			<div className="aui-user-message-footer flex min-h-6 items-center justify-end">
 				<StatsTooltip />
+				<EmbeddingStatus />
 				<UserActionBar />
 				<BranchPicker className="aui-user-branch-picker" />
 			</div>

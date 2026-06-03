@@ -106,7 +106,7 @@ export class Orchestrator {
 					title,
 					folderId: null,
 					systemPrompt: '',
-					meta: JSON.stringify({ serverId: request.serverId ?? null, whisperServerId: request.whisperServerId ?? null, tags: [] }),
+					meta: JSON.stringify({ serverId: request.serverId ?? null, whisperServerId: request.whisperServerId ?? null, tags: [], enableAutoEmbed: request.enableAutoEmbed ?? false }),
 					totalPromptTokens: 0,
 					totalCompletionTokens: 0,
 					createdAt: now,
@@ -280,7 +280,9 @@ export class Orchestrator {
 			);
 		} finally {
 			// Final checkpoint patch with full message state, then inference.ended
+			console.log(new Date(), '[Orch] executePass finally, reading message from DB');
 			const finalMessage = await this.persistence.getMessage(assistantMsg.id);
+			console.log(new Date(), '[Orch] message read from DB, emitting replaceParts');
 			if (finalMessage) {
 				this.broadcaster.emit({
 					type: 'message.patched',
@@ -292,6 +294,7 @@ export class Orchestrator {
 					},
 				});
 			}
+			console.log(new Date(), '[Orch] emitting inference.ended');
 			this.broadcaster.emit({
 				type: 'inference.ended',
 				threadId: request.threadId,
@@ -509,14 +512,19 @@ export class Orchestrator {
 				}
 
 				const fr = chunk.choices?.[0]?.finish_reason;
-				if (fr) finishReason = fr;
+				if (fr) {
+					console.log(new Date(), '[Orch] finish_reason received');
+					finishReason = fr;
+				}
 				if (chunk.timings) timings = chunk.timings as Record<string, number>;
 				if (chunk.usage) usage = chunk.usage as Record<string, number>;
 			}
 		}
 		} finally {
+			console.log(new Date(), '[Orch] stream ended, flushing parts');
 			await this.flushReasoningPart(turn);
 			await this.flushTextPart(turn);
+			console.log(new Date(), '[Orch] parts flushed');
 		}
 
 		await this.flushReasoningPart(turn);
@@ -535,6 +543,7 @@ export class Orchestrator {
 		const finalToolCalls = finalizeToolCalls(toolCallAccumulators);
 
 		if (timings || usage) {
+			console.log(new Date(), '[Orch] emitting stats patch');
 			const actualTokens = Math.ceil((fullText.length + reasoningText.length) / 4);
 			const stats: IChatMessageStats = {
 				promptTokens: (usage?.prompt_tokens ?? timings?.prompt_n ?? 0),
@@ -547,12 +556,14 @@ export class Orchestrator {
 				predictedMs: timings?.predicted_ms ?? 0,
 			};
 			await this.persistence.updateMessage(turn.assistantMessageId, { stats });
+			console.log(new Date(), '[Orch] stats persisted, emitting patch');
 			this.broadcaster.emit({
 				type: 'message.patched',
 				messageId: turn.assistantMessageId,
 				threadId: request.threadId,
 				updates: { stats },
 			});
+			console.log(new Date(), '[Orch] stats patch emitted');
 			await this.persistence.incrementThreadTokens(
 				request.threadId,
 				0,

@@ -5,13 +5,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
-
-let sqliteVecPath: string | null = null;
-try {
-	sqliteVecPath = require.resolve('sqlite-vec');
-} catch {
-	// sqlite-vec not available — EmbeddingStore will fail gracefully
-}
+import { load as loadSqliteVec } from 'sqlite-vec';
 
 export interface IEmbeddingSearchResult {
 	messageId: string;
@@ -25,15 +19,12 @@ export class EmbeddingStore {
 
 	constructor(dbPath: string, dim: number) {
 		this.dim = dim;
-		if (!sqliteVecPath) {
-			throw new Error('sqlite-vec not installed');
-		}
 		const dir = path.dirname(dbPath);
 		if (!fs.existsSync(dir)) {
 			fs.mkdirSync(dir, { recursive: true });
 		}
 		this.db = new Database(dbPath);
-		(this.db as any).load(sqliteVecPath);
+		loadSqliteVec(this.db);
 		this.db.pragma('journal_mode = WAL');
 		this.initTable();
 	}
@@ -41,7 +32,7 @@ export class EmbeddingStore {
 	private initTable(): void {
 		if (!this.db) return;
 		this.db.exec(
-			`CREATE VIRTUAL TABLE IF NOT EXISTS embeddings USING vec0(embedding float[${this.dim}])`
+			`CREATE VIRTUAL TABLE IF NOT EXISTS embeddings USING vec0(embedding float[${this.dim}] distance_metric=cosine)`
 		);
 		this.db.exec(
 			`CREATE TABLE IF NOT EXISTS embedding_meta (
@@ -92,11 +83,15 @@ export class EmbeddingStore {
 		}
 		const queryBlob = Buffer.from(new Float32Array(queryVector).buffer);
 		const rows = this.db.prepare(
-			`SELECT m.messageId, m.text, e.embedding <=> ? AS distance
-			 FROM embeddings e
-			 JOIN embedding_meta m ON m.rowid = e.rowid
-			 ORDER BY distance
-			 LIMIT ?`
+			`WITH knn AS (
+				SELECT rowid, distance
+				FROM embeddings
+				WHERE embedding MATCH ? AND k = ?
+			)
+			SELECT m.messageId, m.text, knn.distance AS distance
+			FROM knn
+			JOIN embedding_meta m ON m.rowid = knn.rowid
+			ORDER BY knn.distance`
 		).all(queryBlob, topK) as Array<{ messageId: string; text: string; distance: number }>;
 		return rows;
 	}

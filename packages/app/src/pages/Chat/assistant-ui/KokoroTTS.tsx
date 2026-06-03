@@ -6,6 +6,7 @@ import { useStore } from '@/store';
 import { Box } from '@chakra-ui/react';
 import removeMd from 'remove-markdown';
 import emojiRegex from 'emoji-regex';
+import { EventSource } from 'eventsource';
 
 const ActionBarIcon: FC<{ children: React.ReactNode; onClick?: () => void }> = ({ children, onClick }) => (
 	<Box
@@ -92,7 +93,6 @@ export async function startStream(requestId: number, text: string, voice: string
 	}
 	console.log('[TTS] startStream: streamId=', streamId, 'setting up SSE');
 	currentStreamAbortId = streamId;
-	const { EventSource } = await import('eventsource');
 	const es = new EventSource(`/api/kokoro/tts/stream/${streamId}`);
 	currentEventSource = es;
 	es.addEventListener('chunk', (e: MessageEvent) => {

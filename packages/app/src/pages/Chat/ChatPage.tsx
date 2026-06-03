@@ -22,7 +22,7 @@ import { DEFAULT_INFERENCE_PARAMS } from './ChatConfigSidebar';
 import './assistant-ui/styles/assistant-ui.css';
 import { createContext } from 'react';
 import { ChatSidebar } from './ChatSidebar';
-import { buildMessageChain, useDerivedMsgsForUI } from '@/hooks/useChatSelectors';
+import { useDerivedMsgsForUI } from '@/hooks/useChatSelectors';
 import { useThreadConfig } from '@/hooks/useThreadConfig';
 import { useThreadAttachedTools } from '@/hooks/useThreadAttachedTools';
 import { convertMessagesToOpenAIFormat } from '@warpcore/bridge';
@@ -108,6 +108,14 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 		}
 	}, [inferenceError, toast]);
 
+	const embeddingError = useStore(s => s.embeddingError);
+	useEffect(() => {
+		if (embeddingError) {
+			toast('error', embeddingError.error);
+			useStore.setState(s => { s.embeddingError = null; });
+		}
+	}, [embeddingError, toast]);
+
 	const theme = useStore(s => s.settings.theme);
 	useEffect(() => {
 		const styles = getComputedStyle(document.documentElement);
@@ -139,6 +147,7 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 
 	// Get current thread state from store
 	const tempThreadServerId = useStore(s => s.tempThreadServerId);
+	const tempAutoEmbed = useStore(s => s.tempAutoEmbed);
 	const selectedWhisperServerId = useStore(s => s.selectedWhisperServerId);
 	const setCurrentThreadId = useStore(s => s.setCurrentThreadId);
 	const thread = useStore(s => s.currentThreadId ? s.threads[s.currentThreadId] : undefined);
@@ -157,6 +166,12 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 		threadServerId,
 		tempThreadServerId,
 	]);
+	const currentAutoEmbed = useMemo(() => {
+		if (thread?.meta) {
+			try { return JSON.parse(thread.meta).enableAutoEmbed; } catch { /* ignore */ }
+		}
+		return tempAutoEmbed;
+	}, [thread?.meta, tempAutoEmbed]);
 	const currentWhisperServerId = selectedWhisperServerId;
 
 	// Check if current server is valid (selected AND running)
@@ -221,7 +236,6 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 	const threadMessages = useStore(s => s.currentThreadId ? s.messagesByThread[s.currentThreadId] || emptyMsgs : emptyMsgs)!;
 	const isRunning = useStore(s => s.currentThreadId ? s.isRunningByThread[s.currentThreadId] ?? false : false);
 	const {msgRepo, branchTokenCount} = useDerivedMsgsForUI(threadMessages, currentThreadId, headMessageId, isRunning);
-	const toolCallsById = useStore(s => s.toolCallsById);
 
 	// Check if thread exists in store (distinguishes new vs existing thread)
 	const threadInStore = useStore(s => s.currentThreadId ? s.threads[s.currentThreadId] : undefined);
@@ -232,6 +246,26 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 	// Initial thread load - seed messages and tool calls
 	const seedThreadMessages = useStore(s => s.seedThreadMessages);
 	const applyToolCallCreated = useStore(s => s.applyToolCallCreated);
+	const selectedEmbeddingServerId = useStore(s => s.selectedEmbeddingServerId);
+	const servers = useStore(s => s.servers);
+	const setThreadEmbeddingStatuses = useStore(s => s.setThreadEmbeddingStatuses);
+	const clearEmbeddingStatuses = useStore(s => s.clearEmbeddingStatuses);
+
+	// Reload embeddings when selected model changes
+	useEffect(() => {
+		if (!currentThreadId || !threadInStore) return;
+		if (!selectedEmbeddingServerId) {
+			clearEmbeddingStatuses();
+			return;
+		}
+		fetch(`/api/chat/threads/${currentThreadId}/embeddings?serverId=${encodeURIComponent(selectedEmbeddingServerId)}`)
+			.then(res => res.ok ? res.json() : null)
+			.then(data => {
+				if (data) setThreadEmbeddingStatuses(data.data?.messageIds ?? []);
+				else clearEmbeddingStatuses();
+			})
+			.catch(() => clearEmbeddingStatuses());
+	}, [currentThreadId, selectedEmbeddingServerId]);
 	useEffect(() => {
 		if (!currentThreadId) {
 			setIsLoadingThread(false);
@@ -258,7 +292,7 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 				const response = await res.json();
 				const data = response.data;
 				seedThreadMessages(currentThreadId as string, data?.messages ?? []);
-				
+
 				// Fetch tool calls
 				const tcRes = await fetch(`/api/mcp/tool-calls/thread/${currentThreadId}`);
 				if (tcRes.ok) {
@@ -267,153 +301,20 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 						applyToolCallCreated(tc);
 					}
 				}
+
+				// Fetch embedding statuses
+				if (selectedEmbeddingServerId) {
+					const embRes = await fetch(`/api/chat/threads/${currentThreadId}/embeddings?serverId=${encodeURIComponent(selectedEmbeddingServerId)}`);
+					if (embRes.ok) {
+						const { data: embData } = await embRes.json();
+						setThreadEmbeddingStatuses(embData?.messageIds ?? []);
+					}
+				}
 			}
 			setIsLoadingThread(false);
 		}
 		loadThread();
-	}, [currentThreadId, threadInStore, threadMessages]);
-
-	// Runtime callbacks
-	const onNew = useCallback(async (message: any) => {
-		if (!isValidServer) return;
-		const text = (message.content as any[]).filter((p: any) => p.type === 'text').map((p: any) => p.text).join('');
-		
-		// Generate new thread ID if none exists - orchestrator will auto-create the thread
-		const threadId = currentThreadId ?? globalThis.crypto.randomUUID();
-		if (!currentThreadId) {
-			setCurrentThreadId(threadId);
-		}
-		
-		// Build messages from head for backend (includes TOOL messages)
-		const messagesForBackend = buildMessageChain(
-			useStore.getState(),
-			threadId,
-			{ includeToolMessages: true }
-		);
-		const openAIMessages = convertMessagesToOpenAIFormat(messagesForBackend, toolCallsById);
-		
-		// Process attachments - convert File objects to base64
-		const attachments = message.attachments || [];
-		const attachmentParts: any[] = [];
-		
-		for (const att of attachments) {
-			if (att.file instanceof File) {
-				const isImage = att.file.type.startsWith('image/');
-				if (isImage) {
-					// Image: store base64 for display + LLM
-					const base64 = await new Promise<string>((resolve, reject) => {
-						const reader = new FileReader();
-						reader.onload = () => resolve(reader.result as string);
-						reader.onerror = reject;
-						reader.readAsDataURL(att.file);
-					});
-					attachmentParts.push({
-						id: att.id || crypto.randomUUID(),
-						type: 'attachment',
-						orderIndex: 0,
-						data: base64,
-						mimeType: att.file.type || 'application/octet-stream',
-						fileName: att.file.name,
-						fileSize: att.file.size,
-					});
-				} else {
-					// Document: extract text, drop binary data
-					let extractedText = '';
-					try {
-						extractedText = await extractTextFromFile(att.file);
-					} catch (err) {
-						console.error('[onNew] failed to extract text from', att.file.name, err);
-					}
-					if (extractedText) {
-						attachmentParts.push({
-							id: att.id || crypto.randomUUID(),
-							type: 'attachment',
-							orderIndex: 0,
-							data: '',
-							mimeType: att.file.type || 'application/octet-stream',
-							fileName: att.file.name,
-							fileSize: att.file.size,
-							extractedText,
-						});
-					}
-				}
-			} else if (att.content) {
-				// Already converted attachment
-				const imagePart = att.content.find((p: any) => p.type === 'image');
-				if (imagePart) {
-					// Strip data: prefix — adapter encodes as base64 data URL
-					const base64 = imagePart.image.startsWith('data:')
-						? imagePart.image.split(',')[1]
-						: imagePart.image;
-					attachmentParts.push({
-						id: att.id || crypto.randomUUID(),
-						type: 'attachment',
-						orderIndex: 0,
-						data: base64,
-						mimeType: att.contentType || 'image/*',
-						fileName: att.name,
-						fileSize: 0,
-					});
-				}
-			}
-		}
-		
-		const body: any = {
-			threadId,
-			userMessage: { content: text },
-			parentId: headMessageId,
-			serverId: currentServerId,
-			messages: openAIMessages,
-			systemPrompt: currentSystemPrompt,
-			inferenceParams: currentInferenceParams,
-			presetId: selectedPresetId,
-			generateTitle,
-			attachAllTools,
-			attachedTools: attachAllTools ? undefined : attachedTools,
-		};
-		
-		if (attachmentParts.length > 0) {
-			body.attachments = attachmentParts;
-		}
-		
-		await fetch('/api/chat/completions', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(body),
-		});
-	}, [currentThreadId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, toolCallsById, currentServerId, isValidServer, attachAllTools, attachedTools]);
-
-	const onReload = useCallback(async (parentId: string | null) => {
-		if (!isValidServer || !parentId) return;
-		
-		// Build messages from the regen point (parentId), not from head
-		// Messages below parentId should not be included
-		if (!currentThreadId) return;
-		const messagesFromParent = buildMessageChain(
-			useStore.getState(),
-			currentThreadId,
-			{ includeToolMessages: true, fromId: parentId }
-		);
-		
-		const openAIMessages = convertMessagesToOpenAIFormat(messagesFromParent, toolCallsById);
-		
-		await fetch('/api/chat/completions', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				threadId: currentThreadId,
-				parentId,
-				serverId: currentServerId,
-				messages: openAIMessages,
-				systemPrompt: currentSystemPrompt,
-				inferenceParams: currentInferenceParams,
-				presetId: selectedPresetId,
-				generateTitle,
-				attachAllTools,
-				attachedTools: attachAllTools ? undefined : attachedTools,
-			}),
-		});
-	}, [currentThreadId, currentSystemPrompt, currentInferenceParams, toolCallsById, currentServerId, isValidServer, attachAllTools, attachedTools]);
+	}, [currentThreadId, threadInStore, threadMessages, selectedEmbeddingServerId, servers, seedThreadMessages, applyToolCallCreated, setThreadEmbeddingStatuses]);
 
 	// V2: no message chain sent to backend — backend builds from persistence
 	const onNewV2 = useCallback(async (message: any) => {
@@ -494,6 +395,7 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 			parentId: headMessageId,
 			serverId: currentServerId,
 			whisperServerId: currentWhisperServerId,
+			enableAutoEmbed: currentAutoEmbed,
 			systemPrompt: currentSystemPrompt,
 			inferenceParams: currentInferenceParams,
 			presetId: selectedPresetId,
@@ -511,7 +413,7 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(body),
 		});
-	}, [currentThreadId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, currentServerId, currentWhisperServerId, isValidServer, attachAllTools, attachedTools]);
+	}, [currentThreadId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, currentServerId, currentWhisperServerId, currentAutoEmbed, isValidServer, attachAllTools, attachedTools]);
 
 	const onReloadV2 = useCallback(async (parentId: string | null) => {
 		if (!isValidServer || !parentId) return;
@@ -525,6 +427,7 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 				parentId,
 				serverId: currentServerId,
 				whisperServerId: currentWhisperServerId,
+				enableAutoEmbed: currentAutoEmbed,
 				systemPrompt: currentSystemPrompt,
 				inferenceParams: currentInferenceParams,
 				presetId: selectedPresetId,
@@ -533,7 +436,7 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 				attachedTools: attachAllTools ? undefined : attachedTools,
 			}),
 		});
-	}, [currentThreadId, currentSystemPrompt, currentInferenceParams, currentServerId, currentWhisperServerId, isValidServer, attachAllTools, attachedTools]);
+	}, [currentThreadId, currentSystemPrompt, currentInferenceParams, currentServerId, currentWhisperServerId, currentAutoEmbed, isValidServer, attachAllTools, attachedTools]);
 
 	const onCancel = useCallback(async () => {
 		if (currentThreadId && isValidServer) {
@@ -631,7 +534,6 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 						configParams={currentInferenceParams}
 						configSystemPrompt={currentSystemPrompt}
 						configSelectedPresetId={selectedPresetId}
-						activeThreadId={currentThreadId}
 						onConfigParamsChange={handleParamsChange}
 						onConfigSystemPromptChange={handleSystemPromptChange}
 						onConfigPresetSelect={handlePresetSelect}

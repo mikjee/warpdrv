@@ -427,6 +427,7 @@ export interface IChatThreadCreatePayload {
 	whisperServerId?: string | null;
 	systemPrompt?: string;
 	tags?: string[];
+	enableAutoEmbed?: boolean;
 	totalPromptTokens?: number;
 	totalCompletionTokens?: number;
 }

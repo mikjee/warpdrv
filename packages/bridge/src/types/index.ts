@@ -346,6 +346,7 @@ export interface ICompletionRequest {
 	parentId?: TMessageId | null;
 	serverId?: string;
 	whisperServerId?: string;
+	enableAutoEmbed?: boolean;
 	messages?: Array<{ role: string; content: string }>;
 	systemPrompt?: string;
 	inferenceParams: Record<string, unknown>;
@@ -410,7 +411,10 @@ export type IBridgeEvent =
 	| { type: 'inference.ended'; threadId: TThreadId; messageId: TMessageId }
 	| { type: 'inference.error'; threadId: TThreadId; messageId: TMessageId; error: string }
 	| { type: 'elicitation_request'; threadId: string; request: IElicitationRequest }
-	| { type: 'elicitation_resolved'; id: string };
+	| { type: 'elicitation_resolved'; id: string }
+	| { type: 'embedding.error'; error: string }
+	| { type: 'embedding.embedded'; messageId: TMessageId; threadId: TThreadId; modelId: string; topic: string }
+	| { type: 'embedding.removed'; messageId: TMessageId; modelId: string; topic: string };
 
 export interface IMessagePatch {
 	stats?: IChatMessageStats;

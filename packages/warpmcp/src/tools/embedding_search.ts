@@ -23,9 +23,13 @@ export async function embeddingSearchHandler(
 	deps: IWarpmcpDeps,
 	args: { query: string; topK?: number },
 ): Promise<{ results: IEmbeddingSearchResult[] }> {
+	console.log('[warpmcp] embeddingSearchHandler called, deps.embeddingSearch:', typeof deps.embeddingSearch);
 	if (!deps.embeddingSearch) {
-		return { results: [] };
+		console.log('[warpmcp] no function');
+		throw "[warpmcp] embedding function not found"
 	}
+	console.log('[warpmcp] embeddingSearchHandler calling search with:', args.query, args.topK ?? 5);
 	const results = await deps.embeddingSearch(args.query, args.topK ?? 5);
+	console.log('[warpmcp] embeddingSearchHandler got', results.length, 'results');
 	return { results };
 }
