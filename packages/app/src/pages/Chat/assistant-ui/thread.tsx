@@ -725,7 +725,7 @@ const StatsTooltip: FC = () => {
 	);
 };
 
-const EmbeddingStatus: FC = () => {
+const EmbeddingStatus: FC = React.memo(() => {
 	const messageId = useAuiState(s => s.message.id);
 	const embedded = useStore(s => s.embeddingStatusByMessage[messageId]);
 	const selectedServerId = useStore(s => s.selectedEmbeddingServerId);
@@ -766,7 +766,7 @@ const EmbeddingStatus: FC = () => {
 			</TooltipContent>
 		</Tooltip>
 	);
-};
+});
 
 const ToolCallRenderer: FC = () => {
 	const part = useAuiState(s => s.part);
@@ -844,7 +844,6 @@ const AssistantMessage: FC = React.memo(() => {
 
 			<div className="aui-assistant-message-footer mt-1 ml-2 flex min-h-6 items-center gap-1">
 				 <StatsTooltip />
-				 <EmbeddingStatus />
 				 <BranchPicker />
 				 <AssistantActionBar />
 			 </div>
@@ -973,6 +972,7 @@ const AssistantActionBar: FC = () => {
 				</ActionBarIcon>
 			</ActionBarPrimitive.Edit>
 
+			<EmbeddingStatus />
 			<DeleteMessageButton messageId={messageId} />
 
 		</ActionBarPrimitive.Root>
@@ -997,7 +997,6 @@ const UserMessage: FC = () => {
 			</div>
 			<div className="aui-user-message-footer flex min-h-6 items-center justify-end">
 				<StatsTooltip />
-				<EmbeddingStatus />
 				<UserActionBar />
 				<BranchPicker className="aui-user-branch-picker" />
 			</div>
@@ -1023,6 +1022,7 @@ const UserActionBar: FC = () => {
 				</ActionBarIcon>
 			</ActionBarPrimitive.Edit>
 			
+			<EmbeddingStatus />
 			<DeleteMessageButton messageId={messageId} />
 		</ActionBarPrimitive.Root>
 	);
