@@ -557,7 +557,7 @@ export const ChatPage = React.memo(() => {
 
 	useHotkey(
 		{
-			keys: { ControlLeft: true, KeyF: true },
+			keys: [{ ControlLeft: true, KeyF: true }, { ControlRight: true, KeyF: true }, { MetaLeft: true, KeyF: true }, { MetaRight: true, KeyF: true }],
 			mode: HotkeyMode.KEYPRESS,
 			target: chatPageRef,
 		},

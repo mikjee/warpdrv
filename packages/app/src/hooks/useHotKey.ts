@@ -8,6 +8,16 @@ export enum HotkeyMode {
 }
 
 export type KeyRecord = Record<string, true>;
+type IKeys = KeyRecord | Array<KeyRecord>;
+
+// any combo matches -> hook is active
+function isAnyComboActive(keys: IKeys): boolean {
+	const combos = Array.isArray(keys) ? keys : [keys];
+	for (let i = 0; i < combos.length; i++) {
+		if (isComboActive(combos[i])) return true;
+	}
+	return false;
+}
 
 export function comboStringToRecord(s: string): KeyRecord {
 	if (!s) return {};
@@ -92,7 +102,7 @@ function stopGlobal(): void {
 
 export function useHotkey(
 	options: {
-		keys: KeyRecord;
+		keys: IKeys;
 		mode: HotkeyMode;
 		target: RefObject<EventTarget> | Window;
 		isGlobal?: boolean;
@@ -149,7 +159,7 @@ export function useHotkey(
 		if (!isEnabled) return;
 
 		const evaluate = () => {
-			const matched = isComboActive(keysRef.current);
+			const matched = isAnyComboActive(keysRef.current);
 			const wasMatched = wasMatchedRef.current;
 			if (matched === wasMatched) return;
 			wasMatchedRef.current = matched;
