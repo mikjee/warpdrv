@@ -450,6 +450,18 @@ fn main() {
                 }
             }
 
+            // Global hotkey listener (rdev) -> emit "hotkey://key" { code, down }
+            let hk_handle = app.handle().clone();
+            thread::spawn(move || {
+                let _ = rdev::listen(move |event| {
+                    let (code, down) = match event.event_type {
+                        rdev::EventType::KeyPress(k) => (format!("{:?}", k), true),
+                        rdev::EventType::KeyRelease(k) => (format!("{:?}", k), false),
+                        _ => return,
+                    };
+                    let _ = hk_handle.emit("hotkey://key", serde_json::json!({ "code": code, "down": down }));
+                });
+            });
             // Spawn server in background
             let app_handle = app.handle().clone();
             thread::spawn(move || {

@@ -25,6 +25,7 @@ import { ChatSidebar } from './ChatSidebar';
 import { useDerivedMsgsForUI } from '@/hooks/useChatSelectors';
 import { useThreadConfig } from '@/hooks/useThreadConfig';
 import { useThreadAttachedTools } from '@/hooks/useThreadAttachedTools';
+import { useHotkey, HotkeyMode } from '@/hooks/useHotKey';
 import { convertMessagesToOpenAIFormat } from '@warpcore/bridge';
 import { extractTextFromFile } from '@/hooks/useFileReader';
 import { useToast } from '../../components/ToastProvider';
@@ -552,24 +553,24 @@ export const ChatPage = React.memo(() => {
 	const [threadsListCollapsed, setThreadsListCollapsed] = useState(false);
 	const [searchOpen, setSearchOpen] = useState(false);
 	const openChatSidebarTab = useStore(s => s.openChatSidebarTab);
+	const chatPageRef = useRef<HTMLDivElement>(null);
 
-	// Ctrl+F / Cmd+F — open search in right sidebar
-	useEffect(() => {
-		const handler = (e: KeyboardEvent) => {
-			const isCtrl = e.ctrlKey || e.metaKey;
-			if (isCtrl && e.key === 'f') {
-				e.preventDefault();
+	useHotkey(
+		{
+			keys: { ControlLeft: true, KeyF: true },
+			mode: HotkeyMode.KEYPRESS,
+			target: chatPageRef,
+		},
+		{
+			onActivate: () => {
 				openChatSidebarTab('search');
-				// Focus the search input after render
 				setTimeout(() => {
-					const input = document.querySelector('[placeholder="Search in thread..."]') as HTMLInputElement | null;
+					const input = document.querySelector('#chat-page [placeholder="Search in thread..."]') as HTMLInputElement | null;
 					input?.focus();
 				}, 50);
-			}
-		};
-		document.addEventListener('keydown', handler);
-		return () => document.removeEventListener('keydown', handler);
-	}, [openChatSidebarTab]);
+			},
+		}
+	);
 
 	const chatFontSize = useStore(s => s.settings.chatFontSize ?? 14);
 	const chatFontFamily = useStore(s => s.settings.chatFontFamily ?? '');
@@ -591,7 +592,7 @@ export const ChatPage = React.memo(() => {
 	});
 
 	return (
-		<Flex direction="column" h="100%" overflow="hidden">
+		<Flex ref={chatPageRef} id="chat-page" direction="column" h="100%" overflow="hidden">
 			<PageHeader
 				title="Chat"
 				icon={<MessageSquare size={20} />}

@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useStore } from '@/store';
+import { useHotkey, HotkeyMode, comboStringToRecord } from '@/hooks/useHotKey';
 import { transcribeAudio, float32ToWavBlob } from './WhisperTranscribe';
 // COMMENTED OUT: per-thread whisper server selection no longer used
 // import { parseWhisperThreadMeta } from './WhisperServerSelector';
@@ -188,43 +189,30 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 	// PTT keyboard shortcut
 	const dictationPTTKey = useStore(s => s.settings.dictationPTTKey);
 	const isActiveRef = useRef(false);
-	const isKeyDownRef = useRef(false);
 	useEffect(() => { isActiveRef.current = isActive; }, [isActive]);
+	const chatPageTarget = useRef<EventTarget>(document.getElementById('chat-page') ?? window);
 
-	useEffect(() => {
-		if (!dictationPTTKey) return;
-
-		const handleKeyDown = (e: KeyboardEvent) => {
-			if (e.key !== dictationPTTKey) return;
-			if (isKeyDownRef.current) return;
-			if (vadActiveRef.current) { console.log('[Dictation] PTT keydown blocked: vadActive'); return; }
-			isKeyDownRef.current = true;
-			e.preventDefault();
-			e.stopPropagation();
-			const src = useStore.getState().annotatorVisible ? 'popover' : 'composer';
-			console.log('[Dictation] PTT keydown: src=', src, 'isActive→true');
-			setIsActive(true);
-			setSource(src);
-			start(src);
-		};
-
-		const handleKeyUp = (e: KeyboardEvent) => {
-			if (e.key !== dictationPTTKey) return;
-			if (vadActiveRef.current) return;
-			isKeyDownRef.current = false;
-			e.preventDefault();
-			e.stopPropagation();
-			console.log('[Dictation] PTT keyup: calling stop');
-			stop();
-		};
-
-		document.addEventListener('keydown', handleKeyDown, true);
-		document.addEventListener('keyup', handleKeyUp, true);
-		return () => {
-			document.removeEventListener('keydown', handleKeyDown, true);
-			document.removeEventListener('keyup', handleKeyUp, true);
-		};
-	}, [dictationPTTKey, start, stop]);
+	useHotkey(
+		{
+			keys: comboStringToRecord(dictationPTTKey || ''),
+			mode: HotkeyMode.HOLD,
+			target: chatPageTarget,
+			isEnabled: !!dictationPTTKey && !vadActive,
+		},
+		{
+			onActivate: () => {
+				const src = useStore.getState().annotatorVisible ? 'popover' : 'composer';
+				console.log('[Dictation] PTT activate: src=', src);
+				setIsActive(true);
+				setSource(src);
+				start(src);
+			},
+			onDeactivate: () => {
+				console.log('[Dictation] PTT deactivate: calling stop');
+				stop();
+			},
+		}
+	);
 
 	const value = React.useMemo<IDictationContext>(() => ({
 		isActive,

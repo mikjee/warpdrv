@@ -1,34 +1,66 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button, Text, HStack } from '@chakra-ui/react';
 
 interface IKeyCaptureProps {
 	value: string;
 	onChange: (key: string) => void;
 	onDisable: () => void;
+	label?: string;
 }
 
-export function KeyCapture({ value, onChange, onDisable }: IKeyCaptureProps) {
+const MODIFIER_MAP: Record<string, string> = {
+	ControlLeft: 'Ctrl',
+	ControlRight: 'Ctrl',
+	ShiftLeft: 'Shift',
+	ShiftRight: 'Shift',
+	AltLeft: 'Alt',
+	AltRight: 'Alt',
+	MetaLeft: 'Meta',
+	MetaRight: 'Meta',
+};
+
+function formatCombo(combo: string): string {
+	if (!combo) return 'Disabled';
+	return combo
+		.split('|')
+		.map((code) => MODIFIER_MAP[code] ?? code)
+		.join(' + ');
+}
+
+export function KeyCapture({ value, onChange, onDisable, label = 'PTT Key' }: IKeyCaptureProps) {
 	const [capturing, setCapturing] = useState(false);
+
+	const display = useMemo(() => formatCombo(value), [value]);
 
 	useEffect(() => {
 		if (!capturing) return;
+		const localKeys: Record<string, true> = {};
 
-		const handleKey = (e: KeyboardEvent) => {
+		const onDown = (e: KeyboardEvent) => {
+			localKeys[e.code] = true;
+		};
+		const onUp = (e: KeyboardEvent) => {
 			e.preventDefault();
 			e.stopPropagation();
 			setCapturing(false);
-			// Don't capture Escape - use it to cancel
-			if (e.key === 'Escape') return;
-			onChange(e.key);
+			if (e.code === 'Escape') return;
+			const snapshot = Object.keys(localKeys);
+			if (snapshot.length > 0) {
+				onChange(snapshot.join('|'));
+			}
 		};
 
-		document.addEventListener('keydown', handleKey, true);
-		return () => document.removeEventListener('keydown', handleKey, true);
+		document.addEventListener('keydown', onDown, true);
+		document.addEventListener('keyup', onUp, true);
+		return () => {
+			document.removeEventListener('keydown', onDown, true);
+			document.removeEventListener('keyup', onUp, true);
+		};
 	}, [capturing, onChange]);
 
 	return (
 		<HStack gap="3" align="center">
-			<Text fontSize="13px" color="var(--wc-text-secondary)">PTT Key</Text>
+			<Text fontSize="13px" color="var(--wc-text-secondary)">{label}</Text>
 			{capturing ? (
 				<Button
 					variant="outline"
@@ -42,7 +74,7 @@ export function KeyCapture({ value, onChange, onDisable }: IKeyCaptureProps) {
 					minW="140px"
 					cursor="default"
 				>
-					Press any key…
+					Press keys…
 				</Button>
 			) : (
 				<Button
@@ -57,7 +89,7 @@ export function KeyCapture({ value, onChange, onDisable }: IKeyCaptureProps) {
 					minW="140px"
 					onClick={() => setCapturing(true)}
 				>
-					{value || 'Disabled'}
+					{display}
 				</Button>
 			)}
 			<Button
