@@ -82,6 +82,9 @@ export function SettingsPage() {
 	const [chatFontFamily, setChatFontFamily] = useDependantState(settings.chatFontFamily ?? '');
 	const [chatFixedWidth, setChatFixedWidth] = useDependantState(settings.chatFixedWidth ?? false);
 	const [dictationPTTKey, setDictationPTTKey] = useDependantState(settings.dictationPTTKey ?? 'Insert');
+	const [dictationPTTModeHold, setDictationPTTModeHold] = useDependantState(settings.dictationPTTModeHold ?? false);
+	const [globalPTTKey, setGlobalPTTKey] = useDependantState(settings.globalPTTKey ?? '');
+	const [globalPTTModeHold, setGlobalPTTModeHold] = useDependantState(settings.globalPTTModeHold ?? false);
 	const themeCollection = createListCollection({
 		items: [
 			{ label: 'Amoled', value: ETheme.AMOLED },
@@ -300,7 +303,10 @@ kokoroVoice,
 			chatFontSize,
 			chatFontFamily,
 			chatFixedWidth,
-			dictationPTTKey,
+dictationPTTKey,
+			dictationPTTModeHold,
+			globalPTTKey,
+			globalPTTModeHold,
 		}); 
 
 		if (saveMut.error) {
@@ -714,13 +720,49 @@ kokoroVoice,
 						<VStack align="stretch" gap="4">
 							<Box>
 								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">Dictation</Text>
-								<Text fontSize="12px" color="var(--wc-text-muted)">Push-to-talk key for voice dictation. Held to record, released to stop.</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)">Push-to-talk key for voice dictation.</Text>
 							</Box>
 							<KeyCapture
 								value={dictationPTTKey}
 								onChange={(key) => dirtySetter(setDictationPTTKey, key)}
 								onDisable={() => dirtySetter(setDictationPTTKey, '')}
 							/>
+							<HStack gap="3" align="center">
+								<Text fontSize="13px" color="var(--wc-text-secondary)">Hold Mode</Text>
+								<Switch.Root checked={dictationPTTModeHold} onCheckedChange={(details) => dirtySetter(setDictationPTTModeHold, details.checked)}>
+									<Switch.HiddenInput />
+									<Switch.Control css={{ bg: dictationPTTModeHold ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
+										<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
+									</Switch.Control>
+								</Switch.Root>
+								<Text fontSize="12px" color="var(--wc-text-muted)">{dictationPTTModeHold ? 'Hold to record, release to stop' : 'Toggle on/off'}</Text>
+							</HStack>
+						</VStack>
+					</Card>
+
+					{/* Global PTT */}
+					<Card>
+						<VStack align="stretch" gap="4">
+							<Box>
+								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">Global PTT</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)">OS-wide push-to-talk shortcut for dictation anywhere.</Text>
+							</Box>
+							<KeyCapture
+								value={globalPTTKey}
+								onChange={(key) => dirtySetter(setGlobalPTTKey, key)}
+								onDisable={() => dirtySetter(setGlobalPTTKey, '')}
+								label="PTT Key"
+							/>
+							<HStack gap="3" align="center">
+								<Text fontSize="13px" color="var(--wc-text-secondary)">Hold Mode</Text>
+								<Switch.Root checked={globalPTTModeHold} onCheckedChange={(details) => dirtySetter(setGlobalPTTModeHold, details.checked)}>
+									<Switch.HiddenInput />
+									<Switch.Control css={{ bg: globalPTTModeHold ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
+										<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
+									</Switch.Control>
+								</Switch.Root>
+								<Text fontSize="12px" color="var(--wc-text-muted)">{globalPTTModeHold ? 'Hold to record, release to stop' : 'Toggle on/off'}</Text>
+							</HStack>
 						</VStack>
 					</Card>
 

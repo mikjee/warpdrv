@@ -7,7 +7,6 @@ import { useChatEventsStream } from './hooks/useChatEventsStream';
 import { useStore } from './store';
 import { fetchKokoroStatus, updateSettings } from './api/services';
 import { ETheme } from '@warpcore/shared';
-
 export function App() {
 	const { toast } = useToast();
 	const theme = useStore(s => s.settings.theme ?? ETheme.DARK);

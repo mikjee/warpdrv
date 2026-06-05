@@ -36,6 +36,7 @@ import { parseThreadMeta } from '@/pages/Chat/assistant-ui/ServerSelector';
 import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff } from 'react-icons/vsc';
 import { RiFontSize } from 'react-icons/ri';
 import mermaid from 'mermaid';
+import { useLocation } from 'react-router-dom';
 
 const getFileDataURL = (file: File): Promise<string> =>
 	new Promise((resolve, reject) => {
@@ -553,19 +554,22 @@ export const ChatPage = React.memo(() => {
 	const [threadsListCollapsed, setThreadsListCollapsed] = useState(false);
 	const [searchOpen, setSearchOpen] = useState(false);
 	const openChatSidebarTab = useStore(s => s.openChatSidebarTab);
-	const chatPageRef = useRef<HTMLDivElement>(null);
+
+	const location = useLocation();
+	const currentPath = location.pathname;
 
 	useHotkey(
 		{
 			keys: [{ ControlLeft: true, KeyF: true }, { ControlRight: true, KeyF: true }, { MetaLeft: true, KeyF: true }, { MetaRight: true, KeyF: true }],
 			mode: HotkeyMode.KEYPRESS,
-			target: chatPageRef,
+			target: window,
+			isEnabled: currentPath === '/chat'
 		},
 		{
 			onActivate: () => {
 				openChatSidebarTab('search');
 				setTimeout(() => {
-					const input = document.querySelector('#chat-page [placeholder="Search in thread..."]') as HTMLInputElement | null;
+					const input = document.querySelector('#chat-thread-search-input') as HTMLInputElement | null;
 					input?.focus();
 				}, 50);
 			},
@@ -592,7 +596,7 @@ export const ChatPage = React.memo(() => {
 	});
 
 	return (
-		<Flex ref={chatPageRef} id="chat-page" direction="column" h="100%" overflow="hidden">
+		<Flex direction="column" h="100%" overflow="hidden">
 			<PageHeader
 				title="Chat"
 				icon={<MessageSquare size={20} />}

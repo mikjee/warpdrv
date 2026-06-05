@@ -115,6 +115,7 @@ export function ThreadSearchPanel({ threadId }: { threadId: string | null }) {
 			<Flex alignItems="center" gap="2" px="3" py="2" borderBottom="1px solid var(--wc-border-subtle)">
 				<SearchIcon size={14} style={{ opacity: 0.4, flexShrink: 0 }} />
 				<Input
+					id="chat-thread-search-input"
 					variant="subtle"
 					placeholder="Search in thread..."
 					value={query}

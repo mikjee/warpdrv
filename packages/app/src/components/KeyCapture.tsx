@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Button, Text, HStack } from '@chakra-ui/react';
 
 interface IKeyCaptureProps {
@@ -29,34 +29,38 @@ function formatCombo(combo: string): string {
 
 export function KeyCapture({ value, onChange, onDisable, label = 'PTT Key' }: IKeyCaptureProps) {
 	const [capturing, setCapturing] = useState(false);
+	const localKeysRef = useRef<Record<string, true>>({});
+	const onChangeRef = useRef(onChange);
+	onChangeRef.current = onChange;
 
 	const display = useMemo(() => formatCombo(value), [value]);
 
+	const onDown = useCallback((e: KeyboardEvent) => {
+		localKeysRef.current[e.code] = true;
+	}, []);
+
+	const onUp = useCallback((e: KeyboardEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
+		setCapturing(false);
+		if (e.code === 'Escape') return;
+		const snapshot = Object.keys(localKeysRef.current);
+		if (snapshot.length > 0) {
+			onChangeRef.current(snapshot.join('|'));
+		}
+	}, []);
+
 	useEffect(() => {
-		if (!capturing) return;
-		const localKeys: Record<string, true> = {};
-
-		const onDown = (e: KeyboardEvent) => {
-			localKeys[e.code] = true;
-		};
-		const onUp = (e: KeyboardEvent) => {
-			e.preventDefault();
-			e.stopPropagation();
-			setCapturing(false);
-			if (e.code === 'Escape') return;
-			const snapshot = Object.keys(localKeys);
-			if (snapshot.length > 0) {
-				onChange(snapshot.join('|'));
-			}
-		};
-
-		document.addEventListener('keydown', onDown, true);
-		document.addEventListener('keyup', onUp, true);
-		return () => {
-			document.removeEventListener('keydown', onDown, true);
-			document.removeEventListener('keyup', onUp, true);
-		};
-	}, [capturing, onChange]);
+		if (capturing) {
+			localKeysRef.current = {};
+			document.addEventListener('keydown', onDown, true);
+			document.addEventListener('keyup', onUp, true);
+			return () => {
+				document.removeEventListener('keydown', onDown, true);
+				document.removeEventListener('keyup', onUp, true);
+			};
+		}
+	}, [capturing, onDown, onUp]);
 
 	return (
 		<HStack gap="3" align="center">

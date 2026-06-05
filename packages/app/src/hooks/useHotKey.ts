@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 
 export enum HotkeyMode {
@@ -10,95 +10,39 @@ export enum HotkeyMode {
 export type KeyRecord = Record<string, true>;
 type IKeys = KeyRecord | Array<KeyRecord>;
 
-// any combo matches -> hook is active
-function isAnyComboActive(keys: IKeys): boolean {
-	const combos = Array.isArray(keys) ? keys : [keys];
-	for (let i = 0; i < combos.length; i++) {
-		if (isComboActive(combos[i])) return true;
-	}
-	return false;
-}
-
 export function comboStringToRecord(s: string): KeyRecord {
 	if (!s) return {};
-	return s.split('|').reduce((acc, code) => {
+	return s.split("|").reduce((acc, code) => {
 		acc[code] = true;
 		return acc;
 	}, {} as KeyRecord);
 }
 
 export function recordToComboString(record: KeyRecord): string {
-	return Object.keys(record).join('|');
-}
-
-// shared module-level pressed-key state (Record, not Set)
-export const pressedKeys: Record<string, true> = {};
-const subscribers: Array<() => void> = [];
-
-function notify(): void {
-	for (let i = 0; i < subscribers.length; i++) {
-		subscribers[i]();
-	}
-}
-
-function subscribe(fn: () => void): () => void {
-	subscribers.push(fn);
-	return () => {
-		const idx = subscribers.indexOf(fn);
-		if (idx !== -1) subscribers.splice(idx, 1);
-	};
-}
-
-function setKeyDown(code: string): void {
-	if (pressedKeys[code]) return;
-	pressedKeys[code] = true;
-	notify();
-}
-
-function setKeyUp(code: string): void {
-	if (!pressedKeys[code]) return;
-	delete pressedKeys[code];
-	notify();
+	return Object.keys(record).join("|");
 }
 
 // exact match: every combo key down AND no other key down
-function isComboActive(keys: KeyRecord): boolean {
+function isComboActive(pressed: Record<string, true>, keys: KeyRecord): boolean {
 	const comboCodes = Object.keys(keys);
-	const pressedCodes = Object.keys(pressedKeys);
+	const pressedCodes = Object.keys(pressed);
+	//console.log("match check", comboCodes, pressedCodes);
 	if (comboCodes.length !== pressedCodes.length) return false;
 	for (let i = 0; i < comboCodes.length; i++) {
-		if (!pressedKeys[comboCodes[i]]) return false;
+		if (!pressed[comboCodes[i]]) return false;
 	}
 	return true;
 }
 
-// ---- global (rdev via Tauri) wiring ----
-// no existing channel; this sets one up lazily on first global hook.
-// expects backend to emit a "hotkey://key" event with payload { code, down }.
-type IRdevPayload = { code: string; down: boolean };
-let globalRefCount = 0;
-let globalUnlisten: null | (() => void) = null;
-
-async function startGlobal(): Promise<void> {
-	globalRefCount++;
-	if (globalRefCount > 1) return;
-	const tauri = await import("@tauri-apps/api/event");
-	const un = await tauri.listen<IRdevPayload>("hotkey://key", (e) => {
-		const p = e.payload;
-		if (p.down) setKeyDown(p.code);
-		else setKeyUp(p.code);
-	});
-	globalUnlisten = un;
-}
-
-function stopGlobal(): void {
-	globalRefCount--;
-	if (globalRefCount > 0) return;
-	if (globalUnlisten) {
-		globalUnlisten();
-		globalUnlisten = null;
+function isAnyComboActive(pressed: Record<string, true>, keys: IKeys): boolean {
+	const combos = Array.isArray(keys) ? keys : [keys];
+	for (let i = 0; i < combos.length; i++) {
+		if (isComboActive(pressed, combos[i])) return true;
 	}
+	return false;
 }
+
+type IRdevPayload = { code: string; down: boolean };
 
 export function useHotkey(
 	options: {
@@ -116,81 +60,122 @@ export function useHotkey(
 	const { keys, mode, target, isGlobal = false, isEnabled = true } = options;
 	const [isActive, setIsActive] = useState(false);
 
-	// keep latest values without re-binding listeners every render
+	// per-hook pressed-key state — populated only by this hook's own target listeners
+	const pressedRef = useRef<Record<string, true>>({});
+	// latest values for stable callbacks to read without re-binding listeners
 	const keysRef = useRef(keys);
 	const cbRef = useRef(callbacks);
+	const modeRef = useRef(mode);
 	const wasMatchedRef = useRef(false);
 	const activeRef = useRef(false);
 	keysRef.current = keys;
 	cbRef.current = callbacks;
+	modeRef.current = mode;
+
+	const evaluate = useCallback((): void => {
+		console.log('[hk]', JSON.stringify(pressedRef.current), 'm', isAnyComboActive(pressedRef.current, keysRef.current), 'was', wasMatchedRef.current);
+
+		const matched = isAnyComboActive(pressedRef.current, keysRef.current);
+		const wasMatched = wasMatchedRef.current;
+		if (matched === wasMatched) return;
+		wasMatchedRef.current = matched;
+
+		const m = modeRef.current;
+		if (m === HotkeyMode.KEYPRESS) {
+			if (matched) {
+				cbRef.current.onActivate?.();
+				pressedRef.current = {};
+				wasMatchedRef.current = false;
+			}
+			return;
+		}
+		if (m === HotkeyMode.HOLD) {
+			activeRef.current = matched;
+			setIsActive(matched);
+			if (matched) cbRef.current.onActivate?.();
+			else cbRef.current.onDeactivate?.();
+			return;
+		}
+		// TOGGLE: flip on press, ignore release
+		if (matched) {
+			const next = !activeRef.current;
+			activeRef.current = next;
+			setIsActive(next);
+			if (next) cbRef.current.onActivate?.();
+			else cbRef.current.onDeactivate?.();
+		}
+	}, []);
+
+	const keyDown = useCallback((code: string): void => {
+		// console.log("[HOTKEY] KeyDown", code);
+		if (pressedRef.current[code]) return;
+		pressedRef.current[code] = true;
+		evaluate();
+	}, [evaluate]);
+
+	const keyUp = useCallback((code: string): void => {
+		// console.log("[HOTKEY] KeyUp", code);
+		if (!pressedRef.current[code]) return;
+		delete pressedRef.current[code];
+		evaluate();
+	}, [evaluate]);
+
+	const clearKeys = useCallback((): void => {
+		const codes = Object.keys(pressedRef.current);
+		if (codes.length === 0) return;
+		pressedRef.current = {};
+		evaluate();
+	}, [evaluate]);
 
 	// DOM listeners for local mode
 	useEffect(() => {
-		if (!isEnabled || isGlobal) return;
-
+		if (!isEnabled || isGlobal) {
+			clearKeys();
+			return;
+		}
 		const el: EventTarget = target === window
 			? window
 			: (target as RefObject<EventTarget>).current ?? window;
 
-		const onDown = (ev: Event) => setKeyDown((ev as KeyboardEvent).code);
-		const onUp = (ev: Event) => setKeyUp((ev as KeyboardEvent).code);
+		const onDown = (ev: Event) => keyDown((ev as KeyboardEvent).code);
+		const onUp = (ev: Event) => keyUp((ev as KeyboardEvent).code);
+		const onBlur = () => clearKeys();
 
 		el.addEventListener("keydown", onDown, true);
 		el.addEventListener("keyup", onUp, true);
+		window.addEventListener("blur", onBlur);
 		return () => {
 			el.removeEventListener("keydown", onDown, true);
 			el.removeEventListener("keyup", onUp, true);
+			window.removeEventListener("blur", onBlur);
+			clearKeys();
 		};
-	}, [isEnabled, isGlobal, target]);
+	}, [isEnabled, isGlobal, target, keyDown, keyUp, clearKeys]);
 
-	// global listeners for rdev mode
+	// global listeners (rdev via Tauri) for global mode
 	useEffect(() => {
-		if (!isEnabled || !isGlobal) return;
+		if (!isEnabled || !isGlobal) {
+			clearKeys();
+			return;
+		}
 		let live = true;
-		startGlobal();
+		let unlisten: null | (() => void) = null;
+		(async () => {
+			const tauri = await import("@tauri-apps/api/event");
+			const un = await tauri.listen<IRdevPayload>("hotkey://key", (e) => {
+				const p = e.payload;
+				if (p.down) keyDown(p.code);
+				else keyUp(p.code);
+			});
+			if (live) unlisten = un;
+			else un();
+		})();
 		return () => {
-			if (live) stopGlobal();
 			live = false;
+			if (unlisten) unlisten();
+			clearKeys();
 		};
-	}, [isEnabled, isGlobal]);
-
-	// react to pressed-key changes
-	useEffect(() => {
-		if (!isEnabled) return;
-
-		const evaluate = () => {
-			const matched = isAnyComboActive(keysRef.current);
-			const wasMatched = wasMatchedRef.current;
-			if (matched === wasMatched) return;
-			wasMatchedRef.current = matched;
-
-			if (mode === HotkeyMode.KEYPRESS) {
-				if (matched) cbRef.current.onActivate?.();
-				return;
-			}
-
-			if (mode === HotkeyMode.HOLD) {
-				activeRef.current = matched;
-				setIsActive(matched);
-				if (matched) cbRef.current.onActivate?.();
-				else cbRef.current.onDeactivate?.();
-				return;
-			}
-
-			// TOGGLE: only flip on the press, ignore the release
-			if (matched) {
-				const next = !activeRef.current;
-				activeRef.current = next;
-				setIsActive(next);
-				if (next) cbRef.current.onActivate?.();
-				else cbRef.current.onDeactivate?.();
-			}
-		};
-
-		evaluate();
-		const unsub = subscribe(evaluate);
-		return unsub;
-	}, [isEnabled, mode]);
+	}, [isEnabled, isGlobal, keyDown, keyUp, clearKeys]);
 
 	return { isActive: mode === HotkeyMode.KEYPRESS ? false : isActive };
 }

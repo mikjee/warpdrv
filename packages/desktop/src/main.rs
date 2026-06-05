@@ -383,6 +383,19 @@ fn main() {
     // Check if launched with --hidden flag (from autostart)
     let launched_hidden = std::env::args().any(|arg| arg == "--hidden");
 
+ #[tauri::command]
+fn type_text(text: String) {
+    use enigo::{Enigo, Keyboard, Settings};
+    match Enigo::new(&Settings::default()) {
+        Ok(mut enigo) => {
+            if let Err(e) = enigo.text(&text) {
+                eprintln!("[WarpCore] type_text failed: {:?}", e);
+            }
+        }
+        Err(e) => eprintln!("[WarpCore] enigo init failed: {:?}", e),
+    }
+}
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
@@ -638,6 +651,7 @@ fn main() {
 
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![type_text])
         .run(tauri::generate_context!())
         .expect("error while running WarpCore Desktop");
 }

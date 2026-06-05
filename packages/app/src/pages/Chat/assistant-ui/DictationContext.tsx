@@ -6,7 +6,7 @@ import { transcribeAudio, float32ToWavBlob } from './WhisperTranscribe';
 // import { parseWhisperThreadMeta } from './WhisperServerSelector';
 import { EWhisperServerStatus } from '@warpcore/shared';
 
-type DictationSource = 'composer' | 'popover' | null;
+type DictationSource = 'composer' | 'popover' | 'global' | null;
 
 interface IVADSession {
 	start: () => Promise<void>;
@@ -21,7 +21,7 @@ interface IDictationContext {
 	setWaveformStream: (stream: MediaStream | null) => void;
 	setIsActive: (v: boolean) => void;
 	setSource: (s: DictationSource) => void;
-	start: (source: 'composer' | 'popover') => void;
+	start: (source: 'composer' | 'popover' | 'global') => void;
 	stop: () => void;
 	subscribeTranscript: (fn: (text: string) => void) => () => void;
 	sendTextToPopover: (text: string) => void;
@@ -87,7 +87,7 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 		setWaveformStream(null);
 	}, []);
 
-	const start = useCallback(async (src: 'composer' | 'popover') => {
+	const start = useCallback(async (src: 'composer' | 'popover' | 'global') => {
 		console.log('[Dictation] start called, isActive:', isActive, 'serverId:', selectedWhisperServerId, 'serverStatus:', activeWhisperServer?.status);
 		if (isActiveRef.current) { console.log('[Dictation] start skipped: already active'); return; }
 		if (!selectedWhisperServerId || !activeWhisperServer) { console.log('[Dictation] start skipped: no server'); return; }
@@ -121,7 +121,14 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 						const text = await transcribeAudio(selectedWhisperServerId, wavBlob);
 						if (text) {
 							console.log('[Dictation] transcribed:', JSON.stringify(text.slice(0, 80)));
-							callbacksRef.current.forEach(cb => cb(text));
+							if (src === 'global') {
+								try {
+									const { invoke } = await import('@tauri-apps/api/core');
+									await invoke('type_text', { text });
+								} catch (e) { /* not in Tauri */ }
+							} else {
+								callbacksRef.current.forEach(cb => cb(text));
+							}
 						} else {
 							console.log('[Dictation] empty transcription');
 						}
@@ -188,6 +195,7 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
 	// PTT keyboard shortcut
 	const dictationPTTKey = useStore(s => s.settings.dictationPTTKey);
+	const dictationPTTModeHold = useStore(s => s.settings.dictationPTTModeHold ?? false);
 	const isActiveRef = useRef(false);
 	useEffect(() => { isActiveRef.current = isActive; }, [isActive]);
 	const chatPageTarget = useRef<EventTarget>(document.getElementById('chat-page') ?? window);
@@ -195,9 +203,9 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 	useHotkey(
 		{
 			keys: comboStringToRecord(dictationPTTKey || ''),
-			mode: HotkeyMode.HOLD,
+			mode: dictationPTTModeHold ? HotkeyMode.HOLD : HotkeyMode.TOGGLE,
 			target: chatPageTarget,
-			isEnabled: !!dictationPTTKey && !vadActive,
+			isEnabled: !!dictationPTTKey && !vadActive && !!selectedWhisperServerId,
 		},
 		{
 			onActivate: () => {
@@ -209,6 +217,34 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 			},
 			onDeactivate: () => {
 				console.log('[Dictation] PTT deactivate: calling stop');
+				stop();
+			},
+		}
+	);
+
+	// Global PTT keyboard shortcut
+	const globalPTTKey = useStore(s => s.settings.globalPTTKey);
+	const globalPTTModeHold = useStore(s => s.settings.globalPTTModeHold ?? false);
+
+	console.log("!!globalPTTKey && !vadActive && !!selectedWhisperServerId", !!globalPTTKey && !vadActive && !!selectedWhisperServerId, globalPTTKey, globalPTTModeHold);
+
+	useHotkey(
+		{
+			keys: comboStringToRecord(globalPTTKey || ''),
+			mode: globalPTTModeHold ? HotkeyMode.HOLD : HotkeyMode.TOGGLE,
+			target: window,
+			isGlobal: true,
+			isEnabled: !!globalPTTKey && !vadActive && !!selectedWhisperServerId,
+		},
+		{
+			onActivate: () => {
+				console.log('[GLOBAL Dictation] PTT activate: src=', "global");
+				setIsActive(true);
+				setSource('global');
+				start('global');
+			},
+			onDeactivate: () => {
+				console.log('[GLOBAL Dictation] PTT deactivate: calling stop');
 				stop();
 			},
 		}
