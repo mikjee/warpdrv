@@ -326,6 +326,48 @@ chatRouter.delete('/folders/:id', async (req, res) => {
 });
 
 // ============================================================
+// Workspaces
+// ============================================================
+
+chatRouter.post('/workspaces/:folderId', async (req, res) => {
+	try {
+		const { data } = req.body as { data: Record<string, unknown> };
+		await persistence.createWorkspace({ folderId: req.params.folderId, data: data ?? {} });
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+chatRouter.get('/workspaces/:folderId', async (req, res) => {
+	try {
+		const workspace = await persistence.getWorkspace(req.params.folderId);
+		res.json({ ok: true, data: workspace, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+chatRouter.put('/workspaces/:folderId', async (req, res) => {
+	try {
+		const { data } = req.body as { data: Record<string, unknown> };
+		await persistence.updateWorkspace(req.params.folderId, data);
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+chatRouter.delete('/workspaces/:folderId', async (req, res) => {
+	try {
+		await persistence.deleteWorkspace(req.params.folderId);
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+// ============================================================
 // Presets & Configs — keep existing JSON file handlers
 // ============================================================
 import {

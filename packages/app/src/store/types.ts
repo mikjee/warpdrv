@@ -25,6 +25,7 @@ import type {
 	IToolAttachment,
 	IServerPermission as IMcpServerPermission,
 	IFolder,
+	IWorkspace,
 	IChatThread,
 	IChatMessage,
 	IToolCall,
@@ -34,8 +35,10 @@ import type {
 	TMessageId,
 	TMessagePartId,
 	TToolCallId,
+	TFolderId,
 	IElicitationRequest,
 } from '@warpcore/bridge';
+import { IAnnotation } from '@/store/slices/annotations';
 
 export interface AppState {
 	// SSE Connection
@@ -213,8 +216,14 @@ export interface AppState {
 	folders: IFolder[];
 	setFolders: (folders: IFolder[]) => void;
 
+	// Workspaces
+	activeWorkspaceId: TFolderId | null;
+	setActiveWorkspaceId: (id: TFolderId | null) => void;
+	workspaces: Record<TFolderId, IWorkspace>;
+	setWorkspace: (workspace: IWorkspace) => void;
+
 	// Annotations
-	annotations: import('./slices/annotations').IAnnotation[];
+	annotations: IAnnotation[];
 	annotatorVisible: boolean;
 	addAnnotation: (selectedText: string, comment: string) => void;
 	removeAnnotation: (id: string) => void;

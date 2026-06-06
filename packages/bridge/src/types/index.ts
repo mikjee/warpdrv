@@ -90,6 +90,25 @@ export interface IReorderFolderEntry {
 }
 
 // ============================================================
+// Workspaces
+// Extends folders with a JSON `data` blob for workspace-specific fields.
+// 1:1 with folders via folderId (PK).
+// ============================================================
+export interface IWorkspace {
+	folderId: TFolderId;
+	data: Record<string, unknown>;
+}
+
+export interface IWorkspaceCreatePayload {
+	folderId: TFolderId;
+	data: Record<string, unknown>;
+}
+
+export interface IWorkspaceUpdatePayload {
+	data: Record<string, unknown>;
+}
+
+// ============================================================
 // Threads
 // Column names mirror WarpCore's `threads` table.
 // `meta` is a JSON blob for consumer-specific fields (e.g. serverId, tags).
@@ -347,6 +366,7 @@ export interface ICompletionRequest {
 	serverId?: string;
 	whisperServerId?: string;
 	enableAutoEmbed?: boolean;
+	folderId?: TFolderId | null;
 	messages?: Array<{ role: string; content: string }>;
 	systemPrompt?: string;
 	inferenceParams: Record<string, unknown>;

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import type { IChatThread as IBridgeChatThread, IFolder as IChatFolder } from '@warpcore/bridge';
 import { useStore } from '@/store';
+import { fetchWorkspace } from '@/api/services';
 import {
 	fetchFolders, fetchThreads, createFolder, updateFolder, deleteFolder, reorderFolders,
 } from '@/api/services';
@@ -348,6 +349,22 @@ function FolderSection({
 	const [renaming, setRenaming] = useState(false);
 	const [dragOver, setDragOver] = useState(false);
 	const [menuOpen, setMenuOpen] = useState(false);
+	const setActiveWorkspaceId = useStore(s => s.setActiveWorkspaceId);
+	const setCurrentThreadId = useStore(s => s.setCurrentThreadId);
+	const setWorkspace = useStore(s => s.setWorkspace);
+
+	const handleToggleOpen = () => {
+		if (!open) {
+			fetchWorkspace(folder.id).then(res => {
+				if (res.ok && res.data) setWorkspace(res.data);
+			});
+			setActiveWorkspaceId(folder.id);
+			setCurrentThreadId(globalThis.crypto.randomUUID());
+			setOpen(true);
+		} else {
+			setOpen(false);
+		}
+	};
 
 	function handleDragOver(e: DragEvent) {
 		e.preventDefault();
@@ -390,11 +407,11 @@ function FolderSection({
 				transition="background 0.15s"
 				border="1px solid var(--wc-border-default)"
 			>
-				<HStack
+		<HStack
 					gap="1" px="2" py="1.5" cursor="grab"
 					borderRadius="md"
 					_hover={{ bg: 'var(--wc-bg-card)' }}
-					onClick={() => setOpen(!open)}
+					onClick={handleToggleOpen}
 					position="relative"
 					draggable
 					onDragStart={(e) => handleFolderDragStart(e, folder.id)}

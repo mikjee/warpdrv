@@ -73,7 +73,7 @@ export function useHotkey(
 	modeRef.current = mode;
 
 	const evaluate = useCallback((): void => {
-		console.log('[hk]', JSON.stringify(pressedRef.current), 'm', isAnyComboActive(pressedRef.current, keysRef.current), 'was', wasMatchedRef.current);
+		// console.log('[hk]', JSON.stringify(pressedRef.current), 'm', isAnyComboActive(pressedRef.current, keysRef.current), 'was', wasMatchedRef.current);
 
 		const matched = isAnyComboActive(pressedRef.current, keysRef.current);
 		const wasMatched = wasMatchedRef.current;

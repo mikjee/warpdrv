@@ -11,6 +11,7 @@ import type {
 	TFolderId,
 	IFolder,
 	IReorderFolderEntry,
+	IWorkspace,
 	IChatThread,
 	IListThreadsOptions,
 	IThreadConfig,
@@ -49,6 +50,12 @@ export interface IPersistence {
 	updateFolder(id: TFolderId, updates: Partial<IFolder>): Promise<void>;
 	deleteFolder(id: TFolderId): Promise<void>;
 	reorderFolders(entries: IReorderFolderEntry[]): Promise<void>;
+
+	// Workspaces
+	createWorkspace(workspace: IWorkspace): Promise<void>;
+	getWorkspace(folderId: TFolderId): Promise<IWorkspace | null>;
+	updateWorkspace(folderId: TFolderId, data: Record<string, unknown>): Promise<void>;
+	deleteWorkspace(folderId: TFolderId): Promise<void>;
 
 	// Threads
 	createThread(thread: IChatThread): Promise<void>;

@@ -10,6 +10,7 @@ import type { IPersistence } from '../types/interfaces';
 import type {
 	IFolder,
 	IReorderFolderEntry,
+	IWorkspace,
 	IChatThread,
 	IListThreadsOptions,
 	IThreadConfig,
@@ -56,6 +57,7 @@ function buildTableNames(prefix: string) {
 		threadToolPermissions: `${prefix}thread_tool_permissions`,
 		threadAttachedTools: `${prefix}thread_attached_tools`,
 		embeddingIndex: `${prefix}embedding_index`,
+		workspaces: `${prefix}workspaces`,
 		threadFts: `${prefix}threads_fts`,
 		messagePartsFts: `${prefix}message_parts_fts`,
 	};
@@ -162,6 +164,10 @@ function buildSchema(t: ReturnType<typeof buildTableNames>): string {
 		CREATE INDEX IF NOT EXISTS idx_${t.toolCalls}_message ON ${t.toolCalls}(messageId);
 		CREATE INDEX IF NOT EXISTS idx_${t.toolCalls}_thread ON ${t.toolCalls}(threadId);
 		CREATE INDEX IF NOT EXISTS idx_${t.toolCalls}_status ON ${t.toolCalls}(status);
+		CREATE TABLE IF NOT EXISTS ${t.workspaces} (
+			folderId TEXT PRIMARY KEY REFERENCES folders(id),
+			data TEXT NOT NULL DEFAULT '{}'
+		);
 
 		-- FTS5 — full-text search on thread titles and message content
 		-- External-content mode: snippet() reads from backing table, no storage duplication
@@ -321,6 +327,35 @@ export class SqlitePersistence implements IPersistence {
 			}
 		});
 		txn(entries);
+	}
+
+	// ============================================================
+	// Workspaces
+	// ============================================================
+	async createWorkspace(workspace: IWorkspace): Promise<void> {
+		this.db!.prepare(
+			`INSERT INTO ${this.t.workspaces} (folderId, data) VALUES (?, ?)`
+		).run(workspace.folderId, JSON.stringify(workspace.data));
+	}
+
+	async getWorkspace(folderId: TFolderId): Promise<IWorkspace | null> {
+		const row = this.db!.prepare(`SELECT * FROM ${this.t.workspaces} WHERE folderId = ?`).get(folderId) as { folderId: string; data: string } | undefined;
+		if (!row) return null;
+		return { folderId: row.folderId, data: JSON.parse(row.data) };
+	}
+
+	async updateWorkspace(folderId: TFolderId, data: Record<string, unknown>): Promise<void> {
+		const existing = await this.getWorkspace(folderId);
+		if (existing) {
+			// Additive merge — new fields overlay onto existing data
+			this.db!.prepare(`UPDATE ${this.t.workspaces} SET data = ? WHERE folderId = ?`).run(JSON.stringify({ ...existing.data, ...data }), folderId);
+		} else {
+			await this.createWorkspace({ folderId, data });
+		}
+	}
+
+	async deleteWorkspace(folderId: TFolderId): Promise<void> {
+		this.db!.prepare(`DELETE FROM ${this.t.workspaces} WHERE folderId = ?`).run(folderId);
 	}
 
 	// ============================================================

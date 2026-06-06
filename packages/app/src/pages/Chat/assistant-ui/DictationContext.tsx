@@ -226,8 +226,6 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 	const globalPTTKey = useStore(s => s.settings.globalPTTKey);
 	const globalPTTModeHold = useStore(s => s.settings.globalPTTModeHold ?? false);
 
-	console.log("!!globalPTTKey && !vadActive && !!selectedWhisperServerId", !!globalPTTKey && !vadActive && !!selectedWhisperServerId, globalPTTKey, globalPTTModeHold);
-
 	useHotkey(
 		{
 			keys: comboStringToRecord(globalPTTKey || ''),

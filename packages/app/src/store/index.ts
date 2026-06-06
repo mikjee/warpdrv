@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { AppState, ImmerSet, ImmerGet } from './types';
+import type { TFolderId, IWorkspace, TThreadId } from '@warpcore/bridge';
 import { sseConnectionSlice } from './slices/sseConnection';
 import { sseHandlersSlice } from './slices/sseHandlers';
 import { serversSlice } from './slices/servers';
@@ -181,10 +182,19 @@ export const useStore = create<AppState>()(
 						bridge.setCurrentThreadId(id);
 						if (switching) {
 							console.log('[Store] thread switch detected, setting vadActive=false');
-							tts.setVadActive(false);
+							tts.setVadActive!(false);
 						}
-						annotations.clearAnnotations();
-						annotations.setAnnotatorVisible(false);
+						annotations.clearAnnotations!();
+						annotations.setAnnotatorVisible!(false);
+						if (id && bridge.threads[id]) {
+							// Thread exists in store — derive workspace from its folderId
+							if (bridge.threads[id]!.folderId) {
+								set(s => { s.activeWorkspaceId = bridge.threads[id]!.folderId; });
+							} else {
+								set(s => { s.activeWorkspaceId = null; });
+							}
+						}
+						// If thread doesn't exist (new/fresh thread), preserve activeWorkspaceId as-is
 					},
 					setCurrentSystemPrompt: bridge.setCurrentSystemPrompt,
 					setCurrentInferenceParams: bridge.setCurrentInferenceParams,
@@ -198,11 +208,17 @@ export const useStore = create<AppState>()(
 					attachedTools: bridge.attachedTools,
 					setAttachedTools: bridge.setAttachedTools,
 
-					// Chat Folders
-					folders: [],
-					setFolders: (folders) => set(s => { s.folders = folders; }),
+// Chat Folders
+				folders: [],
+				setFolders: (folders) => set(s => { s.folders = folders; }),
 
-					// Annotations
+				// Workspaces
+				activeWorkspaceId: null,
+				setActiveWorkspaceId: (id: TFolderId | null) => set(s => { s.activeWorkspaceId = id; }),
+				workspaces: {},
+				setWorkspace: (workspace: IWorkspace) => set(s => { s.workspaces[workspace.folderId] = workspace; }),
+
+				// Annotations
 					annotations: annotations.annotations!,
 					annotatorVisible: annotations.annotatorVisible!,
 					addAnnotation: annotations.addAnnotation!,

@@ -69,6 +69,7 @@ import { AnnotationsBox } from './AnnotationsBox';
 import { ConfirmDialog } from '@/components/dialogs/ConfirmDialog';
 import { SelectionPopover } from './SelectionPopover';
 import { DictationProvider, useDictation } from './DictationContext';
+import { WorkspaceView } from '../WorkspaceView';
 
 const tokenEncoder = encodingForModel('gpt-4o');
 
@@ -224,6 +225,10 @@ const ThreadScrollToBottom: FC = () => {
 };
 
 const ThreadWelcome: FC = () => {
+	const activeWorkspaceId = useStore(s => s.activeWorkspaceId);
+	if (activeWorkspaceId) {
+		return <WorkspaceView folderId={activeWorkspaceId} />;
+	}
 	return (
 		<div className="aui-thread-welcome-root mx-auto my-auto flex w-full max-w-(--thread-max-width) grow flex-col">
 			<div className="aui-thread-welcome-center flex w-full grow flex-col items-center justify-center">
@@ -413,36 +418,6 @@ const ReasoningEffortToggle: FC = () => {
 		</IconButton>
 	);
 };
-
-const ToolsToggle: FC = React.memo(() => {
-	const attachAllTools = useStore(s => s.attachAllTools);
-	const setAttachedTools = useStore(s => s.setAttachedTools);
-	const toggle = () => {
-		const next = !attachAllTools;
-		setAttachedTools(next, []);
-	};
-	const label = attachAllTools ? 'Tools' : 'Off';
-	const color = attachAllTools ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)';
-	return (
-		<IconButton
-			variant="outline"
-			size="md"
-			px="3"
-			ml="1"
-			borderRadius={"lg"}
-			borderWidth="1px"
-			borderColor={attachAllTools ? color : "var(--wc-border-default)"}
-			_hover={{ bg: 'var(--wc-bg-hover)' }}
-			color={color}
-			onClick={toggle}
-			className="flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors hover:bg-accent"
-			title={`Tools: ${label} (click to toggle)`}
-		>
-			<VscTools className={`${attachAllTools ? '' : 'opacity-40'}`} />
-			<span style={{ fontSize: "12px" }}>{label}</span>
-		</IconButton>
-	);
-});
 
 const ToolsSelector: FC = React.memo(() => {
 	const attachAllTools = useStore(s => s.attachAllTools);

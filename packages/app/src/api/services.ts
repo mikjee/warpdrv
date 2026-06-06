@@ -49,6 +49,7 @@ import type {
 	IChatThread,
 	IChatMessage,
 	IFolder as IChatFolder,
+	IWorkspace,
 	ISearchResult,
 	ISearchThreadResult,
 } from '@warpcore/bridge';
@@ -332,6 +333,20 @@ export async function updateFolder(id: string, data: Partial<{ name: string; par
 }
 export async function deleteFolder(id: string) {
 	return api.del<null>(`/chat/folders/${id}`);
+}
+
+// Workspaces
+export async function createWorkspace(folderId: string, data: Record<string, unknown>) {
+	return api.post<null>(`/chat/workspaces/${folderId}`, { data });
+}
+export async function fetchWorkspace(folderId: string) {
+	return api.get<IWorkspace | null>(`/chat/workspaces/${folderId}`);
+}
+export async function updateWorkspace(folderId: string, data: Record<string, unknown>) {
+	return api.put<null>(`/chat/workspaces/${folderId}`, { data });
+}
+export async function deleteWorkspace(folderId: string) {
+	return api.del<null>(`/chat/workspaces/${folderId}`);
 }
 
 // Message editing

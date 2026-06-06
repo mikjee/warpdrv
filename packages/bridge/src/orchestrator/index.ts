@@ -22,6 +22,9 @@ import type {
 	IMessagePartToolCall,
 	TMessageId,
 	TThreadId,
+	TFolderId,
+	IFolder,
+	IWorkspace,
 } from '../types';
 import { EChatRole, EMessagePartType, EToolCallStatus, EToolApprovalMode } from '../types';
 import { parseSSEBuffer, accumulateToolCallDelta, finalizeToolCalls, type IToolCallAccumulator } from '../parser';
@@ -84,6 +87,16 @@ export class Orchestrator {
 		return chain.reverse();
 	}
 
+	private async buildWorkspaceContext(folderId: TFolderId): Promise<{ role: 'system'; content: string } | null> {
+		const workspace = await this.persistence.getWorkspace(folderId);
+		if (!workspace) return null;
+		const folder = await this.persistence.getFolder(folderId);
+		if (!folder) return null;
+		const desc = (workspace.data as Record<string, unknown>)?.description as string | undefined;
+		const content = desc ? `Workspace: ${folder.name}\n${desc}` : `Workspace: ${folder.name}`;
+		return { role: 'system', content };
+	}
+
 	// V2: builds message chain from persistence instead of receiving it from frontend
 	async handleCompletionV2(
 		inferenceUrl: string,
@@ -104,7 +117,7 @@ export class Orchestrator {
 				thread = {
 					id: request.threadId,
 					title,
-					folderId: null,
+					folderId: request.folderId ?? null,
 					systemPrompt: '',
 					meta: JSON.stringify({ serverId: request.serverId ?? null, whisperServerId: request.whisperServerId ?? null, tags: [], enableAutoEmbed: request.enableAutoEmbed ?? false }),
 					totalPromptTokens: 0,
@@ -177,6 +190,12 @@ export class Orchestrator {
 
 			// Build base messages for LLM context — V2: from persistence
 			let baseMessages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }> = [];
+
+			// Add workspace context if folderId provided
+			if (request.folderId) {
+				const ctx = await this.buildWorkspaceContext(request.folderId);
+				if (ctx) baseMessages.push(ctx);
+			}
 
 			// Add system prompt if provided
 			if (request.systemPrompt) {
@@ -898,6 +917,10 @@ export class Orchestrator {
 		const openAIMessages = convertMessagesToOpenAIFormat(merged, toolCallsMap);
 
 		const baseMessages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>; tool_call_id?: string }> = [];
+		if (request.folderId) {
+			const ctx = await this.buildWorkspaceContext(request.folderId);
+			if (ctx) baseMessages.push(ctx);
+		}
 		if (request.systemPrompt) {
 			baseMessages.push({ role: 'system', content: request.systemPrompt });
 		}

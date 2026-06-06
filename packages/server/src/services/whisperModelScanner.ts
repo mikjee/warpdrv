@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import type { IWhisperModel, IWhisperModelFile } from '@warpcore/shared';
 import { buildWhisperModelFile } from './whisperModelParser';
 import { store } from '../util/store';
+import { Dirent } from 'fs';
 
 const WHISPER_MODELS_CACHE_KEY = 'whisperModels:cache';
 
@@ -36,7 +37,7 @@ async function scanDirRecursive(
 	dirPath: string,
 	userSegment: string | null,
 ): Promise<IWhisperModel[]> {
-	let entries: import('fs').Dirent[];
+	let entries: Dirent[];
 	try {
 		entries = await fs.readdir(dirPath, { withFileTypes: true });
 	} catch {
