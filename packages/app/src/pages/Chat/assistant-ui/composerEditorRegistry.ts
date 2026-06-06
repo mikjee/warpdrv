@@ -24,7 +24,7 @@ export const insertComposerText = (text: string): void => {
 };
 
 export const clearComposerEditor = (): void => {
-	console.log("[clear] active?", !!activeEditor, "destroyed?", activeEditor?.isDestroyed);
+	//console.log("[clear] active?", !!activeEditor, "destroyed?", activeEditor?.isDestroyed);
 	if (!activeEditor || activeEditor.isDestroyed) return;
 	activeEditor.commands.clearContent(true);
 };

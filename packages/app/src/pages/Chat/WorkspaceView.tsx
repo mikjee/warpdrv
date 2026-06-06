@@ -166,7 +166,7 @@ export const WorkspaceView: React.FC<{ folderId: string }> = ({ folderId }) => {
 
 	return (
 		<div className="mx-auto my-auto flex w-full max-w-(--thread-max-width) grow flex-col px-6" style={{ maxWidth: '44rem' }}>
-			<VStack align="stretch" gap="4" className="grow" py="8">
+			<VStack align="stretch" gap="2" className="grow" py="4">
 				{/* Workspace name */}
 				<Box w="full">
 					{renaming ? (
@@ -180,7 +180,7 @@ export const WorkspaceView: React.FC<{ folderId: string }> = ({ folderId }) => {
 							gap="2"
 							cursor="pointer"
 							onClick={() => setRenaming(true)}
-							px="2"
+							px="0"
 							py="1"
 							borderRadius="md"
 							_hover={{ bg: 'var(--wc-bg-hover)' }}
@@ -195,26 +195,7 @@ export const WorkspaceView: React.FC<{ folderId: string }> = ({ folderId }) => {
 
 				{/* Workspace topic */}
 				<Box w="full">
-					<HStack justify="space-between" w="full">
-						<Text fontSize="11px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em">
-							Topic
-						</Text>
-						{editingTopic ? (
-							<HStack gap="1">
-								<Box cursor="pointer" onClick={handleTopicSave} opacity={0.5} _hover={{ opacity: 0.8 }} p="1">
-									<CheckIcon size={14} />
-								</Box>
-								<Box cursor="pointer" onClick={() => { setEditingTopic(false); setTopicError(null); }} opacity={0.3} _hover={{ opacity: 0.6 }} p="1">
-									<XIcon size={14} />
-								</Box>
-							</HStack>
-						) : (
-							<Box cursor="pointer" onClick={() => { setEditingTopic(true); setTopicError(null); }} opacity={0.3} _hover={{ opacity: 0.6 }}>
-								<PencilIcon size={12} />
-							</Box>
-						)}
-					</HStack>
-					{editingTopic ? (
+					{editingTopic ? (<HStack w="full">
 						<Input
 							size="sm"
 							value={topic}
@@ -226,11 +207,22 @@ export const WorkspaceView: React.FC<{ folderId: string }> = ({ folderId }) => {
 							fontFamily="monospace"
 							mt="1"
 						/>
-					) : (
-						<Text fontSize="13px" fontFamily="monospace" color="var(--wc-text-tertiary)" mt="1" px="2" py="1">
-							{topic}
+						<HStack gap="1">
+							<Box cursor="pointer" onClick={handleTopicSave} opacity={0.5} _hover={{ opacity: 0.8 }} p="0">
+								<CheckIcon size={14} />
+							</Box>
+							<Box cursor="pointer" onClick={() => { setEditingTopic(false); setTopicError(null); }} opacity={0.3} _hover={{ opacity: 0.6 }} p="1">
+								<XIcon size={14} />
+							</Box>
+						</HStack>
+					</HStack>) : (<HStack w="full">
+						<Text fontSize="13px" fontFamily="monospace" color="var(--wc-text-tertiary)" mt="1" px="0" py="1">
+							#{topic}
 						</Text>
-					)}
+						<Box cursor="pointer" onClick={() => { setEditingTopic(true); setTopicError(null); }} opacity={0.3} _hover={{ opacity: 0.6 }}>
+							<PencilIcon size={12} />
+						</Box>
+					</HStack>)}
 					{topicError && <Text fontSize="11px" color="var(--wc-accent-red)" mt="1">{topicError}</Text>}
 				</Box>
 

@@ -58,7 +58,7 @@ export const ComposerEditor = forwardRef<IWarpComposerEditorRef, IProps>((props,
 			props.onChangeText(docToString(editor.getJSON()));
 		},
 		onCreate: ({ editor }) => {
-			console.log("[register] onCreate fired", !!editor);
+			//console.log("[register] onCreate fired", !!editor);
 			setActiveComposerEditor(editor); 
 		},
 		onDestroy: () => {

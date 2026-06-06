@@ -26,7 +26,7 @@ import {
 	MessagePrimitive,
 	SuggestionPrimitive,
 	ThreadPrimitive,
-	useAuiState, useAui,
+	useAuiState, useAui, useAuiEvent,
 } from "@assistant-ui/react";
 import {
 	ArrowDownIcon,
@@ -329,8 +329,10 @@ const Composer: FC = () => {
 
 	const handleEnter = useCallback(() => {
 		aui.composer().send({ startRun: true });
-		editorRef.current?.clear();
 	}, [aui]);
+	useAuiEvent("composer.send", () => {
+		editorRef.current?.clear();
+	});
 
 	// Subscribe to dictation transcripts — only act when popover is not visible
 	useEffect(() => {
