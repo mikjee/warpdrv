@@ -178,10 +178,10 @@ export const useStore = create<AppState>()(
 					setCurrentThreadId: (id: TThreadId | null) => {
 						const current = bridge.currentThreadId;
 						const switching = current != null && id !== current;
-						console.log('[Store] setCurrentThreadId:', id, 'current=', current, 'switching=', switching);
+						//console.log('[Store] setCurrentThreadId:', id, 'current=', current, 'switching=', switching);
 						bridge.setCurrentThreadId(id);
 						if (switching) {
-							console.log('[Store] thread switch detected, setting vadActive=false');
+							//console.log('[Store] thread switch detected, setting vadActive=false');
 							tts.setVadActive!(false);
 						}
 						annotations.clearAnnotations!();

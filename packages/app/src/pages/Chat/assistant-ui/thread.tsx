@@ -49,7 +49,7 @@ import {
 	Trash2,
 	Volume2,
 } from "lucide-react";
-import React, { useCallback, useContext, useEffect, useMemo, useState, type FC } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState, type FC } from "react";
 import { BranchTokensContext, ChatConfigContext } from "@/pages/Chat/ChatPage";
 import { useStore } from "@/store";
 import { VoiceWaveform } from "./VoiceWaveform";
@@ -70,6 +70,8 @@ import { ConfirmDialog } from '@/components/dialogs/ConfirmDialog';
 import { SelectionPopover } from './SelectionPopover';
 import { DictationProvider, useDictation } from './DictationContext';
 import { WorkspaceView } from '../WorkspaceView';
+import { ComposerEditor, IWarpComposerEditorRef } from './ComposerEditor';
+import { insertComposerText, clearComposerEditor } from './composerEditorRegistry';
 
 const tokenEncoder = encodingForModel('gpt-4o');
 
@@ -319,20 +321,25 @@ const Composer: FC = () => {
 	const clearAnnotations = useStore(s => s.clearAnnotations);
 	const aui = useAui();
 	const composerText = useAuiState(s => s.composer.text);
+	const editorRef = useRef<IWarpComposerEditorRef>(null);
+
+	const handleChangeText = useCallback((text: string) => {
+		aui.composer().setText(text);
+	}, [aui]);
+
+	const handleEnter = useCallback(() => {
+		aui.composer().send({ startRun: true });
+		editorRef.current?.clear();
+	}, [aui]);
 
 	// Subscribe to dictation transcripts — only act when popover is not visible
 	useEffect(() => {
 		if (annotatorVisible) return;
 		const unsubscribe = subscribeTranscript((text: string) => {
-			const input = document.querySelector('.aui-composer-input') as HTMLTextAreaElement;
-			if (!input) return;
-			const cursorPos = input.selectionStart ?? input.value.length;
-			const newText = input.value.slice(0, cursorPos) + (input.value.slice(0, cursorPos).endsWith(' ') ? '' : ' ') + text + input.value.slice(cursorPos);
-			aui.composer().setText(newText);
-			setTimeout(() => {
-				input.setSelectionRange(cursorPos + (input.value.slice(0, cursorPos).endsWith(' ') ? 0 : 1) + text.length, cursorPos + (input.value.slice(0, cursorPos).endsWith(' ') ? 0 : 1) + text.length);
-				input.focus();
-			}, 0);
+			const ed = editorRef.current?.getEditor();
+			if (!ed) return;
+			const needsSpace = !ed.getText().endsWith(' ');
+			ed.chain().focus().insertContent((needsSpace ? ' ' : '') + text).run();
 		});
 		return unsubscribe;
 	}, [annotatorVisible, subscribeTranscript, aui]);
@@ -364,14 +371,12 @@ const Composer: FC = () => {
 					}}
 				>
 					<ComposerAttachments />
-				 <ComposerPrimitive.Input
+				 <ComposerEditor
+						ref={editorRef}
 						placeholder="Send a message..."
-						className="aui-composer-input max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-sm outline-none aui-composer-input"
-						style={{ color: 'var(--wc-text-primary)' }}
-						rows={1}
-						autoFocus
-						aria-label="Message input"
-						autoComplete="off"
+						className="aui-composer-editor max-h-32 min-h-10 w-full overflow-y-auto bg-transparent px-1.75 py-1 text-sm"
+						onChangeText={handleChangeText}
+						onEnter={handleEnter}
 					/>
 					<ComposerAction onStreamChange={setWaveformStream} />
 					{waveformStream ? <VoiceWaveform stream={waveformStream} width={680} /> : <ContextUsageBar />}
@@ -592,6 +597,7 @@ const ComposerAction: FC<{ onStreamChange?: (stream: MediaStream | null) => void
 			clearAnnotations();
 		}
 		aui.composer().send({ startRun: true });
+		clearComposerEditor();
 	}, [isSendDisabled, annotations, composerText, clearAnnotations]);
 
 	return (
@@ -605,15 +611,7 @@ const ComposerAction: FC<{ onStreamChange?: (stream: MediaStream | null) => void
 			</div>
 			<div className="flex items-center gap-2">
 				<VoiceInput threadId={currentThreadId} onTranscript={(text) => {
-					const input = document.querySelector('.aui-composer-input') as HTMLTextAreaElement;
-					if (!input) return;
-					const cursorPos = input.selectionStart ?? input.value.length;
-					const newText = input.value.slice(0, cursorPos) + text + input.value.slice(cursorPos);
-					aui.composer().setText(newText);
-					setTimeout(() => {
-						input.setSelectionRange(cursorPos + text.length, cursorPos + text.length);
-						input.focus();
-					}, 0);
+					insertComposerText(text);
 				}} aui={aui} onStreamChange={onStreamChange} />
 				<ThreadWhisperServerSelector />
 				<ThreadServerSelector threadId={currentThreadId} />

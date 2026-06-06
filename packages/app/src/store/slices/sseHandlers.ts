@@ -179,6 +179,16 @@ export const sseHandlersSlice = (
 			state.settings = { ...state.settings, ...data };
 		}),
 
+		// Embedding
+		'embedding:init': (data) => setState((state) => {
+			if (data.serverId) {
+				state.selectedEmbeddingServerId = data.serverId;
+			}
+		}),
+		'embedding.configured': (data) => setState((state) => {
+			state.selectedEmbeddingServerId = data.serverId;
+		}),
+
 		// MCP
 		'mcp:init': (data) => setState((state) => { state.mcpServers = data; }),
 		'mcp:servers': (data) => setState((state) => { state.mcpServers = data; }),

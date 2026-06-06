@@ -86,7 +86,7 @@ case 'message.chunk':
 		if (event.partType === 'text') {
 					const state = useStore.getState();
 					const guardPass = state.ttsActiveMessageId === event.messageId && state.ttsIsGenerating === 'vad';
-					console.log('[TTS SSE] chunk: messageId=', event.messageId, 'ttsActiveMsg=', state.ttsActiveMessageId, 'generating=', state.ttsIsGenerating, 'guardPass=', guardPass);
+					//console.log('[TTS SSE] chunk: messageId=', event.messageId, 'ttsActiveMsg=', state.ttsActiveMessageId, 'generating=', state.ttsIsGenerating, 'guardPass=', guardPass);
 					if (!guardPass) break;
 					const msg = state.messagesByThread[event.threadId]?.[event.messageId];
 					if (msg) {
@@ -99,7 +99,7 @@ case 'message.chunk':
 						if (lastEnd > -1) {
 							const sentence = remaining.slice(0, lastEnd + 1);
 							const reqId = useStore.getState().ttsVadRequestId;
-							console.log('[TTS SSE] calling startStream: requestId=', reqId, 'sentence=', JSON.stringify(sentence.slice(0, 60)));
+							//console.log('[TTS SSE] calling startStream: requestId=', reqId, 'sentence=', JSON.stringify(sentence.slice(0, 60)));
 							useStore.getState().ttsVadIncSent();
 							startStream(
 								reqId,
@@ -126,8 +126,8 @@ case 'message.chunk':
 				applyInferenceStarted(event.threadId, event.messageId);
 				{
 					const s = useStore.getState();
-					console.log('[TTS SSE] inference.started: vadActive=', s.vadActive, 'messageId=', event.messageId);
-					if (!s.vadActive) { console.log('[TTS SSE] inference.started: vadActive is FALSE, skipping TTS setup'); break; }
+					//console.log('[TTS SSE] inference.started: vadActive=', s.vadActive, 'messageId=', event.messageId);
+					if (!s.vadActive) { break; }
 					s.ttsSetSpokenIndex(event.messageId, 0);
 					s.ttsVadReset();
 					const newId = s.ttsVadNewRequestId();
@@ -139,7 +139,7 @@ case 'inference.ended':
 				applyInferenceEnded(event.threadId, event.messageId);
 				tryAutoEmbed(event.messageId, event.threadId);
 				const vadActive = useStore.getState().vadActive;
-				console.log('[TTS SSE] inference.ended: vadActive=', vadActive);
+				//console.log('[TTS SSE] inference.ended: vadActive=', vadActive);
 				if (vadActive) {
 					useStore.getState().ttsClearSpokenIndex(event.messageId);
 				}

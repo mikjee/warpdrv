@@ -157,8 +157,9 @@ export const SelectionPopover = () => {
 		<div
 			ref={ref}
 			onMouseDown={(e) => {
-				if (e.target instanceof HTMLTextAreaElement) return;
-				e.preventDefault();
+		if (e.target instanceof HTMLTextAreaElement) return;
+			if (e.target instanceof HTMLElement && e.target.closest('.aui-composer-input')) return;
+			e.preventDefault();
 			}}
 			style={{
 				position: 'fixed',
