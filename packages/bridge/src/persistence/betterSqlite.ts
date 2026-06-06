@@ -29,6 +29,7 @@ import type {
 	ISearchResult,
 	ISearchThreadResult,
 } from '../types';
+import { folderNameToTopic } from '../util/topic';
 import {
 	EChatRole,
 	EMessagePartType,
@@ -68,6 +69,7 @@ function buildSchema(t: ReturnType<typeof buildTableNames>): string {
 		CREATE TABLE IF NOT EXISTS ${t.folders} (
 			id TEXT PRIMARY KEY,
 			name TEXT NOT NULL,
+			topic TEXT NOT NULL DEFAULT '' UNIQUE,
 			parentId TEXT,
 			sortOrder INTEGER NOT NULL DEFAULT 0,
 			createdAt INTEGER NOT NULL
@@ -263,6 +265,18 @@ export class SqlitePersistence implements IPersistence {
 			}
 		}
 
+		// Add topic column to folders, populate from name
+		try {
+			this.db!.exec(`ALTER TABLE ${this.t.folders} ADD COLUMN topic TEXT NOT NULL DEFAULT ''`);
+			const folders = this.db!.prepare(`SELECT id, name FROM ${this.t.folders}`).all() as Array<{ id: string; name: string }>;
+			for (const f of folders) {
+				this.db!.prepare(`UPDATE ${this.t.folders} SET topic = ? WHERE id = ?`).run(folderNameToTopic(f.name), f.id);
+			}
+			console.log(`[migration] Added topic to ${folders.length} folders`);
+		} catch {
+			// Column already exists
+		}
+
 		// FTS5 — standard mode, populate index via INSERT
 		try {
 			const txn = this.db!.transaction(() => {
@@ -292,8 +306,8 @@ export class SqlitePersistence implements IPersistence {
 	// ============================================================
 	async createFolder(folder: IFolder): Promise<void> {
 		this.db!.prepare(
-			`INSERT INTO ${this.t.folders} (id, name, parentId, sortOrder, createdAt) VALUES (?, ?, ?, ?, ?)`
-		).run(folder.id, folder.name, folder.parentId, folder.sortOrder, folder.createdAt);
+			`INSERT INTO ${this.t.folders} (id, name, topic, parentId, sortOrder, createdAt) VALUES (?, ?, ?, ?, ?, ?)`
+		).run(folder.id, folder.name, folder.topic, folder.parentId, folder.sortOrder, folder.createdAt);
 	}
 
 	async getFolder(id: TFolderId): Promise<IFolder | null> {
@@ -304,10 +318,22 @@ export class SqlitePersistence implements IPersistence {
 		return this.db!.prepare(`SELECT * FROM ${this.t.folders} ORDER BY sortOrder ASC, createdAt ASC`).all() as IFolder[];
 	}
 
+	async getFolderByTopic(topic: string): Promise<IFolder | null> {
+		return this.db!.prepare(`SELECT * FROM ${this.t.folders} WHERE topic = ?`).get(topic) as IFolder | undefined ?? null;
+	}
+
+	async isTopicUnique(topic: string, excludeFolderId?: TFolderId): Promise<boolean> {
+		if (topic === 'global') return false;
+		const existing = await this.getFolderByTopic(topic);
+		if (!existing) return true;
+		return existing.id !== excludeFolderId;
+	}
+
 	async updateFolder(id: TFolderId, updates: Partial<IFolder>): Promise<void> {
 		const sets: string[] = [];
 		const vals: unknown[] = [];
 		if (updates.name !== undefined) { sets.push('name = ?'); vals.push(updates.name); }
+		if (updates.topic !== undefined) { sets.push('topic = ?'); vals.push(updates.topic); }
 		if (updates.parentId !== undefined) { sets.push('parentId = ?'); vals.push(updates.parentId); }
 		if (updates.sortOrder !== undefined) { sets.push('sortOrder = ?'); vals.push(updates.sortOrder); }
 		if (sets.length === 0) return;
@@ -407,6 +433,50 @@ export class SqlitePersistence implements IPersistence {
 
 	async deleteThread(id: TThreadId): Promise<void> {
 		this.db!.prepare(`DELETE FROM ${this.t.threads} WHERE id = ?`).run(id);
+	}
+
+	async deleteThreadCascade(id: TThreadId): Promise<Array<{ messageId: string; modelId: string; topic: string }>> {
+		return this.db!.transaction(() => {
+			// 1. Get all embeddings before deleting
+			const embeddings = this.db!.prepare(
+				`SELECT messageId, modelId, topic FROM ${this.t.embeddingIndex} WHERE threadId = ?`
+			).all(id) as Array<{ messageId: string; modelId: string; topic: string }>;
+
+			// 2. Delete embedding index entries
+			this.db!.prepare(`DELETE FROM ${this.t.embeddingIndex} WHERE threadId = ?`).run(id);
+
+			// 3. Get all messageIds
+			const messageIds = this.db!.prepare(
+				`SELECT id FROM ${this.t.messages} WHERE threadId = ?`
+			).all(id) as Array<{ id: string }>;
+			const ids = messageIds.map(m => m.id);
+
+			// 4. Delete message parts
+			if (ids.length) {
+				const placeholders = ids.map(() => '?').join(',');
+				this.db!.prepare(`DELETE FROM ${this.t.messageParts} WHERE messageId IN (${placeholders})`).run(...ids);
+			}
+
+			// 5. Delete tool calls
+			this.db!.prepare(`DELETE FROM ${this.t.toolCalls} WHERE threadId = ?`).run(id);
+
+			// 6. Delete messages
+			this.db!.prepare(`DELETE FROM ${this.t.messages} WHERE threadId = ?`).run(id);
+
+			// 7. Delete thread configs
+			this.db!.prepare(`DELETE FROM ${this.t.threadConfigs} WHERE threadId = ?`).run(id);
+
+			// 8. Delete thread tool permissions
+			this.db!.prepare(`DELETE FROM ${this.t.threadToolPermissions} WHERE threadId = ?`).run(id);
+
+			// 9. Delete thread attached tools
+			this.db!.prepare(`DELETE FROM ${this.t.threadAttachedTools} WHERE threadId = ?`).run(id);
+
+			// 10. Delete thread
+			this.db!.prepare(`DELETE FROM ${this.t.threads} WHERE id = ?`).run(id);
+
+			return embeddings;
+		})();
 	}
 
 	async incrementThreadTokens(id: TThreadId, promptDelta: number = 0, completionDelta: number = 0): Promise<void> {

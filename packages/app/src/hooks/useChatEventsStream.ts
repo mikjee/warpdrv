@@ -18,17 +18,14 @@ function findLastSentenceEnd(text: string): number {
 
 export function tryAutoEmbed(messageId: string, threadId: string) {
 	const s = useStore.getState();
-	const serverId = s.selectedEmbeddingServerId;
-	if (!serverId) return;
-	const server = s.servers[serverId];
-	if (!server || server.status !== 'RUNNING') return;
+	if (!s.selectedEmbeddingServerId) return;
 	const thread = s.threads[threadId];
 	if (!thread?.meta) return;
 	let autoEmbed = false;
 	try { autoEmbed = JSON.parse(thread.meta).enableAutoEmbed; } catch { /* ignore */ }
 	if (!autoEmbed) return;
 	if (s.embeddingStatusByMessage[messageId]) return;
-	fetch(`/api/chat/messages/${messageId}/embed?serverId=${encodeURIComponent(serverId)}&topic=global`, { method: 'POST' })
+	fetch(`/api/chat/messages/${messageId}/embed`, { method: 'POST' })
 		.catch(err => useStore.getState().applyEmbeddingError(String(err)));
 }
 

@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 import type { IChatMessage } from '../types';
 import { EChatRole, EMessagePartType } from '../types';
@@ -65,7 +66,9 @@ export class EmbeddingService {
 			await this.store.close();
 		}
 		const modelName = path.basename(modelId, '.gguf');
-		const dbPath = path.join(this.dataDir!, 'embeddings', `${topic}-${modelName}.db`);
+		const topicDir = path.join(this.dataDir!, 'embeddings', topic);
+		if (!fs.existsSync(topicDir)) fs.mkdirSync(topicDir, { recursive: true });
+		const dbPath = path.join(topicDir, `${modelName}.db`);
 		this.store = new EmbeddingStore(dbPath, dim);
 		console.log('[embedding] Store loaded:', dbPath);
 		return this.store;
@@ -78,6 +81,20 @@ export class EmbeddingService {
 		}
 		this.currentInfo = null;
 		this.onStatusChange = null;
+	}
+
+	async renameTopic(oldTopic: string, newTopic: string): Promise<void> {
+		if (this.store && this.currentInfo && this.currentInfo.topic === oldTopic) {
+			await this.store.close();
+			this.store = null;
+			this.currentInfo = null;
+		}
+		const oldDir = path.join(this.dataDir!, 'embeddings', oldTopic);
+		const newDir = path.join(this.dataDir!, 'embeddings', newTopic);
+		if (fs.existsSync(oldDir)) {
+			fs.renameSync(oldDir, newDir);
+			console.log('[embedding] Renamed embeddings dir:', oldDir, '->', newDir);
+		}
 	}
 
 	async embedMessage(messageId: string, modelId: string, topic: string, serverUrl: string, dim: number): Promise<void> {

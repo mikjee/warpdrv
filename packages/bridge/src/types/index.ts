@@ -73,6 +73,7 @@ export enum EStreamStatus {
 export interface IFolder {
 	id: TFolderId;
 	name: string;
+	topic: string;
 	parentId: TFolderId | null;
 	sortOrder: number;
 	createdAt: number;
@@ -80,6 +81,7 @@ export interface IFolder {
 
 export interface IFolderCreatePayload {
 	name: string;
+	topic?: string;
 	parentId?: TFolderId | null;
 	sortOrder?: number;
 }
@@ -324,6 +326,7 @@ export interface IMcpServerEntry {
 	headers?: Record<string, string>;
 	timeout?: number;
 	warpdrv?: {
+		argDefaults?: Record<string, Record<string, string>>;
 		renderers?: Record<string, {
 			component: string;
 			propsMap?: Record<string, string>;

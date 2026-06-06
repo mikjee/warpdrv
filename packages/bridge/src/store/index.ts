@@ -192,9 +192,22 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 		applyThreadDeleted: (threadId: TThreadId) =>
 			set((draft) => {
 				delete draft.threads[threadId];
-				delete draft.messagesByThread[threadId];
 				delete draft.headMessageIdByThread[threadId];
 				delete draft.isRunningByThread[threadId];
+				delete draft.elicitationByThread[threadId];
+				delete draft.threadToolPermissions[threadId];
+				// Clear embedding statuses for messages in this thread
+				const msgs = draft.messagesByThread[threadId];
+				if (msgs) {
+					for (const messageId of Object.keys(msgs)) {
+						delete draft.embeddingStatusByMessage[messageId];
+					}
+				}
+				delete draft.messagesByThread[threadId];
+				// Clear current thread if it was the deleted one
+				if (draft.currentThreadId === threadId) {
+					draft.currentThreadId = null;
+				}
 			}),
 
 		// Message actions

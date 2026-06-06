@@ -23,9 +23,12 @@ export async function bootWarpmcp(): Promise<void> {
 		isRemote,
 		validateBearerToken,
 		getFsAllowedRoots: () => (currentSettings.fsAllowedRoots ?? []),
-		embeddingSearch: (query: string, topK: number) => embeddingManager.search(query, topK),
+		embeddingSearch: (query: string, topK: number, topic: string) => embeddingManager.search(query, topK, topic),
 	});
-	await mcpClient.connect(WARPMCP_NAME, { url: `http://127.0.0.1:${port}/mcp` });
+	await mcpClient.connect(WARPMCP_NAME, {
+		url: `http://127.0.0.1:${port}/mcp`,
+		warpdrv: { argDefaults: { "embedding_search": { "topic": "{{ws.topic}}" } } },
+	});
 }
 export async function restartWarpmcpIfChanged(prev: ISettings, next: ISettings): Promise<void> {
 	const portChanged = (prev.builtinMcpPort ?? 11437) !== (next.builtinMcpPort ?? 11437);
@@ -39,7 +42,10 @@ export async function restartWarpmcpIfChanged(prev: ISettings, next: ISettings):
 		isRemote,
 		validateBearerToken,
 		getFsAllowedRoots: () => (currentSettings.fsAllowedRoots ?? []),
-		embeddingSearch: (query: string, topK: number) => embeddingManager.search(query, topK),
+		embeddingSearch: (query: string, topK: number, topic: string) => embeddingManager.search(query, topK, topic),
 	});
-	await mcpClient.connect(WARPMCP_NAME, { url: `http://127.0.0.1:${port}/mcp` });
+	await mcpClient.connect(WARPMCP_NAME, {
+		url: `http://127.0.0.1:${port}/mcp`,
+		warpdrv: { argDefaults: { "embedding_search": { "topic": "{{ws.topic}}" } } },
+	});
 }

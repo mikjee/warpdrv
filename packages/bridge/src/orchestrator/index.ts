@@ -26,6 +26,7 @@ import type {
 	IFolder,
 	IWorkspace,
 } from '../types';
+import { folderNameToTopic } from '../util/topic';
 import { EChatRole, EMessagePartType, EToolCallStatus, EToolApprovalMode } from '../types';
 import { parseSSEBuffer, accumulateToolCallDelta, finalizeToolCalls, type IToolCallAccumulator } from '../parser';
 import { validateToolArgs, cleanSchema } from '../validation';
@@ -95,6 +96,31 @@ export class Orchestrator {
 		const desc = (workspace.data as Record<string, unknown>)?.description as string | undefined;
 		const content = desc ? `Workspace: ${folder.name}\n${desc}` : `Workspace: ${folder.name}`;
 		return { role: 'system', content };
+	}
+
+	private async resolveWsVars(threadId: TThreadId): Promise<Record<string, unknown> | null> {
+		const thread = await this.persistence.getThread(threadId);
+		if (!thread) return null;
+
+		if (thread.folderId) {
+			const folder = await this.persistence.getFolder(thread.folderId);
+			if (!folder) return null;
+			const workspace = await this.persistence.getWorkspace(thread.folderId);
+			const wsVars: Record<string, unknown> = {
+				threadId,
+				folderId: folder.id,
+				topic: folder.topic,
+				name: folder.name,
+			};
+			if (workspace) {
+				for (const [key, value] of Object.entries(workspace.data)) {
+					wsVars[key] = value;
+				}
+			}
+			return wsVars;
+		}
+
+		return { threadId, folderId: null, topic: 'global', name: 'global' };
 	}
 
 	// V2: builds message chain from persistence instead of receiving it from frontend
@@ -299,9 +325,9 @@ export class Orchestrator {
 			);
 		} finally {
 			// Final checkpoint patch with full message state, then inference.ended
-			console.log(new Date(), '[Orch] executePass finally, reading message from DB');
+			//console.log(new Date(), '[Orch] executePass finally, reading message from DB');
 			const finalMessage = await this.persistence.getMessage(assistantMsg.id);
-			console.log(new Date(), '[Orch] message read from DB, emitting replaceParts');
+			//console.log(new Date(), '[Orch] message read from DB, emitting replaceParts');
 			if (finalMessage) {
 				this.broadcaster.emit({
 					type: 'message.patched',
@@ -313,7 +339,7 @@ export class Orchestrator {
 					},
 				});
 			}
-			console.log(new Date(), '[Orch] emitting inference.ended');
+			//console.log(new Date(), '[Orch] emitting inference.ended');
 			this.broadcaster.emit({
 				type: 'inference.ended',
 				threadId: request.threadId,
@@ -532,7 +558,7 @@ export class Orchestrator {
 
 				const fr = chunk.choices?.[0]?.finish_reason;
 				if (fr) {
-					console.log(new Date(), '[Orch] finish_reason received');
+					//console.log(new Date(), '[Orch] finish_reason received');
 					finishReason = fr;
 				}
 				if (chunk.timings) timings = chunk.timings as Record<string, number>;
@@ -540,10 +566,10 @@ export class Orchestrator {
 			}
 		}
 		} finally {
-			console.log(new Date(), '[Orch] stream ended, flushing parts');
+			//console.log(new Date(), '[Orch] stream ended, flushing parts');
 			await this.flushReasoningPart(turn);
 			await this.flushTextPart(turn);
-			console.log(new Date(), '[Orch] parts flushed');
+			//console.log(new Date(), '[Orch] parts flushed');
 		}
 
 		await this.flushReasoningPart(turn);
@@ -562,7 +588,7 @@ export class Orchestrator {
 		const finalToolCalls = finalizeToolCalls(toolCallAccumulators);
 
 		if (timings || usage) {
-			console.log(new Date(), '[Orch] emitting stats patch');
+			//console.log(new Date(), '[Orch] emitting stats patch');
 			const actualTokens = Math.ceil((fullText.length + reasoningText.length) / 4);
 			const stats: IChatMessageStats = {
 				promptTokens: (usage?.prompt_tokens ?? timings?.prompt_n ?? 0),
@@ -575,14 +601,14 @@ export class Orchestrator {
 				predictedMs: timings?.predicted_ms ?? 0,
 			};
 			await this.persistence.updateMessage(turn.assistantMessageId, { stats });
-			console.log(new Date(), '[Orch] stats persisted, emitting patch');
+			//console.log(new Date(), '[Orch] stats persisted, emitting patch');
 			this.broadcaster.emit({
 				type: 'message.patched',
 				messageId: turn.assistantMessageId,
 				threadId: request.threadId,
 				updates: { stats },
 			});
-			console.log(new Date(), '[Orch] stats patch emitted');
+			//console.log(new Date(), '[Orch] stats patch emitted');
 			await this.persistence.incrementThreadTokens(
 				request.threadId,
 				0,
@@ -614,7 +640,7 @@ export class Orchestrator {
 
 			const enabledTool = enabledTools.find(t => t.name === tc.name);
 			const serverName = enabledTool?.serverName ?? this.mcpClient.findToolServer(tc.name);
-			console.log('[Orch] tool call:', { toolName: tc.name, serverName, threadId: request.threadId });
+			//console.log('[Orch] tool call:', { toolName: tc.name, serverName, threadId: request.threadId });
 			let args: Record<string, unknown> = {};
 			try { args = JSON.parse(tc.arguments || '{}'); } catch { /* empty */ }
 
@@ -698,7 +724,7 @@ export class Orchestrator {
 			}
 
 			const approvalMode = await this.permissions.getToolApprovalMode(request.threadId, serverName!, tc.name);
-			console.log('[Orch] approvalMode:', approvalMode);
+			//console.log('[Orch] approvalMode:', approvalMode);
 
 			if (approvalMode === EToolApprovalMode.ASK) {
 				needsAsk = true;
@@ -732,7 +758,10 @@ export class Orchestrator {
 			this.broadcaster.emit({ type: 'tool_call.updated', toolCall: executingTc });
 
 			try {
-				const mcpResult = await this.mcpClient.executeToolCall(serverName!, tc.name, args);
+				const wsVars = await this.resolveWsVars(request.threadId);
+				const finalArgs = this.mcpClient.prepareToolArgs(serverName!, tc.name, args, wsVars);
+				console.log('[orchestrator] tool call:', serverName, tc.name, 'wsVars:', wsVars, 'finalArgs:', JSON.stringify(finalArgs));
+				const mcpResult = await this.mcpClient.executeToolCall(serverName!, tc.name, finalArgs, request.threadId);
 				const resultStr = JSON.stringify(mcpResult.content);
 				const finalStatus = mcpResult.isError ? EToolCallStatus.ERROR : EToolCallStatus.COMPLETED;
 				const completedTc: IToolCall = {
@@ -834,7 +863,10 @@ export class Orchestrator {
 
 			try {
 				const args = JSON.parse(tc.arguments);
-				const mcpResult = await this.mcpClient.executeToolCall(tc.serverName, tc.toolName, args, tc.threadId);
+				const wsVars = await this.resolveWsVars(tc.threadId);
+				const finalArgs = this.mcpClient.prepareToolArgs(tc.serverName, tc.toolName, args, wsVars);
+				console.log('[orchestrator] resume tool call:', tc.serverName, tc.toolName, 'wsVars:', wsVars, 'finalArgs:', JSON.stringify(finalArgs));
+				const mcpResult = await this.mcpClient.executeToolCall(tc.serverName, tc.toolName, finalArgs, tc.threadId);
 				const resultStr = JSON.stringify(mcpResult.content);
 				const finalStatus = mcpResult.isError ? EToolCallStatus.ERROR : EToolCallStatus.COMPLETED;
 				const completedTc: IToolCall = {

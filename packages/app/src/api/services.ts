@@ -348,6 +348,9 @@ export async function updateWorkspace(folderId: string, data: Record<string, unk
 export async function deleteWorkspace(folderId: string) {
 	return api.del<null>(`/chat/workspaces/${folderId}`);
 }
+export async function updateFolderTopic(id: string, topic: string) {
+	return api.put<null>(`/chat/folders/${id}/topic`, { topic });
+}
 
 // Message editing
 export async function replaceMessageParts(messageId: string, parts: any[]) {

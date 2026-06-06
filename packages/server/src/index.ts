@@ -366,6 +366,10 @@ async function main() {
 
 	setRecipeRunnerSSE(sseManager);
 
+	sseManager.onConnect('embedding:init', async () => {
+		return { serverId: embeddingManager.getCurrentServerId() };
+	});
+
 	sseManager.onConnect('recipes:init', async () => {
 		const recipes = await listRecipes();
 		const recipesMap: Record<string, typeof recipes[number]> = {};

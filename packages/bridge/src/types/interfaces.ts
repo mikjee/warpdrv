@@ -46,10 +46,12 @@ export interface IPersistence {
 	// Folders
 	createFolder(folder: IFolder): Promise<void>;
 	getFolder(id: TFolderId): Promise<IFolder | null>;
+	getFolderByTopic(topic: string): Promise<IFolder | null>;
 	listFolders(): Promise<IFolder[]>;
 	updateFolder(id: TFolderId, updates: Partial<IFolder>): Promise<void>;
 	deleteFolder(id: TFolderId): Promise<void>;
 	reorderFolders(entries: IReorderFolderEntry[]): Promise<void>;
+	isTopicUnique(topic: string, excludeFolderId?: TFolderId): Promise<boolean>;
 
 	// Workspaces
 	createWorkspace(workspace: IWorkspace): Promise<void>;
@@ -63,6 +65,7 @@ export interface IPersistence {
 	listThreads(options?: IListThreadsOptions): Promise<IChatThread[]>;
 	updateThread(id: TThreadId, updates: Partial<IChatThread>): Promise<void>;
 	deleteThread(id: TThreadId): Promise<void>;
+	deleteThreadCascade(id: TThreadId): Promise<Array<{ messageId: string; modelId: string; topic: string }>>;
 	incrementThreadTokens(id: TThreadId, promptDelta: number, completionDelta: number): Promise<void>;
 
 	// Thread Configs

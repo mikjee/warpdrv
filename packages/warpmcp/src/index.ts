@@ -32,7 +32,7 @@ function buildMcpServer(deps: IWarpmcpDeps): McpServer {
 		const tool = tools.find(t => t.def.name === name);
 		if (!tool) throw new Error(`Unknown tool: ${name}`);
 		const result = await tool.handler(args as any);
-		console.log('[warpmcp] Tool', name, 'result:', JSON.stringify(result).slice(0, 200));
+		//console.log('[warpmcp] Tool', name, 'result:', JSON.stringify(result).slice(0, 200));
 		return { content: [{ type: 'text', text: JSON.stringify(result) }] };
 	});
 	return server;
@@ -40,7 +40,7 @@ function buildMcpServer(deps: IWarpmcpDeps): McpServer {
 export async function startServer(args: IStartArgs): Promise<IStartResult> {
 	const { port, exposeExternal } = args;
 	const deps: IWarpmcpDeps = { isRemote: args.isRemote, validateBearerToken: args.validateBearerToken, getFsAllowedRoots: args.getFsAllowedRoots, embeddingSearch: args.embeddingSearch };
-	console.log('[warpmcp] startServer deps.embeddingSearch:', typeof args.embeddingSearch);
+	//console.log('[warpmcp] startServer deps.embeddingSearch:', typeof args.embeddingSearch);
 	const bindHost = exposeExternal ? '0.0.0.0' : '127.0.0.1';
 	const app = express();
 	app.use(express.json());

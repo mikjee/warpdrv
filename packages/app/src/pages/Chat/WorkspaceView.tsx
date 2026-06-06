@@ -4,7 +4,8 @@ import { Box, Text, HStack, VStack, Input, Textarea } from '@chakra-ui/react';
 import { PencilIcon, CheckIcon, XIcon } from 'lucide-react';
 import type { IFolder as IChatFolder, IChatThread as IBridgeChatThread } from '@warpcore/bridge';
 import { useStore } from '@/store';
-import { updateFolder, updateWorkspace, fetchWorkspace } from '@/api/services';
+import { updateFolder, updateWorkspace, fetchWorkspace, updateFolderTopic } from '@/api/services';
+import { useDependantState } from '@/hooks/useDependantState';
 
 interface IChatThread extends IBridgeChatThread {
 	messageCount?: number;
@@ -100,6 +101,9 @@ export const WorkspaceView: React.FC<{ folderId: string }> = ({ folderId }) => {
 	const setCurrentThreadId = useStore(s => s.setCurrentThreadId);
 
 	const [renaming, setRenaming] = useState(false);
+	const [editingTopic, setEditingTopic] = useState(false);
+	const [topic, setTopic] = useDependantState(folder?.topic ?? '');
+	const [topicError, setTopicError] = useState<string | null>(null);
 	const [description, setDescription] = useState('');
 	const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -125,6 +129,25 @@ export const WorkspaceView: React.FC<{ folderId: string }> = ({ folderId }) => {
 			await updateFolder(folderId, { name: name.trim() });
 		}
 		setRenaming(false);
+	};
+
+	const handleTopicSave = async () => {
+		const trimmed = topic.trim();
+		if (!trimmed) {
+			setTopicError('Topic cannot be empty');
+			return;
+		}
+		if (trimmed === 'global') {
+			setTopicError('Topic "global" is reserved');
+			return;
+		}
+		const res = await updateFolderTopic(folderId, trimmed);
+		if (!res.ok) {
+			setTopicError(res.error ?? 'Failed to update topic');
+			return;
+		}
+		setTopicError(null);
+		setEditingTopic(false);
 	};
 
 	const handleDescriptionChange = (val: string) => {
@@ -168,6 +191,47 @@ export const WorkspaceView: React.FC<{ folderId: string }> = ({ folderId }) => {
 							<PencilIcon size={14} style={{ opacity: 0.3 }} />
 						</HStack>
 					)}
+				</Box>
+
+				{/* Workspace topic */}
+				<Box w="full">
+					<HStack justify="space-between" w="full">
+						<Text fontSize="11px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em">
+							Topic
+						</Text>
+						{editingTopic ? (
+							<HStack gap="1">
+								<Box cursor="pointer" onClick={handleTopicSave} opacity={0.5} _hover={{ opacity: 0.8 }} p="1">
+									<CheckIcon size={14} />
+								</Box>
+								<Box cursor="pointer" onClick={() => { setEditingTopic(false); setTopicError(null); }} opacity={0.3} _hover={{ opacity: 0.6 }} p="1">
+									<XIcon size={14} />
+								</Box>
+							</HStack>
+						) : (
+							<Box cursor="pointer" onClick={() => { setEditingTopic(true); setTopicError(null); }} opacity={0.3} _hover={{ opacity: 0.6 }}>
+								<PencilIcon size={12} />
+							</Box>
+						)}
+					</HStack>
+					{editingTopic ? (
+						<Input
+							size="sm"
+							value={topic}
+							onChange={(e) => setTopic(e.target.value)}
+							onKeyDown={(e) => { if (e.key === 'Enter') handleTopicSave(); if (e.key === 'Escape') { setEditingTopic(false); setTopicError(null); } }}
+							bg="var(--wc-bg-card)"
+							borderColor={topicError ? 'var(--wc-accent-red)' : 'var(--wc-border-hover)'}
+							color="var(--wc-text-primary)"
+							fontFamily="monospace"
+							mt="1"
+						/>
+					) : (
+						<Text fontSize="13px" fontFamily="monospace" color="var(--wc-text-tertiary)" mt="1" px="2" py="1">
+							{topic}
+						</Text>
+					)}
+					{topicError && <Text fontSize="11px" color="var(--wc-accent-red)" mt="1">{topicError}</Text>}
 				</Box>
 
 				{/* Workspace description */}

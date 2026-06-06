@@ -8,7 +8,7 @@ export interface IWarpmcpDeps {
 	isRemote: (req: { ip: string; connection: { remoteAddress: string } }) => boolean;
 	validateBearerToken: (authHeader: string | undefined) => Promise<IAccessToken | null>;
 	getFsAllowedRoots: () => string[];
-	embeddingSearch?: (query: string, topK: number) => Promise<IEmbeddingSearchResult[]>;
+	embeddingSearch?: (query: string, topK: number, topic: string) => Promise<IEmbeddingSearchResult[]>;
 }
 export interface IStartArgs extends IWarpmcpDeps {
 	port: number;

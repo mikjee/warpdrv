@@ -21,7 +21,8 @@
 		"./validation": "./src/validation/index.ts",
 		"./transport": "./src/transport/fetch.ts",
 		"./broadcaster": "./src/broadcaster/sseBroadcaster.ts",
-		"./inferParamNames": "./src/types/inferParamNames.ts"
+		"./inferParamNames": "./src/types/inferParamNames.ts",
+		"./util/topic": "./src/util/topic.ts"
 	},
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.29.0",
