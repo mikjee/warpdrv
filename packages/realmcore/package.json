@@ -10,6 +10,10 @@
 		"test:watch": "vitest"
 	},
 	"devDependencies": {
+		"@types/node": "^25.9.2",
+		"@types/socket.io": "^3.0.1",
+		"socket.io": "^4.8.3",
+		"socket.io-client": "^4.8.3",
 		"vitest": "^4.1.8"
 	},
 	"dependencies": {
