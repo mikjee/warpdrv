@@ -8,7 +8,7 @@ import {
 	type TCallback,
 	type TCallbackId,
 	type IEventApi,
-} from './EventNode';
+} from '../src/events/EventNode';
 
 // Helpers
 function createTree(): { root: EventNode; a: EventNode; b: EventNode; a1: EventNode; a2: EventNode; b1: EventNode } {

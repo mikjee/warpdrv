@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SegmentTrie } from './SegmentTrie';
+import { SegmentTrie } from '../src/utils/SegmentTrie';
 
 // ============================================================
 // Event namespace separator (.)
@@ -140,6 +140,35 @@ describe('SegmentTrie - event namespace (.)', () => {
 		expect(result).toEqual(['first', 'second', 'third']);
 	});
 
+	it('ordering - cross-branch via **', () => {
+		trie = create();
+		trie.insert('**', 'all');
+		trie.insert('x.**', 'x-branch');
+		trie.insert('x.y.*', 'xy-branch');
+		trie.insert('x.y.z', 'exact');
+		const result = trie.match('x.y.z');
+		expect(result).toEqual(['all', 'x-branch', 'xy-branch', 'exact']);
+	});
+
+	it('ordering - interleaved wildcard and exact across branches', () => {
+		trie = create();
+		trie.insert('x.y', 'exact-1');
+		trie.insert('x.*', 'wild-1');
+		trie.insert('y.z', 'exact-2');
+		trie.insert('y.*', 'wild-2');
+		expect(trie.match('x.y')).toEqual(['exact-1', 'wild-1']);
+		expect(trie.match('y.z')).toEqual(['exact-2', 'wild-2']);
+	});
+
+	it('ordering - deep vs shallow branches', () => {
+		trie = create();
+		trie.insert('*.**', 'shallow');
+		trie.insert('a.b.c', 'deep-exact');
+		trie.insert('a.*.c', 'deep-star');
+		const result = trie.match('a.b.c');
+		expect(result).toEqual(['shallow', 'deep-exact', 'deep-star']);
+	});
+
 	it('dedup - same insertion reached via multiple ** paths', () => {
 		trie = create();
 		trie.insert('x.**.y.**', 'dstar');
@@ -250,6 +279,62 @@ describe('SegmentTrie - event namespace (.)', () => {
 		trie.insert('x.**', 'val');
 		trie.remove('x.**', 'val');
 		expect(trie.match('x.y.z')).toEqual([]);
+	});
+
+	// retrieve
+	it('retrieve - exact pattern', () => {
+		trie = create();
+		trie.insert('x.y.z', 'val');
+		expect(trie.retrieve('x.y.z')).toEqual(['val']);
+	});
+
+	it('retrieve - wildcard pattern', () => {
+		trie = create();
+		trie.insert('x.*.z', 'wild-val');
+		expect(trie.retrieve('x.*.z')).toEqual(['wild-val']);
+	});
+
+	it('retrieve - ** pattern', () => {
+		trie = create();
+		trie.insert('x.**', 'deep-val');
+		expect(trie.retrieve('x.**')).toEqual(['deep-val']);
+	});
+
+	it('retrieve - non-existent pattern returns empty', () => {
+		trie = create();
+		trie.insert('x.y.z', 'val');
+		expect(trie.retrieve('x.w.z')).toEqual([]);
+	});
+
+	it('retrieve - multiple values same pattern, insert order', () => {
+		trie = create();
+		trie.insert('x.*', 'first');
+		trie.insert('x.*', 'second');
+		trie.insert('x.*', 'third');
+		expect(trie.retrieve('x.*')).toEqual(['first', 'second', 'third']);
+	});
+
+	it('retrieve vs match - bucket lookup vs glob', () => {
+		trie = create();
+		trie.insert('x.*', 'wild-bucket');
+		trie.insert('x.y', 'exact-bucket');
+		// retrieve gets only the bucket contents
+		expect(trie.retrieve('x.*')).toEqual(['wild-bucket']);
+		// match glob-expands: x.y matches both x.y exact and x.* wildcard
+		expect(trie.match('x.y')).toEqual(['wild-bucket', 'exact-bucket']);
+	});
+
+	it('retrieve - after remove returns empty', () => {
+		trie = create();
+		trie.insert('x.*', 'val');
+		trie.remove('x.*', 'val');
+		expect(trie.retrieve('x.*')).toEqual([]);
+	});
+
+	it('retrieve - empty pattern to root terminal', () => {
+		trie = create();
+		trie.insert('', 'root-val');
+		expect(trie.retrieve('')).toEqual(['root-val']);
 	});
 });
 
@@ -392,6 +477,35 @@ describe('SegmentTrie - path (/)', () => {
 		expect(result).toEqual(['first', 'second', 'third']);
 	});
 
+	it('ordering - cross-branch via **', () => {
+		trie = create();
+		trie.insert('**', 'all');
+		trie.insert('/x/**', 'x-branch');
+		trie.insert('/x/y/*', 'xy-branch');
+		trie.insert('/x/y/z', 'exact');
+		const result = trie.match('/x/y/z');
+		expect(result).toEqual(['all', 'x-branch', 'xy-branch', 'exact']);
+	});
+
+	it('ordering - interleaved wildcard and exact across branches', () => {
+		trie = create();
+		trie.insert('/a/b', 'exact-1');
+		trie.insert('/a/*', 'wild-1');
+		trie.insert('/c/d', 'exact-2');
+		trie.insert('/c/*', 'wild-2');
+		expect(trie.match('/a/b')).toEqual(['exact-1', 'wild-1']);
+		expect(trie.match('/c/d')).toEqual(['exact-2', 'wild-2']);
+	});
+
+	it('ordering - deep vs shallow branches', () => {
+		trie = create();
+		trie.insert('/*/**', 'shallow');
+		trie.insert('/a/b/c', 'deep-exact');
+		trie.insert('/a/*/c', 'deep-star');
+		const result = trie.match('/a/b/c');
+		expect(result).toEqual(['shallow', 'deep-exact', 'deep-star']);
+	});
+
 	it('dedup - same insertion reached via multiple ** paths', () => {
 		trie = create();
 		trie.insert('/a/**/b/**', 'dstar');
@@ -501,5 +615,61 @@ describe('SegmentTrie - path (/)', () => {
 		trie.insert('/a/**', 'val');
 		trie.remove('/a/**', 'val');
 		expect(trie.match('/a/b/c')).toEqual([]);
+	});
+
+	// retrieve
+	it('retrieve - exact pattern', () => {
+		trie = create();
+		trie.insert('/a/b/c', 'val');
+		expect(trie.retrieve('/a/b/c')).toEqual(['val']);
+	});
+
+	it('retrieve - wildcard pattern', () => {
+		trie = create();
+		trie.insert('/a/*/c', 'wild-val');
+		expect(trie.retrieve('/a/*/c')).toEqual(['wild-val']);
+	});
+
+	it('retrieve - ** pattern', () => {
+		trie = create();
+		trie.insert('/a/**', 'deep-val');
+		expect(trie.retrieve('/a/**')).toEqual(['deep-val']);
+	});
+
+	it('retrieve - non-existent pattern returns empty', () => {
+		trie = create();
+		trie.insert('/a/b/c', 'val');
+		expect(trie.retrieve('/a/x/c')).toEqual([]);
+	});
+
+	it('retrieve - multiple values same pattern, insert order', () => {
+		trie = create();
+		trie.insert('/a/*', 'first');
+		trie.insert('/a/*', 'second');
+		trie.insert('/a/*', 'third');
+		expect(trie.retrieve('/a/*')).toEqual(['first', 'second', 'third']);
+	});
+
+	it('retrieve vs match - bucket lookup vs glob', () => {
+		trie = create();
+		trie.insert('/a/*', 'wild-bucket');
+		trie.insert('/a/b', 'exact-bucket');
+		// retrieve gets only the bucket contents
+		expect(trie.retrieve('/a/*')).toEqual(['wild-bucket']);
+		// match glob-expands: /a/b matches both /a/b exact and /a/* wildcard
+		expect(trie.match('/a/b')).toEqual(['wild-bucket', 'exact-bucket']);
+	});
+
+	it('retrieve - after remove returns empty', () => {
+		trie = create();
+		trie.insert('/a/*', 'val');
+		trie.remove('/a/*', 'val');
+		expect(trie.retrieve('/a/*')).toEqual([]);
+	});
+
+	it('retrieve - empty pattern to root terminal', () => {
+		trie = create();
+		trie.insert('', 'root-val');
+		expect(trie.retrieve('')).toEqual(['root-val']);
 	});
 });

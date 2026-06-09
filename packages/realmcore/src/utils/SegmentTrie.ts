@@ -65,6 +65,21 @@ export class SegmentTrie<T> {
 		this.seq += 1;
 	}
 
+	// retrieve the values stored at the exact pattern bucket. * and ** are treated
+	// as literal edges (no glob), so this addresses the one bucket an insert with
+	// the same pattern wrote to. returns the terminal values in install order, or
+	// an empty array if the bucket does not exist.
+	public retrieve(pattern: string): Array<T> {
+		const segs = this.split(pattern);
+		let node: ITrieNode<T> | undefined = this.root;
+		for (const seg of segs) {
+			if (!node) return [];
+			node = seg === STARSTAR ? node.starstar : seg === STAR ? node.star : node.named[seg];
+		}
+		if (!node || !node.terminal) return [];
+		return node.terminal.slice().sort((a, b) => a.seq - b.seq).map((e) => e.value);
+	}
+
 	// match a concrete (wildcard-free) key, returning values whose pattern matches,
 	// in install order. dedup guards against a value reached more than once via
 	// overlapping ** paths.

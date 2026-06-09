@@ -1,4 +1,5 @@
 import { nanoid } from "nanoid";
+import { SegmentTrie } from "../utils/SegmentTrie";
 
 // types
 
@@ -189,10 +190,15 @@ export class EventNode implements IExternalNode {
 	public children: Record<TNodeId, IExternalNode>;
 
 	public callbacks: Record<TCallbackId, TCallback>;
-	public listeners: Record<TSourceAddr, Record<TEventName, Set<TCallbackId>>>;
+	// listeners by source then event name. the outer tree matches the event's
+	// source address against installed source patterns (/ separated, * and **
+	// allowed); each match yields an inner tree that matches the event name
+	// (. separated). a global insert counter inside each tree preserves install
+	// order across branches when one match hits several patterns.
+	public listeners: SegmentTrie<SegmentTrie<TCallbackId>>;
 	// reverse lookup so a listener can be removed by its id alone, in O(1),
-	// without scanning the nested listeners map. subs install relay listeners
-	// keyed by a shared id, and unsub removes them through this.
+	// without scanning the trees. subs install relay listeners keyed by a shared
+	// id, and unsub removes them through this.
 	public mapCallbackToListener: Record<TCallbackId, { source: TSourceAddr; name: TEventName }>;
 	// relay listener ids grouped by the subscriber they forward to, so all relays
 	// for a dropped subscriber can be purged in O(1).
@@ -205,7 +211,7 @@ export class EventNode implements IExternalNode {
 		this.parent = null;
 		this.children = {};
 		this.callbacks = {};
-		this.listeners = {};
+		this.listeners = new SegmentTrie<SegmentTrie<TCallbackId>>(SEP);
 		this.mapCallbackToListener = {};
 		this.mapSubscriberToIds = {};
 		this.setupInternalEvents();
@@ -263,9 +269,14 @@ export class EventNode implements IExternalNode {
 		const cbId = id || nanoid(8);
 		this.callbacks[cbId] = cb;
 		this.mapCallbackToListener[cbId] = { source: sourceAddr, name };
-		if (!this.listeners[sourceAddr]) this.listeners[sourceAddr] = {};
-		if (!this.listeners[sourceAddr][name]) this.listeners[sourceAddr][name] = new Set();
-		this.listeners[sourceAddr][name].add(cbId);
+		const existing = this.listeners.retrieve(sourceAddr);
+		let nameTree: SegmentTrie<TCallbackId>;
+		if (existing.length > 0) nameTree = existing[0];
+		else {
+			nameTree = new SegmentTrie<TCallbackId>(".");
+			this.listeners.insert(sourceAddr, nameTree);
+		}
+		nameTree.insert(name, cbId);
 		return cbId;
 	}
 
@@ -274,8 +285,8 @@ export class EventNode implements IExternalNode {
 	public removeListener(cbId: TCallbackId): void {
 		const loc = this.mapCallbackToListener[cbId];
 		if (!loc) return;
-		const byName = this.listeners[loc.source];
-		if (byName && byName[loc.name]) byName[loc.name].delete(cbId);
+		const trees = this.listeners.retrieve(loc.source);
+		if (trees.length > 0) trees[0].remove(loc.name, cbId);
 		delete this.mapCallbackToListener[cbId];
 		this.removeCallback(cbId);
 	}
@@ -611,19 +622,17 @@ export class EventNode implements IExternalNode {
 		return runNext();
 	}
 
-	// match installed listener patterns against the event. exact source addrs are
-	// a direct lookup, wildcard patterns are scanned and glob-matched.
+	// match installed listeners against the event. the source tree matches the
+	// event's source address (exact and * / ** patterns) yielding event-name
+	// trees, each of which matches the event name. install order is preserved
+	// within each tree; results are concatenated source-match order then name
+	// order.
 
 	private matchListeners(ev: IEvent): Array<TCallbackId> {
 		const out: Array<TCallbackId> = [];
-		const exact = this.listeners[ev.sourceAddr];
-		if (exact && exact[ev.name]) for (const id of exact[ev.name]) out.push(id);
-		for (const pattern in this.listeners) {
-			if (pattern === ev.sourceAddr) continue;
-			if (!hasWildcard(pattern)) continue;
-			const byName = this.listeners[pattern];
-			if (!byName[ev.name]) continue;
-			if (matchAddr(pattern, ev.sourceAddr)) for (const id of byName[ev.name]) out.push(id);
+		const nameTrees = this.listeners.match(ev.sourceAddr);
+		for (const tree of nameTrees) {
+			for (const cbId of tree.match(ev.name)) out.push(cbId);
 		}
 		return out;
 	}
