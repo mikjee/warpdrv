@@ -14,6 +14,7 @@
 		"@huggingface/transformers": "^3.5.1",
 		"@modelcontextprotocol/sdk": "^1.29.0",
 		"@warpcore/bridge": "*",
+		"@warpcore/realmcore": "*",
 		"@warpcore/shared": "*",
 		"@warpcore/warpmcp": "*",
 		"adm-zip": "^0.5.17",

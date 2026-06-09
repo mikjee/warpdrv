@@ -16,5 +16,5 @@
 		"noEmit": true
 	},
 	"include": ["src", "src/routes/hub.ts", "../../tools/test-gguf.ts"],
-	"references": [{ "path": "../shared" }]
+	"references": [{ "path": "../shared" }, { "path": "../realmcore" }]
 }

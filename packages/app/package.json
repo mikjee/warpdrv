@@ -30,6 +30,7 @@
 		"@tiptap/react": "^3.26.0",
 		"@tiptap/suggestion": "^3.26.0",
 		"@warpcore/bridge": "*",
+		"@warpcore/realmcore": "*",
 		"@warpcore/shared": "*",
 		"ai": "^6.0.141",
 		"assistant-stream": "^0.3.8",
