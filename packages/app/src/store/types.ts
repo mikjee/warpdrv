@@ -222,6 +222,17 @@ export interface AppState {
 	workspaces: Record<TFolderId, IWorkspace>;
 	setWorkspace: (workspace: IWorkspace) => void;
 
+	// Persisted states
+	workspaceStates: Record<TFolderId, Record<string, unknown>>;
+	threadStates: Record<TThreadId, Record<string, unknown>>;
+	messageStates: Record<TMessageId, Record<string, unknown>>;
+	setWorkspaceState: (folderId: TFolderId, fn: (state: Record<string, unknown>) => void) => Record<string, unknown>;
+	setThreadState: (threadId: TThreadId, fn: (state: Record<string, unknown>) => void) => Record<string, unknown>;
+	setMessageState: (messageId: TMessageId, fn: (state: Record<string, unknown>) => void) => Record<string, unknown>;
+	initWorkspaceState: (folderId: TFolderId, data: Record<string, unknown>) => void;
+	initThreadState: (threadId: TThreadId, data: Record<string, unknown>) => void;
+	initMessageStates: (states: Array<{ messageId: TMessageId; data: Record<string, unknown> }>) => void;
+
 	// Annotations
 	annotations: IAnnotation[];
 	annotatorVisible: boolean;

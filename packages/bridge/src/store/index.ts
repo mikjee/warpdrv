@@ -15,6 +15,7 @@ import type {
 	TMessageId,
 	TMessagePartId,
 	TToolCallId,
+	TFolderId,
 	IMcpServerState,
 	IServerPermission,
 	IToolPermission,
@@ -128,6 +129,17 @@ export interface IChatStoreState {
 	setPermissions: (serverPerms: IServerPermission[], toolPerms: IToolPermission[]) => void;
 	setThreadToolPermissions: (threadId: TThreadId, perms: IThreadToolPermission[]) => void;
 
+	// Persisted states — free-form JSON blobs per entity
+	workspaceStates: Record<TFolderId, Record<string, unknown>>;
+	threadStates: Record<TThreadId, Record<string, unknown>>;
+	messageStates: Record<TMessageId, Record<string, unknown>>;
+	setWorkspaceState: (folderId: TFolderId, fn: (state: Record<string, unknown>) => void) => Record<string, unknown>;
+	setThreadState: (threadId: TThreadId, fn: (state: Record<string, unknown>) => void) => Record<string, unknown>;
+	setMessageState: (messageId: TMessageId, fn: (state: Record<string, unknown>) => void) => Record<string, unknown>;
+	initWorkspaceState: (folderId: TFolderId, data: Record<string, unknown>) => void;
+	initThreadState: (threadId: TThreadId, data: Record<string, unknown>) => void;
+	initMessageStates: (states: Array<{ messageId: TMessageId; data: Record<string, unknown> }>) => void;
+
 	reset: () => void;
 }
 
@@ -165,6 +177,9 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 		attachAllTools: false,
 		attachedTools: [] as IToolAttachment[],
 		elicitationByThread: {} as Record<TThreadId, IElicitationRequest>,
+		workspaceStates: {} as Record<TFolderId, Record<string, unknown>>,
+		threadStates: {} as Record<TThreadId, Record<string, unknown>>,
+		messageStates: {} as Record<TMessageId, Record<string, unknown>>,
 	};
 
 	return {
@@ -196,11 +211,13 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 				delete draft.isRunningByThread[threadId];
 				delete draft.elicitationByThread[threadId];
 				delete draft.threadToolPermissions[threadId];
-				// Clear embedding statuses for messages in this thread
+				delete draft.threadStates[threadId];
+				// Clear embedding statuses and message states for messages in this thread
 				const msgs = draft.messagesByThread[threadId];
 				if (msgs) {
 					for (const messageId of Object.keys(msgs)) {
 						delete draft.embeddingStatusByMessage[messageId];
+						delete draft.messageStates[messageId];
 					}
 				}
 				delete draft.messagesByThread[threadId];
@@ -304,6 +321,7 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 				}
 				
 				delete draft.messagesByThread[threadId]?.[messageId];
+				delete draft.messageStates[messageId];
 			}),
 
 		applyMessageChunk: (messageId: TMessageId, threadId: TThreadId, partId: TMessagePartId, deltaText: string) =>
@@ -562,6 +580,49 @@ setActiveThread: (id: TThreadId | null) =>
 		setThreadToolPermissions: (threadId: TThreadId, perms: IThreadToolPermission[]) =>
 			set((draft) => {
 				draft.threadToolPermissions[threadId] = perms;
+			}),
+
+		// Persisted state actions
+		setWorkspaceState: (folderId: TFolderId, fn: (state: Record<string, unknown>) => void) => {
+			let result: Record<string, unknown> = {};
+			set((draft) => {
+				if (!draft.workspaceStates[folderId]) draft.workspaceStates[folderId] = {};
+				fn(draft.workspaceStates[folderId]);
+				result = draft.workspaceStates[folderId];
+			});
+			return result;
+		},
+		setThreadState: (threadId: TThreadId, fn: (state: Record<string, unknown>) => void) => {
+			let result: Record<string, unknown> = {};
+			set((draft) => {
+				if (!draft.threadStates[threadId]) draft.threadStates[threadId] = {};
+				fn(draft.threadStates[threadId]);
+				result = draft.threadStates[threadId];
+			});
+			return result;
+		},
+		setMessageState: (messageId: TMessageId, fn: (state: Record<string, unknown>) => void) => {
+			let result: Record<string, unknown> = {};
+			set((draft) => {
+				if (!draft.messageStates[messageId]) draft.messageStates[messageId] = {};
+				fn(draft.messageStates[messageId]);
+				result = draft.messageStates[messageId];
+			});
+			return result;
+		},
+		initWorkspaceState: (folderId: TFolderId, data: Record<string, unknown>) =>
+			set((draft) => {
+				draft.workspaceStates[folderId] = data;
+			}),
+		initThreadState: (threadId: TThreadId, data: Record<string, unknown>) =>
+			set((draft) => {
+				draft.threadStates[threadId] = data;
+			}),
+		initMessageStates: (states: Array<{ messageId: TMessageId; data: Record<string, unknown> }>) =>
+			set((draft) => {
+				for (const { messageId, data } of states) {
+					draft.messageStates[messageId] = data;
+				}
 			}),
 
 		// Reset

@@ -248,6 +248,9 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 	// Initial thread load - seed messages and tool calls
 	const seedThreadMessages = useStore(s => s.seedThreadMessages);
 	const applyToolCallCreated = useStore(s => s.applyToolCallCreated);
+	const initWorkspaceState = useStore(s => s.initWorkspaceState);
+	const initThreadState = useStore(s => s.initThreadState);
+	const initMessageStates = useStore(s => s.initMessageStates);
 	const selectedEmbeddingServerId = useStore(s => s.selectedEmbeddingServerId);
 	const servers = useStore(s => s.servers);
 	const setThreadEmbeddingStatuses = useStore(s => s.setThreadEmbeddingStatuses);
@@ -304,6 +307,27 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 					}
 				}
 
+				// Fetch persisted states
+				const folderId = data?.folderId;
+				const statePromises: Promise<unknown>[] = [];
+				if (folderId) {
+					statePromises.push(fetch(`/api/chat/workspaces/${folderId}/state`).then(res => res.ok ? res.json() : null));
+				} else {
+					statePromises.push(Promise.resolve(null));
+				}
+				statePromises.push(fetch(`/api/chat/threads/${currentThreadId}/state`).then(res => res.ok ? res.json() : null));
+				statePromises.push(fetch(`/api/chat/threads/${currentThreadId}/message-states`).then(res => res.ok ? res.json() : null));
+				const [wsStateRes, threadStateRes, msgStatesRes] = await Promise.all(statePromises);
+				if (wsStateRes?.data !== undefined && wsStateRes?.data !== null && folderId) {
+					initWorkspaceState(folderId, wsStateRes.data);
+				}
+				if (threadStateRes?.data !== undefined && threadStateRes?.data !== null) {
+					initThreadState(currentThreadId, threadStateRes.data);
+				}
+				if (msgStatesRes?.data) {
+					initMessageStates(msgStatesRes.data);
+				}
+
 				// Fetch embedding statuses
 				if (selectedEmbeddingServerId) {
 					const embRes = await fetch(`/api/chat/threads/${currentThreadId}/embeddings?serverId=${encodeURIComponent(selectedEmbeddingServerId)}`);
@@ -316,7 +340,7 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 			setIsLoadingThread(false);
 		}
 		loadThread();
-	}, [currentThreadId, threadInStore, threadMessages, selectedEmbeddingServerId, servers, seedThreadMessages, applyToolCallCreated, setThreadEmbeddingStatuses]);
+	}, [currentThreadId, threadInStore, threadMessages, selectedEmbeddingServerId, servers, seedThreadMessages, applyToolCallCreated, setThreadEmbeddingStatuses, initWorkspaceState, initThreadState, initMessageStates]);
 
 	// V2: no message chain sent to backend — backend builds from persistence
 	const onNewV2 = useCallback(async (message: any) => {

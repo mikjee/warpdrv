@@ -113,6 +113,15 @@ export interface IPersistence {
 	// FTS search
 	searchMessages(q: string, options: ISearchOptions): Promise<ISearchResult[]>;
 	searchThreads(q: string, options?: { limit?: number; offset?: number }): Promise<ISearchThreadResult[]>;
+
+	// Persisted states — free-form JSON blobs per entity
+	getWorkspaceState(folderId: TFolderId): Promise<Record<string, unknown> | null>;
+	updateWorkspaceState(folderId: TFolderId, data: Record<string, unknown>): Promise<void>;
+	getThreadState(threadId: TThreadId): Promise<Record<string, unknown> | null>;
+	updateThreadState(threadId: TThreadId, data: Record<string, unknown>): Promise<void>;
+	getMessageState(messageId: TMessageId): Promise<Record<string, unknown> | null>;
+	updateMessageState(messageId: TMessageId, data: Record<string, unknown>): Promise<void>;
+	getMessageStatesByThreadId(threadId: TThreadId): Promise<Array<{ messageId: string; data: Record<string, unknown> }>>;
 }
 
 // ============================================================

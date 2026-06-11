@@ -409,6 +409,76 @@ chatRouter.delete('/workspaces/:folderId', async (req, res) => {
 });
 
 // ============================================================
+// Persisted States
+// ============================================================
+
+chatRouter.get('/workspaces/:folderId/state', async (req, res) => {
+	try {
+		const data = await persistence.getWorkspaceState(req.params.folderId);
+		res.json({ ok: true, data, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+chatRouter.put('/workspaces/:folderId/state', async (req, res) => {
+	try {
+		const { data } = req.body as { data: Record<string, unknown> };
+		await persistence.updateWorkspaceState(req.params.folderId, data);
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+chatRouter.get('/threads/:threadId/state', async (req, res) => {
+	try {
+		const data = await persistence.getThreadState(req.params.threadId);
+		res.json({ ok: true, data, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+chatRouter.put('/threads/:threadId/state', async (req, res) => {
+	try {
+		const { data } = req.body as { data: Record<string, unknown> };
+		await persistence.updateThreadState(req.params.threadId, data);
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+chatRouter.get('/messages/:messageId/state', async (req, res) => {
+	try {
+		const data = await persistence.getMessageState(req.params.messageId);
+		res.json({ ok: true, data, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+chatRouter.put('/messages/:messageId/state', async (req, res) => {
+	try {
+		const { data } = req.body as { data: Record<string, unknown> };
+		await persistence.updateMessageState(req.params.messageId, data);
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+chatRouter.get('/threads/:threadId/message-states', async (req, res) => {
+	try {
+		const states = await persistence.getMessageStatesByThreadId(req.params.threadId);
+		res.json({ ok: true, data: states, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+// ============================================================
 // Presets & Configs — keep existing JSON file handlers
 // ============================================================
 import {

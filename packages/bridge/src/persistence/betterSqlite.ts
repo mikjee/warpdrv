@@ -59,6 +59,9 @@ function buildTableNames(prefix: string) {
 		threadAttachedTools: `${prefix}thread_attached_tools`,
 		embeddingIndex: `${prefix}embedding_index`,
 		workspaces: `${prefix}workspaces`,
+		workspaceStates: `${prefix}workspace_states`,
+		threadStates: `${prefix}thread_states`,
+		messageStates: `${prefix}message_states`,
 		threadFts: `${prefix}threads_fts`,
 		messagePartsFts: `${prefix}message_parts_fts`,
 	};
@@ -168,6 +171,18 @@ function buildSchema(t: ReturnType<typeof buildTableNames>): string {
 		CREATE INDEX IF NOT EXISTS idx_${t.toolCalls}_status ON ${t.toolCalls}(status);
 		CREATE TABLE IF NOT EXISTS ${t.workspaces} (
 			folderId TEXT PRIMARY KEY REFERENCES folders(id),
+			data TEXT NOT NULL DEFAULT '{}'
+		);
+		CREATE TABLE IF NOT EXISTS ${t.workspaceStates} (
+			folderId TEXT PRIMARY KEY,
+			data TEXT NOT NULL DEFAULT '{}'
+		);
+		CREATE TABLE IF NOT EXISTS ${t.threadStates} (
+			threadId TEXT PRIMARY KEY,
+			data TEXT NOT NULL DEFAULT '{}'
+		);
+		CREATE TABLE IF NOT EXISTS ${t.messageStates} (
+			messageId TEXT PRIMARY KEY,
 			data TEXT NOT NULL DEFAULT '{}'
 		);
 
@@ -298,6 +313,26 @@ export class SqlitePersistence implements IPersistence {
 			console.log(`[FTS5] Indexed ${mpCount.c} message parts, ${thCount.c} threads`);
 		} catch (err) {
 			console.error('[FTS5] Index build failed:', err);
+		}
+
+		// State tables
+		try {
+			this.db!.exec(`
+				CREATE TABLE IF NOT EXISTS ${this.t.workspaceStates} (
+					folderId TEXT PRIMARY KEY,
+					data TEXT NOT NULL DEFAULT '{}'
+				);
+				CREATE TABLE IF NOT EXISTS ${this.t.threadStates} (
+					threadId TEXT PRIMARY KEY,
+					data TEXT NOT NULL DEFAULT '{}'
+				);
+				CREATE TABLE IF NOT EXISTS ${this.t.messageStates} (
+					messageId TEXT PRIMARY KEY,
+					data TEXT NOT NULL DEFAULT '{}'
+				);
+			`);
+		} catch (err) {
+			console.error('[migration] State tables creation failed:', err);
 		}
 	}
 
@@ -472,7 +507,16 @@ export class SqlitePersistence implements IPersistence {
 			// 9. Delete thread attached tools
 			this.db!.prepare(`DELETE FROM ${this.t.threadAttachedTools} WHERE threadId = ?`).run(id);
 
-			// 10. Delete thread
+			// 10. Delete thread states
+			this.db!.prepare(`DELETE FROM ${this.t.threadStates} WHERE threadId = ?`).run(id);
+
+			// 11. Delete message states
+			if (ids.length) {
+				const placeholders = ids.map(() => '?').join(',');
+				this.db!.prepare(`DELETE FROM ${this.t.messageStates} WHERE messageId IN (${placeholders})`).run(...ids);
+			}
+
+			// 12. Delete thread
 			this.db!.prepare(`DELETE FROM ${this.t.threads} WHERE id = ?`).run(id);
 
 			return embeddings;
@@ -544,6 +588,7 @@ export class SqlitePersistence implements IPersistence {
 		this.db!.transaction((() => {
 			this.db!.prepare(`UPDATE ${this.t.messages} SET parentId = ? WHERE parentId = ?`).run(msg.parentId, id);
 			this.db!.prepare(`DELETE FROM ${this.t.messages} WHERE id = ?`).run(id);
+			this.db!.prepare(`DELETE FROM ${this.t.messageStates} WHERE messageId = ?`).run(id);
 		}) as any)();
 	}
 
@@ -962,5 +1007,62 @@ export class SqlitePersistence implements IPersistence {
 			`SELECT id FROM ${this.t.messages} WHERE threadId = ?`
 		).all(threadId) as Array<{ id: string }>;
 		return rows.map(r => r.id);
+	}
+
+	// ============================================================
+	// Persisted States
+	// ============================================================
+	async getWorkspaceState(folderId: TFolderId): Promise<Record<string, unknown> | null> {
+		const row = this.db!.prepare(`SELECT data FROM ${this.t.workspaceStates} WHERE folderId = ?`).get(folderId) as { data: string } | undefined;
+		if (!row) return null;
+		return JSON.parse(row.data);
+	}
+
+	async updateWorkspaceState(folderId: TFolderId, data: Record<string, unknown>): Promise<void> {
+		this.db!.prepare(
+			`INSERT INTO ${this.t.workspaceStates} (folderId, data) VALUES (?, ?)
+			 ON CONFLICT(folderId) DO UPDATE SET data = excluded.data`
+		).run(folderId, JSON.stringify(data));
+	}
+
+	async getThreadState(threadId: TThreadId): Promise<Record<string, unknown> | null> {
+		const row = this.db!.prepare(`SELECT data FROM ${this.t.threadStates} WHERE threadId = ?`).get(threadId) as { data: string } | undefined;
+		if (!row) return null;
+		return JSON.parse(row.data);
+	}
+
+	async updateThreadState(threadId: TThreadId, data: Record<string, unknown>): Promise<void> {
+		this.db!.prepare(
+			`INSERT INTO ${this.t.threadStates} (threadId, data) VALUES (?, ?)
+			 ON CONFLICT(threadId) DO UPDATE SET data = excluded.data`
+		).run(threadId, JSON.stringify(data));
+	}
+
+	async getMessageState(messageId: TMessageId): Promise<Record<string, unknown> | null> {
+		const row = this.db!.prepare(`SELECT data FROM ${this.t.messageStates} WHERE messageId = ?`).get(messageId) as { data: string } | undefined;
+		if (!row) return null;
+		return JSON.parse(row.data);
+	}
+
+	async updateMessageState(messageId: TMessageId, data: Record<string, unknown>): Promise<void> {
+		this.db!.prepare(
+			`INSERT INTO ${this.t.messageStates} (messageId, data) VALUES (?, ?)
+			 ON CONFLICT(messageId) DO UPDATE SET data = excluded.data`
+		).run(messageId, JSON.stringify(data));
+	}
+
+	async getMessageStatesByThreadId(threadId: TThreadId): Promise<Array<{ messageId: string; data: Record<string, unknown> }>> {
+		const messageIds = this.db!.prepare(
+			`SELECT m.id FROM ${this.t.messages} m WHERE m.threadId = ?`
+		).all(threadId) as Array<{ id: string }>;
+
+		const result: Array<{ messageId: string; data: Record<string, unknown> }> = [];
+		for (const { id } of messageIds) {
+			const row = this.db!.prepare(`SELECT data FROM ${this.t.messageStates} WHERE messageId = ?`).get(id) as { data: string } | undefined;
+			if (row) {
+				result.push({ messageId: id, data: JSON.parse(row.data) });
+			}
+		}
+		return result;
 	}
 }

@@ -464,3 +464,28 @@ export async function searchChatMessages(q: string, mode: string, options?: { th
 	if (options?.offset) params.set('offset', String(options.offset));
 	return api.getList<ISearchResult | ISearchThreadResult>(`/chat/search?${params}`);
 }
+
+// ============================================================
+// Persisted States
+// ============================================================
+export async function fetchWorkspaceState(folderId: string) {
+	return api.get<Record<string, unknown> | null>(`/chat/workspaces/${folderId}/state`);
+}
+export async function updateWorkspaceState(folderId: string, data: Record<string, unknown>) {
+	return api.put<null>(`/chat/workspaces/${folderId}/state`, { data });
+}
+export async function fetchThreadState(threadId: string) {
+	return api.get<Record<string, unknown> | null>(`/chat/threads/${threadId}/state`);
+}
+export async function updateThreadState(threadId: string, data: Record<string, unknown>) {
+	return api.put<null>(`/chat/threads/${threadId}/state`, { data });
+}
+export async function fetchMessageState(messageId: string) {
+	return api.get<Record<string, unknown> | null>(`/chat/messages/${messageId}/state`);
+}
+export async function updateMessageState(messageId: string, data: Record<string, unknown>) {
+	return api.put<null>(`/chat/messages/${messageId}/state`, { data });
+}
+export async function fetchMessageStatesByThread(threadId: string) {
+	return api.getList<{ messageId: string; data: Record<string, unknown> }>(`/chat/threads/${threadId}/message-states`);
+}

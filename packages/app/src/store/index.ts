@@ -23,7 +23,8 @@ import { ttsSlice } from './slices/tts';
 import { annotationsSlice } from './slices/annotations';
 import { embeddingSlice } from './slices/embedding';
 import { chatSidebarSlice } from './slices/chatSidebar';
-import { createChatStoreSlice } from '@warpcore/bridge/client';
+import { createChatStoreSlice, type TMessageId } from '@warpcore/bridge/client';
+import { updateWorkspaceState, updateThreadState, updateMessageState } from '@/api/services';
 import { DiffRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/DiffRenderer';
 import { BashRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/BashRenderer';
 import { FetchRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/FetchRenderer';
@@ -217,6 +218,26 @@ export const useStore = create<AppState>()(
 				setActiveWorkspaceId: (id: TFolderId | null) => set(s => { s.activeWorkspaceId = id; }),
 				workspaces: {},
 				setWorkspace: (workspace: IWorkspace) => set(s => { s.workspaces[workspace.folderId] = workspace; }),
+
+				// Persisted states
+				workspaceStates: bridge.workspaceStates,
+				threadStates: bridge.threadStates,
+				messageStates: bridge.messageStates,
+				setWorkspaceState: (folderId: TFolderId, fn: (state: Record<string, unknown>) => void) => {
+					const data = bridge.setWorkspaceState(folderId, fn);
+					updateWorkspaceState(folderId, data);
+				},
+				setThreadState: (threadId: TThreadId, fn: (state: Record<string, unknown>) => void) => {
+					const data = bridge.setThreadState(threadId, fn);
+					updateThreadState(threadId, data);
+				},
+				setMessageState: (messageId: TMessageId, fn: (state: Record<string, unknown>) => void) => {
+					const data = bridge.setMessageState(messageId, fn);
+					updateMessageState(messageId, data);
+				},
+				initWorkspaceState: bridge.initWorkspaceState,
+				initThreadState: bridge.initThreadState,
+				initMessageStates: bridge.initMessageStates,
 
 				// Annotations
 					annotations: annotations.annotations!,
