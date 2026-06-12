@@ -27,6 +27,7 @@
 		"express": "^5.1.0",
 		"kokoro-js": "^1.2.1",
 		"node-downloader-helper": "^2.1.11",
+		"socket.io": "^4.8.3",
 		"sqlite-vec": "^0.1.9",
 		"zod": "^4.3.6"
 	},

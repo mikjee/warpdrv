@@ -4,3 +4,4 @@ export type { IRemoteMessage, TRemoteHandler, IMessageTransport } from './events
 export { MockTransport } from './events/transport/MockTransport';
 export { WSTransport } from './events/transport/WSTransport';
 export type { ISocket } from './events/transport/WSTransport';
+export * from './applet';

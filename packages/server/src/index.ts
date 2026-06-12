@@ -44,6 +44,9 @@ import { bootWarpmcp } from './warpmcpRunner';
 import { embeddingManager } from './services/embeddingManager';
 import { getDataDir } from './util/mcpConfig';
 import { serveStaticApp } from './middleware/serveStatic';
+import { AppletManager, EAppletHostType, EAppletScope } from '@warpcore/realmcore';
+import { beApplets } from './applets';
+import { initRealmEvents, getMainNode } from './services/realmEvents';
 import path from 'path';
 import os from 'os';
 
@@ -107,6 +110,10 @@ async function main() {
 	mcpClient = new McpClientManager(undefined, broadcaster);
 	const permissions = new PermissionManager(persistence);
 	orchestrator = new Orchestrator({ mcpClient, permissions, persistence, broadcaster });
+
+	// Initialize applet manager
+	const appletManager = new AppletManager(getMainNode(), EAppletScope.GLOBAL, undefined, EAppletHostType.BE, beApplets);
+	await appletManager.initialize();
 
 	// Initialize embedding manager
 	await embeddingManager.initialize(persistence, broadcaster, dataDir);
@@ -377,12 +384,15 @@ async function main() {
 		return { recipes: recipesMap, activeRun: getActiveRun() };
 	});
 
-	app.listen(port, host, () => {
+	const httpServer = app.listen(port, host, () => {
 		console.log(`[WarpCore] API server listening on ${host}:${port}`);
 		if (envPort) {
 			console.log(`[WarpCore] Port set via CONTROL_API_PORT environment variable`);
 		}
 	});
+
+	// Initialize realm events
+	initRealmEvents(httpServer);
 
 	process.on('exit', () => { mcpClient.disconnectAll(); });
 

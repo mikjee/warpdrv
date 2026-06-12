@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useDependantState } from '../../hooks/useDependantState';
+import { useRealmEvents } from '../../hooks/useRealmEvents';
+import { useAppletState } from '../../hooks/useAppletState';
 import { Box, Button, Flex, IconButton, Text, HStack, Popover, Portal, Switch, Slider, VStack, Combobox, createListCollection } from '@chakra-ui/react';
 import { MessageSquare, ChevronDown, PanelLeftClose, PanelLeftOpen, Plus } from 'lucide-react';
 import {
@@ -309,7 +311,7 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 
 				// Fetch persisted states
 				const folderId = data?.folderId;
-				const statePromises: Promise<unknown>[] = [];
+				const statePromises: Promise<{ ok: boolean; data: any; error: string | null } | null>[] = [];
 				if (folderId) {
 					statePromises.push(fetch(`/api/chat/workspaces/${folderId}/state`).then(res => res.ok ? res.json() : null));
 				} else {
@@ -341,6 +343,10 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 		}
 		loadThread();
 	}, [currentThreadId, threadInStore, threadMessages, selectedEmbeddingServerId, servers, seedThreadMessages, applyToolCallCreated, setThreadEmbeddingStatuses, initWorkspaceState, initThreadState, initMessageStates]);
+
+	// Realm events and applet state
+	const realmEvents = useRealmEvents();
+	useAppletState(realmEvents.node, currentThreadId);
 
 	// V2: no message chain sent to backend — backend builds from persistence
 	const onNewV2 = useCallback(async (message: any) => {
