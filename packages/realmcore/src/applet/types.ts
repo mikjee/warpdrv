@@ -28,10 +28,3 @@ export interface TAppletDefinition<TApi = any> {
 
 export type IAppletFn<TApi = any> = (api: TApi) => Promise<void>;
 
-export interface IAppletApiBE {
-	eventNode: EventNode;
-}
-
-export interface IAppletApiFE {
-	eventNode: EventNode;
-}

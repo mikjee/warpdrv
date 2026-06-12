@@ -39,6 +39,7 @@ import type {
 	IElicitationRequest,
 } from '@warpcore/bridge';
 import { IAnnotation } from '@/store/slices/annotations';
+import type { ISlashCommand } from '@/store/slices/slashCommands';
 
 export interface AppState {
 	// SSE Connection
@@ -251,4 +252,10 @@ export interface AppState {
 	setChatSidebarOpen: (v: boolean) => void;
 	setChatSidebarTab: (tab: 'config' | 'tools' | 'search') => void;
 	openChatSidebarTab: (tab: 'config' | 'tools' | 'search') => void;
+
+	// Slash commands
+	slashCommands: Record<string, ISlashCommand>;
+	slashCommandsByApplet: Record<string, Record<string, true>>;
+	registerSlashCommand: (command: ISlashCommand, appletName?: string) => void;
+	unregisterSlashCommand: (name: string, appletName?: string) => void;
 }

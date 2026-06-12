@@ -1,4 +1,4 @@
-import { AppletHost } from './AppletHost';
+import { AppletHost } from '@warpcore/realmcore';
 import type { IAppletApiBE } from './types';
 
 export class AppletHostBE extends AppletHost {

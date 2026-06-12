@@ -1,5 +1,6 @@
-import type { TAppletDefinition, IAppletFn, IAppletApiBE } from '@warpcore/realmcore';
+import type { TAppletDefinition, IAppletFn } from '@warpcore/realmcore';
 import { EAppletHostType, EAppletScope } from '@warpcore/realmcore';
+import type { IAppletApiBE } from './types';
 
 const fn: IAppletFn<IAppletApiBE> = async (api: IAppletApiBE) => {
 	console.log('[TestBEApplet] Started');

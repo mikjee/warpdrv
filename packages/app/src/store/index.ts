@@ -23,6 +23,7 @@ import { ttsSlice } from './slices/tts';
 import { annotationsSlice } from './slices/annotations';
 import { embeddingSlice } from './slices/embedding';
 import { chatSidebarSlice } from './slices/chatSidebar';
+import { slashCommandsSlice } from './slices/slashCommands';
 import { createChatStoreSlice, type TMessageId } from '@warpcore/bridge/client';
 import { updateWorkspaceState, updateThreadState, updateMessageState } from '@/api/services';
 import { DiffRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/DiffRenderer';
@@ -54,6 +55,7 @@ export const useStore = create<AppState>()(
 			const annotations = annotationsSlice(set, get);
 			const embedding = embeddingSlice(set, get);
 				const chatSidebar = chatSidebarSlice(set, get);
+				const slashCommands = slashCommandsSlice(set, get);
 				const sseHandlers = sseHandlersSlice(set, get);
 				const bridge = createChatStoreSlice(set, get);
 
@@ -257,6 +259,12 @@ export const useStore = create<AppState>()(
 					setChatSidebarOpen: chatSidebar.setChatSidebarOpen!,
 					setChatSidebarTab: chatSidebar.setChatSidebarTab!,
 					openChatSidebarTab: chatSidebar.openChatSidebarTab!,
+
+// Slash commands
+				slashCommands: slashCommands.slashCommands!,
+				slashCommandsByApplet: slashCommands.slashCommandsByApplet!,
+				registerSlashCommand: slashCommands.registerSlashCommand!,
+				unregisterSlashCommand: slashCommands.unregisterSlashCommand!,
 				};
 		}),
 	),

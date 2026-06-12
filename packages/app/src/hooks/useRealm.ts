@@ -3,7 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import { nanoid } from 'nanoid';
 import { EventNode, RemoteNode, WSTransport } from '@warpcore/realmcore';
 import { AppletManager, EAppletHostType, EAppletScope } from '@warpcore/realmcore';
-import { feApplets } from '@/applets';
+import { feApplets, AppletHostFE } from '@/applets';
 
 export function useRealm(currentThreadId: string | null) {
 	const realmRef = useRef<{ 
@@ -25,7 +25,7 @@ export function useRealm(currentThreadId: string | null) {
 			eventNode,
 			EAppletScope.THREAD,
 			currentThreadId ?? undefined,
-			EAppletHostType.FE,
+			{ [EAppletHostType.FE]: AppletHostFE },
 			feApplets,
 		);
 
@@ -59,7 +59,7 @@ export function useRealm(currentThreadId: string | null) {
 	}
 
 	useEffect(() => {
-		if (currentThreadId) realmRef.current?.appletMgr.updateScopeValue(currentThreadId);
+		realmRef.current?.appletMgr.updateScopeValue(currentThreadId ?? undefined);
 		return () => {
 			realmRef.current?.appletMgr.terminateAll();
 		};

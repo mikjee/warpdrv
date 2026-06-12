@@ -45,7 +45,7 @@ import { embeddingManager } from './services/embeddingManager';
 import { getDataDir } from './util/mcpConfig';
 import { serveStaticApp } from './middleware/serveStatic';
 import { AppletManager, EAppletHostType, EAppletScope } from '@warpcore/realmcore';
-import { beApplets } from './applets';
+import { beApplets, AppletHostBE } from './applets';
 import { initRealm, getMainNode } from './services/initRealm';
 import path from 'path';
 import os from 'os';
@@ -387,7 +387,7 @@ async function main() {
 	initRealm(httpServer);
 
 	// Initialize applet manager
-	const appletManager = new AppletManager(getMainNode(), EAppletScope.GLOBAL, undefined, EAppletHostType.BE, beApplets);
+	const appletManager = new AppletManager(getMainNode(), EAppletScope.GLOBAL, undefined, { [EAppletHostType.BE]: AppletHostBE }, beApplets);
 	await appletManager.initializeAll();
 
 	// Start server

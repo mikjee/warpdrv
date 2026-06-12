@@ -1,21 +1,14 @@
 import { AppletHost } from './AppletHost';
-import { AppletHostBE } from './AppletHostBE';
-import { AppletHostFE } from './AppletHostFE';
 import type { TAppletDefinition } from './types';
 import { EAppletHostType, EAppletScope } from './types';
 import type { EventNode } from '../events/EventNode';
 import { EventNode as EventNodeClass } from '../events/EventNode';
 
-const HOST_CLASSES: Record<EAppletHostType, typeof AppletHost> = {
-	[EAppletHostType.BE]: AppletHostBE,
-	[EAppletHostType.FE]: AppletHostFE,
-};
-
 export class AppletManager {
 	public eventNode: EventNode;
 	private scope: EAppletScope;
 	private scopeValue: string | undefined;
-	private hostType: EAppletHostType;
+	private hostClasses: Record<EAppletHostType, typeof AppletHost>;
 	private applets: Record<string, TAppletDefinition>;
 	private activeApplets: Record<string, { host: AppletHost; eventNode: EventNode }> = {};
 	private terminatingHosts: Record<string, Promise<void>> = {};
@@ -24,23 +17,21 @@ export class AppletManager {
 		eventNode: EventNode,
 		scope: EAppletScope,
 		scopeValue: string | undefined,
-		hostType: EAppletHostType,
+		hostClasses: Record<EAppletHostType, typeof AppletHost>,
 		applets: Record<string, TAppletDefinition>,
 	) {
 		this.eventNode = eventNode;
 		this.scope = scope;
 		this.scopeValue = scopeValue;
-		this.hostType = hostType;
+		this.hostClasses = hostClasses;
 		this.applets = applets;
 	}
 
 	private createHost(definition: TAppletDefinition, eventNode: EventNode): AppletHost {
-		return new HOST_CLASSES[this.hostType](definition, eventNode);
+		return new this.hostClasses[definition.hostType](definition, eventNode);
 	}
 
 	public async initialize(appletName: string, opts?: { terminate?: boolean }): Promise<void> {
-		if (this.scope !== EAppletScope.GLOBAL && !this.scopeValue) return;
-		
 		if (opts?.terminate) {
 			await this.terminate(appletName);
 		} else {
@@ -50,7 +41,7 @@ export class AppletManager {
 
 		const definition = this.applets[appletName];
 		if (!definition) return;
-		if (definition.hostType !== this.hostType || definition.scope !== this.scope) return;
+		if (!this.hostClasses[definition.hostType] || definition.scope !== this.scope) return;
 
 		const eventNode = new EventNodeClass(definition.name, false);
 		const host = this.createHost(definition, eventNode);
@@ -66,8 +57,6 @@ export class AppletManager {
 	}
 
 	public async initializeAll(): Promise<void> {
-		if (this.scope !== EAppletScope.GLOBAL && !this.scopeValue) return;
-
 		await this.terminateAll();
 		for (const key of Object.keys(this.applets)) {
 			await this.initialize(key, { terminate: true });
@@ -75,6 +64,7 @@ export class AppletManager {
 	}
 
 	public async updateScopeValue(newValue: string | undefined): Promise<void> {
+		newValue ??= undefined;
 		if (this.scopeValue === newValue) return;
 		this.scopeValue = newValue;
 		await this.initializeAll();

@@ -1,17 +1,16 @@
 import { ReactRenderer } from "@tiptap/react";
 import { computePosition, flip, shift, offset } from "@floating-ui/dom";
 import type { SuggestionOptions } from "@tiptap/suggestion";
+import { useStore } from "@/store";
 import { CommandList, type ICommandListRef } from "./CmdList";
-
-// hardcoded command set — registry is parked
-const COMMANDS: Array<{ name: string }> = [{ name: "test" }];
 
 export const commandSuggestion: Omit<SuggestionOptions, "editor"> = {
 	char: "/",
 	startOfLine: false,
 	allowSpaces: false,
 	items: ({ query }) => {
-		return COMMANDS.filter(c => c.name.toLowerCase().startsWith(query.toLowerCase()));
+		return Object.values(useStore.getState().slashCommands)
+			.filter(c => c.name.toLowerCase().startsWith(query.toLowerCase()));
 	},
 	command: ({ editor, range, props }) => {
 		editor
