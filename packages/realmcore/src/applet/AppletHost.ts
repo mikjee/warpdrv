@@ -9,7 +9,7 @@ export class AppletHost {
 	private startPromise: Promise<void> | null = null;
 	private terminationPromise: Promise<void> | null = null;
 
-	constructor(private definition: TAppletDefinition, private eventNode: EventNode) {
+	constructor(protected definition: TAppletDefinition, protected eventNode: EventNode) {
 		this.fn = definition.fn;
 	}
 

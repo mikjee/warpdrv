@@ -19,6 +19,7 @@ export function useRealm(currentThreadId: string | null) {
 
 		const nodeId = `web-${nanoid(6)}`;
 		const eventNode = new EventNode(nodeId, false);
+		(window as any).eventNode = eventNode;
 
 		const appletMgr = new AppletManager(
 			eventNode,

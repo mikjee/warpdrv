@@ -10,5 +10,5 @@ export const TestFEApplet: TAppletDefinition<IAppletApiFE> = {
 	description: 'Test frontend applet',
 	fn,
 	hostType: EAppletHostType.FE,
-	scope: EAppletScope.GLOBAL,
+	scope: EAppletScope.THREAD,
 };
