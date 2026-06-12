@@ -5,9 +5,38 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import react from '@vitejs/plugin-react';
+import httpProxy from 'http-proxy-3';
 
 export default defineConfig({
 	plugins: [
+		{
+			name: 'realm-ws-proxy',
+			configureServer(server) {
+				const target = `ws://localhost:${process.env.CONTROL_API_PORT ?? '4400'}`;
+				const proxy = httpProxy.createProxyServer({ target, ws: true });
+				proxy.on('error', (err) => {
+					console.log('[realm-ws-proxy] error:', err.message);
+				});
+				proxy.on('open', (proxySocket) => {
+					console.log('[realm-ws-proxy] backend socket open');
+					proxySocket.on('close', () => console.log('[realm-ws-proxy] backend socket closed'));
+				});
+				proxy.on('proxyReqWs', (_pr, _req, socket) => {
+					socket.on('close', () => console.log('[realm-ws-proxy] client socket closed'));
+					socket.on('error', (e) => console.log('[realm-ws-proxy] client socket error:', e.message));
+				});
+				server.httpServer?.prependListener('upgrade', (req, socket, head) => {
+					if (!req.url) return;
+					if (req.url.startsWith('/api/realm')) {
+						console.log('[realm-ws-proxy] upgrading', req.url);
+						socket.setTimeout(0);
+						socket.setNoDelay(true);
+						socket.setKeepAlive(true, 0);
+						proxy.ws(req, socket, head, { target });
+					}
+				});
+			},
+		},
 		react(),
 		{
 			name: 'serve-onnx-runtime',
@@ -79,6 +108,9 @@ export default defineConfig({
 	server: {
 		port: 3000,
 		host: true,
+		hmr: {
+			port: 3001,
+		},
 		headers: [
 			{ name: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
 			{ name: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
@@ -87,8 +119,13 @@ export default defineConfig({
 			'/api': {
 				target: `http://localhost:${process.env.CONTROL_API_PORT ?? '4400'}`,
 				changeOrigin: true,
-				ws: true,
 				configure: (proxy) => {
+					proxy.on('proxyReqWs', () => {
+						console.log('[proxy] /api ws upgrade forwarded');
+					});
+					proxy.on('proxyReq', (_pr, req) => {
+						if ((req.url || '').includes('realm')) console.log('[proxy] /api HTTP got realm:', req.url);
+					});
 					proxy.on('proxyRes', (res, req, _req) => {
 						res.headers['Cache-Control'] = 'no-cache';
 						res.headers['Connection'] = 'keep-alive';

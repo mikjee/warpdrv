@@ -1,0 +1,77 @@
+import { useEffect, useRef } from 'react';
+import { io, Socket } from 'socket.io-client';
+import { nanoid } from 'nanoid';
+import { EventNode, RemoteNode, WSTransport } from '@warpcore/realmcore';
+import { AppletManager, EAppletHostType, EAppletScope } from '@warpcore/realmcore';
+import { feApplets } from '@/applets';
+
+export function useRealm(currentThreadId: string | null) {
+	const realmRef = useRef<{ 
+		eventNode: EventNode; 
+		remoteNode: RemoteNode;
+		nodeId: string; 
+		socket: Socket;
+		appletMgr: AppletManager;
+	}>(null);
+
+	if (!realmRef.current) {
+		console.log(`[Realm] Loading..`);
+
+		const nodeId = `web-${nanoid(6)}`;
+		const eventNode = new EventNode(nodeId, false);
+
+		const appletMgr = new AppletManager(
+			eventNode,
+			EAppletScope.THREAD,
+			currentThreadId ?? undefined,
+			EAppletHostType.FE,
+			feApplets,
+		);
+
+		const socket = io({
+			path: '/api/realm/',
+			query: { nodeId },
+			transports: ['websocket'],
+			upgrade: false,
+		});
+		
+		const remoteNode = new RemoteNode('main', eventNode, new WSTransport(socket));
+
+		socket.on('connect', () => {
+			console.log(`[Realm] ✅ Connected as ${nodeId}.`);
+			appletMgr.initializeAll();
+		});
+		socket.on('disconnect', () => {
+			console.error(`[Realm] Disconnected!`);
+		});
+		socket.io.on('error', (err) => {
+			console.error(`[Realm] Manager error:`, err.message);
+		});
+
+		realmRef.current = { 
+			eventNode, 
+			remoteNode,
+			nodeId, 
+			socket,
+			appletMgr,
+		};
+	}
+
+	useEffect(() => {
+		if (currentThreadId) realmRef.current?.appletMgr.updateScopeValue(currentThreadId);
+		return () => {
+			realmRef.current?.appletMgr.terminateAll();
+		};
+	}, [currentThreadId]);
+
+	useEffect(() => {
+		const socket = realmRef.current?.socket;
+		if (socket && !socket.connected) socket.connect();
+
+		return () => {
+			socket?.disconnect();
+		};
+	}, []);
+
+	return realmRef.current;
+}

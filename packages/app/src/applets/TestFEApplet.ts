@@ -2,7 +2,7 @@ import type { TAppletDefinition, IAppletFn, IAppletApiFE } from '@warpcore/realm
 import { EAppletHostType, EAppletScope } from '@warpcore/realmcore';
 
 const fn: IAppletFn<IAppletApiFE> = async (api) => {
-	console.log('[TestFEApplet] Started', api);
+	console.log('[TestFEApplet] Started');
 };
 
 export const TestFEApplet: TAppletDefinition<IAppletApiFE> = {

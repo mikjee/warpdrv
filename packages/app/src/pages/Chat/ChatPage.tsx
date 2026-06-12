@@ -1,26 +1,21 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useDependantState } from '../../hooks/useDependantState';
-import { useRealmEvents } from '../../hooks/useRealmEvents';
-import { useAppletState } from '../../hooks/useAppletState';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRealm } from '@/hooks/useRealm';
 import { Box, Button, Flex, IconButton, Text, HStack, Popover, Portal, Switch, Slider, VStack, Combobox, createListCollection } from '@chakra-ui/react';
-import { MessageSquare, ChevronDown, PanelLeftClose, PanelLeftOpen, Plus } from 'lucide-react';
+import { MessageSquare, ChevronDown, Plus } from 'lucide-react';
 import {
 	AssistantRuntimeProvider,
 	useExternalStoreRuntime,
-	useAuiState,
 	type ThreadMessage,
 } from '@assistant-ui/react';
 import { Thread } from './assistant-ui/thread';
 import { ThreadList, useThreadsAndFolders } from './assistant-ui/thread-list';
 import { ChatSearchDialog } from './ChatSearchDialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { PageHeader } from '../../components/PageHeader';
-import { useStore } from '../../store';
-import type { AppState } from '../../store/types';
-import type { IServer, IChatPreset, IChatInferenceParams, IThreadConfig } from '@warpcore/shared';
+import { PageHeader } from '@/components/PageHeader';
+import { useStore } from '@/store';
+import type { AppState } from '@/store/types';
+import type { IChatPreset } from '@warpcore/shared';
 import { EServerStatus, EReasoningEffort } from '@warpcore/shared';
-import { EChatRole, EMessagePartType, EToolCallStatus, IChatThread, type IChatMessage } from '@warpcore/bridge';
-import { DEFAULT_INFERENCE_PARAMS } from './ChatConfigSidebar';
 import './assistant-ui/styles/assistant-ui.css';
 import { createContext } from 'react';
 import { ChatSidebar } from './ChatSidebar';
@@ -28,10 +23,9 @@ import { useDerivedMsgsForUI } from '@/hooks/useChatSelectors';
 import { useThreadConfig } from '@/hooks/useThreadConfig';
 import { useThreadAttachedTools } from '@/hooks/useThreadAttachedTools';
 import { useHotkey, HotkeyMode } from '@/hooks/useHotKey';
-import { convertMessagesToOpenAIFormat } from '@warpcore/bridge';
 import { extractTextFromFile } from '@/hooks/useFileReader';
-import { useToast } from '../../components/ToastProvider';
-import { updateSettings } from '../../api/services';
+import { useToast } from '@/components/ToastProvider';
+import { updateSettings } from '@/api/services';
 import { parseThreadMeta } from '@/pages/Chat/assistant-ui/ServerSelector';
 // COMMENTED OUT: per-thread whisper server selection no longer used
 // import { parseWhisperThreadMeta } from '@/pages/Chat/assistant-ui/WhisperServerSelector';
@@ -324,7 +318,7 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 					initWorkspaceState(folderId, wsStateRes.data);
 				}
 				if (threadStateRes?.data !== undefined && threadStateRes?.data !== null) {
-					initThreadState(currentThreadId, threadStateRes.data);
+					initThreadState(currentThreadId!, threadStateRes.data);
 				}
 				if (msgStatesRes?.data) {
 					initMessageStates(msgStatesRes.data);
@@ -345,8 +339,7 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 	}, [currentThreadId, threadInStore, threadMessages, selectedEmbeddingServerId, servers, seedThreadMessages, applyToolCallCreated, setThreadEmbeddingStatuses, initWorkspaceState, initThreadState, initMessageStates]);
 
 	// Realm events and applet state
-	const realmEvents = useRealmEvents();
-	useAppletState(realmEvents.node, currentThreadId);
+	const realmEvents = useRealm(currentThreadId);
 
 	// V2: no message chain sent to backend — backend builds from persistence
 	const onNewV2 = useCallback(async (message: any) => {

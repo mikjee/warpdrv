@@ -46,7 +46,7 @@ import { getDataDir } from './util/mcpConfig';
 import { serveStaticApp } from './middleware/serveStatic';
 import { AppletManager, EAppletHostType, EAppletScope } from '@warpcore/realmcore';
 import { beApplets } from './applets';
-import { initRealmEvents, getMainNode } from './services/realmEvents';
+import { initRealm, getMainNode } from './services/initRealm';
 import path from 'path';
 import os from 'os';
 
@@ -62,6 +62,7 @@ export let broadcaster: SseBroadcaster;
 import { execSync } from 'child_process';
 import { launchAutoStartServers, reconcileServers } from './services/processManager';
 import { reconcileWhisperServers, launchAutoStartWhisperServers } from './services/whisperProcessManager';
+import { createServer } from 'http';
 
 function resolveShellPath(): string | null {
 	try {
@@ -110,10 +111,6 @@ async function main() {
 	mcpClient = new McpClientManager(undefined, broadcaster);
 	const permissions = new PermissionManager(persistence);
 	orchestrator = new Orchestrator({ mcpClient, permissions, persistence, broadcaster });
-
-	// Initialize applet manager
-	const appletManager = new AppletManager(getMainNode(), EAppletScope.GLOBAL, undefined, EAppletHostType.BE, beApplets);
-	await appletManager.initialize();
 
 	// Initialize embedding manager
 	await embeddingManager.initialize(persistence, broadcaster, dataDir);
@@ -384,15 +381,22 @@ async function main() {
 		return { recipes: recipesMap, activeRun: getActiveRun() };
 	});
 
-	const httpServer = app.listen(port, host, () => {
+	const httpServer = createServer(app);
+
+	// Initialize realm events
+	initRealm(httpServer);
+
+	// Initialize applet manager
+	const appletManager = new AppletManager(getMainNode(), EAppletScope.GLOBAL, undefined, EAppletHostType.BE, beApplets);
+	await appletManager.initializeAll();
+
+	// Start server
+	httpServer.listen(port, host, () => {
 		console.log(`[WarpCore] API server listening on ${host}:${port}`);
 		if (envPort) {
 			console.log(`[WarpCore] Port set via CONTROL_API_PORT environment variable`);
 		}
 	});
-
-	// Initialize realm events
-	initRealmEvents(httpServer);
 
 	process.on('exit', () => { mcpClient.disconnectAll(); });
 

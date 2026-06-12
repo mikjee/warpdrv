@@ -3,6 +3,6 @@ import type { IAppletApiBE } from './types';
 
 export class AppletHostBE extends AppletHost {
 	public override buildApi(): IAppletApiBE {
-		return {};
+		return { eventNode: this.eventNode! };
 	}
 }

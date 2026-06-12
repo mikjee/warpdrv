@@ -10,7 +10,10 @@
 		"composite": true,
 		"declaration": true,
 		"declarationMap": true,
-		"outDir": "./dist"
+		"outDir": "./dist",
+		"types": [
+			"node"
+		]
 	},
 	"include": ["src"]
 }

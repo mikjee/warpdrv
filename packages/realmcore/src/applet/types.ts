@@ -1,3 +1,5 @@
+import type { EventNode } from '../events/EventNode';
+
 export enum EAppletHostType {
 	BE = 'be',
 	FE = 'fe',
@@ -27,9 +29,9 @@ export interface TAppletDefinition<TApi = any> {
 export type IAppletFn<TApi = any> = (api: TApi) => Promise<void>;
 
 export interface IAppletApiBE {
-	// Placeholder - will be populated with actual BE capabilities
+	eventNode: EventNode;
 }
 
 export interface IAppletApiFE {
-	// Placeholder - will be populated with actual FE capabilities
+	eventNode: EventNode;
 }

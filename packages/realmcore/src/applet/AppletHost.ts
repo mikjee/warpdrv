@@ -1,16 +1,15 @@
 import type { TAppletDefinition, IAppletFn } from './types';
 import { EAppletHostStatus } from './types';
+import type { EventNode } from '../events/EventNode';
 
 export class AppletHost {
-	protected definition: TAppletDefinition;
 	protected fn: IAppletFn;
 	protected status = EAppletHostStatus.NOT_RUNNING;
 	protected api: any = null;
 	private startPromise: Promise<void> | null = null;
 	private terminationPromise: Promise<void> | null = null;
 
-	constructor(definition: TAppletDefinition) {
-		this.definition = definition;
+	constructor(private definition: TAppletDefinition, private eventNode: EventNode) {
 		this.fn = definition.fn;
 	}
 
@@ -18,28 +17,33 @@ export class AppletHost {
 		throw new Error(`buildApi() must be implemented by ${this.constructor.name}`);
 	}
 
+	protected setupHostHandlers(): void {
+		this.eventNode.fn('ping', () => 'pong');
+	}
+
 	public start(): Promise<void> {
 		if (this.startPromise) return this.startPromise;
 		this.status = EAppletHostStatus.INIT;
 		console.log(`[AppletHost] Starting ${this.definition.name}`);
+
 		this.startPromise = (async () => {
 			this.api = this.buildApi();
+			this.setupHostHandlers();
 			await this.fn(this.api);
 			this.status = EAppletHostStatus.READY;
-			this.startPromise = null;
 			console.log(`[AppletHost] ${this.definition.name} ready`);
 		})();
+
 		return this.startPromise;
 	}
 
 	public terminate(): Promise<void> {
-		if (this.status === EAppletHostStatus.NOT_RUNNING || this.status === EAppletHostStatus.DEINIT) return Promise.resolve();
 		if (this.terminationPromise) return this.terminationPromise;
 		this.status = EAppletHostStatus.DEINIT;
 		console.log(`[AppletHost] Terminating ${this.definition.name}`);
+
 		this.terminationPromise = (async () => {
 			this.api = null;
-			this.terminationPromise = null;
 			console.log(`[AppletHost] ${this.definition.name} terminated`);
 		})();
 		return this.terminationPromise;
@@ -55,5 +59,9 @@ export class AppletHost {
 
 	public getStatus(): EAppletHostStatus {
 		return this.status;
+	}
+
+	public getEventNode(): EventNode | null {
+		return this.eventNode;
 	}
 }
