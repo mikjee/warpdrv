@@ -40,6 +40,10 @@ import type {
 } from '@warpcore/bridge';
 import { IAnnotation } from '@/store/slices/annotations';
 import type { ISlashCommand } from '@/store/slices/slashCommands';
+import type { TUiSpaceId, TUiSpaceComponentId, TUiSpaceComponent, TUiSpaceDefinition } from '@/store/slices/uiSpaces';
+import { EChatSidebarTab } from '@/store/slices/chatSidebar';
+import type { TUiSpaceId, TUiSpaceComponentId, TUiSpaceComponent, TUiSpaceDefinition } from '@/store/slices/uiSpaces';
+import type { TChatSidebarTab } from '@/store/slices/chatSidebar';
 
 export interface AppState {
 	// SSE Connection
@@ -248,14 +252,20 @@ export interface AppState {
 
 	// Chat sidebar state
 	chatSidebarOpen: boolean;
-	chatSidebarTab: 'config' | 'tools' | 'search';
+	chatSidebarTab: EChatSidebarTab;
 	setChatSidebarOpen: (v: boolean) => void;
-	setChatSidebarTab: (tab: 'config' | 'tools' | 'search') => void;
-	openChatSidebarTab: (tab: 'config' | 'tools' | 'search') => void;
+	setChatSidebarTab: (tab: EChatSidebarTab) => void;
+	openChatSidebarTab: (tab: EChatSidebarTab) => void;
 
 	// Slash commands
 	slashCommands: Record<string, ISlashCommand>;
 	slashCommandsByApplet: Record<string, Record<string, true>>;
 	registerSlashCommand: (command: ISlashCommand, appletName?: string) => void;
 	unregisterSlashCommand: (name: string, appletName?: string) => void;
+
+	// UI Spaces
+	uiSpaceComponents: Record<TUiSpaceId, Record<TUiSpaceComponentId, TUiSpaceDefinition>>;
+	uiSpaceComponentsByApplet: Record<string, Record<TUiSpaceComponentId, true>>;
+	registerUiSpaceComponent: (spaceId: TUiSpaceId, component: TUiSpaceComponent, appletName?: string) => TUiSpaceComponentId;
+	unregisterUiSpaceComponent: (id: TUiSpaceComponentId, appletName?: string) => void;
 }

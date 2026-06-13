@@ -1,14 +1,19 @@
 import type { ImmerSet, ImmerGet } from '../types';
 import type { AppState } from '../types';
 
-export type TChatSidebarTab = 'config' | 'tools' | 'search';
+export enum EChatSidebarTab {
+    CONFIG = 'config',
+    TOOLS = 'tools',
+    SEARCH = 'search',
+    RIGHT_PANEL = 'right-panel',
+}
 
 export function chatSidebarSlice(set: ImmerSet<AppState>, get: ImmerGet<AppState>) {
 	return {
-		chatSidebarOpen: false as boolean,
-		chatSidebarTab: 'config' as TChatSidebarTab,
-		setChatSidebarOpen: (v: boolean) => set(s => { s.chatSidebarOpen = v; }),
-		setChatSidebarTab: (tab: TChatSidebarTab) => set(s => { s.chatSidebarTab = tab; }),
-		openChatSidebarTab: (tab: TChatSidebarTab) => set(s => { s.chatSidebarTab = tab; s.chatSidebarOpen = true; }),
+chatSidebarOpen: false as boolean,
+	chatSidebarTab: EChatSidebarTab.CONFIG,
+	setChatSidebarOpen: (v: boolean) => set(s => { s.chatSidebarOpen = v; }),
+	setChatSidebarTab: (tab: EChatSidebarTab) => set(s => { s.chatSidebarTab = tab; }),
+	openChatSidebarTab: (tab: EChatSidebarTab) => set(s => { s.chatSidebarTab = tab; s.chatSidebarOpen = true; }),
 	};
 }

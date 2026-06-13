@@ -17,21 +17,21 @@ export async function initRealm(server: HTTPServer): Promise<{ node: EventNode; 
 		cors: { origin: true, credentials: true },
 	});
 
-	io.engine.on('connection', (rawSocket) => {
-        console.log('[Realm] engine connection:', rawSocket.id);
-        rawSocket.on('data', (data: unknown) => {
-            console.log('[Realm] engine raw data:', JSON.stringify(data));
-        });
-        rawSocket.on('packet', (p: unknown) => {
-            console.log('[Realm] engine packet:', JSON.stringify(p));
-        });
-        rawSocket.on('close', (reason: unknown) => {
-            console.log('[Realm] engine close:', JSON.stringify(reason));
-        });
-    });
-    io.of('/').on('connect', (socket) => {
-        console.log('[Realm] namespace connect:', socket.id);
-    });
+	// io.engine.on('connection', (rawSocket) => {
+    //     console.log('[Realm] engine connection:', rawSocket.id);
+    //     rawSocket.on('data', (data: unknown) => {
+    //         console.log('[Realm] engine raw data:', JSON.stringify(data));
+    //     });
+    //     rawSocket.on('packet', (p: unknown) => {
+    //         console.log('[Realm] engine packet:', JSON.stringify(p));
+    //     });
+    //     rawSocket.on('close', (reason: unknown) => {
+    //         console.log('[Realm] engine close:', JSON.stringify(reason));
+    //     });
+    // });
+    // io.of('/').on('connect', (socket) => {
+    //     console.log('[Realm] namespace connect:', socket.id);
+    // });
 
 	io.on('connection', (socket) => {
 		const nodeId = socket.handshake.query.nodeId as string;

@@ -24,6 +24,7 @@ import { annotationsSlice } from './slices/annotations';
 import { embeddingSlice } from './slices/embedding';
 import { chatSidebarSlice } from './slices/chatSidebar';
 import { slashCommandsSlice } from './slices/slashCommands';
+import { uiSpacesSlice } from './slices/uiSpaces';
 import { createChatStoreSlice, type TMessageId } from '@warpcore/bridge/client';
 import { updateWorkspaceState, updateThreadState, updateMessageState } from '@/api/services';
 import { DiffRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/DiffRenderer';
@@ -56,6 +57,7 @@ export const useStore = create<AppState>()(
 			const embedding = embeddingSlice(set, get);
 				const chatSidebar = chatSidebarSlice(set, get);
 				const slashCommands = slashCommandsSlice(set, get);
+			const uiSpaces = uiSpacesSlice(set, get);
 				const sseHandlers = sseHandlersSlice(set, get);
 				const bridge = createChatStoreSlice(set, get);
 
@@ -261,11 +263,17 @@ export const useStore = create<AppState>()(
 					openChatSidebarTab: chatSidebar.openChatSidebarTab!,
 
 // Slash commands
-				slashCommands: slashCommands.slashCommands!,
-				slashCommandsByApplet: slashCommands.slashCommandsByApplet!,
-				registerSlashCommand: slashCommands.registerSlashCommand!,
-				unregisterSlashCommand: slashCommands.unregisterSlashCommand!,
-				};
+			slashCommands: slashCommands.slashCommands!,
+			slashCommandsByApplet: slashCommands.slashCommandsByApplet!,
+			registerSlashCommand: slashCommands.registerSlashCommand!,
+			unregisterSlashCommand: slashCommands.unregisterSlashCommand!,
+
+			// UI Spaces
+			uiSpaceComponents: uiSpaces.uiSpaceComponents!,
+			uiSpaceComponentsByApplet: uiSpaces.uiSpaceComponentsByApplet!,
+			registerUiSpaceComponent: uiSpaces.registerUiSpaceComponent!,
+			unregisterUiSpaceComponent: uiSpaces.unregisterUiSpaceComponent!,
+			};
 		}),
 	),
 );

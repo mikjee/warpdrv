@@ -1,15 +1,17 @@
 import React, { useEffect } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
-import { Settings, ChevronRight, SearchIcon } from 'lucide-react';
+import { Settings, ChevronRight, SearchIcon, LayoutPanelTop } from 'lucide-react';
 import { Plug } from 'lucide-react';
 import { ChatConfigContentPanel } from './ChatConfigSidebar';
 import { ChatToolsContentPanel } from './ChatToolsSidebar';
 import { ThreadSearchPanel } from './ThreadSearchPanel';
+import { UiSpacePanel } from './UiSpacePanel';
 import type { IChatInferenceParams, IChatPreset } from '@warpcore/shared';
 import { LuPlug, LuSlidersHorizontal } from 'react-icons/lu';
 import { VscTools } from 'react-icons/vsc';
 import { useStore } from '@/store';
 import { useShallow } from 'zustand/react/shallow';
+import { EChatSidebarTab } from '@/store/slices/chatSidebar';
 
 interface IChatSidebarProps {
 	configParams: IChatInferenceParams;
@@ -36,7 +38,7 @@ export const ChatSidebar = React.memo(({
 
 	// ESC to close sidebar when in search mode
 	useEffect(() => {
-		if (!chatSidebarOpen || chatSidebarTab !== 'search') return;
+		if (!chatSidebarOpen || chatSidebarTab !== EChatSidebarTab.SEARCH) return;
 		const handler = (e: KeyboardEvent) => {
 			if (e.key === 'Escape') {
 				e.preventDefault();
@@ -47,7 +49,7 @@ export const ChatSidebar = React.memo(({
 		return () => document.removeEventListener('keydown', handler);
 	}, [chatSidebarOpen, chatSidebarTab, setChatSidebarOpen]);
 
-	const toggleTab = (tab: 'config' | 'tools' | 'search') => {
+	const toggleTab = (tab: EChatSidebarTab) => {
 		if (chatSidebarTab === tab && chatSidebarOpen) {
 			setChatSidebarOpen(false);
 		} else {
@@ -67,20 +69,22 @@ export const ChatSidebar = React.memo(({
 						'&::-webkit-scrollbar-thumb': { background: 'var(--wc-text-disabled)', borderRadius: '2px' },
 					}}
 				>
-					{chatSidebarTab === 'config' ? (
-						<ChatConfigContentPanel
-							params={configParams}
-							systemPrompt={configSystemPrompt}
-							selectedPresetId={configSelectedPresetId}
-							onParamsChange={onConfigParamsChange}
-							onSystemPromptChange={onConfigSystemPromptChange}
-							onPresetSelect={onConfigPresetSelect}
-						/>
-					) : chatSidebarTab === 'tools' ? (
-						<ChatToolsContentPanel threadId={currentThreadId} />
-					) : (
-						<ThreadSearchPanel threadId={currentThreadId} />
-					)}
+					{(() => {
+						if (chatSidebarTab === EChatSidebarTab.CONFIG) return (
+							<ChatConfigContentPanel
+								params={configParams}
+								systemPrompt={configSystemPrompt}
+								selectedPresetId={configSelectedPresetId}
+								onParamsChange={onConfigParamsChange}
+								onSystemPromptChange={onConfigSystemPromptChange}
+								onPresetSelect={onConfigPresetSelect}
+							/>
+						);
+						if (chatSidebarTab === EChatSidebarTab.TOOLS) return <ChatToolsContentPanel threadId={currentThreadId} />;
+						if (chatSidebarTab === EChatSidebarTab.SEARCH) return <ThreadSearchPanel threadId={currentThreadId} />;
+						if (chatSidebarTab === EChatSidebarTab.RIGHT_PANEL) return <UiSpacePanel spaceId="right-panel" />;
+						return null;
+					})()}
 				</Box>
 			)}
 
@@ -95,52 +99,69 @@ export const ChatSidebar = React.memo(({
 			>
 				{/* Config tab */}
 				<Flex
-					onClick={() => toggleTab('config')}
+					onClick={() => toggleTab(EChatSidebarTab.CONFIG)}
 					px="3"
 					py="2.5"
 					borderRadius="lg"
 					cursor="pointer"
 					transition="all 0.15s"
-					bg={chatSidebarTab === 'config' && chatSidebarOpen ? 'var(--wc-bg-card)' : 'transparent'}
+					bg={chatSidebarTab === EChatSidebarTab.CONFIG && chatSidebarOpen ? 'var(--wc-bg-card)' : 'transparent'}
 					borderWidth="1px"
-					borderColor={chatSidebarTab === 'config' && chatSidebarOpen ? 'var(--wc-border-default)' : 'transparent'}
+					borderColor={chatSidebarTab === EChatSidebarTab.CONFIG && chatSidebarOpen ? 'var(--wc-border-default)' : 'transparent'}
 					_hover={{ bg: 'var(--wc-bg-card)', color: 'var(--wc-text-primary)' }}
 				>
-					<LuSlidersHorizontal size={18} color={chatSidebarTab === 'config' && chatSidebarOpen ? 'var(--wc-text-primary)' : 'var(--wc-text-muted)'} />
+					<LuSlidersHorizontal size={18} color={chatSidebarTab === EChatSidebarTab.CONFIG && chatSidebarOpen ? 'var(--wc-text-primary)' : 'var(--wc-text-muted)'} />
 				</Flex>
 
 				{/* Tools tab */}
 				<Flex
 					mt="1"
-					onClick={() => toggleTab('tools')}
+					onClick={() => toggleTab(EChatSidebarTab.TOOLS)}
 					px="3"
 					py="2.5"
 					borderRadius="lg"
 					cursor="pointer"
 					transition="all 0.15s"
-					bg={chatSidebarTab === 'tools' && chatSidebarOpen ? 'var(--wc-bg-card)' : 'transparent'}
+					bg={chatSidebarTab === EChatSidebarTab.TOOLS && chatSidebarOpen ? 'var(--wc-bg-card)' : 'transparent'}
 					borderWidth="1px"
-					borderColor={chatSidebarTab === 'tools' && chatSidebarOpen ? 'var(--wc-border-default)' : 'transparent'}
+					borderColor={chatSidebarTab === EChatSidebarTab.TOOLS && chatSidebarOpen ? 'var(--wc-border-default)' : 'transparent'}
 					_hover={{ bg: 'var(--wc-bg-card)', color: 'var(--wc-text-primary)' }}
 				>
-					<Plug size={18} color={chatSidebarTab === 'tools' && chatSidebarOpen ? 'var(--wc-text-primary)' : 'var(--wc-text-muted)'} />
+					<Plug size={18} color={chatSidebarTab === EChatSidebarTab.TOOLS && chatSidebarOpen ? 'var(--wc-text-primary)' : 'var(--wc-text-muted)'} />
 				</Flex>
 
 				{/* Search tab */}
 				<Flex
 					mt="1"
-					onClick={() => toggleTab('search')}
+					onClick={() => toggleTab(EChatSidebarTab.SEARCH)}
 					px="3"
 					py="2.5"
 					borderRadius="lg"
 					cursor="pointer"
 					transition="all 0.15s"
-					bg={chatSidebarTab === 'search' && chatSidebarOpen ? 'var(--wc-bg-card)' : 'transparent'}
+					bg={chatSidebarTab === EChatSidebarTab.SEARCH && chatSidebarOpen ? 'var(--wc-bg-card)' : 'transparent'}
 					borderWidth="1px"
-					borderColor={chatSidebarTab === 'search' && chatSidebarOpen ? 'var(--wc-border-default)' : 'transparent'}
+					borderColor={chatSidebarTab === EChatSidebarTab.SEARCH && chatSidebarOpen ? 'var(--wc-border-default)' : 'transparent'}
 					_hover={{ bg: 'var(--wc-bg-card)', color: 'var(--wc-text-primary)' }}
 				>
-					<SearchIcon size={18} color={chatSidebarTab === 'search' && chatSidebarOpen ? 'var(--wc-text-primary)' : 'var(--wc-text-muted)'} />
+					<SearchIcon size={18} color={chatSidebarTab === EChatSidebarTab.SEARCH && chatSidebarOpen ? 'var(--wc-text-primary)' : 'var(--wc-text-muted)'} />
+				</Flex>
+
+				{/* Right panel tab */}
+				<Flex
+					mt="1"
+					onClick={() => toggleTab(EChatSidebarTab.RIGHT_PANEL)}
+					px="3"
+					py="2.5"
+					borderRadius="lg"
+					cursor="pointer"
+					transition="all 0.15s"
+					bg={chatSidebarTab === EChatSidebarTab.RIGHT_PANEL && chatSidebarOpen ? 'var(--wc-bg-card)' : 'transparent'}
+					borderWidth="1px"
+					borderColor={chatSidebarTab === EChatSidebarTab.RIGHT_PANEL && chatSidebarOpen ? 'var(--wc-border-default)' : 'transparent'}
+					_hover={{ bg: 'var(--wc-bg-card)', color: 'var(--wc-text-primary)' }}
+				>
+					<LayoutPanelTop size={18} color={chatSidebarTab === EChatSidebarTab.RIGHT_PANEL && chatSidebarOpen ? 'var(--wc-text-primary)' : 'var(--wc-text-muted)'} />
 				</Flex>
 
 				{/* Close button (only when open) */}

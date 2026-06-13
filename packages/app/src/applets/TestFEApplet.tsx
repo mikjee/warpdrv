@@ -1,6 +1,13 @@
 import type { TAppletDefinition, IAppletFn } from '@warpcore/realmcore';
 import { EAppletHostType, EAppletScope } from '@warpcore/realmcore';
 import type { IAppletApiFE } from './types';
+import { Box, Text } from '@chakra-ui/react';
+
+const TestPanel = () => (
+	<Box p="4">
+		<Text>Test Right Panel</Text>
+	</Box>
+);
 
 const fn: IAppletFn<IAppletApiFE> = async (api) => {
 	console.log('[TestFEApplet] Started');
@@ -10,6 +17,7 @@ const fn: IAppletFn<IAppletApiFE> = async (api) => {
 		params: {},
 		execute: async () => { console.log('[TestFEApplet] /testfe executed'); },
 	});
+	api.registerUiSpaceComponent('right-panel', TestPanel);
 };
 
 export const TestFEApplet: TAppletDefinition<IAppletApiFE> = {
