@@ -17,16 +17,17 @@ export function useRealm(currentThreadId: string | null) {
 	if (!realmRef.current) {
 		console.log(`[Realm] Loading..`);
 
-		const nodeId = `web-${nanoid(6)}`;
-		const eventNode = new EventNode(nodeId, false);
-		(window as any).eventNode = eventNode;
+		const nodeId = `chat-${nanoid(6)}`;
+		const chatNode = new EventNode(nodeId, false);
+		(window as any).eventNode = chatNode;
 
 		const appletMgr = new AppletManager(
-			eventNode,
+			chatNode,
 			EAppletScope.THREAD,
 			currentThreadId ?? undefined,
 			{ [EAppletHostType.FE]: AppletHostFE },
 			feApplets,
+			{ testFe: true },
 		);
 
 		const socket = io({
@@ -36,7 +37,7 @@ export function useRealm(currentThreadId: string | null) {
 			upgrade: false,
 		});
 		
-		const remoteNode = new RemoteNode('main', eventNode, new WSTransport(socket));
+		const remoteNode = new RemoteNode('warpcore', chatNode, new WSTransport(socket));
 
 		socket.on('connect', () => {
 			console.log(`[Realm] ✅ Connected as ${nodeId}.`);
@@ -50,7 +51,7 @@ export function useRealm(currentThreadId: string | null) {
 		});
 
 		realmRef.current = { 
-			eventNode, 
+			eventNode: chatNode, 
 			remoteNode,
 			nodeId, 
 			socket,

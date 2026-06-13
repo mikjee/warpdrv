@@ -1,12 +1,14 @@
 import { Server as IOServer } from 'socket.io';
 import { Server as HTTPServer } from 'node:http';
-import { EventNode, RemoteNode, WSTransport } from '@warpcore/realmcore';
+import { EventNode, RemoteNode, WSTransport, AppletManager, EAppletHostType, EAppletScope } from '@warpcore/realmcore';
+import { beApplets, AppletHostBE } from '../applets';
 
-let mainNode: EventNode | null = null;
+let warpcoreNode: EventNode | null = null;
 let io: IOServer | null = null;
+let appletManager: AppletManager | null = null;
 
-export function initRealm(server: HTTPServer): { node: EventNode; io: IOServer } {
-	mainNode = new EventNode('main', true);
+export async function initRealm(server: HTTPServer): Promise<{ node: EventNode; io: IOServer; appletManager: AppletManager }> {
+	warpcoreNode = new EventNode('warpcore', true);
 	server.on('upgrade', (req) => {
         console.log('[RealmEvents] upgrade headers:', req.headers.connection, req.headers.upgrade);
     });
@@ -36,9 +38,9 @@ export function initRealm(server: HTTPServer): { node: EventNode; io: IOServer }
 		console.log(`[Realm] Connection from ${nodeId}`);
 
 		const transport = new WSTransport(socket);
-		const remoteNode = new RemoteNode(nodeId, mainNode!, transport);
+		const remoteNode = new RemoteNode(nodeId, warpcoreNode!, transport);
 		
-		mainNode!.addChild(remoteNode).then(() => {
+		warpcoreNode!.addChild(remoteNode).then(() => {
 			console.log(`[Realm] ${nodeId} added as child`);
 		}).catch(err => {
 			console.error(`[Realm] Failed to add ${nodeId} as child:`, err);
@@ -46,7 +48,7 @@ export function initRealm(server: HTTPServer): { node: EventNode; io: IOServer }
 
 		socket.on('disconnect', () => {
 			console.log(`[Realm] ${nodeId} disconnected`);
-			mainNode!.removeChild(nodeId);
+			warpcoreNode!.removeChild(nodeId);
 		});
 
 		socket.on('error', (err) => {
@@ -54,9 +56,14 @@ export function initRealm(server: HTTPServer): { node: EventNode; io: IOServer }
 		});
 	});
 
-	return { node: mainNode, io };
-}
-
-export function getMainNode(): EventNode {
-	return mainNode!;
+	appletManager = new AppletManager(
+		warpcoreNode,
+		EAppletScope.GLOBAL,
+		undefined,
+		{ [EAppletHostType.BE]: AppletHostBE },
+		beApplets,
+		{ testBe: true },
+	);
+	await appletManager.initializeAll();
+	return { node: warpcoreNode, io, appletManager };
 }

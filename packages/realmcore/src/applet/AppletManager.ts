@@ -5,30 +5,22 @@ import type { EventNode } from '../events/EventNode';
 import { EventNode as EventNodeClass } from '../events/EventNode';
 
 export class AppletManager {
-	public eventNode: EventNode;
-	private scope: EAppletScope;
-	private scopeValue: string | undefined;
-	private hostClasses: Record<EAppletHostType, typeof AppletHost>;
-	private applets: Record<string, TAppletDefinition>;
 	private activeApplets: Record<string, { host: AppletHost; eventNode: EventNode }> = {};
 	private terminatingHosts: Record<string, Promise<void>> = {};
 
-	constructor(
-		eventNode: EventNode,
-		scope: EAppletScope,
-		scopeValue: string | undefined,
-		hostClasses: Record<EAppletHostType, typeof AppletHost>,
-		applets: Record<string, TAppletDefinition>,
-	) {
-		this.eventNode = eventNode;
-		this.scope = scope;
-		this.scopeValue = scopeValue;
-		this.hostClasses = hostClasses;
-		this.applets = applets;
-	}
+constructor(
+		public eventNode: EventNode,
+		protected scope: EAppletScope,
+		protected scopeValue: string | undefined,
+		protected hostClasses: Partial<Record<EAppletHostType, typeof AppletHost>>,
+		protected applets: Record<string, TAppletDefinition>,
+		protected autoStart: Record<string, boolean> = {},
+	) {	}
 
 	private createHost(definition: TAppletDefinition, eventNode: EventNode): AppletHost {
-		return new this.hostClasses[definition.hostType](definition, eventNode);
+		const hostClass = this.hostClasses[definition.hostType];
+		if (!hostClass) throw `[Realm] FATAL: Class not found for host type ${definition.hostType}.`;
+		return new hostClass(definition, eventNode);
 	}
 
 	public async initialize(appletName: string, opts?: { terminate?: boolean }): Promise<void> {
@@ -58,9 +50,11 @@ export class AppletManager {
 
 	public async initializeAll(): Promise<void> {
 		await this.terminateAll();
-		for (const key of Object.keys(this.applets)) {
-			await this.initialize(key, { terminate: true });
-		}
+		await Promise.all(
+			Object.keys(this.autoStart)
+				.filter(appletName => this.autoStart[appletName])
+				.map(appletName => this.initialize(appletName)),
+		);
 	}
 
 	public async updateScopeValue(newValue: string | undefined): Promise<void> {

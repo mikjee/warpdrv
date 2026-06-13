@@ -10,6 +10,7 @@ export interface ISlashCommand {
 	name: string;
 	description: string;
 	params: Record<string, ISlashCommandParam>;
+	tags?: string[];
 	execute: (params: Record<string, unknown>) => Promise<void>;
 }
 
