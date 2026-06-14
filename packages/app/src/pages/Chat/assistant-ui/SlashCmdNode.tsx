@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import { ReactNodeViewRenderer, NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import Suggestion from "@tiptap/suggestion";
@@ -8,15 +9,19 @@ import { commandSuggestion } from "./CmdSuggestion";
 type TSlotRenderer = (args: {
 	value: string;
 	placeholder: string;
+	inputRef: (el: HTMLInputElement | null) => void;
 	onChange: (next: string) => void;
+	onKeyDown: (e: React.KeyboardEvent) => void;
 }) => React.ReactNode;
 const SLOT_RENDERERS: Record<string, TSlotRenderer> = {
-	default: ({ value, placeholder, onChange }) => (
+	default: ({ value, placeholder, inputRef, onChange, onKeyDown }) => (
 		<input
 			type="text"
+			ref={inputRef}
 			value={value}
 			placeholder={placeholder}
 			onChange={(e) => onChange(e.target.value)}
+			onKeyDown={onKeyDown}
 			style={{
 				background: "var(--wc-bg-subtle, rgba(255,255,255,0.06))",
 				border: "none",
@@ -44,9 +49,30 @@ const SlashPill: React.FC<NodeViewProps> = (props) => {
 	const name = props.node.attrs.name as string;
 	const args = parseArgs(props.node.attrs.args as string);
 	const command = useStore((s) => s.slashCommands[name]);
+	const slotRefs = useRef<Array<HTMLInputElement | null>>([]);
 	const paramEntries = command
 		? Object.entries(command.params).sort((a, b) => a[1].index - b[1].index)
 		: [];
+	useEffect(() => {
+		if (props.node.attrs.autofocus) {
+			const id = requestAnimationFrame(() => {
+				slotRefs.current[0]?.focus();
+				props.updateAttributes({ autofocus: false });
+			});
+			return () => cancelAnimationFrame(id);
+		}
+	}, [props.node.attrs.autofocus]);
+	const onSlotKeyDown = (i: number, e: React.KeyboardEvent) => {
+		if (e.key === "Tab" && !e.shiftKey) {
+			e.preventDefault();
+			const next = slotRefs.current[i + 1];
+			if (next) next.focus();
+			else props.editor.commands.focus();
+		} else if (e.key === "Tab" && e.shiftKey) {
+			const prev = slotRefs.current[i - 1];
+			if (prev) { e.preventDefault(); prev.focus(); }
+		}
+	};
 	const setArg = (key: string, next: string) => {
 		const updated = { ...parseArgs(props.node.attrs.args as string), [key]: next };
 		props.updateAttributes({ args: JSON.stringify(updated) });
@@ -71,14 +97,16 @@ const SlashPill: React.FC<NodeViewProps> = (props) => {
 				}}
 			>
 				/{name}
-				{paramEntries.map(([key, param]) => {
+				{paramEntries.map(([key, param], i) => {
 					const renderer = SLOT_RENDERERS[param.type] ?? SLOT_RENDERERS.default;
 					return (
 						<span key={key} style={{ display: "inline-flex", alignItems: "center" }}>
 							{renderer({
 								value: args[key] ?? "",
 								placeholder: `<${param.type}>`,
+								inputRef: (el) => { slotRefs.current[i] = el; },
 								onChange: (next) => setArg(key, next),
+								onKeyDown: (e) => onSlotKeyDown(i, e),
 							})}
 						</span>
 					);
@@ -98,6 +126,7 @@ export const SlashCommandNode = Node.create({
 		return {
 			name: { default: "" },
 			args: { default: "{}" },
+			autofocus: { default: false },
 		};
 	},
 	parseHTML() {

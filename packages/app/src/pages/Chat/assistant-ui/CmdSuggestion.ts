@@ -23,9 +23,8 @@ export const commandSuggestion: Omit<SuggestionOptions, "editor"> = {
 	command: ({ editor, range, props }) => {
 		editor
 			.chain()
-			.focus()
 			.insertContentAt(range, [
-				{ type: "slashCommand", attrs: { name: props.name, args: "{}" } },
+				{ type: "slashCommand", attrs: { name: props.name, args: "{}", autofocus: true } },
 				{ type: "text", text: " " },
 			])
 			.run();
@@ -65,7 +64,11 @@ export const commandSuggestion: Omit<SuggestionOptions, "editor"> = {
 				if (props.event.key === "Escape") {
 					return true;
 				}
-				return component?.ref?.onKeyDown(props.event) ?? false;
+				if (props.event.key === "Tab") {
+					props.event.preventDefault();
+				}
+				const handled = component?.ref?.onKeyDown(props.event) ?? false;
+				return handled;
 			},
 			onExit: () => {
 				el?.remove();

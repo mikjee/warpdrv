@@ -24,13 +24,13 @@ export const CommandList = forwardRef<ICommandListRef, SuggestionProps<{ name: s
 				setSelected(s => (s + 1) % props.items.length);
 				return true;
 			}
-			if (event.key === "Enter") {
+			if (event.key === "Tab") {
 				select(selected);
 				return true;
 			}
 			return false;
 		},
-	}));
+	}), [selected, props.items, props.command]);
 	if (props.items.length === 0) return null;
 	return (
 		<div
