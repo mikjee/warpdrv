@@ -5,8 +5,9 @@ import Paragraph from "@tiptap/extension-paragraph";
 import Text from "@tiptap/extension-text";
 import HardBreak from "@tiptap/extension-hard-break";
 import { SlashCommandNode } from "./SlashCmdNode";
-import { docToString } from "./docToString";
+import { docToString, extractCommands } from "./docToString";
 import { setActiveComposerEditor, clearActiveComposerEditor } from "./composerEditorRegistry";
+import { useStore } from "@/store";
 
 export interface IWarpComposerEditorRef {
 	insertText: (text: string) => void;
@@ -38,6 +39,7 @@ const makeKeymap = (onEnter: () => void) =>
 	});
 
 export const ComposerEditor = forwardRef<IWarpComposerEditorRef, IProps>((props, ref) => {
+	const setPendingSlashCommands = useStore(s => s.setPendingSlashCommands);
 	const editor = useEditor({
 		extensions: [
 			Document,
@@ -55,11 +57,13 @@ export const ComposerEditor = forwardRef<IWarpComposerEditorRef, IProps>((props,
 			},
 		},
 		onUpdate: ({ editor }) => {
-			props.onChangeText(docToString(editor.getJSON()));
+			const json = editor.getJSON();
+			props.onChangeText(docToString(json));
+			setPendingSlashCommands(extractCommands(json));
 		},
 		onCreate: ({ editor }) => {
 			//console.log("[register] onCreate fired", !!editor);
-			setActiveComposerEditor(editor); 
+			setActiveComposerEditor(editor);
 		},
 		onDestroy: () => {
 			if (editor) clearActiveComposerEditor(editor);

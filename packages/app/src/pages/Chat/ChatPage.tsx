@@ -23,6 +23,8 @@ import { useDerivedMsgsForUI } from '@/hooks/useChatSelectors';
 import { useThreadConfig } from '@/hooks/useThreadConfig';
 import { useThreadAttachedTools } from '@/hooks/useThreadAttachedTools';
 import { useHotkey, HotkeyMode } from '@/hooks/useHotKey';
+import { useSlashCommandProcessor } from '@/hooks/useSlashCommandProcessor';
+
 import { extractTextFromFile } from '@/hooks/useFileReader';
 import { useToast } from '@/components/ToastProvider';
 import { updateSettings } from '@/api/services';
@@ -195,6 +197,9 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 	useThreadAttachedTools();
 	const attachAllTools = useStore(s => s.attachAllTools);
 	const attachedTools = useStore(s => s.attachedTools);
+	const pendingSlashCommands = useStore(s => s.pendingSlashCommands);
+	const clearPendingSlashCommands = useStore(s => s.clearPendingSlashCommands);
+	const executeCommands = useSlashCommandProcessor();
 
 	// Get threads for adapter
 	const threadsAPI = useThreadsAndFolders();
@@ -345,6 +350,9 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 	const onNewV2 = useCallback(async (message: any) => {
 		if (!isValidServer) return;
 		const text = (message.content as any[]).filter((p: any) => p.type === 'text').map((p: any) => p.text).join('');
+		const slashCommands = pendingSlashCommands;
+		await executeCommands();
+		clearPendingSlashCommands();
 
 		// Generate new thread ID if none exists - orchestrator will auto-create the thread
 		const threadId = currentThreadId ?? globalThis.crypto.randomUUID();
@@ -428,6 +436,7 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 			generateTitle,
 			attachAllTools,
 			attachedTools: attachAllTools ? undefined : attachedTools,
+			messageState: slashCommands.length > 0 ? { slashCommands } : {},
 		};
 
 		if (attachmentParts.length > 0) {
@@ -439,7 +448,7 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(body),
 		});
-	}, [currentThreadId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, currentServerId, currentWhisperServerId, currentAutoEmbed, isValidServer, attachAllTools, attachedTools]);
+	}, [currentThreadId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, currentServerId, currentWhisperServerId, currentAutoEmbed, isValidServer, attachAllTools, attachedTools, pendingSlashCommands, clearPendingSlashCommands, executeCommands]);
 
 	const onReloadV2 = useCallback(async (parentId: string | null) => {
 		if (!isValidServer || !parentId) return;

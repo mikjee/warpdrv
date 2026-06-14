@@ -18,7 +18,7 @@ const fn: IAppletFn<IAppletApiFE> = async (api) => {
 			target: { type: 'string', description: 'Target name', index: 0 },
 			count: { type: 'number', description: 'Count value', index: 1 },
 		},
-		execute: async (params) => { console.log('[TestFEApplet] /testfe executed', params); },
+		execute: async (api, params) => { console.log('[TestFEApplet] /testfe executed', params); },
 	});
 	api.registerUiSpaceComponent('right-panel', TestPanel);
 };

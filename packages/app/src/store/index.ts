@@ -3,6 +3,7 @@ import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { AppState, ImmerSet, ImmerGet } from './types';
 import type { TFolderId, IWorkspace, TThreadId } from '@warpcore/bridge';
+import type { IExtractedSlashCommand } from '@/pages/Chat/assistant-ui/docToString';
 import { sseConnectionSlice } from './slices/sseConnection';
 import { sseHandlersSlice } from './slices/sseHandlers';
 import { serversSlice } from './slices/servers';
@@ -273,6 +274,11 @@ export const useStore = create<AppState>()(
 			uiSpaceComponentsByApplet: uiSpaces.uiSpaceComponentsByApplet!,
 			registerUiSpaceComponent: uiSpaces.registerUiSpaceComponent!,
 			unregisterUiSpaceComponent: uiSpaces.unregisterUiSpaceComponent!,
+
+			// Pending slash commands
+			pendingSlashCommands: [] as IExtractedSlashCommand[],
+			setPendingSlashCommands: (commands: IExtractedSlashCommand[]) => set(s => { s.pendingSlashCommands = commands; }),
+			clearPendingSlashCommands: () => set(s => { s.pendingSlashCommands = []; }),
 			};
 		}),
 	),

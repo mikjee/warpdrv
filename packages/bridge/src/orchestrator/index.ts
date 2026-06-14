@@ -209,6 +209,9 @@ export class Orchestrator {
 				};
 				await this.persistence.createMessage(userMsg);
 				await this.persistence.incrementThreadTokens(request.threadId, userMsg.stats!.actualTokens ?? 0, 0);
+				if (request.messageState) {
+					await this.persistence.updateMessageState(userMessageId, request.messageState);
+				}
 				this.broadcaster.emit({ type: 'message.created', message: userMsg });
 				parentForAssistant = userMessageId;
 			}

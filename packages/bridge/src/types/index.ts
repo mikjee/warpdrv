@@ -379,6 +379,7 @@ export interface ICompletionRequest {
 	generateTitle?: boolean;
 	attachAllTools?: boolean;
 	attachedTools?: IToolAttachment[];
+	messageState?: Record<string, unknown>;
 }
 
 // ============================================================

@@ -1045,10 +1045,12 @@ export class SqlitePersistence implements IPersistence {
 	}
 
 	async updateMessageState(messageId: TMessageId, data: Record<string, unknown>): Promise<void> {
+		const existing = await this.getMessageState(messageId);
+		const merged = { ...(existing || {}), ...data };
 		this.db!.prepare(
 			`INSERT INTO ${this.t.messageStates} (messageId, data) VALUES (?, ?)
 			 ON CONFLICT(messageId) DO UPDATE SET data = excluded.data`
-		).run(messageId, JSON.stringify(data));
+		).run(messageId, JSON.stringify(merged));
 	}
 
 	async getMessageStatesByThreadId(threadId: TThreadId): Promise<Array<{ messageId: string; data: Record<string, unknown> }>> {

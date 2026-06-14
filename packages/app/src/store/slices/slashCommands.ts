@@ -1,4 +1,5 @@
 import type { AppState, ImmerSet, ImmerGet } from '../types';
+import type { ISlashCommandApi } from '@/hooks/useSlashCommandProcessor';
 
 export interface ISlashCommandParam {
 	type: string;
@@ -11,7 +12,7 @@ export interface ISlashCommand {
 	description: string;
 	params: Record<string, ISlashCommandParam>;
 	tags?: string[];
-	execute: (params: Record<string, unknown>) => Promise<void>;
+	execute: (api: ISlashCommandApi, params: Record<string, unknown>) => Promise<void>;
 }
 
 interface SlashCommandsSlice {
