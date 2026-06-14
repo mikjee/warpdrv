@@ -12,9 +12,19 @@ export const docToString = (doc: JSONContent | undefined): string => {
 			if (child.type === "text") {
 				out += child.text ?? "";
 			} else if (child.type === "slashCommand") {
-				// parked: hardcoded passthrough as literal text
 				const name = (child.attrs?.name as string) ?? "";
+				let args: Record<string, string> = {};
+				try {
+					args = JSON.parse((child.attrs?.args as string) || "{}") as Record<string, string>;
+				} catch {
+					args = {};
+				}
 				out += `/${name}`;
+				for (const key of Object.keys(args)) {
+					if (args[key] !== "") {
+						out += ` ${key}:${JSON.stringify(args[key])}`;
+					}
+				}
 			}
 		}
 		return out;

@@ -25,7 +25,7 @@ export const commandSuggestion: Omit<SuggestionOptions, "editor"> = {
 			.chain()
 			.focus()
 			.insertContentAt(range, [
-				{ type: "slashCommand", attrs: { name: props.name, args: "" } },
+				{ type: "slashCommand", attrs: { name: props.name, args: "{}" } },
 				{ type: "text", text: " " },
 			])
 			.run();
