@@ -131,11 +131,11 @@ export const ToolCallBlockWrapper = React.memo(({ toolCallId, toolName, serverNa
 	}, [serverState, toolName, toolCallRenderers, args, result]);
 
 	return (
-		<Box my="2" borderWidth="1px" borderColor="var(--wc-border-default)" borderRadius="lg" bg="var(--wc-bg-surface)" overflow="hidden">
-			<HStack gap="2" px="3" py="2" bg="var(--wc-bg-surface)">
-				<Wrench size={13} color="var(--wc-text-secondary)" />
-				<Text fontSize="12px" fontWeight="500" color="var(--wc-text-primary)">{toolName}</Text>
-				<Text fontSize="11px" color="var(--wc-text-faint)">{serverName}</Text>
+		<Box m="-3.5" borderRadius="lg" bg="var(--wc-bg-surface)" overflow="hidden" borderBottomColor={"var(--wc-border-subtle)"} borderBottomWidth={1}>
+			<HStack gap="3" px="3" py="2.5" borderBottomColor={"var(--wc-border-subtle)"} borderBottomWidth={1}>
+				<Wrench size={13} color="var(--wc-text-tertiary)" />
+				<Text fontSize="13px" fontWeight="700" color="var(--wc-text-secondary)">{toolName}</Text>
+				<Text fontSize="12px" color="var(--wc-text-faint)">{serverName}</Text>
 				<Box flex="1" />
 				<HStack gap="1">
 					{isExecuting && (

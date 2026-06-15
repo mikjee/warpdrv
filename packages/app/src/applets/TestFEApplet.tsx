@@ -13,12 +13,20 @@ const fn: IAppletFn<IAppletApiFE> = async (api) => {
 	console.log('[TestFEApplet] Started');
 	api.registerSlashCommand({
 		name: 'testfe',
-		description: 'Test FE command',
+		description: 'Test FE command with target and count params',
 		params: {
 			target: { type: 'string', description: 'Target name', index: 0 },
 			count: { type: 'number', description: 'Count value', index: 1 },
 		},
 		execute: async (api, params) => { console.log('[TestFEApplet] /testfe executed', params); },
+	});
+	api.registerSlashCommand({
+		name: 'testecho',
+		description: 'Echo back whatever you type as a test',
+		params: {
+			message: { type: 'string', description: 'Message to echo', index: 0 },
+		},
+		execute: async (api, params) => { console.log('[TestFEApplet] /testecho executed', params); },
 	});
 	api.registerUiSpaceComponent('right-panel', TestPanel, { componentName: 'TestFE' });
 };

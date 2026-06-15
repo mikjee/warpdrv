@@ -8,7 +8,7 @@ import { WithErrorBoundary } from '@/components/WithErrorBoundary';
 const EMPTY: Record<string, unknown> = {};
 
 export const UiSpacePanel = React.memo(({ spaceId }: { spaceId: TUiSpaceId }) => {
-    const components = useStore(s => s.uiSpaceComponents[spaceId] || EMPTY);
+    const components = useStore(s => s.uiSpaceComponents[spaceId]);
     return (
         <Box overflowY="auto" css={{
             '&::-webkit-scrollbar': { width: '4px' },
@@ -17,8 +17,8 @@ export const UiSpacePanel = React.memo(({ spaceId }: { spaceId: TUiSpaceId }) =>
             p="2.5"
         >
             <AccordionRoot collapsible defaultValue={[]}>
-                {Object.values(components).map(entry => {
-                    const Comp = entry.component;
+                {Object.values(components || {}).map(entry => {
+                    const Comp = React.memo(entry.component);
                     return (
                         <AccordionItemComp key={entry.id} value={entry.id} mb="2" borderRadius="6px" borderWidth="1px" borderColor="var(--wc-border-subtle)">
                             <AccordionItemTrigger
