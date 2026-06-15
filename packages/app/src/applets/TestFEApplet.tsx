@@ -9,6 +9,12 @@ const TestPanel = () => (
 	</Box>
 );
 
+const TestComposerChip = () => (
+	<Text fontSize="xs" fontWeight="500" color="var(--wc-text-primary)">
+		TestFE
+	</Text>
+);
+
 const fn: IAppletFn<IAppletApiFE> = async (api) => {
 	console.log('[TestFEApplet] Started');
 	api.registerSlashCommand({
@@ -29,6 +35,7 @@ const fn: IAppletFn<IAppletApiFE> = async (api) => {
 		execute: async (api, params) => { console.log('[TestFEApplet] /testecho executed', params); },
 	});
 	api.registerUiSpaceComponent('right-panel', TestPanel, { componentName: 'TestFE' });
+	api.registerUiSpaceComponent('composer', TestComposerChip, { componentName: 'TestFE' });
 };
 
 export const TestFEApplet: TAppletDefinition<IAppletApiFE> = {

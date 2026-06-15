@@ -72,6 +72,7 @@ import { DictationProvider, useDictation } from './DictationContext';
 import { WorkspaceView } from '../WorkspaceView';
 import { ComposerEditor, IWarpComposerEditorRef } from './ComposerEditor';
 import { insertComposerText, clearComposerEditor } from './composerEditorRegistry';
+import { ComposerUiSpace } from '../ComposerUiSpace';
 
 const tokenEncoder = encodingForModel('gpt-4o');
 
@@ -376,6 +377,7 @@ const Composer: FC = () => {
 					}}
 				>
 					<ComposerAttachments />
+					<ComposerUiSpace />
 				 <ComposerEditor
 						ref={editorRef}
 						placeholder="Send a message..."
