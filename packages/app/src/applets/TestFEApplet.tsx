@@ -20,7 +20,7 @@ const fn: IAppletFn<IAppletApiFE> = async (api) => {
 		},
 		execute: async (api, params) => { console.log('[TestFEApplet] /testfe executed', params); },
 	});
-	api.registerUiSpaceComponent('right-panel', TestPanel);
+	api.registerUiSpaceComponent('right-panel', TestPanel, { componentName: 'TestFE' });
 };
 
 export const TestFEApplet: TAppletDefinition<IAppletApiFE> = {

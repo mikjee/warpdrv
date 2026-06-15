@@ -6,7 +6,7 @@ import { useStore } from '@/store';
 import { EToolCallStatus, EToolApprovalMode } from '@warpcore/bridge';
 import { ServerStatusContext } from './thread';
 import { autoResolveRenderer } from './tool-renderers/resolver';
-import { RendererErrorBoundary } from './tool-renderers/RendererErrorBoundary';
+import { WithErrorBoundary } from '../../../components/WithErrorBoundary';
 import { useToast } from '@/components/ToastProvider';
 import { decideMcpToolCall, setThreadToolPermission, fetchThreadPermissions } from '@/api/mcpServices';
 
@@ -111,9 +111,9 @@ export const ToolCallBlockWrapper = React.memo(({ toolCallId, toolName, serverNa
 				mappedArgs[targetKey] = v;
 			}
 			return (
-				<RendererErrorBoundary fallback={fallback}>
+				<WithErrorBoundary fallback={fallback}>
 					<ExplicitComponent {...mappedArgs} {...(rendererCfg.props ?? {})} result={result} />
-				</RendererErrorBoundary>
+				</WithErrorBoundary>
 			);
 		}
 		// Priority 2: auto-match via keywords + canRender
@@ -121,9 +121,9 @@ export const ToolCallBlockWrapper = React.memo(({ toolCallId, toolName, serverNa
 		if (resolved) {
 			const { component: AutoComponent, props } = resolved;
 			return (
-				<RendererErrorBoundary fallback={fallback}>
+				<WithErrorBoundary fallback={fallback}>
 					<AutoComponent {...props} result={result} />
-				</RendererErrorBoundary>
+				</WithErrorBoundary>
 			);
 		}
 		// Priority 3: default fallback

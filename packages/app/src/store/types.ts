@@ -267,8 +267,8 @@ export interface AppState {
 	// UI Spaces
 	uiSpaceComponents: Record<TUiSpaceId, Record<TUiSpaceComponentId, TUiSpaceDefinition>>;
 	uiSpaceComponentsByApplet: Record<string, Record<TUiSpaceComponentId, true>>;
-	registerUiSpaceComponent: (spaceId: TUiSpaceId, component: TUiSpaceComponent, appletName?: string) => TUiSpaceComponentId;
-	unregisterUiSpaceComponent: (id: TUiSpaceComponentId, appletName?: string) => void;
+	registerUiSpaceComponent: (spaceId: TUiSpaceId, component: TUiSpaceComponent, opts: { componentName: string; appletName: string }) => TUiSpaceComponentId;
+	unregisterUiSpaceComponent: (id: TUiSpaceComponentId, appletName: string) => void;
 
 	// Pending slash commands (extracted from editor, stored until send)
 	pendingSlashCommands: IExtractedSlashCommand[];

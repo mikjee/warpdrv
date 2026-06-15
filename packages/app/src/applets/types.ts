@@ -8,6 +8,6 @@ export interface IAppletApiFE {
 	useStore: typeof useStore;
 	registerSlashCommand: (command: ISlashCommand) => void;
 	unregisterSlashCommand: (name: string) => void;
-	registerUiSpaceComponent: (spaceId: TUiSpaceId, component: TUiSpaceComponent) => TUiSpaceComponentId;
+	registerUiSpaceComponent: (spaceId: TUiSpaceId, component: TUiSpaceComponent, opts: { componentName: string }) => TUiSpaceComponentId;
 	unregisterUiSpaceComponent: (id: TUiSpaceComponentId) => void;
 }

@@ -19,8 +19,8 @@ export class AppletHostFE extends AppletHost {
 			unregisterSlashCommand: (name: string) => {
 				useStore.getState().unregisterSlashCommand(name, appletName);
 			},
-			registerUiSpaceComponent: (spaceId: TUiSpaceId, component: TUiSpaceComponent) => {
-				return useStore.getState().registerUiSpaceComponent(spaceId, component, appletName);
+			registerUiSpaceComponent: (spaceId: TUiSpaceId, component: TUiSpaceComponent, opts: { componentName: string }) => {
+				return useStore.getState().registerUiSpaceComponent(spaceId, component, { ...opts, appletName: this.definition.name });
 			},
 			unregisterUiSpaceComponent: (id: TUiSpaceComponentId) => {
 				useStore.getState().unregisterUiSpaceComponent(id, appletName);
