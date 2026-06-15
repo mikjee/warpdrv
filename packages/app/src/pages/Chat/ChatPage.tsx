@@ -31,7 +31,7 @@ import { updateSettings } from '@/api/services';
 import { parseThreadMeta } from '@/pages/Chat/assistant-ui/ServerSelector';
 // COMMENTED OUT: per-thread whisper server selection no longer used
 // import { parseWhisperThreadMeta } from '@/pages/Chat/assistant-ui/WhisperServerSelector';
-import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff } from 'react-icons/vsc';
+import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff, VscLayoutSidebarRight, VscLayoutSidebarRightOff } from 'react-icons/vsc';
 import { RiFontSize } from 'react-icons/ri';
 import mermaid from 'mermaid';
 import { useLocation } from 'react-router-dom';
@@ -587,6 +587,8 @@ export const ChatPage = React.memo(() => {
 	const [threadsListCollapsed, setThreadsListCollapsed] = useState(false);
 	const [searchOpen, setSearchOpen] = useState(false);
 	const openChatSidebarTab = useStore(s => s.openChatSidebarTab);
+	const chatSidebarOpen = useStore(s => s.chatSidebarOpen);
+	const setChatSidebarOpen = useStore(s => s.setChatSidebarOpen);
 
 	const location = useLocation();
 	const currentPath = location.pathname;
@@ -634,12 +636,13 @@ export const ChatPage = React.memo(() => {
 				title="Chat"
 				icon={<MessageSquare size={20} />}
 				actionsRight={
-					<Popover.Root>
+					<>
+						<Popover.Root>
 						<Popover.Trigger asChild>
 							<IconButton
 								aria-label="Chat settings"
 								variant="ghost"
-								size="md"
+								size="sm"
 								borderWidth="1px"
 								borderColor="var(--wc-border-default)"
 								borderRadius="lg"
@@ -757,6 +760,20 @@ export const ChatPage = React.memo(() => {
 							</Popover.Positioner>
 						</Portal>
 					</Popover.Root>
+						<IconButton
+							aria-label="Toggle right panel"
+							variant="ghost"
+							size="sm"
+							borderWidth="1px"
+							borderColor="var(--wc-border-default)"
+							borderRadius="lg"
+							color="var(--wc-text-secondary)"
+							_hover={{ color: 'var(--wc-text-heading)', bg: 'var(--wc-bg-active)' }}
+							onClick={() => setChatSidebarOpen(!chatSidebarOpen)}
+						>
+							{chatSidebarOpen ? <VscLayoutSidebarRight size={20} /> : <VscLayoutSidebarRightOff size={20} />}
+						</IconButton>
+					</>
 				}
 				actions={
 					<>

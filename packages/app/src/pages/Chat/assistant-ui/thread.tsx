@@ -209,6 +209,9 @@ const ThreadMessage: FC = () => {
 	const isEditing = useAuiState((s) => s.message.composer.isEditing);
 	if (isEditing) return <EditComposer />;
 	if (role === "user") return <UserMessage />;
+	const parts = useAuiState((s) => s.message.content);
+	const hasToolCalls = parts.some((part: any) => part.type === 'tool-call');
+	if (hasToolCalls) return <ToolMessage />;
 	return <AssistantMessage />;
 };
 
@@ -950,6 +953,59 @@ const AssistantActionBar: FC = () => {
 			<EmbeddingStatus />
 			<DeleteMessageButton messageId={messageId} />
 
+		</ActionBarPrimitive.Root>
+	);
+};
+
+const ToolMessage: FC = React.memo(() => {
+	const parts = useAuiState((s) => s.message.content);
+	const status = useAuiState((s) => s.message.status?.type);
+	const messageId = useAuiState((s) => s.message.id);
+	const chatFontSize = useStore(s => s.settings.chatFontSize ?? 14);
+	const chatFontFamily = useStore(s => s.settings.chatFontFamily ?? '');
+	if (parts.length === 0 && status !== 'running') return null;
+
+	return (
+		<MessagePrimitive.Root
+			className="aui-tool-message-root fade-in slide-in-from-bottom-1 relative mx-auto w-full animate-in py-3 duration-150"
+			data-role="tool"
+			data-message-id={messageId}
+			style={{
+				paddingRight: "100px",
+			}}
+		>
+			<div className="aui-tool-message-content wrap-break-word px-2 leading-relaxed" style={{ color: 'var(--wc-text-primary)', fontSize: `${chatFontSize}px`, fontFamily: chatFontFamily || undefined, backgroundColor: "var(--wc-bg-subtle)", padding: "15px", borderRadius: "15px" }}>
+				<MessagePrimitive.Parts
+					components={componentsMap}
+				/>
+				<MessageError />
+			</div>
+
+			<div className="aui-tool-message-footer mt-1 ml-2 flex min-h-6 items-center gap-1">
+				<StatsTooltip />
+				<BranchPicker />
+				<ToolActionBar />
+			</div>
+		</MessagePrimitive.Root>
+	);
+});
+
+const ToolActionBar: FC = () => {
+	const messageId = useAuiState((s) => s.message.id);
+	const clearAnnotations = useStore((s) => s.clearAnnotations);
+
+	return (
+		<ActionBarPrimitive.Root
+			className="aui-tool-action-bar-root col-start-3 row-start-2 -ml-1"
+			style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+		>
+			<ActionBarPrimitive.Reload asChild>
+				<ActionBarIcon onClick={clearAnnotations}>
+					<RefreshCwIcon size={14} />
+				</ActionBarIcon>
+			</ActionBarPrimitive.Reload>
+			<EmbeddingStatus />
+			<DeleteMessageButton messageId={messageId} />
 		</ActionBarPrimitive.Root>
 	);
 };

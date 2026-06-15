@@ -1019,10 +1019,12 @@ export class SqlitePersistence implements IPersistence {
 	}
 
 	async updateWorkspaceState(folderId: TFolderId, data: Record<string, unknown>): Promise<void> {
+		const existing = await this.getWorkspaceState(folderId);
+		const merged = { ...(existing || {}), ...data };
 		this.db!.prepare(
 			`INSERT INTO ${this.t.workspaceStates} (folderId, data) VALUES (?, ?)
 			 ON CONFLICT(folderId) DO UPDATE SET data = excluded.data`
-		).run(folderId, JSON.stringify(data));
+		).run(folderId, JSON.stringify(merged));
 	}
 
 	async getThreadState(threadId: TThreadId): Promise<Record<string, unknown> | null> {
@@ -1032,10 +1034,12 @@ export class SqlitePersistence implements IPersistence {
 	}
 
 	async updateThreadState(threadId: TThreadId, data: Record<string, unknown>): Promise<void> {
+		const existing = await this.getThreadState(threadId);
+		const merged = { ...(existing || {}), ...data };
 		this.db!.prepare(
 			`INSERT INTO ${this.t.threadStates} (threadId, data) VALUES (?, ?)
 			 ON CONFLICT(threadId) DO UPDATE SET data = excluded.data`
-		).run(threadId, JSON.stringify(data));
+		).run(threadId, JSON.stringify(merged));
 	}
 
 	async getMessageState(messageId: TMessageId): Promise<Record<string, unknown> | null> {
