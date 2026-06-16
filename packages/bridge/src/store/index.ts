@@ -139,6 +139,9 @@ export interface IChatStoreState {
 	initWorkspaceState: (folderId: TFolderId, data: Record<string, unknown>) => void;
 	initThreadState: (threadId: TThreadId, data: Record<string, unknown>) => void;
 	initMessageStates: (states: Array<{ messageId: TMessageId; data: Record<string, unknown> }>) => void;
+	applyWorkspaceStateUpdated: (folderId: TFolderId, data: Record<string, unknown>) => void;
+	applyThreadStateUpdated: (threadId: TThreadId, data: Record<string, unknown>) => void;
+	applyMessageStateUpdated: (messageId: TMessageId, data: Record<string, unknown>) => void;
 
 	reset: () => void;
 }
@@ -623,6 +626,18 @@ setActiveThread: (id: TThreadId | null) =>
 				for (const { messageId, data } of states) {
 					draft.messageStates[messageId] = data;
 				}
+			}),
+		applyWorkspaceStateUpdated: (folderId: TFolderId, data: Record<string, unknown>) =>
+			set((draft) => {
+				draft.workspaceStates[folderId] = data;
+			}),
+		applyThreadStateUpdated: (threadId: TThreadId, data: Record<string, unknown>) =>
+			set((draft) => {
+				draft.threadStates[threadId] = data;
+			}),
+		applyMessageStateUpdated: (messageId: TMessageId, data: Record<string, unknown>) =>
+			set((draft) => {
+				draft.messageStates[messageId] = data;
 			}),
 
 		// Reset

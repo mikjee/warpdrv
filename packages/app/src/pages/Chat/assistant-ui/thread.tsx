@@ -73,6 +73,7 @@ import { WorkspaceView } from '../WorkspaceView';
 import { ComposerEditor, IWarpComposerEditorRef } from './ComposerEditor';
 import { insertComposerText, clearComposerEditor } from './composerEditorRegistry';
 import { ComposerUiSpace } from '../ComposerUiSpace';
+import type { IExtractedSlashCommand } from './docToString';
 
 const tokenEncoder = encodingForModel('gpt-4o');
 
@@ -1013,6 +1014,43 @@ const ToolActionBar: FC = () => {
 	);
 };
 
+const MessageSlashCommands: FC = () => {
+	const messageId = useAuiState(s => s.message.id);
+	const messageState = useStore(s => s.messageStates[messageId]);
+	const slashCommands = messageState?.slashCommands as IExtractedSlashCommand[] | undefined;
+	if (!slashCommands?.length) return null;
+
+	return (
+		<div className="flex flex-wrap gap-1.5 mt-2 pt-2" style={{ borderTop: '1px solid var(--wc-border-subtle)' }}>
+			{slashCommands.map((cmd, i) => (
+				<span
+					key={i}
+					style={{
+						display: "inline-flex",
+						alignItems: "center",
+						gap: "4px",
+						borderRadius: "6px",
+						padding: "2px 6px",
+						fontSize: "0.8125rem",
+						fontWeight: 500,
+						lineHeight: "1.4",
+						background: "var(--wc-accent-purple-bg-15, rgba(167,139,250,0.15))",
+						border: "1px solid var(--wc-accent-purple-border, rgba(167,139,250,0.25))",
+						color: "var(--wc-text-primary)",
+					}}
+				>
+					<span style={{ fontWeight: 700 }}>/{cmd.name}</span>
+					{Object.keys(cmd.params).length > 0 && (
+						<span style={{ color: "var(--wc-text-secondary)" }}>
+							{Object.entries(cmd.params).map(([k, v]) => `${k}=${v}`).join(' ')}
+						</span>
+					)}
+				</span>
+			))}
+		</div>
+	);
+};
+
 const UserMessage: FC = () => {
 	const chatFontSize = useStore(s => s.settings.chatFontSize ?? 14);
 	const chatFontFamily = useStore(s => s.settings.chatFontFamily ?? '');
@@ -1027,6 +1065,7 @@ const UserMessage: FC = () => {
 			<div className="flex justify-end">
 				<div className="aui-user-message-content wrap-break-word peer rounded-2xl bg-muted px-4 py-2.5 text-foreground empty:hidden max-w-[80%]" style={{ fontSize: `${chatFontSize}px`, fontFamily: chatFontFamily || undefined }}>
 					<MessagePrimitive.Parts />
+					<MessageSlashCommands />
 				</div>
 			</div>
 			<div className="aui-user-message-footer flex min-h-6 items-center justify-end">

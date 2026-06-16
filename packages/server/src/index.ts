@@ -39,7 +39,7 @@ import { whisperModelsRouter, loadCachedWhisperModels, getCachedWhisperModels } 
 import { setRecipeRunnerSSE, getActiveRun } from './services/recipeRunner';
 import { listRecipes } from './services/recipeStore';
 import { getAllDownloads, getAllDownloadsRecord } from './services/downloadManager';
-import { SqlitePersistence, McpClientManager, McpConfig, PermissionManager, Orchestrator, SseBroadcaster } from '@warpcore/bridge/server';
+import { SqlitePersistence, SqlitePersistenceWithBroadcast, McpClientManager, McpConfig, PermissionManager, Orchestrator, SseBroadcaster } from '@warpcore/bridge/server';
 import { EventNode } from '@warpcore/realmcore';
 import { bootWarpmcp } from './warpmcpRunner';
 import { embeddingManager } from './services/embeddingManager';
@@ -101,12 +101,12 @@ async function main() {
 
 	// Initialize bridge persistence
 	const dataDir = getDataDir();
-	persistence = new SqlitePersistence(path.join(dataDir, 'chat.db'));
+	broadcaster = new SseBroadcaster();
+	persistence = new SqlitePersistenceWithBroadcast(path.join(dataDir, 'chat.db'), {}, broadcaster);
 	await persistence.init();
 
 	// Initialize MCP
 	mcpConfig = new McpConfig(path.join(dataDir, 'mcp.json'));
-	broadcaster = new SseBroadcaster();
 	mcpClient = new McpClientManager(undefined, broadcaster);
 	const permissions = new PermissionManager(persistence);
 	const eventNode = new EventNode('warpcore', true);

@@ -243,6 +243,9 @@ export const useStore = create<AppState>()(
 				initWorkspaceState: bridge.initWorkspaceState,
 				initThreadState: bridge.initThreadState,
 				initMessageStates: bridge.initMessageStates,
+				applyWorkspaceStateUpdated: bridge.applyWorkspaceStateUpdated,
+				applyThreadStateUpdated: bridge.applyThreadStateUpdated,
+				applyMessageStateUpdated: bridge.applyMessageStateUpdated,
 
 				// Annotations
 					annotations: annotations.annotations!,

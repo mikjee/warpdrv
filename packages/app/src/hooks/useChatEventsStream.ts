@@ -48,6 +48,9 @@ export function useChatEventsStream() {
 	const applyEmbeddingError = useStore(s => s.applyEmbeddingError);
 	const applyEmbeddingEmbedded = useStore(s => s.applyEmbeddingEmbedded);
 	const removeEmbeddingStatus = useStore(s => s.removeEmbeddingStatus);
+	const applyWorkspaceStateUpdated = useStore(s => s.applyWorkspaceStateUpdated);
+	const applyThreadStateUpdated = useStore(s => s.applyThreadStateUpdated);
+	const applyMessageStateUpdated = useStore(s => s.applyMessageStateUpdated);
 
 	useEffect(() => {
 		console.log('[Chat SSE] Creating EventSource connection to /api/chat/events');
@@ -176,6 +179,15 @@ case 'inference.ended':
 					}
 				}
 				break;
+			case 'workspace_state.updated':
+				applyWorkspaceStateUpdated(event.folderId, event.data);
+				break;
+			case 'thread_state.updated':
+				applyThreadStateUpdated(event.threadId, event.data);
+				break;
+			case 'message_state.updated':
+				applyMessageStateUpdated(event.messageId, event.data);
+				break;
 			default:
 				// Unknown event type, ignore
 				break;
@@ -201,6 +213,9 @@ case 'inference.ended':
 		es.addEventListener('embedding.error', handleEvent);
 		es.addEventListener('embedding.embedded', handleEvent);
 		es.addEventListener('embedding.removed', handleEvent);
+		es.addEventListener('workspace_state.updated', handleEvent);
+		es.addEventListener('thread_state.updated', handleEvent);
+		es.addEventListener('message_state.updated', handleEvent);
 		es.onerror = (err) => {
 			console.error('[Chat SSE] ❌ Connection error:', err);
 		};
@@ -225,8 +240,11 @@ case 'inference.ended':
 		applyInferenceError,
 		applyElicitationRequest,
 		applyElicitationResolved,
-		applyEmbeddingError,
-		applyEmbeddingEmbedded,
-		removeEmbeddingStatus,
-	]);
+applyEmbeddingError,
+				applyEmbeddingEmbedded,
+				removeEmbeddingStatus,
+				applyWorkspaceStateUpdated,
+				applyThreadStateUpdated,
+				applyMessageStateUpdated,
+			]);
 }

@@ -238,6 +238,9 @@ export interface AppState {
 	initWorkspaceState: (folderId: TFolderId, data: Record<string, unknown>) => void;
 	initThreadState: (threadId: TThreadId, data: Record<string, unknown>) => void;
 	initMessageStates: (states: Array<{ messageId: TMessageId; data: Record<string, unknown> }>) => void;
+	applyWorkspaceStateUpdated: (folderId: TFolderId, data: Record<string, unknown>) => void;
+	applyThreadStateUpdated: (threadId: TThreadId, data: Record<string, unknown>) => void;
+	applyMessageStateUpdated: (messageId: TMessageId, data: Record<string, unknown>) => void;
 
 	// Annotations
 	annotations: IAnnotation[];

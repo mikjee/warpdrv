@@ -438,7 +438,10 @@ export type IBridgeEvent =
 	| { type: 'elicitation_resolved'; id: string }
 	| { type: 'embedding.error'; error: string }
 	| { type: 'embedding.embedded'; messageId: TMessageId; threadId: TThreadId; modelId: string; topic: string }
-	| { type: 'embedding.removed'; messageId: TMessageId; modelId: string; topic: string };
+	| { type: 'embedding.removed'; messageId: TMessageId; modelId: string; topic: string }
+	| { type: 'workspace_state.updated'; folderId: TFolderId; data: Record<string, unknown> }
+	| { type: 'thread_state.updated'; threadId: TThreadId; data: Record<string, unknown> }
+	| { type: 'message_state.updated'; messageId: TMessageId; data: Record<string, unknown> };
 
 export interface IMessagePatch {
 	stats?: IChatMessageStats;
