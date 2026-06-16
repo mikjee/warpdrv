@@ -34,6 +34,12 @@ const fn: IAppletFn<IAppletApiFE> = async (api) => {
 		},
 		execute: async (api, params) => { console.log('[TestFEApplet] /testecho executed', params); },
 	});
+	api.registerSlashCommand({
+		name: 'compact',
+		description: 'Compact the conversation thread',
+		params: {},
+		execute: async (api, params) => { console.log('[TestFEApplet] /compact executed'); },
+	});
 	api.registerUiSpaceComponent('right-panel', TestPanel, { componentName: 'TestFE' });
 	api.registerUiSpaceComponent('composer', TestComposerChip, { componentName: 'TestFE' });
 };

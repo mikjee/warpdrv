@@ -9,6 +9,7 @@
 // All state changes emit events via the broadcaster. No direct SSE.
 // ============================================================
 import crypto from 'crypto';
+import type { EventNode } from '@warpcore/realmcore';
 import type { IMcpClient, IPermissions, IPersistence, IBridgeBroadcaster } from '../types/interfaces';
 import type {
 	ICompletionRequest,
@@ -30,7 +31,7 @@ import { folderNameToTopic } from '../util/topic';
 import { EChatRole, EMessagePartType, EToolCallStatus, EToolApprovalMode } from '../types';
 import { parseSSEBuffer, accumulateToolCallDelta, finalizeToolCalls, type IToolCallAccumulator } from '../parser';
 import { validateToolArgs, cleanSchema } from '../validation';
-import { convertMessagesToOpenAIFormat, mergeConsecutiveMessages } from '../messageConverter';
+import { convertMessagesToOpenAIFormat } from '../messageConverter';
 
 const MAX_PASSES = 10;
 
@@ -39,6 +40,7 @@ export interface IOrchestratorConfig {
 	permissions: IPermissions;
 	persistence: IPersistence;
 	broadcaster: IBridgeBroadcaster;
+	eventNode: EventNode;
 	onMcpServersChanged?: (servers: Record<string, unknown>) => void;
 }
 
@@ -63,12 +65,32 @@ export class Orchestrator {
 	private permissions: IPermissions;
 	private persistence: IPersistence;
 	private broadcaster: IBridgeBroadcaster;
+	private eventNode: EventNode;
 
 	constructor(config: IOrchestratorConfig) {
 		this.mcpClient = config.mcpClient;
 		this.permissions = config.permissions;
 		this.persistence = config.persistence;
 		this.broadcaster = config.broadcaster;
+		this.eventNode = config.eventNode;
+		this.installStateHandlers();
+	}
+
+	private installStateHandlers(): void {
+		this.eventNode.fn('bridge.getMessageStates', async (api) => {
+			const threadId = api.payload as string;
+			return await this.persistence.getMessageStatesByThreadId(threadId);
+		});
+
+		this.eventNode.fn('bridge.getThreadState', async (api) => {
+			const threadId = api.payload as string;
+			return await this.persistence.getThreadState(threadId);
+		});
+
+		this.eventNode.fn('bridge.getWorkspaceState', async (api) => {
+			const folderId = api.payload as string;
+			return await this.persistence.getWorkspaceState(folderId);
+		});
 	}
 
 	// Walk parentId chain from a given message ID up to root, return root-to-leaf
@@ -86,6 +108,52 @@ export class Orchestrator {
 			currentId = msg.parentId ?? undefined;
 		}
 		return chain.reverse();
+	}
+
+	// Build the full message chain for an inference pass:
+	// workspace context + system prompt + branch history from DB + any extra messages.
+	private async buildMessageChain(
+		request: ICompletionRequest,
+		fromMessageId: TMessageId | undefined,
+		extraMessages: Array<any> = [],
+	): Promise<Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>> {
+		const baseMessages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }> = [];
+
+		if (request.folderId) {
+			const ctx = await this.buildWorkspaceContext(request.folderId);
+			if (ctx) baseMessages.push(ctx);
+		}
+
+		if (request.systemPrompt) {
+			baseMessages.push({ role: 'system', content: request.systemPrompt });
+		}
+
+		const allMessages = await this.persistence.getMessages(request.threadId);
+		const allToolCalls = await this.persistence.getToolCallsForThread(request.threadId);
+		const toolCallsMap: Record<string, IToolCall> = {};
+		for (const tc of allToolCalls) toolCallsMap[tc.id] = tc;
+
+		const branchChain = this.buildBranchChain(allMessages, fromMessageId);
+
+		// Pipe branch for compaction — applet can truncate
+		const processedChain = await this.eventNode.pipe(
+			'bridge.buildBranchChain',
+			{
+				allMessages,
+				branch: branchChain,
+				request,
+				fromMessageId,
+				extraMessages,
+			},
+			'.',
+			branchChain,
+		) as IChatMessage[];
+
+		const openAIMessages = convertMessagesToOpenAIFormat(processedChain, toolCallsMap);
+		baseMessages.push(...(openAIMessages as any[]));
+		baseMessages.push(...extraMessages);
+
+		return baseMessages;
 	}
 
 	private async buildWorkspaceContext(folderId: TFolderId): Promise<{ role: 'system'; content: string } | null> {
@@ -218,32 +286,15 @@ export class Orchestrator {
 			const enabledTools = await this.resolveEnabledTools(request);
 
 			// Build base messages for LLM context — V2: from persistence
-			let baseMessages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }> = [];
-
-			// Add workspace context if folderId provided
-			if (request.folderId) {
-				const ctx = await this.buildWorkspaceContext(request.folderId);
-				if (ctx) baseMessages.push(ctx);
-			}
-
-			// Add system prompt if provided
-			if (request.systemPrompt) {
-				baseMessages.push({ role: 'system', content: request.systemPrompt });
-			}
-
-			// Load branch chain from persistence and convert to OpenAI format
-			const allMessages = await this.persistence.getMessages(request.threadId);
-			const allToolCalls = await this.persistence.getToolCallsForThread(request.threadId);
-			const toolCallsMap: Record<string, IToolCall> = {};
-			for (const tc of allToolCalls) toolCallsMap[tc.id] = tc;
-
-			const branchChain = this.buildBranchChain(allMessages, request.parentId ?? undefined);
-			const merged = mergeConsecutiveMessages(branchChain);
-			const openAIMessages = convertMessagesToOpenAIFormat(merged, toolCallsMap);
-			baseMessages.push(...(openAIMessages as any[]));
-
-			// Add the new user message
+			let baseMessages = await this.buildMessageChain(request, request.parentId ?? undefined);
 			if (userMsg) {
+				userMsg = await this.eventNode.pipe(
+					'bridge.preConvertNewMsg',
+					{ request, userMsg },
+					'.',
+					userMsg,
+				) as IChatMessage;
+
 				const converted = convertMessagesToOpenAIFormat([userMsg], {});
 				baseMessages.push(...(converted as any[]));
 			}
@@ -939,28 +990,8 @@ export class Orchestrator {
 			}));
 
 		// All tool calls resolved — trigger next inference pass
-		// V2: build conversation context from persistence
 		const enabledTools = await this.resolveEnabledTools(request);
-
-		const allMessages = await this.persistence.getMessages(request.threadId);
-		const allToolCalls = await this.persistence.getToolCallsForThread(request.threadId);
-		const toolCallsMap: Record<string, IToolCall> = {};
-		for (const t of allToolCalls) toolCallsMap[t.id] = t;
-
-		const branchChain = this.buildBranchChain(allMessages, tc.messageId);
-		const merged = mergeConsecutiveMessages(branchChain);
-		const openAIMessages = convertMessagesToOpenAIFormat(merged, toolCallsMap);
-
-		const baseMessages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>; tool_call_id?: string }> = [];
-		if (request.folderId) {
-			const ctx = await this.buildWorkspaceContext(request.folderId);
-			if (ctx) baseMessages.push(ctx);
-		}
-		if (request.systemPrompt) {
-			baseMessages.push({ role: 'system', content: request.systemPrompt });
-		}
-		baseMessages.push(...(openAIMessages as any[]));
-		baseMessages.push(...(toolOpenAIMessages as any[]));
+		const baseMessages = await this.buildMessageChain(request, tc.messageId, toolOpenAIMessages);
 
 		await this.executePass(
 			inferenceUrl,

@@ -106,11 +106,13 @@ class EmbeddingManager {
 	}
 
 	async deleteEmbeddingForMessage(messageId: string, threadId: string): Promise<void> {
-		if (!this.embeddingService || !this.persistence) throw new Error('EmbeddingService not initialized');
+		if (!this.embeddingService || !this.persistence || !this.currentConfig) {
+			console.log('[embedding] deleteEmbeddingForMessage: not configured, skipping');
+			return;
+		}
 		const thread = await this.persistence.getThread(threadId);
 		const folderId = thread?.folderId;
 		const topic = folderId ? (await this.persistence.getFolder(folderId))?.topic ?? 'global' : 'global';
-		if (!this.currentConfig) throw new Error('EmbeddingService not configured');
 		const cfg = this.currentConfig;
 		await this.embeddingService.deleteByMessageId(messageId, cfg.modelId, topic, cfg.serverUrl, cfg.dim);
 		this.broadcaster!.emit({ type: 'embedding.removed', messageId, modelId: cfg.modelId, topic });

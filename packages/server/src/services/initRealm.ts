@@ -7,8 +7,8 @@ let warpcoreNode: EventNode | null = null;
 let io: IOServer | null = null;
 let appletManager: AppletManager | null = null;
 
-export async function initRealm(server: HTTPServer): Promise<{ node: EventNode; io: IOServer; appletManager: AppletManager }> {
-	warpcoreNode = new EventNode('warpcore', true);
+export async function initRealm(server: HTTPServer, node: EventNode): Promise<{ node: EventNode; io: IOServer; appletManager: AppletManager }> {
+	warpcoreNode = node;
 	server.on('upgrade', (req) => {
         console.log('[RealmEvents] upgrade headers:', req.headers.connection, req.headers.upgrade);
     });

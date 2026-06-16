@@ -40,6 +40,7 @@ import { setRecipeRunnerSSE, getActiveRun } from './services/recipeRunner';
 import { listRecipes } from './services/recipeStore';
 import { getAllDownloads, getAllDownloadsRecord } from './services/downloadManager';
 import { SqlitePersistence, McpClientManager, McpConfig, PermissionManager, Orchestrator, SseBroadcaster } from '@warpcore/bridge/server';
+import { EventNode } from '@warpcore/realmcore';
 import { bootWarpmcp } from './warpmcpRunner';
 import { embeddingManager } from './services/embeddingManager';
 import { getDataDir } from './util/mcpConfig';
@@ -108,7 +109,8 @@ async function main() {
 	broadcaster = new SseBroadcaster();
 	mcpClient = new McpClientManager(undefined, broadcaster);
 	const permissions = new PermissionManager(persistence);
-	orchestrator = new Orchestrator({ mcpClient, permissions, persistence, broadcaster });
+	const eventNode = new EventNode('warpcore', true);
+	orchestrator = new Orchestrator({ mcpClient, permissions, persistence, broadcaster, eventNode });
 
 	// Initialize embedding manager
 	await embeddingManager.initialize(persistence, broadcaster, dataDir);
@@ -382,7 +384,7 @@ async function main() {
 	const httpServer = createServer(app);
 
 	// Initialize realm events
-	await initRealm(httpServer);
+	await initRealm(httpServer, eventNode);
 
 	// Start server
 	httpServer.listen(port, host, () => {

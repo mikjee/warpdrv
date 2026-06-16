@@ -208,10 +208,11 @@ export const Thread: FC<{
 const ThreadMessage: FC = () => {
 	const role = useAuiState((s) => s.message.role);
 	const isEditing = useAuiState((s) => s.message.composer.isEditing);
-	if (isEditing) return <EditComposer />;
-	if (role === "user") return <UserMessage />;
 	const parts = useAuiState((s) => s.message.content);
 	const hasToolCalls = parts.some((part: any) => part.type === 'tool-call');
+
+	if (isEditing) return <EditComposer />;
+	if (role === "user") return <UserMessage />;
 	if (hasToolCalls) return <ToolMessage />;
 	return <AssistantMessage />;
 };
