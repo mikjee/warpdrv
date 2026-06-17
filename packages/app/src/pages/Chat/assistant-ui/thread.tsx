@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import { VscTools } from "react-icons/vsc";
 import { LuDatabaseZap } from "react-icons/lu";
-import { Box, Image, Popover, Switch, AccordionRoot, AccordionItem as AccordionItemComp, AccordionItemTrigger, AccordionItemContent, HStack, VStack, Text } from '@chakra-ui/react';
+import { Box, Image, Menu, Portal, Popover, Switch, AccordionRoot, AccordionItem as AccordionItemComp, AccordionItemTrigger, AccordionItemContent, HStack, VStack, Text } from '@chakra-ui/react';
 import {
 	ActionBarMorePrimitive,
 	ActionBarPrimitive,
@@ -40,6 +40,7 @@ import {
 	DownloadIcon,
 	Info,
 	MoreHorizontalIcon,
+	MoreVertical,
 	PencilIcon,
 	RefreshCwIcon,
 	SendHorizonal,
@@ -889,9 +890,10 @@ const ActionBarIcon: FC<{ children: React.ReactNode; onClick?: () => void }> = (
 const DeleteMessageButton: FC<{ messageId: string }> = ({ messageId }) => {
 	const ctx = useContext(DeleteMessageContext);
 	return (
-		<ActionBarIcon onClick={() => ctx?.open(messageId)}>
-			<Trash2 size={14} color={"var(--wc-accent-red)"} />
-		</ActionBarIcon>
+		<HStack gap="2" onClick={() => ctx?.open(messageId)}>
+			<Trash2 size={14} color="var(--wc-accent-red)" />
+			<Text fontSize="12px" color="var(--wc-accent-red)">Delete</Text>
+		</HStack>
 	);
 };
 
@@ -934,34 +936,56 @@ const AssistantActionBar: FC = () => {
 	const kokoroInstalled = useStore((s) => s.kokoroStatus?.installed);
 	const clearAnnotations = useStore((s) => s.clearAnnotations);
 
+	const ref = useRef<HTMLDivElement | null>(null)
+  	const getAnchorRect = () => ref.current!.getBoundingClientRect()
+
 	return (
 		<ActionBarPrimitive.Root
 			className="aui-assistant-action-bar-root col-start-3 row-start-2 -ml-1"
-			style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+			style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: "visible" }}
 		>
-
 			{kokoroInstalled ? <KokoroTTSButton /> : <BrowserTTS />}
-
-			<ActionBarPrimitive.Copy asChild>
-				<ActionBarIcon>
-					{isCopied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
-				</ActionBarIcon>
-			</ActionBarPrimitive.Copy>
-
-			<ActionBarPrimitive.Reload asChild>
-				<ActionBarIcon onClick={clearAnnotations}>
-					<RefreshCwIcon size={14} />
-				</ActionBarIcon>
-			</ActionBarPrimitive.Reload>
-
-			<ActionBarPrimitive.Edit asChild>
-				<ActionBarIcon>
-					<PencilIcon size={14} />
-				</ActionBarIcon>
-			</ActionBarPrimitive.Edit>
-
 			<EmbeddingStatus />
-			<DeleteMessageButton messageId={messageId} />
+
+			<Menu.Root positioning={{ getAnchorRect }}>
+				<Menu.Trigger asChild>
+					<ActionBarIcon>
+						<MoreVertical size={14} ref={ref}/>
+					</ActionBarIcon>
+				</Menu.Trigger>
+				<Menu.Positioner>
+					<Menu.Content>
+						<ActionBarPrimitive.Copy asChild>
+							<Menu.Item value="copy">
+								<HStack gap="2">
+									{isCopied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
+									<Text fontSize="12px">Copy</Text>
+								</HStack>
+							</Menu.Item>
+						</ActionBarPrimitive.Copy>
+						<ActionBarPrimitive.Reload asChild>
+							<Menu.Item value="reload" onClick={clearAnnotations}>
+								<HStack gap="2">
+									<RefreshCwIcon size={14} />
+									<Text fontSize="12px">Reload</Text>
+								</HStack>
+							</Menu.Item>
+						</ActionBarPrimitive.Reload>
+						<ActionBarPrimitive.Edit asChild>
+							<Menu.Item value="edit">
+								<HStack gap="2">
+									<PencilIcon size={14} />
+									<Text fontSize="12px">Edit</Text>
+								</HStack>
+							</Menu.Item>
+						</ActionBarPrimitive.Edit>
+						<Menu.Separator />
+						<Menu.Item value="delete">
+							<DeleteMessageButton messageId={messageId} />
+						</Menu.Item>
+					</Menu.Content>
+				</Menu.Positioner>
+			</Menu.Root>
 
 		</ActionBarPrimitive.Root>
 	);
@@ -1006,18 +1030,39 @@ const ToolActionBar: FC = () => {
 	const messageId = useAuiState((s) => s.message.id);
 	const clearAnnotations = useStore((s) => s.clearAnnotations);
 
+	const ref = useRef<HTMLDivElement | null>(null)
+  	const getAnchorRect = () => ref.current!.getBoundingClientRect()
+
 	return (
 		<ActionBarPrimitive.Root
 			className="aui-tool-action-bar-root col-start-3 row-start-2 -ml-1"
-			style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+			style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: "visible" }}
 		>
-			<ActionBarPrimitive.Reload asChild>
-				<ActionBarIcon onClick={clearAnnotations}>
-					<RefreshCwIcon size={14} />
-				</ActionBarIcon>
-			</ActionBarPrimitive.Reload>
 			<EmbeddingStatus />
-			<DeleteMessageButton messageId={messageId} />
+
+			<Menu.Root positioning={{ getAnchorRect }}>
+				<Menu.Trigger asChild>
+					<ActionBarIcon>
+						<MoreVertical size={14} ref={ref}/>
+					</ActionBarIcon>
+				</Menu.Trigger>
+				<Menu.Positioner>
+					<Menu.Content>
+						<ActionBarPrimitive.Reload asChild>
+							<Menu.Item value="reload" onClick={clearAnnotations}>
+								<HStack gap="2">
+									<RefreshCwIcon size={14} />
+									<Text fontSize="12px">Reload</Text>
+								</HStack>
+							</Menu.Item>
+						</ActionBarPrimitive.Reload>
+						<Menu.Separator />
+						<Menu.Item value="delete">
+							<DeleteMessageButton messageId={messageId} />
+						</Menu.Item>
+					</Menu.Content>
+				</Menu.Positioner>
+			</Menu.Root>
 		</ActionBarPrimitive.Root>
 	);
 };
@@ -1089,24 +1134,42 @@ const UserMessage: FC = () => {
 
 const UserActionBar: FC = () => {
 	const messageId = useAuiState((s) => s.message.id);
-	//const message = useAuiState((s) => s.message);
 	const kokoroInstalled = useStore((s) => s.kokoroStatus?.installed);
-	
+
+	const ref = useRef<HTMLDivElement | null>(null)
+  	const getAnchorRect = () => ref.current!.getBoundingClientRect()
+
 	return (
 		<ActionBarPrimitive.Root
 			className="aui-user-action-bar-root"
-			style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+			style={{ display: 'flex', alignItems: 'center', gap: '4px', overflow: "visible" }}
 		>
 			{kokoroInstalled ? <KokoroTTSButton /> : <BrowserTTS />}
-
-			<ActionBarPrimitive.Edit asChild>
-				<ActionBarIcon>
-					<PencilIcon size={14} />
-				</ActionBarIcon>
-			</ActionBarPrimitive.Edit>
-			
 			<EmbeddingStatus />
-			<DeleteMessageButton messageId={messageId} />
+
+			<Menu.Root positioning={{ getAnchorRect }}>
+				<Menu.Trigger asChild>
+					<ActionBarIcon>
+						<MoreVertical size={14} ref={ref}/>
+					</ActionBarIcon>
+				</Menu.Trigger>
+				<Menu.Positioner>
+					<Menu.Content>
+						<ActionBarPrimitive.Edit asChild>
+							<Menu.Item value="edit">
+								<HStack gap="2">
+									<PencilIcon size={14} />
+									<Text fontSize="12px">Edit</Text>
+								</HStack>
+							</Menu.Item>
+						</ActionBarPrimitive.Edit>
+						<Menu.Separator />
+						<Menu.Item value="delete">
+							<DeleteMessageButton messageId={messageId} />
+						</Menu.Item>
+					</Menu.Content>
+				</Menu.Positioner>
+			</Menu.Root>
 		</ActionBarPrimitive.Root>
 	);
 };

@@ -27,7 +27,7 @@ export function useRealm(currentThreadId: string | null) {
 			currentThreadId ?? undefined,
 			{ [EAppletHostType.FE]: AppletHostFE },
 			feApplets,
-			{ testFe: true },
+			{ FEApplet: true },
 		);
 
 		const socket = io({
