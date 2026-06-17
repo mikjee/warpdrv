@@ -12,8 +12,6 @@ export interface IToolCallRenderer {
 	canRender: (args: Record<string, unknown>) => TCanRenderResult;
 }
 
-export type TCanRenderResult = Record<string, unknown> | false;
-
 export interface IToolCallRenderer {
 	component: React.ComponentType<any>;
 	keywords: string[];
@@ -41,10 +39,8 @@ import type {
 } from '@warpcore/bridge';
 import { IAnnotation } from '@/store/slices/annotations';
 import type { ISlashCommand } from '@/store/slices/slashCommands';
-import type { TUiSpaceId, TUiSpaceComponentId, TUiSpaceComponent, TUiSpaceDefinition } from '@/store/slices/uiSpaces';
-import { EChatSidebarTab } from '@/store/slices/chatSidebar';
-import type { TUiSpaceId, TUiSpaceComponentId, TUiSpaceComponent, TUiSpaceDefinition } from '@/store/slices/uiSpaces';
-import type { TChatSidebarTab } from '@/store/slices/chatSidebar';
+import type { EUISpaceLoc, TAppletName, TUISpaceComponent, TUISpaceComponentId, TUiSpaceComponentDef } from '@/store/slices/uiSpaces';
+import type { EChatSidebarTab } from '@/store/slices/chatSidebar';
 
 export interface AppState {
 	// SSE Connection
@@ -268,10 +264,12 @@ export interface AppState {
 	unregisterSlashCommand: (name: string, appletName?: string) => void;
 
 	// UI Spaces
-	uiSpaceComponents: Record<TUiSpaceId, Record<TUiSpaceComponentId, TUiSpaceDefinition>>;
-	uiSpaceComponentsByApplet: Record<string, Record<TUiSpaceComponentId, true>>;
-	registerUiSpaceComponent: (spaceId: TUiSpaceId, component: TUiSpaceComponent, opts: { componentName: string; appletName: string }) => TUiSpaceComponentId;
-	unregisterUiSpaceComponent: (id: TUiSpaceComponentId, appletName: string) => void;
+	uiSpaceComponentsById: Record<TUISpaceComponentId, TUiSpaceComponentDef>;
+	uiSpaceComponentsByLocation: Partial<Record<EUISpaceLoc, Record<TUISpaceComponentId, true>>>;
+	uiSpaceComponentsByApplet: Record<TAppletName, Record<TUISpaceComponentId, true>>;
+	registerUiSpaceComponent: (def: { componentId?: TUISpaceComponentId; label?: string; appletName: TAppletName; location: EUISpaceLoc; component: TUISpaceComponent; props?: Record<string, unknown> }) => TUISpaceComponentId;
+	unregisterUiSpaceComponent: (appletName: string, componentId?: TUISpaceComponentId) => void;
+	setUiSpaceComponentProps: (componentId: TUISpaceComponentId, propsPatch: Record<string, unknown>) => void;
 
 	// Pending slash commands (extracted from editor, stored until send)
 	pendingSlashCommands: IExtractedSlashCommand[];

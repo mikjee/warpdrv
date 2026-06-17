@@ -13,6 +13,7 @@ import { TbApps } from 'react-icons/tb';
 import { useStore } from '@/store';
 import { useShallow } from 'zustand/react/shallow';
 import { EChatSidebarTab } from '@/store/slices/chatSidebar';
+import { EUISpaceLoc } from '@/store/slices/uiSpaces';
 
 interface IChatSidebarProps {
 	configParams: IChatInferenceParams;
@@ -83,7 +84,7 @@ export const ChatSidebar = React.memo(({
 						);
 						if (chatSidebarTab === EChatSidebarTab.TOOLS) return <ChatToolsContentPanel threadId={currentThreadId} />;
 						if (chatSidebarTab === EChatSidebarTab.SEARCH) return <ThreadSearchPanel threadId={currentThreadId} />;
-						if (chatSidebarTab === EChatSidebarTab.RIGHT_PANEL) return <UiSpacePanel spaceId="right-panel" />;
+						if (chatSidebarTab === EChatSidebarTab.RIGHT_PANEL) return <UiSpacePanel location={EUISpaceLoc.RIGHT_PANEL} />;
 						return null;
 					})()}
 				</Box>

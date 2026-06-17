@@ -246,6 +246,7 @@ export const useStore = create<AppState>()(
 				applyWorkspaceStateUpdated: bridge.applyWorkspaceStateUpdated,
 				applyThreadStateUpdated: bridge.applyThreadStateUpdated,
 				applyMessageStateUpdated: bridge.applyMessageStateUpdated,
+				setUiSpaceComponentProps: uiSpaces.setUiSpaceComponentProps!,
 
 				// Annotations
 					annotations: annotations.annotations!,
@@ -272,8 +273,9 @@ export const useStore = create<AppState>()(
 			registerSlashCommand: slashCommands.registerSlashCommand!,
 			unregisterSlashCommand: slashCommands.unregisterSlashCommand!,
 
-			// UI Spaces
-			uiSpaceComponents: uiSpaces.uiSpaceComponents!,
+	// UI Spaces
+			uiSpaceComponentsById: uiSpaces.uiSpaceComponentsById!,
+			uiSpaceComponentsByLocation: uiSpaces.uiSpaceComponentsByLocation!,
 			uiSpaceComponentsByApplet: uiSpaces.uiSpaceComponentsByApplet!,
 			registerUiSpaceComponent: uiSpaces.registerUiSpaceComponent!,
 			unregisterUiSpaceComponent: uiSpaces.unregisterUiSpaceComponent!,

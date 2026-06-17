@@ -2,50 +2,110 @@ import { nanoid } from 'nanoid';
 import type { ImmerSet, ImmerGet } from '../types';
 import type { AppState } from '../types';
 
-export type TUiSpaceId = string;
-export type TUiSpaceComponentId = string;
-export type TUiSpaceComponent = () => JSX.Element;
+export type TUISpaceComponentId = string;
+export type TUISpaceComponent = () => React.Component;
+export type TAppletName = string;
 
-export interface TUiSpaceDefinition {
-    id: TUiSpaceComponentId;
-    spaceId: TUiSpaceId;
-    component: TUiSpaceComponent;
-    componentName: string;
-    appletName: string;
+export interface TUiSpaceComponentDef {
+    componentId: TUISpaceComponentId;
+    label: string;
+
+    appletName: TAppletName;
+    location: EUISpaceLoc;
+
+    component: TUISpaceComponent;
+    props?: Record<string, unknown>;
 }
 
+export enum EUISpaceLoc {
+    COMPOSER = "composer",
+    RIGHT_PANEL = "right_panel",
+};
+
 interface UiSpacesSlice {
-    uiSpaceComponents: Record<TUiSpaceId, Record<TUiSpaceComponentId, TUiSpaceDefinition>>;
-    uiSpaceComponentsByApplet: Record<string, Record<TUiSpaceComponentId, true>>;
-    registerUiSpaceComponent: (spaceId: TUiSpaceId, component: TUiSpaceComponent, opts: { componentName: string; appletName: string }) => TUiSpaceComponentId;
-    unregisterUiSpaceComponent: (id: TUiSpaceComponentId, appletName: string) => void;
+    uiSpaceComponentsById: Record<TUISpaceComponentId, TUiSpaceComponentDef>;
+    uiSpaceComponentsByLocation: Partial<Record<EUISpaceLoc, Record<TUISpaceComponentId, true>>>;
+    uiSpaceComponentsByApplet: Record<TAppletName, Record<TUISpaceComponentId, true>>;
+
+    registerUiSpaceComponent: (def: {
+        componentId?: TUISpaceComponentId;
+        label?: string;
+
+        appletName: TAppletName;
+        location: EUISpaceLoc;
+
+        component: TUISpaceComponent;
+        props?: Record<string, unknown>;
+    }) => TUISpaceComponentId;
+
+    unregisterUiSpaceComponent: (
+        appletName: string,
+        componentId?: TUISpaceComponentId, // if undefined, deletes all for given space or applet
+    ) => void;
+
+    setUiSpaceComponentProps: (
+        componentId: TUISpaceComponentId, 
+        propsPatch: Record<string, unknown>
+    ) => void;
 }
 
 export function uiSpacesSlice(set: ImmerSet<AppState>, get: ImmerGet<AppState>): Partial<UiSpacesSlice> {
     return {
-        uiSpaceComponents: {},
+        uiSpaceComponentsById: {},
+        uiSpaceComponentsByLocation: {},
         uiSpaceComponentsByApplet: {},
-        registerUiSpaceComponent: (spaceId, component, opts) => {
-            const id = nanoid();
+        registerUiSpaceComponent: (def) => {
+            const id = def.componentId || nanoid();
             set(draft => {
-                if (!draft.uiSpaceComponents[spaceId]) {
-                    draft.uiSpaceComponents[spaceId] = {};
+                const entry: TUiSpaceComponentDef = {
+                    componentId: id,
+                    label: def.label || '',
+                    appletName: def.appletName,
+                    location: def.location,
+                    component: def.component,
+                    props: def.props,
+                };
+                draft.uiSpaceComponentsById[id] = entry;
+                if (!draft.uiSpaceComponentsByLocation[def.location]) {
+                    draft.uiSpaceComponentsByLocation[def.location] = {};
                 }
-                draft.uiSpaceComponents[spaceId][id] = { id, spaceId, component, componentName: opts.componentName, appletName: opts.appletName };
-                if (!draft.uiSpaceComponentsByApplet[opts.appletName]) {
-                    draft.uiSpaceComponentsByApplet[opts.appletName] = {};
+                draft.uiSpaceComponentsByLocation[def.location]![id] = true;
+                if (!draft.uiSpaceComponentsByApplet[def.appletName]) {
+                    draft.uiSpaceComponentsByApplet[def.appletName] = {};
                 }
-                draft.uiSpaceComponentsByApplet[opts.appletName][id] = true;
+                draft.uiSpaceComponentsByApplet[def.appletName]![id] = true;
             });
             return id;
         },
-        unregisterUiSpaceComponent: (id, appletName) => {
+        unregisterUiSpaceComponent: (appletName, componentId) => {
             set(draft => {
-                for (const spaceId of Object.keys(draft.uiSpaceComponents)) {
-                    delete draft.uiSpaceComponents[spaceId][id];
+                if (componentId !== undefined) {
+                    const entry = draft.uiSpaceComponentsById[componentId];
+                    if (entry) {
+                        delete draft.uiSpaceComponentsByLocation[entry.location]?.[componentId];
+                        delete draft.uiSpaceComponentsByApplet[entry.appletName]?.[componentId];
+                        delete draft.uiSpaceComponentsById[componentId];
+                    }
+                } else {
+                    const tracked = draft.uiSpaceComponentsByApplet[appletName];
+                    if (tracked) {
+                        for (const id of Object.keys(tracked)) {
+                            const entry = draft.uiSpaceComponentsById[id];
+                            if (entry) {
+                                delete draft.uiSpaceComponentsByLocation[entry.location]?.[id];
+                            }
+                            delete draft.uiSpaceComponentsById[id];
+                        }
+                        delete draft.uiSpaceComponentsByApplet[appletName];
+                    }
                 }
-                if (draft.uiSpaceComponentsByApplet[appletName]) {
-                    delete draft.uiSpaceComponentsByApplet[appletName][id];
+            });
+        },
+        setUiSpaceComponentProps: (componentId, propsPatch) => {
+            set(draft => {
+                const entry = draft.uiSpaceComponentsById[componentId];
+                if (entry) {
+                    entry.props = { ...entry.props, ...propsPatch };
                 }
             });
         },

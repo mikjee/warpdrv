@@ -1,5 +1,6 @@
 import type { TAppletDefinition, IAppletFn } from '@warpcore/realmcore';
 import { EAppletHostType, EAppletScope } from '@warpcore/realmcore';
+import { EUISpaceLoc } from '@/store/slices/uiSpaces';
 import type { IAppletApiFE } from './types';
 import { Box, Text } from '@chakra-ui/react';
 
@@ -7,12 +8,6 @@ const TestPanel = () => (
 	<Box p="4">
 		<Text>Test Right Panel</Text>
 	</Box>
-);
-
-const TestComposerChip = () => (
-	<Text fontSize="xs" fontWeight="500" color="var(--wc-text-primary)">
-		TestFE
-	</Text>
 );
 
 const fn: IAppletFn<IAppletApiFE> = async (api) => {
@@ -40,8 +35,12 @@ const fn: IAppletFn<IAppletApiFE> = async (api) => {
 		params: {},
 		execute: async (api, params) => { console.log('[TestFEApplet] /compact executed'); },
 	});
-	api.registerUiSpaceComponent('right-panel', TestPanel, { componentName: 'TestFE' });
-	api.registerUiSpaceComponent('composer', TestComposerChip, { componentName: 'TestFE' });
+	api.registerUiSpaceComponent(EUISpaceLoc.RIGHT_PANEL, TestPanel, { label: 'TestFE' });
+	api.registerComposerChip({
+		label: 'TestFE',
+		isActive: true,
+		onClose: (id) => { console.log('[TestFEApplet] chip closed', id); },
+	});
 };
 
 export const TestFEApplet: TAppletDefinition<IAppletApiFE> = {

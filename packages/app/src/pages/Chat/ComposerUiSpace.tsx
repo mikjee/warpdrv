@@ -1,12 +1,14 @@
 import React from 'react';
 import { Box } from '@chakra-ui/react';
 import { useStore } from '@/store';
-import { WithErrorBoundary } from '@/components/WithErrorBoundary';
+import { EUISpaceLoc } from '@/store/slices/uiSpaces';
+import { UiSpaceWrapper } from '@/applets/UiSpaceWrapper';
 
 export const ComposerUiSpace = React.memo(() => {
-    const components = useStore(s => s.uiSpaceComponents['composer']);
+    const componentIds = useStore(s => s.uiSpaceComponentsByLocation[EUISpaceLoc.COMPOSER]);
+    const entriesById = useStore(s => s.uiSpaceComponentsById);
 
-    if (!components || Object.keys(components).length === 0) return null;
+    if (!componentIds || !Object.keys(componentIds).length) return null;
 
     return (
         <Box
@@ -16,35 +18,11 @@ export const ComposerUiSpace = React.memo(() => {
             overflowX="auto"
             minWidth="0"
         >
-                {Object.values(components || {}).map(entry => {
-                    const Comp = React.memo(entry.component);
-                    return (
-                        <Box
-                            key={entry.id}
-                            display="inline-flex"
-                            flexShrink={0}
-                            alignItems="center"
-                            gap="1.5"
-                            px="2"
-                            py="1"
-                            borderRadius="md"
-                            bg="var(--wc-bg-card)"
-                            borderWidth="1px"
-                            borderColor="var(--wc-border-subtle)"
-                        >
-                            <WithErrorBoundary
-                                name={entry.componentName}
-                                fallback={
-                                    <Box color="red.500" fontSize="xs">
-                                        {entry.componentName} — error
-                                    </Box>
-                                }
-                            >
-                                <Comp />
-                            </WithErrorBoundary>
-                        </Box>
-                    );
-                })}
+            {Object.keys(componentIds).map(id => {
+                const entry = entriesById[id];
+                if (!entry) return null;
+                return <UiSpaceWrapper key={id} componentId={id} />;
+            })}
         </Box>
     );
 });

@@ -1,8 +1,11 @@
+import { nanoid } from 'nanoid';
 import { AppletHost } from '@warpcore/realmcore';
 import { useStore } from '@/store';
 import type { ISlashCommand } from '@/store/slices/slashCommands';
-import type { TUiSpaceId, TUiSpaceComponentId, TUiSpaceComponent } from '@/store/slices/uiSpaces';
+import { EUISpaceLoc } from '@/store/slices/uiSpaces';
+import type { TUISpaceComponentId, TUISpaceComponent } from '@/store/slices/uiSpaces';
 import type { IAppletApiFE } from './types';
+import { UiSpaceChip } from './UiSpaceChip';
 
 export class AppletHostFE extends AppletHost {
 	public override buildApi(): IAppletApiFE {
@@ -19,11 +22,27 @@ export class AppletHostFE extends AppletHost {
 			unregisterSlashCommand: (name: string) => {
 				useStore.getState().unregisterSlashCommand(name, appletName);
 			},
-			registerUiSpaceComponent: (spaceId: TUiSpaceId, component: TUiSpaceComponent, opts: { componentName: string }) => {
-				return useStore.getState().registerUiSpaceComponent(spaceId, component, { ...opts, appletName: this.definition.name });
+			registerUiSpaceComponent: (spaceId: string, component: TUISpaceComponent, opts: { label: string }) => {
+				return useStore.getState().registerUiSpaceComponent({
+					location: spaceId as EUISpaceLoc,
+					component,
+					label: opts.label,
+					appletName,
+				});
 			},
-			unregisterUiSpaceComponent: (id: TUiSpaceComponentId) => {
-				useStore.getState().unregisterUiSpaceComponent(id, appletName);
+			unregisterUiSpaceComponent: (id: TUISpaceComponentId) => {
+				useStore.getState().unregisterUiSpaceComponent(appletName, id);
+			},
+			registerComposerChip: (options) => {
+				const id = nanoid();
+				return useStore.getState().registerUiSpaceComponent({
+					componentId: id,
+					location: EUISpaceLoc.COMPOSER,
+					component: UiSpaceChip,
+					label: 'UiSpaceChip',
+					appletName,
+					props: options,
+				});
 			},
 		};
 	}
@@ -36,12 +55,7 @@ export class AppletHostFE extends AppletHost {
 				state.unregisterSlashCommand(cmd, this.definition.name);
 			}
 		}
-		const trackedComponents = state.uiSpaceComponentsByApplet[this.definition.name];
-		if (trackedComponents) {
-			for (const entryId of Object.keys(trackedComponents)) {
-				state.unregisterUiSpaceComponent(entryId, this.definition.name);
-			}
-		}
+		state.unregisterUiSpaceComponent(this.definition.name);
 		return super.terminate();
 	}
 }
