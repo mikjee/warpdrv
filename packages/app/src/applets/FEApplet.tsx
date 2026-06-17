@@ -10,11 +10,13 @@ import type { IExtractedSlashCommand } from '@/pages/Chat/assistant-ui/docToStri
 import type { ITodoItem } from '@warpcore/shared';
 import React from 'react';
 
+const EMPTY: ITodoItem[] = [];
+
 const TodoPanel = React.memo(() => {
 	const threadId = useStore(s => s.currentThreadId);
 	const todos = useStore(s => {
-		if (!threadId) return [];
-		return (s.threadStates[threadId]?.todos as ITodoItem[]) || [];
+		if (!threadId) return EMPTY;
+		return (s.threadStates[threadId]?.todos as ITodoItem[]) || EMPTY;
 	});
 
 	const statusStyle = (status: string) => {
