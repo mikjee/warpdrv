@@ -1,4 +1,3 @@
-export { TestFEApplet } from './TestFEApplet';
-export { feApplets } from './feApplets';
-export { AppletHostFE } from './AppletHostFE';
-export type { IAppletApiFE } from './types';
+export { feApplets } from './lib/feApplets';
+export { AppletHostFE } from './lib/AppletHostFE';
+export type { IAppletAPIFE as IAppletApiFE } from './lib/types';

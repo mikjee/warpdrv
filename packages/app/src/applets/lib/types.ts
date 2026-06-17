@@ -3,7 +3,7 @@ import type { useStore } from '@/store';
 import type { ISlashCommand } from '@/store/slices/slashCommands';
 import type { TUISpaceComponentId, TUISpaceComponent } from '@/store/slices/uiSpaces';
 
-export interface IAppletApiFE {
+export interface IAppletAPIFE {
 	eventNode: EventNode;
 	useStore: typeof useStore;
 	registerSlashCommand: (command: ISlashCommand) => void;

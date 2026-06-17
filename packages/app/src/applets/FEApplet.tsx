@@ -1,7 +1,7 @@
 import type { TAppletDefinition, IAppletFn } from '@warpcore/realmcore';
 import { EAppletHostType, EAppletScope } from '@warpcore/realmcore';
 import { EUISpaceLoc } from '@/store/slices/uiSpaces';
-import type { IAppletApiFE } from './types';
+import type { IAppletAPIFE } from './lib/types';
 import type { TUiSpaceComponentDef } from '@/store/slices/uiSpaces';
 import { Box, Text } from '@chakra-ui/react';
 import { useAuiState } from '@assistant-ui/react';
@@ -35,8 +35,8 @@ const CompactIndicator = React.memo(({ def, children }: { def: TUiSpaceComponent
 	);
 });
 
-const fn: IAppletFn<IAppletApiFE> = async (api) => {
-	console.log('[TestFEApplet] Started');
+const fn: IAppletFn<IAppletAPIFE> = async (api) => {
+	console.log('[FEApplet] Started');
 	api.registerSlashCommand({
 		name: 'testfe',
 		description: 'Test FE command with target and count params',
@@ -44,7 +44,7 @@ const fn: IAppletFn<IAppletApiFE> = async (api) => {
 			target: { type: 'string', description: 'Target name', index: 0 },
 			count: { type: 'number', description: 'Count value', index: 1 },
 		},
-		execute: async (api, params) => { console.log('[TestFEApplet] /testfe executed', params); },
+		execute: async (api, params) => { console.log('[FEApplet] /testfe executed', params); },
 	});
 	api.registerSlashCommand({
 		name: 'testecho',
@@ -52,26 +52,26 @@ const fn: IAppletFn<IAppletApiFE> = async (api) => {
 		params: {
 			message: { type: 'string', description: 'Message to echo', index: 0 },
 		},
-		execute: async (api, params) => { console.log('[TestFEApplet] /testecho executed', params); },
+		execute: async (api, params) => { console.log('[FEApplet] /testecho executed', params); },
 	});
 	api.registerSlashCommand({
 		name: 'compact',
 		description: 'Compact the conversation thread',
 		params: {},
-		execute: async (api, params) => { console.log('[TestFEApplet] /compact executed'); },
+		execute: async (api, params) => { console.log('[FEApplet] /compact executed'); },
 	});
-	api.registerUiSpaceComponent(EUISpaceLoc.RIGHT_PANEL, TestPanel, { label: 'TestFE' });
+	api.registerUiSpaceComponent(EUISpaceLoc.RIGHT_PANEL, TestPanel, { label: 'FEApplet' });
 	api.registerUiSpaceComponent(EUISpaceLoc.MESSAGE, CompactIndicator, { label: 'Compact Indicator' });
 	api.registerComposerChip({
-		label: 'TestFE',
+		label: 'FEApplet',
 		isActive: true,
-		onClose: (id) => { console.log('[TestFEApplet] chip closed', id); },
+		onClose: (id) => { console.log('[FEApplet] chip closed', id); },
 	});
 };
 
-export const TestFEApplet: TAppletDefinition<IAppletApiFE> = {
-	name: 'TestFE',
-	description: 'Test frontend applet',
+export const FEApplet: TAppletDefinition<IAppletAPIFE> = {
+	name: 'FEApplet',
+	description: 'Frontend applet',
 	fn,
 	hostType: EAppletHostType.FE,
 	scope: EAppletScope.THREAD,

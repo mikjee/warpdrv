@@ -3,7 +3,7 @@ import { Box, AccordionRoot, AccordionItem as AccordionItemComp, AccordionItemTr
 import { ChevronDown } from 'lucide-react';
 import { useStore } from '@/store';
 import type { EUISpaceLoc } from '@/store/slices/uiSpaces';
-import { UiSpaceWrapper } from '@/applets/UiSpaceWrapper';
+import { UiSpaceWrapper } from '@/applets/ui/UiSpaceWrapper';
 
 export const UiSpacePanel = React.memo(({ location }: { location: EUISpaceLoc }) => {
     const componentIds = useStore(s => s.uiSpaceComponentsByLocation[location]);

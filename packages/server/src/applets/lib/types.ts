@@ -1,5 +1,5 @@
 import type { EventNode } from '@warpcore/realmcore';
 
-export interface IAppletApiBE {
+export interface IAppletAPIBE {
 	eventNode: EventNode;
 }

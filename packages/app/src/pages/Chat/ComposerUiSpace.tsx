@@ -2,7 +2,7 @@ import React from 'react';
 import { Box } from '@chakra-ui/react';
 import { useStore } from '@/store';
 import { EUISpaceLoc } from '@/store/slices/uiSpaces';
-import { UiSpaceWrapper } from '@/applets/UiSpaceWrapper';
+import { UiSpaceWrapper } from '@/applets/ui/UiSpaceWrapper';
 
 export const ComposerUiSpace = React.memo(() => {
     const componentIds = useStore(s => s.uiSpaceComponentsByLocation[EUISpaceLoc.COMPOSER]);

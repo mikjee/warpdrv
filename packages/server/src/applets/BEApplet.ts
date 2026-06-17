@@ -1,9 +1,9 @@
 import type { TAppletDefinition, IAppletFn } from '@warpcore/realmcore';
 import { EAppletHostType, EAppletScope } from '@warpcore/realmcore';
-import type { IAppletApiBE } from './types';
+import type { IAppletAPIBE } from './lib/types';
 
-const fn: IAppletFn<IAppletApiBE> = async (api: IAppletApiBE) => {
-    console.log('[TestBEApplet] Started');
+const fn: IAppletFn<IAppletAPIBE> = async (api: IAppletAPIBE) => {
+    console.log('[BEApplet] Started');
     api.eventNode.hook('/warpcore', 'bridge.buildBranchChain', async (eventApi) => {
         const payload = eventApi.payload as {
             branch: Array<{ id: string }>;
@@ -68,9 +68,9 @@ const fn: IAppletFn<IAppletApiBE> = async (api: IAppletApiBE) => {
     });
 };
 
-export const TestBEApplet: TAppletDefinition<IAppletApiBE> = {
-	name: 'TestBE',
-	description: 'Test backend applet',
+export const BEApplet: TAppletDefinition<IAppletAPIBE> = {
+	name: 'BEApplet',
+	description: 'Backend applet',
 	fn,
 	hostType: EAppletHostType.BE,
 	scope: EAppletScope.GLOBAL,

@@ -4,11 +4,11 @@ import { useStore } from '@/store';
 import type { ISlashCommand } from '@/store/slices/slashCommands';
 import { EUISpaceLoc } from '@/store/slices/uiSpaces';
 import type { TUISpaceComponentId, TUISpaceComponent } from '@/store/slices/uiSpaces';
-import type { IAppletApiFE } from './types';
-import { UiSpaceChip } from './UiSpaceChip';
+import type { IAppletAPIFE } from './types';
+import { UiSpaceChip } from '../ui/UiSpaceChip';
 
 export class AppletHostFE extends AppletHost {
-	public override buildApi(): IAppletApiFE {
+	public override buildApi(): IAppletAPIFE {
 		if (typeof window !== 'undefined') {
 			(window as any).eventNode = this.eventNode;
 		}

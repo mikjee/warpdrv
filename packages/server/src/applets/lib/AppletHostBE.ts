@@ -1,8 +1,8 @@
 import { AppletHost } from '@warpcore/realmcore';
-import type { IAppletApiBE } from './types';
+import type { IAppletAPIBE } from './types';
 
 export class AppletHostBE extends AppletHost {
-	public override buildApi(): IAppletApiBE {
+	public override buildApi(): IAppletAPIBE {
 		return { eventNode: this.eventNode! };
 	}
 }
