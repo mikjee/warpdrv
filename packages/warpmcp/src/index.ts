@@ -49,7 +49,7 @@ function buildMcpServer(deps: IWarpmcpDeps): McpServer {
 }
 export async function startServer(args: IStartArgs): Promise<IStartResult> {
 	const { port, exposeExternal } = args;
-	const deps: IWarpmcpDeps = { isRemote: args.isRemote, validateBearerToken: args.validateBearerToken, getFsAllowedRoots: args.getFsAllowedRoots, embeddingSearch: args.embeddingSearch };
+	const deps: IWarpmcpDeps = { isRemote: args.isRemote, validateBearerToken: args.validateBearerToken, getFsAllowedRoots: args.getFsAllowedRoots, embeddingSearch: args.embeddingSearch, todoRead: args.todoRead, todoAdd: args.todoAdd, todoRemove: args.todoRemove, todoUpdate: args.todoUpdate, todoClear: args.todoClear };
 	//console.log('[warpmcp] startServer deps.embeddingSearch:', typeof args.embeddingSearch);
 	const bindHost = exposeExternal ? '0.0.0.0' : '127.0.0.1';
 	const app = express();

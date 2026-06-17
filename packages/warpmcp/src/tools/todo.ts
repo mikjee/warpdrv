@@ -11,10 +11,8 @@ export const todoReadDefinition = {
 	description: 'Read the current todo list for this thread.',
 	inputSchema: {
 		type: 'object',
-		properties: {
-			threadId: { type: 'string' },
-		},
-		required: ['threadId'],
+		properties: {},
+		required: [],
 	},
 };
 export async function todoReadHandler(deps: IWarpmcpDeps, args: { threadId: string }): Promise<{ todos: ITodoItem[] }> {
@@ -30,11 +28,10 @@ export const todoAddDefinition = {
 	inputSchema: {
 		type: 'object',
 		properties: {
-			threadId: { type: 'string' },
 			todo: { type: 'object', properties: { text: { type: 'string' }, status: { type: 'string', enum: ['pending', 'done', 'postpone'] } }, required: ['text'] },
 			index: { type: 'number', description: 'Position to insert at (defaults to end of list).' },
 		},
-		required: ['threadId', 'todo'],
+		required: ['todo'],
 	},
 };
 export async function todoAddHandler(deps: IWarpmcpDeps, args: { threadId: string; todo: ITodoItem; index?: number }): Promise<{ todos: ITodoItem[] }> {
@@ -50,10 +47,9 @@ export const todoRemoveDefinition = {
 	inputSchema: {
 		type: 'object',
 		properties: {
-			threadId: { type: 'string' },
 			index: { type: 'number', description: 'Array index of the todo to remove.' },
 		},
-		required: ['threadId', 'index'],
+		required: ['index'],
 	},
 };
 export async function todoRemoveHandler(deps: IWarpmcpDeps, args: { threadId: string; index: number }): Promise<{ todos: ITodoItem[] }> {
@@ -69,11 +65,10 @@ export const todoUpdateDefinition = {
 	inputSchema: {
 		type: 'object',
 		properties: {
-			threadId: { type: 'string' },
 			index: { type: 'number', description: 'Array index of the todo to update.' },
 			status: { type: 'string', enum: ['pending', 'done', 'postpone'], description: 'New status.' },
 		},
-		required: ['threadId', 'index', 'status'],
+		required: ['index', 'status'],
 	},
 };
 export async function todoUpdateHandler(deps: IWarpmcpDeps, args: { threadId: string; index: number; status: ITodoItem['status'] }): Promise<{ todos: ITodoItem[] }> {
@@ -88,10 +83,8 @@ export const todoClearDefinition = {
 	description: 'Clear all todo items from the list.',
 	inputSchema: {
 		type: 'object',
-		properties: {
-			threadId: { type: 'string' },
-		},
-		required: ['threadId'],
+		properties: {},
+		required: [],
 	},
 };
 export async function todoClearHandler(deps: IWarpmcpDeps, args: { threadId: string }): Promise<{ todos: ITodoItem[] }> {

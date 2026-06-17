@@ -1009,7 +1009,7 @@ const ToolMessage: FC = React.memo(() => {
 			}}
 		>
 			<MessageUiSpace>
-				<div className="aui-tool-message-content wrap-break-word px-2 leading-relaxed" style={{ color: 'var(--wc-text-primary)', fontSize: `${chatFontSize}px`, fontFamily: chatFontFamily || undefined, backgroundColor: "var(--wc-bg-subtle)", padding: "15px", borderRadius: "15px" }}>
+				<div className="aui-tool-message-content wrap-break-word px-2 leading-relaxed" style={{ color: 'var(--wc-text-primary)', fontSize: `${chatFontSize}px`, fontFamily: chatFontFamily || undefined, backgroundColor: "var(--wc-bg-subtle)", padding: "15px", borderRadius: "15px", display: "flex", flexDirection: "column", gap: "40px" }}>
 					<MessagePrimitive.Parts
 						components={componentsMap}
 					/>
