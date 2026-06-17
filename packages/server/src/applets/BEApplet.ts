@@ -2,6 +2,31 @@ import type { TAppletDefinition, IAppletFn } from '@warpcore/realmcore';
 import { EAppletHostType, EAppletScope } from '@warpcore/realmcore';
 import type { IAppletAPIBE } from './lib/types';
 
+const COMPACTION_PROMPT = `You are summarizing a conversation before its context is truncated. Capture everything needed to resume seamlessly. Adapt depth to the content - include the coding sections only if the session involved code. Do not ask any additional clarifying questions or make any conversation - this is strictly a summarization request.
+
+## Topic / Task
+The goal and current objective.
+
+## State / Key points
+What's been done, established, or exchanged; what works and is verified.
+
+## Files (if code)
+Each file touched: path, what changed, why.
+
+## Decisions
+Key technical or directional choices and rationale.
+
+## Open threads / Pending
+Unresolved questions, known bugs, next steps in order.
+
+## Context
+Conventions, constraints, env details, user goals and preferences affecting future work.
+
+Be precise and factual. Preserve exact paths, names, commands, numbers, and error messages verbatim. Omit filler. Don't speculate about work not actually done. 
+
+Additionally, follow below instructions, if any, for generating the summary.
+`;
+
 const fn: IAppletFn<IAppletAPIBE> = async (api: IAppletAPIBE) => {
     console.log('[BEApplet] Started');
     api.eventNode.hook('/warpcore', 'bridge.buildBranchChain', async (eventApi) => {
@@ -59,7 +84,7 @@ const fn: IAppletFn<IAppletAPIBE> = async (api: IAppletAPIBE) => {
         const userMsg = eventApi.result as { content: Array<{ type: string; text?: string }> };
         for (const part of userMsg.content) {
             if (part.type === 'text') {
-                part.text = 'Summarize the thread. Include important details. Follow additional instructions as below - ' + part.text;
+                part.text = COMPACTION_PROMPT + part.text;
                 break;
             }
         }
