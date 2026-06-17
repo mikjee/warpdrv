@@ -73,6 +73,7 @@ import { WorkspaceView } from '../WorkspaceView';
 import { ComposerEditor, IWarpComposerEditorRef } from './ComposerEditor';
 import { insertComposerText, clearComposerEditor } from './composerEditorRegistry';
 import { ComposerUiSpace } from '../ComposerUiSpace';
+import { MessageUiSpace } from '../MessageUiSpace';
 import type { IExtractedSlashCommand } from './docToString';
 
 const tokenEncoder = encodingForModel('gpt-4o');
@@ -212,10 +213,13 @@ const ThreadMessage: FC = () => {
 	const parts = useAuiState((s) => s.message.content);
 	const hasToolCalls = parts.some((part: any) => part.type === 'tool-call');
 
-	if (isEditing) return <EditComposer />;
-	if (role === "user") return <UserMessage />;
-	if (hasToolCalls) return <ToolMessage />;
-	return <AssistantMessage />;
+	let msg;
+	if (isEditing) msg = <EditComposer />;
+	else if (role === "user") msg = <UserMessage />;
+	else if (hasToolCalls) msg = <ToolMessage />;
+	else msg = <AssistantMessage />;
+
+	return <MessageUiSpace>{msg}</MessageUiSpace>;
 };
 
 const ThreadScrollToBottom: FC = () => {

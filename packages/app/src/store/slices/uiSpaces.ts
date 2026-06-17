@@ -20,6 +20,7 @@ export interface TUiSpaceComponentDef {
 export enum EUISpaceLoc {
     COMPOSER = "composer",
     RIGHT_PANEL = "right_panel",
+    MESSAGE = "message",
 };
 
 interface UiSpacesSlice {

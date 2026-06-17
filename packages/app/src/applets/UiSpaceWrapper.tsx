@@ -4,9 +4,9 @@ import { useStore } from '@/store';
 import { WithErrorBoundary } from '@/components/WithErrorBoundary';
 import type { TUISpaceComponentId } from '@/store/slices/uiSpaces';
 
-export const UiSpaceWrapper = ({ componentId }: { componentId: TUISpaceComponentId }) => {
+export const UiSpaceWrapper = ({ componentId, children }: { componentId: TUISpaceComponentId; children?: React.ReactNode }) => {
     const entry = useStore(s => s.uiSpaceComponentsById[componentId]);
-    if (!entry) return null;
+    if (!entry) return children;
 
     const Comp = entry.component;
     return (
@@ -18,7 +18,7 @@ export const UiSpaceWrapper = ({ componentId }: { componentId: TUISpaceComponent
                 </Box>
             }
         >
-            <Comp def={entry} {...(entry.props || {})} />
+            <Comp def={entry} {...(entry.props || {})}>{children}</Comp>
         </WithErrorBoundary>
     );
 };
