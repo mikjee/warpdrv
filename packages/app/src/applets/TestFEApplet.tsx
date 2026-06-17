@@ -23,7 +23,6 @@ const CompactIndicator = React.memo(({ def, children }: { def: TUiSpaceComponent
 	if (!hasCompact) return children;
 	return (
 		<>
-			{children}
 			<Box display="flex" alignItems="center" gap="2" mb="2">
 				<Box flex="1" borderTopWidth="2px" borderColor="var(--wc-accent-yellow-glow)" />
 				<Text fontSize="xs" fontWeight="600" color="var(--wc-accent-yellow-glow)" letterSpacing="0.1em">
@@ -31,6 +30,7 @@ const CompactIndicator = React.memo(({ def, children }: { def: TUiSpaceComponent
 				</Text>
 				<Box flex="1" borderTopWidth="2px" borderColor="var(--wc-accent-yellow-glow)" />
 			</Box>
+			{children}
 		</>
 	);
 });

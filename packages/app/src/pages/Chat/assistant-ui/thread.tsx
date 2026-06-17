@@ -219,7 +219,7 @@ const ThreadMessage: FC = () => {
 	else if (hasToolCalls) msg = <ToolMessage />;
 	else msg = <AssistantMessage />;
 
-	return <MessageUiSpace>{msg}</MessageUiSpace>;
+	return msg;
 };
 
 const ThreadScrollToBottom: FC = () => {
@@ -816,17 +816,19 @@ const AssistantMessage: FC = React.memo(() => {
 				paddingRight: "100px",
 			}}
 		>
-			<div className="aui-assistant-message-content wrap-break-word px-2 leading-relaxed" style={{ color: 'var(--wc-text-primary)', fontSize: `${chatFontSize}px`, fontFamily: chatFontFamily || undefined, backgroundColor: "var(--wc-bg-subtle)", padding: "15px", borderRadius: "15px" }}>
-				<MessagePrimitive.Parts
-					components={componentsMap}
-				/>
-				{startingTools && startingTools.length > 0 && (
-					<div className="mt-2 text-md italic" style={{ color: 'var(--wc-text-tertiary)' }}>
-						calling: {startingTools.join(', ')}...
-					</div>
-				)}
-				<MessageError />
-			</div>
+			<MessageUiSpace>
+				<div className="aui-assistant-message-content wrap-break-word px-2 leading-relaxed" style={{ color: 'var(--wc-text-primary)', fontSize: `${chatFontSize}px`, fontFamily: chatFontFamily || undefined, backgroundColor: "var(--wc-bg-subtle)", padding: "15px", borderRadius: "15px" }}>
+					<MessagePrimitive.Parts
+						components={componentsMap}
+					/>
+					{startingTools && startingTools.length > 0 && (
+						<div className="mt-2 text-md italic" style={{ color: 'var(--wc-text-tertiary)' }}>
+							calling: {startingTools.join(', ')}...
+						</div>
+					)}
+					<MessageError />
+				</div>
+			</MessageUiSpace>
 
 			<div className="aui-assistant-message-footer mt-1 ml-2 flex min-h-6 items-center gap-1">
 				 <StatsTooltip />
@@ -982,12 +984,14 @@ const ToolMessage: FC = React.memo(() => {
 				paddingRight: "100px",
 			}}
 		>
-			<div className="aui-tool-message-content wrap-break-word px-2 leading-relaxed" style={{ color: 'var(--wc-text-primary)', fontSize: `${chatFontSize}px`, fontFamily: chatFontFamily || undefined, backgroundColor: "var(--wc-bg-subtle)", padding: "15px", borderRadius: "15px" }}>
-				<MessagePrimitive.Parts
-					components={componentsMap}
-				/>
-				<MessageError />
-			</div>
+			<MessageUiSpace>
+				<div className="aui-tool-message-content wrap-break-word px-2 leading-relaxed" style={{ color: 'var(--wc-text-primary)', fontSize: `${chatFontSize}px`, fontFamily: chatFontFamily || undefined, backgroundColor: "var(--wc-bg-subtle)", padding: "15px", borderRadius: "15px" }}>
+					<MessagePrimitive.Parts
+						components={componentsMap}
+					/>
+					<MessageError />
+				</div>
+			</MessageUiSpace>
 
 			<div className="aui-tool-message-footer mt-1 ml-2 flex min-h-6 items-center gap-1">
 				<StatsTooltip />
@@ -1066,12 +1070,14 @@ const UserMessage: FC = () => {
 			data-message-id={messageId}
 		>
 			<UserMessageAttachments />
-			<div className="flex justify-end">
-				<div className="aui-user-message-content wrap-break-word peer rounded-2xl bg-muted px-4 py-2.5 text-foreground empty:hidden max-w-[80%]" style={{ fontSize: `${chatFontSize}px`, fontFamily: chatFontFamily || undefined }}>
-					<MessagePrimitive.Parts />
-					<MessageSlashCommands />
+			<MessageUiSpace>
+				<div className="flex justify-end">
+					<div className="aui-user-message-content wrap-break-word peer rounded-2xl bg-muted px-4 py-2.5 text-foreground empty:hidden max-w-[80%]" style={{ fontSize: `${chatFontSize}px`, fontFamily: chatFontFamily || undefined }}>
+						<MessagePrimitive.Parts />
+						<MessageSlashCommands />
+					</div>
 				</div>
-			</div>
+			</MessageUiSpace>
 			<div className="aui-user-message-footer flex min-h-6 items-center justify-end">
 				<StatsTooltip />
 				<UserActionBar />
