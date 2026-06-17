@@ -1,4 +1,4 @@
-import type { IAccessToken } from '@warpcore/shared';
+import type { IAccessToken, ITodoItem } from '@warpcore/shared';
 export interface IEmbeddingSearchResult {
 	messageId: string;
 	text: string;
@@ -9,6 +9,11 @@ export interface IWarpmcpDeps {
 	validateBearerToken: (authHeader: string | undefined) => Promise<IAccessToken | null>;
 	getFsAllowedRoots: () => string[];
 	embeddingSearch?: (query: string, topK: number, topic: string) => Promise<IEmbeddingSearchResult[]>;
+	todoRead?: (threadId: string) => Promise<ITodoItem[]>;
+	todoAdd?: (threadId: string, todo: ITodoItem, index?: number) => Promise<ITodoItem[]>;
+	todoRemove?: (threadId: string, index: number) => Promise<ITodoItem[]>;
+	todoUpdate?: (threadId: string, index: number, status: ITodoItem['status']) => Promise<ITodoItem[]>;
+	todoClear?: (threadId: string) => Promise<ITodoItem[]>;
 }
 export interface IStartArgs extends IWarpmcpDeps {
 	port: number;

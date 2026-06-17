@@ -601,3 +601,10 @@ export interface IKokoroStatus {
 	configPath: string;
 	voicePaths: string[];
 }
+// ============================================================
+// Todos
+// ============================================================
+export interface ITodoItem {
+	text: string;
+	status: 'pending' | 'done' | 'postpone';
+}

@@ -4,7 +4,7 @@ import { validateBearerToken } from './routes/tokens';
 import { store } from './util/store';
 import type { ISettings } from '@warpcore/shared';
 import { DEFAULT_SETTINGS } from '@warpcore/shared';
-import { mcpClient } from './index';
+import { mcpClient, todoManager } from './index';
 import { embeddingManager } from './services/embeddingManager';
 const SETTINGS_KEY = 'settings:general';
 async function getSettings(): Promise<ISettings> {
@@ -24,10 +24,22 @@ export async function bootWarpmcp(): Promise<void> {
 		validateBearerToken,
 		getFsAllowedRoots: () => (currentSettings.fsAllowedRoots ?? []),
 		embeddingSearch: (query: string, topK: number, topic: string) => embeddingManager.search(query, topK, topic),
+		todoRead: (tid) => todoManager.read(tid),
+		todoAdd: (tid, todo, index) => todoManager.add(tid, todo, index),
+		todoRemove: (tid, index) => todoManager.remove(tid, index),
+		todoUpdate: (tid, index, status) => todoManager.update(tid, index, status),
+		todoClear: (tid) => todoManager.clear(tid),
 	});
 	await mcpClient.connect(WARPMCP_NAME, {
 		url: `http://127.0.0.1:${port}/mcp`,
-		warpdrv: { argDefaults: { "embedding_search": { "topic": "{{ws.topic}}" } } },
+		warpdrv: { argDefaults: {
+			"embedding_search": { "topic": "{{ws.topic}}" },
+			"todo_read": { "threadId": "{{ws.threadId}}" },
+			"todo_add": { "threadId": "{{ws.threadId}}" },
+			"todo_remove": { "threadId": "{{ws.threadId}}" },
+			"todo_update": { "threadId": "{{ws.threadId}}" },
+			"todo_clear": { "threadId": "{{ws.threadId}}" },
+		} },
 	});
 }
 export async function restartWarpmcpIfChanged(prev: ISettings, next: ISettings): Promise<void> {
@@ -43,9 +55,21 @@ export async function restartWarpmcpIfChanged(prev: ISettings, next: ISettings):
 		validateBearerToken,
 		getFsAllowedRoots: () => (currentSettings.fsAllowedRoots ?? []),
 		embeddingSearch: (query: string, topK: number, topic: string) => embeddingManager.search(query, topK, topic),
+		todoRead: (tid) => todoManager.read(tid),
+		todoAdd: (tid, todo, index) => todoManager.add(tid, todo, index),
+		todoRemove: (tid, index) => todoManager.remove(tid, index),
+		todoUpdate: (tid, index, status) => todoManager.update(tid, index, status),
+		todoClear: (tid) => todoManager.clear(tid),
 	});
 	await mcpClient.connect(WARPMCP_NAME, {
 		url: `http://127.0.0.1:${port}/mcp`,
-		warpdrv: { argDefaults: { "embedding_search": { "topic": "{{ws.topic}}" } } },
+		warpdrv: { argDefaults: {
+			"embedding_search": { "topic": "{{ws.topic}}" },
+			"todo_read": { "threadId": "{{ws.threadId}}" },
+			"todo_add": { "threadId": "{{ws.threadId}}" },
+			"todo_remove": { "threadId": "{{ws.threadId}}" },
+			"todo_update": { "threadId": "{{ws.threadId}}" },
+			"todo_clear": { "threadId": "{{ws.threadId}}" },
+		} },
 	});
 }

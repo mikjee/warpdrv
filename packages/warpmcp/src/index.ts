@@ -12,6 +12,11 @@ import { dirListDefinition, dirListHandler } from './tools/dir_list';
 import { shellExecDefinition, shellExecHandler } from './tools/shell_exec';
 import { fetchDefinition, fetchHandler } from './tools/fetch';
 import { embeddingSearchDefinition, embeddingSearchHandler } from './tools/embedding_search';
+import { todoReadDefinition, todoReadHandler } from './tools/todo';
+import { todoAddDefinition, todoAddHandler } from './tools/todo';
+import { todoRemoveDefinition, todoRemoveHandler } from './tools/todo';
+import { todoUpdateDefinition, todoUpdateHandler } from './tools/todo';
+import { todoClearDefinition, todoClearHandler } from './tools/todo';
 const SERVER_NAME = 'warpmcp';
 let httpServer: Server | null = null;
 let currentPort: number | null = null;
@@ -24,6 +29,11 @@ function buildMcpServer(deps: IWarpmcpDeps): McpServer {
 		{ def: shellExecDefinition, handler: (a: any) => shellExecHandler(a) },
 		{ def: fetchDefinition, handler: (a: any) => fetchHandler(a) },
 		{ def: embeddingSearchDefinition, handler: (a: any) => embeddingSearchHandler(deps, a) },
+		{ def: todoReadDefinition, handler: (a: any) => todoReadHandler(deps, a) },
+		{ def: todoAddDefinition, handler: (a: any) => todoAddHandler(deps, a) },
+		{ def: todoRemoveDefinition, handler: (a: any) => todoRemoveHandler(deps, a) },
+		{ def: todoUpdateDefinition, handler: (a: any) => todoUpdateHandler(deps, a) },
+		{ def: todoClearDefinition, handler: (a: any) => todoClearHandler(deps, a) },
 	];
 	const server = new McpServer({ name: SERVER_NAME, version: '0.1.0' }, { capabilities: { tools: {} } });
 	server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: tools.map(t => t.def) }));

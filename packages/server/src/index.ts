@@ -42,6 +42,7 @@ import { getAllDownloads, getAllDownloadsRecord } from './services/downloadManag
 import { SqlitePersistence, SqlitePersistenceWithBroadcast, McpClientManager, McpConfig, PermissionManager, Orchestrator, SseBroadcaster } from '@warpcore/bridge/server';
 import { EventNode } from '@warpcore/realmcore';
 import { bootWarpmcp } from './warpmcpRunner';
+import { TodoManager } from './services/todoManager';
 import { embeddingManager } from './services/embeddingManager';
 import { getDataDir } from './util/mcpConfig';
 import { serveStaticApp } from './middleware/serveStatic';
@@ -57,6 +58,7 @@ export let mcpClient: McpClientManager;
 export let orchestrator: Orchestrator;
 export let mcpConfig: McpConfig;
 export let broadcaster: SseBroadcaster;
+export let todoManager: TodoManager;
 
 import { execSync } from 'child_process';
 import { launchAutoStartServers, reconcileServers } from './services/processManager';
@@ -104,6 +106,7 @@ async function main() {
 	broadcaster = new SseBroadcaster();
 	persistence = new SqlitePersistenceWithBroadcast(path.join(dataDir, 'chat.db'), {}, broadcaster);
 	await persistence.init();
+	todoManager = new TodoManager(persistence);
 
 	// Initialize MCP
 	mcpConfig = new McpConfig(path.join(dataDir, 'mcp.json'));

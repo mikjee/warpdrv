@@ -3,17 +3,96 @@ import { EAppletHostType, EAppletScope } from '@warpcore/realmcore';
 import { EUISpaceLoc } from '@/store/slices/uiSpaces';
 import type { IAppletAPIFE } from './lib/types';
 import type { TUiSpaceComponentDef } from '@/store/slices/uiSpaces';
-import { Box, Text } from '@chakra-ui/react';
+import { Box, Text, VStack, Flex } from '@chakra-ui/react';
 import { useAuiState } from '@assistant-ui/react';
 import { useStore } from '@/store';
 import type { IExtractedSlashCommand } from '@/pages/Chat/assistant-ui/docToString';
+import type { ITodoItem } from '@warpcore/shared';
 import React from 'react';
 
-const TestPanel = () => (
-	<Box p="4">
-		<Text>Test Right Panel</Text>
-	</Box>
-);
+const TodoPanel = React.memo(() => {
+	const threadId = useStore(s => s.currentThreadId);
+	const todos = useStore(s => {
+		if (!threadId) return [];
+		return (s.threadStates[threadId]?.todos as ITodoItem[]) || [];
+	});
+
+	const statusStyle = (status: string) => {
+		switch (status) {
+			case 'done':
+				return {
+					bg: 'var(--wc-accent-green-bg-8)',
+					borderColor: 'var(--wc-accent-green-border)',
+					color: 'var(--wc-accent-green)',
+				};
+			case 'pending':
+				return {
+					bg: 'var(--wc-accent-yellow-bg-8)',
+					borderColor: 'var(--wc-accent-yellow-border)',
+					color: 'var(--wc-accent-yellow)',
+				};
+			case 'postpone':
+				return {
+					bg: 'var(--wc-bg-subtle)',
+					borderColor: 'var(--wc-border-subtle)',
+					color: 'var(--wc-text-muted)',
+				};
+			default:
+				return {
+					bg: 'var(--wc-bg-subtle)',
+					borderColor: 'var(--wc-border-subtle)',
+					color: 'var(--wc-text-tertiary)',
+				};
+		}
+	};
+
+	if (!todos.length) {
+		return (
+			<Box p="4">
+				<Text fontSize="xs" color="var(--wc-text-muted)" textAlign="center">
+					No todos yet
+				</Text>
+			</Box>
+		);
+	}
+
+	return (
+		<VStack gap="2" p="3" align="stretch">
+			{todos.map((todo, i) => (
+				<Box
+					key={i}
+					borderWidth="1px"
+					borderColor="var(--wc-border-subtle)"
+					borderRadius="md"
+					p="2.5"
+					bg="var(--wc-bg-subtle)"
+				>
+					<Flex gap="2" align="center">
+						<Text fontSize="9px" fontWeight="600" color="var(--wc-text-faint)" minW="1.2em">
+							{i}
+						</Text>
+						<Text fontSize="xs" color="var(--wc-text-primary)" flex="1" noWrap textOverflow="ellipsis" overflow="hidden">
+							{todo.text}
+						</Text>
+						<Text
+							fontSize="9px"
+							fontWeight="600"
+							letterSpacing="0.04em"
+							textTransform="uppercase"
+							px="1.5"
+							py="0.5"
+							borderRadius="sm"
+							borderWidth="1px"
+							{...statusStyle(todo.status)}
+						>
+							{todo.status}
+						</Text>
+					</Flex>
+				</Box>
+			))}
+		</VStack>
+	);
+});
 
 const CompactIndicator = React.memo(({ def, children }: { def: TUiSpaceComponentDef; children: React.ReactNode }) => {
 	const messageId = useAuiState(s => s.message.id);
@@ -60,7 +139,7 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 		params: {},
 		execute: async (api, params) => { console.log('[FEApplet] /compact executed'); },
 	});
-	api.registerUiSpaceComponent(EUISpaceLoc.RIGHT_PANEL, TestPanel, { label: 'FEApplet' });
+	api.registerUiSpaceComponent(EUISpaceLoc.RIGHT_PANEL, TodoPanel, { label: 'Todo' });
 	api.registerUiSpaceComponent(EUISpaceLoc.MESSAGE, CompactIndicator, { label: 'Compact Indicator' });
 	api.registerComposerChip({
 		label: 'FEApplet',
