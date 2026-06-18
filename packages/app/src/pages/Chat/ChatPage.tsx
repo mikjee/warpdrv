@@ -443,12 +443,26 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 			body.attachments = attachmentParts;
 		}
 
+		// Pipe for FEApplet to intercept (guardrails, etc.)
+		const pipeResult = await realmEvents.eventNode.pipe(
+			'bridge.preCompletion',
+			{ body, slashCommands, threadId },
+			'.',
+			true,
+		);
+
+		// If text is empty (slash commands only), skip inference
+		if (!text.trim()) return;
+
+		// Pipe returned false — abort inference
+		if (!pipeResult) return;
+
 		await fetch('/api/chat/completions', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(body),
 		});
-	}, [currentThreadId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, currentServerId, currentWhisperServerId, currentAutoEmbed, isValidServer, attachAllTools, attachedTools, pendingSlashCommands, clearPendingSlashCommands, executeCommands]);
+	}, [currentThreadId, headMessageId, currentSystemPrompt, currentInferenceParams, setCurrentThreadId, currentServerId, currentWhisperServerId, currentAutoEmbed, isValidServer, attachAllTools, attachedTools, pendingSlashCommands, clearPendingSlashCommands, executeCommands, realmEvents]);
 
 	const onReloadV2 = useCallback(async (parentId: string | null) => {
 		if (!isValidServer || !parentId) return;

@@ -1,6 +1,7 @@
 import type { TAppletDefinition, IAppletFn } from '@warpcore/realmcore';
 import { EAppletHostType, EAppletScope } from '@warpcore/realmcore';
 import type { IAppletAPIBE } from '../lib/types';
+import type { IGuardrail } from '@warpcore/shared';
 import { COMPACTION_PROMPT } from './prompts';
 
 const fn: IAppletFn<IAppletAPIBE> = async (api: IAppletAPIBE) => {
@@ -70,8 +71,46 @@ const fn: IAppletFn<IAppletAPIBE> = async (api: IAppletAPIBE) => {
     });
 
     api.eventNode.on('/warpcore', 'bridge.inference.finish', async (eventApi) => {
-        const payload = eventApi.payload as { messageId: string };
-        console.log('[BEApplet] Inference completed for message:', payload.messageId);
+        const payload = eventApi.payload as {
+            threadId: string;
+            messageId: string;
+            inferenceUrl: string;
+            messages: Array<{ role: string; content: any }>;
+        };
+        const { threadId, messageId, inferenceUrl, messages } = payload;
+
+        const threadState = await api.eventNode.invoke(
+            '/warpcore',
+            'bridge.getThreadState',
+            threadId,
+        ) as Record<string, unknown> | null;
+
+        const guardrails = threadState?.guardrails as Record<string, IGuardrail> | undefined;
+        if (!guardrails) return;
+
+        const guardrailResults: Record<string, any> = {};
+        for (const guardrail of Object.values(guardrails).filter(g => g.active)) {
+            try {
+                const result = await api.eventNode.invoke('/warpcore', 'bridge.handlePureCompletion', {
+                    inferenceRequestId: guardrail.name + '-' + messageId,
+                    inferenceUrl,
+                    messages: [...messages, {
+                        role: 'system',
+                        content: guardrail.prompt || 'Review the assistant response.',
+                    }],
+                    inferenceParams: { temperature: 0.1, maxTokens: 512 },
+                });
+                guardrailResults[guardrail.name] = result;
+            } catch (err) {
+                console.error('[BEApplet] Guardrail error:', guardrail.name, err);
+            }
+        }
+        if (Object.keys(guardrailResults).length) {
+            await api.eventNode.invoke('/warpcore', 'bridge.updateMessageState', {
+                messageId,
+                data: { guardrails: guardrailResults },
+            });
+        }
     });
 };
 

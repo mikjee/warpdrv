@@ -133,9 +133,9 @@ export interface IChatStoreState {
 	workspaceStates: Record<TFolderId, Record<string, unknown>>;
 	threadStates: Record<TThreadId, Record<string, unknown>>;
 	messageStates: Record<TMessageId, Record<string, unknown>>;
-	setWorkspaceState: (folderId: TFolderId, fn: (state: Record<string, unknown>) => void) => Record<string, unknown>;
-	setThreadState: (threadId: TThreadId, fn: (state: Record<string, unknown>) => void) => Record<string, unknown>;
-	setMessageState: (messageId: TMessageId, fn: (state: Record<string, unknown>) => void) => Record<string, unknown>;
+	setWorkspaceState: (folderId: TFolderId, data: Record<string, unknown>) => void;
+	setThreadState: (threadId: TThreadId, data: Record<string, unknown>) => void;
+	setMessageState: (messageId: TMessageId, data: Record<string, unknown>) => void;
 	initWorkspaceState: (folderId: TFolderId, data: Record<string, unknown>) => void;
 	initThreadState: (threadId: TThreadId, data: Record<string, unknown>) => void;
 	initMessageStates: (states: Array<{ messageId: TMessageId; data: Record<string, unknown> }>) => void;
@@ -586,32 +586,20 @@ setActiveThread: (id: TThreadId | null) =>
 			}),
 
 		// Persisted state actions
-		setWorkspaceState: (folderId: TFolderId, fn: (state: Record<string, unknown>) => void) => {
-			let result: Record<string, unknown> = {};
+		setWorkspaceState: (folderId: TFolderId, data: Record<string, unknown>) => {
 			set((draft) => {
-				if (!draft.workspaceStates[folderId]) draft.workspaceStates[folderId] = {};
-				fn(draft.workspaceStates[folderId]);
-				result = draft.workspaceStates[folderId];
+				draft.workspaceStates[folderId] = { ...(draft.workspaceStates[folderId] || {}), ...data };
 			});
-			return result;
 		},
-		setThreadState: (threadId: TThreadId, fn: (state: Record<string, unknown>) => void) => {
-			let result: Record<string, unknown> = {};
+		setThreadState: (threadId: TThreadId, data: Record<string, unknown>) => {
 			set((draft) => {
-				if (!draft.threadStates[threadId]) draft.threadStates[threadId] = {};
-				fn(draft.threadStates[threadId]);
-				result = draft.threadStates[threadId];
+				draft.threadStates[threadId] = { ...(draft.threadStates[threadId] || {}), ...data };
 			});
-			return result;
 		},
-		setMessageState: (messageId: TMessageId, fn: (state: Record<string, unknown>) => void) => {
-			let result: Record<string, unknown> = {};
+		setMessageState: (messageId: TMessageId, data: Record<string, unknown>) => {
 			set((draft) => {
-				if (!draft.messageStates[messageId]) draft.messageStates[messageId] = {};
-				fn(draft.messageStates[messageId]);
-				result = draft.messageStates[messageId];
+				draft.messageStates[messageId] = { ...(draft.messageStates[messageId] || {}), ...data };
 			});
-			return result;
 		},
 		initWorkspaceState: (folderId: TFolderId, data: Record<string, unknown>) =>
 			set((draft) => {

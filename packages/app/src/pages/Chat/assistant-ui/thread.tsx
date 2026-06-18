@@ -339,8 +339,25 @@ const Composer: FC = () => {
 	}, [aui]);
 
 	const handleEnter = useCallback(() => {
+		if (annotations.length > 0) {
+			const lines = annotations.map((a, i) => `${i + 1}. "${a.selectedText}"\n   ${a.comment}`);
+			const fullText = (lines.join('\n\n') + (composerText.trim() ? '\n\n' + composerText : '')).trim();
+			aui.composer().setText(fullText);
+			clearAnnotations();
+		}
 		aui.composer().send({ startRun: true });
-	}, [aui]);
+	}, [aui, annotations, composerText, clearAnnotations]);
+
+	const composerDisabled = useAuiState(s => s.composer.isEmpty || !s.composer.isEditing);
+	const pendingSlashCommands = useStore(s => s.pendingSlashCommands);
+	const canSend = useCallback(() => {
+		if (!isValidServer) {
+			document.dispatchEvent(new CustomEvent('server-selector-shake'));
+			return false;
+		}
+		if (composerDisabled && annotations.length === 0 && pendingSlashCommands.length === 0) return false;
+		return true;
+	}, [isValidServer, composerDisabled, annotations.length, pendingSlashCommands.length]);
 	useAuiEvent("composer.send", () => {
 		editorRef.current?.clear();
 	});
@@ -385,13 +402,14 @@ const Composer: FC = () => {
 				>
 					<ComposerAttachments />
 					<ComposerUiSpace />
-				 <ComposerEditor
-						ref={editorRef}
-						placeholder="Send a message..."
-						className="aui-composer-editor max-h-32 min-h-10 w-full overflow-y-auto bg-transparent px-1.75 py-1 text-sm"
-						onChangeText={handleChangeText}
-						onEnter={handleEnter}
-					/>
+<ComposerEditor
+					ref={editorRef}
+					placeholder="Send a message..."
+					className="aui-composer-editor max-h-32 min-h-10 w-full overflow-y-auto bg-transparent px-1.75 py-1 text-sm"
+					onChangeText={handleChangeText}
+					onEnter={handleEnter}
+					canSend={canSend}
+				/>
 					<ComposerAction onStreamChange={setWaveformStream} />
 					{waveformStream ? <VoiceWaveform stream={waveformStream} width={680} /> : <ContextUsageBar />}
 				</div>
@@ -600,7 +618,8 @@ const ComposerAction: FC<{ onStreamChange?: (stream: MediaStream | null) => void
 	const clearAnnotations = useStore(s => s.clearAnnotations);
 	const composerDisabled = useAuiState(s => s.composer.isEmpty || !s.composer.isEditing);
 	const composerText = useAuiState(s => s.composer.text);
-	const isSendDisabled = composerDisabled && annotations.length === 0;
+	const pendingSlashCommands = useStore(s => s.pendingSlashCommands);
+	const isSendDisabled = composerDisabled && annotations.length === 0 && pendingSlashCommands.length === 0;
 
 	const handleSend = useCallback(() => {
 		if (isSendDisabled) return;

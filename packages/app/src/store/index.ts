@@ -228,16 +228,16 @@ export const useStore = create<AppState>()(
 				workspaceStates: bridge.workspaceStates,
 				threadStates: bridge.threadStates,
 				messageStates: bridge.messageStates,
-				setWorkspaceState: (folderId: TFolderId, fn: (state: Record<string, unknown>) => void) => {
-					const data = bridge.setWorkspaceState(folderId, fn);
+				setWorkspaceState: (folderId: TFolderId, data: Record<string, unknown>) => {
+					bridge.setWorkspaceState(folderId, data);
 					updateWorkspaceState(folderId, data);
 				},
-				setThreadState: (threadId: TThreadId, fn: (state: Record<string, unknown>) => void) => {
-					const data = bridge.setThreadState(threadId, fn);
+				setThreadState: (threadId: TThreadId, data: Record<string, unknown>) => {
+					bridge.setThreadState(threadId, data);
 					updateThreadState(threadId, data);
 				},
-				setMessageState: (messageId: TMessageId, fn: (state: Record<string, unknown>) => void) => {
-					const data = bridge.setMessageState(messageId, fn);
+				setMessageState: (messageId: TMessageId, data: Record<string, unknown>) => {
+					bridge.setMessageState(messageId, data);
 					updateMessageState(messageId, data);
 				},
 				initWorkspaceState: bridge.initWorkspaceState,

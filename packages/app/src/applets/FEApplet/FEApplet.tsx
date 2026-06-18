@@ -141,12 +141,82 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 		params: {},
 		execute: async (api, params) => { console.log('[FEApplet] /compact executed'); },
 	});
+	api.registerSlashCommand({
+		name: 'create_guardrail',
+		description: 'Create a custom guardrail',
+		params: {
+			name: { type: 'string', description: 'Guardrail name', index: 0 },
+			server: { type: 'string', description: 'Server ID', index: 1 },
+			prompt: { type: 'string', description: 'Review prompt', index: 2 },
+			subrole: { type: 'string', description: 'all/text/tool', index: 3 },
+		},
+		execute: async (_api, params) => {
+			const threadId = api.useStore.getState().currentThreadId;
+			if (!threadId) return;
+			const subroleMap: Record<string, string> = { all: 'all', text: 'text', tool: 'tool' };
+			const subRole = subroleMap[params.subrole as string] || 'all';
+			api.useStore.getState().setThreadState(threadId, {
+				guardrails: { [params.name]: {
+					name: params.name,
+					serverId: params.server,
+					active: true,
+					type: 'custom',
+					prompt: params.prompt,
+					subRoleSelection: subRole,
+				} },
+			});
+		},
+	});
+	api.registerSlashCommand({
+		name: 'guardrail',
+		description: 'Activate or deactivate a guardrail',
+		params: {
+			name: { type: 'string', description: 'Guardrail name', index: 0 },
+			action: { type: 'string', description: 'on/off', index: 1 },
+		},
+		execute: async (_api, params) => {
+			const threadId = api.useStore.getState().currentThreadId;
+			if (!threadId) return;
+			const state = api.useStore.getState();
+			const guardrails = state.threadStates[threadId]?.guardrails as Record<string, any> || {};
+			if (!guardrails[params.name]) return;
+			guardrails[params.name].active = params.action === 'on';
+			state.setThreadState(threadId, { guardrails });
+		},
+	});
+	api.registerSlashCommand({
+		name: 'delete_guardrail',
+		description: 'Delete a custom guardrail',
+		params: {
+			name: { type: 'string', description: 'Guardrail name', index: 0 },
+		},
+		execute: async (_api, params) => {
+			const threadId = api.useStore.getState().currentThreadId;
+			if (!threadId) return;
+			const state = api.useStore.getState();
+			const guardrails = state.threadStates[threadId]?.guardrails as Record<string, any> || {};
+			if (!guardrails[params.name]) return;
+			delete guardrails[params.name];
+			state.setThreadState(threadId, { guardrails });
+		},
+	});
 	api.registerUiSpaceComponent(EUISpaceLoc.RIGHT_PANEL, TodoPanel, { label: 'Todo' });
 	api.registerUiSpaceComponent(EUISpaceLoc.MESSAGE, CompactIndicator, { label: 'Compact Indicator' });
 	api.registerComposerChip({
 		label: 'FEApplet',
 		isActive: true,
 		onClose: (id) => { console.log('[FEApplet] chip closed', id); },
+	});
+
+	api.eventNode.hook('../', 'bridge.preCompletion', async (eventApi) => {
+		const payload = eventApi.payload as { slashCommands: Array<{ name: string }> };
+		const guardrailCommands = ['create_guardrail', 'guardrail', 'delete_guardrail'];
+		for (const cmd of payload.slashCommands) {
+			if (guardrailCommands.includes(cmd.name)) {
+				return false;
+			}
+		}
+		return eventApi.result;
 	});
 };
 

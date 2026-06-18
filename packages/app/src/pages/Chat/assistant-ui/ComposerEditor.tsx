@@ -20,16 +20,22 @@ interface IProps {
 	placeholder?: string;
 	onChangeText: (text: string) => void;
 	onEnter: () => void;
+	canSend?: () => boolean;
 	className?: string;
 }
 
 // drives Enter=send, Shift-Enter=newline
-const makeKeymap = (onEnter: () => void) =>
+const makeKeymap = (onEnter: () => void, canSend?: () => boolean) =>
 	Extension.create({
 		name: "warpComposerKeymap",
 		addKeyboardShortcuts() {
 			return {
 				Enter: () => {
+					if (canSend && !canSend()) return false;
+					const json = this.editor.getJSON();
+					const text = docToString(json).trim();
+					const commands = extractCommands(json);
+					if (!text && commands.length === 0) return false;
 					onEnter();
 					return true;
 				},
@@ -46,7 +52,7 @@ export const ComposerEditor = forwardRef<IWarpComposerEditorRef, IProps>((props,
 			Paragraph,
 			Text,
 			HardBreak,
-			makeKeymap(props.onEnter),
+			makeKeymap(props.onEnter, props.canSend),
 			SlashCommandNode,
 		],
 		editorProps: {

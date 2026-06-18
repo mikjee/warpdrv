@@ -228,9 +228,9 @@ export interface AppState {
 	workspaceStates: Record<TFolderId, Record<string, unknown>>;
 	threadStates: Record<TThreadId, Record<string, unknown>>;
 	messageStates: Record<TMessageId, Record<string, unknown>>;
-	setWorkspaceState: (folderId: TFolderId, fn: (state: Record<string, unknown>) => void) => Record<string, unknown>;
-	setThreadState: (threadId: TThreadId, fn: (state: Record<string, unknown>) => void) => Record<string, unknown>;
-	setMessageState: (messageId: TMessageId, fn: (state: Record<string, unknown>) => void) => Record<string, unknown>;
+	setWorkspaceState: (folderId: TFolderId, data: Record<string, unknown>) => void;
+	setThreadState: (threadId: TThreadId, data: Record<string, unknown>) => void;
+	setMessageState: (messageId: TMessageId, data: Record<string, unknown>) => void;
 	initWorkspaceState: (folderId: TFolderId, data: Record<string, unknown>) => void;
 	initThreadState: (threadId: TThreadId, data: Record<string, unknown>) => void;
 	initMessageStates: (states: Array<{ messageId: TMessageId; data: Record<string, unknown> }>) => void;
