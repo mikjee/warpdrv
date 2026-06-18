@@ -1,5 +1,5 @@
 import type { TAppletDefinition } from '@warpcore/realmcore';
-import { BEApplet } from '../BEApplet';
+import { BEApplet } from '../BEApplet/BEApplet';
 
 export const beApplets: Record<string, TAppletDefinition> = {
 	BEApplet,

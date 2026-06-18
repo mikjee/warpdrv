@@ -57,6 +57,14 @@ interface IPassResult {
 	lastToolMessageId: TMessageId | null;
 }
 
+export interface IPureCompletionResult {
+	content: IMessagePart[];
+	stats: IChatMessageStats | null;
+	finishReason: string;
+}
+
+export type TPureCompletionChunkHandler = (partType: string, deltaText: string) => void;
+
 // Track in-flight inference URLs per thread so resume can continue
 const threadInferenceUrls: Map<TThreadId, string> = new Map();
 
@@ -66,6 +74,7 @@ export class Orchestrator {
 	private persistence: IPersistence;
 	private broadcaster: IBridgeBroadcaster;
 	private eventNode: EventNode;
+	private pureCompletionControllers: Record<string, AbortController> = {};
 
 	constructor(config: IOrchestratorConfig) {
 		this.mcpClient = config.mcpClient;
@@ -90,6 +99,41 @@ export class Orchestrator {
 		this.eventNode.fn('bridge.getWorkspaceState', async (api) => {
 			const folderId = api.payload as string;
 			return await this.persistence.getWorkspaceState(folderId);
+		});
+
+		this.eventNode.fn('bridge.handlePureCompletion', async (api) => {
+			const payload = api.payload as {
+				inferenceRequestId: string;
+				inferenceUrl: string;
+				messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>;
+				inferenceParams: Record<string, unknown>;
+			};
+			const { inferenceRequestId, inferenceUrl, messages, inferenceParams } = payload;
+			const controller = new AbortController();
+			this.pureCompletionControllers[inferenceRequestId] = controller;
+			try {
+				return await this.handlePureCompletions(
+					inferenceUrl,
+					messages,
+					inferenceParams,
+					(partType, deltaText) => {
+						this.eventNode.broadcast('bridge.pure_completion_chunk.' + inferenceRequestId, { partType, deltaText });
+					},
+					controller.signal,
+				);
+			} finally {
+				delete this.pureCompletionControllers[inferenceRequestId];
+			}
+		});
+
+		this.eventNode.fn('bridge.cancelPureCompletion', async (api) => {
+			const id = api.payload as string;
+			const controller = this.pureCompletionControllers[id];
+			if (controller) {
+				controller.abort();
+				delete this.pureCompletionControllers[id];
+			}
+			return { cancelled: !!controller };
 		});
 	}
 
@@ -398,6 +442,12 @@ export class Orchestrator {
 				type: 'inference.ended',
 				threadId: request.threadId,
 				messageId: assistantMsg.id,
+			});
+			this.eventNode.broadcast('bridge.inference.finish', {
+				threadId: request.threadId,
+				messageId: assistantMsg.id,
+				inferenceUrl,
+				messages,
 			});
 		}
 
@@ -1107,5 +1157,141 @@ export class Orchestrator {
 	private truncateTitle(text: string): string {
 		const words = text.split(/\s+/).filter(Boolean).slice(0, 5);
 		return words.join(' ') || 'New Chat';
+	}
+
+	async handlePureCompletions(
+		inferenceUrl: string,
+		messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>,
+		inferenceParams: Record<string, unknown>,
+		onChunk?: TPureCompletionChunkHandler,
+		abortSignal?: AbortSignal,
+	): Promise<IPureCompletionResult> {
+		const body: Record<string, unknown> = {
+			model: 'model',
+			messages,
+			stream: true,
+			...this.buildInferenceParams(inferenceParams),
+		};
+
+		const response = await fetch(`${inferenceUrl}/v1/chat/completions`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer warpcore' },
+			body: JSON.stringify(body),
+			signal: abortSignal,
+		});
+
+		if (!response.ok || !response.body) {
+			const errBody = await response.text().catch(() => '');
+			throw new Error(`Inference error ${response.status}: ${errBody}`);
+		}
+
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder();
+		let buffer = '';
+		let fullText = '';
+		let reasoningText = '';
+		let timings: Record<string, number> | null = null;
+		let usage: Record<string, number> | null = null;
+		let finishReason = '';
+		let streamError: string | null = null;
+
+		const parts: IMessagePart[] = [];
+		let partOrder = 0;
+		let currentTextPart: { id: string; text: string } | null = null;
+		let currentReasoningPart: { id: string; text: string } | null = null;
+
+		const flushText = (): void => {
+			if (!currentTextPart || !currentTextPart.text) return;
+			parts.push({
+				id: currentTextPart.id,
+				type: EMessagePartType.TEXT,
+				orderIndex: partOrder++,
+				text: currentTextPart.text,
+			});
+			currentTextPart = null;
+		};
+
+		const flushReasoning = (): void => {
+			if (!currentReasoningPart || !currentReasoningPart.text) return;
+			parts.push({
+				id: currentReasoningPart.id,
+				type: EMessagePartType.REASONING,
+				orderIndex: partOrder++,
+				text: currentReasoningPart.text,
+			});
+			currentReasoningPart = null;
+		};
+
+		try {
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				buffer += decoder.decode(value, { stream: true });
+				const { chunks, remaining } = parseSSEBuffer(buffer);
+				buffer = remaining;
+
+				for (const chunk of chunks) {
+					if (abortSignal?.aborted) {
+						flushReasoning();
+						flushText();
+						return { content: parts, stats: null, finishReason: 'aborted' };
+					}
+					if (chunk.error || chunk.warpcore_event === 'error') {
+						streamError = chunk.error ?? 'Inference error from server';
+						break;
+					}
+
+					const delta = chunk.choices?.[0]?.delta;
+
+					if (delta?.content) {
+						fullText += delta.content;
+						if (currentReasoningPart) flushReasoning();
+						if (!currentTextPart) {
+							currentTextPart = { id: crypto.randomUUID(), text: '' };
+						}
+						currentTextPart.text += delta.content;
+						onChunk?.('text', delta.content);
+					}
+
+					if (delta?.reasoning_content) {
+						reasoningText += delta.reasoning_content;
+						if (currentTextPart) flushText();
+						if (!currentReasoningPart) {
+							currentReasoningPart = { id: crypto.randomUUID(), text: '' };
+						}
+						currentReasoningPart.text += delta.reasoning_content;
+						onChunk?.('reasoning', delta.reasoning_content);
+					}
+
+					const fr = chunk.choices?.[0]?.finish_reason;
+					if (fr) finishReason = fr;
+					if (chunk.timings) timings = chunk.timings as Record<string, number>;
+					if (chunk.usage) usage = chunk.usage as Record<string, number>;
+				}
+			}
+		} finally {
+			flushReasoning();
+			flushText();
+		}
+
+		if (streamError) {
+			throw new Error(streamError);
+		}
+
+		const actualTokens = Math.ceil((fullText.length + reasoningText.length) / 4);
+		const stats: IChatMessageStats | null = (timings || usage)
+			? {
+				promptTokens: (usage?.prompt_tokens ?? timings?.prompt_n ?? 0),
+				completionTokens: (usage?.completion_tokens ?? timings?.predicted_n ?? 0),
+				reasoningTokens: (usage?.reasoning_tokens ?? 0),
+				actualTokens,
+				promptPerSecond: timings?.prompt_per_second ?? 0,
+				predictedPerSecond: timings?.predicted_per_second ?? 0,
+				promptMs: timings?.prompt_ms ?? 0,
+				predictedMs: timings?.predicted_ms ?? 0,
+			}
+			: null;
+
+		return { content: parts, stats, finishReason };
 	}
 }

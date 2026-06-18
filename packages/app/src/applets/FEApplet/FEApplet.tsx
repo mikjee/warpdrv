@@ -1,7 +1,7 @@
 import type { TAppletDefinition, IAppletFn } from '@warpcore/realmcore';
 import { EAppletHostType, EAppletScope } from '@warpcore/realmcore';
 import { EUISpaceLoc } from '@/store/slices/uiSpaces';
-import type { IAppletAPIFE } from './lib/types';
+import type { IAppletAPIFE } from '../lib/types';
 import type { TUiSpaceComponentDef } from '@/store/slices/uiSpaces';
 import { Box, Text, VStack, Flex } from '@chakra-ui/react';
 import { useAuiState } from '@assistant-ui/react';

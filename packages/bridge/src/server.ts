@@ -21,7 +21,7 @@ export { McpClientManager } from './mcp/client';
 export { McpConfig } from './mcp/config';
 
 // Orchestrator (Node only)
-export { Orchestrator, type IOrchestratorConfig } from './orchestrator';
+export { Orchestrator, type IOrchestratorConfig, type IPureCompletionResult, type TPureCompletionChunkHandler } from './orchestrator';
 
 // Persistence (Node only)
 export { SqlitePersistence } from './persistence/betterSqlite';

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo, type FC, type ReactNode, type DragEvent } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import {
-	Box, Flex, Text, HStack, VStack, Input, Portal,
+	Box, Flex, Text, HStack, VStack, Input, Portal, Menu,
 } from '@chakra-ui/react';
 import {
 	ThreadListPrimitive,
@@ -227,7 +227,8 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect, onDelet
 	onDelete: (id: string) => void;
 }) {
 	const [renaming, setRenaming] = useState(false);
-	const [menuOpen, setMenuOpen] = useState(false);
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const getAnchorRect = useCallback(() => triggerRef.current?.getBoundingClientRect(), [triggerRef]);
 	const currentThreadId = useStore(s => s.currentThreadId);
 	const selected = thread.id === currentThreadId;
 
@@ -277,47 +278,54 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect, onDelet
 							</Text> */}
 						</HStack>
 					</Box>
-				<Box position="relative">
-					<Box
-						cursor="pointer"
-						p="1"
-						mr="1"
-						borderRadius="sm"
-						opacity={0}
-						className="group-hover:!opacity-50"
-_hover={{ bg: 'var(--wc-bg-hover)' }}
-						onClick={(e) => {
-							e.stopPropagation();
-							setMenuOpen(!menuOpen);
-						}}
-					>
-						<MoreHorizontalIcon size={13} />
-					</Box>
-					{menuOpen && (
+			<Box position="relative">
+					<Menu.Root positioning={{ getAnchorRect }}>
+				<Menu.Trigger asChild>
 						<Box
-							position="absolute" right="0" top="100%" zIndex={50}
-bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-overlay)"
-							borderRadius="md" py="1" minW="120px"
+							ref={triggerRef as any}
+							as="button"
+							cursor="pointer"
+							p="1"
+							mr="1"
+							borderRadius="sm"
+							opacity={0}
+							className="group-hover:!opacity-50"
+							_hover={{ bg: 'var(--wc-bg-hover)' }}
+							type="button"
 							onClick={(e) => e.stopPropagation()}
 						>
-							<HStack
-								px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="var(--wc-text-primary)"
-								_hover={{ bg: 'var(--wc-bg-hover)' }}
-								onClick={() => { setRenaming(true); setMenuOpen(false); }}
-							>
-								<PencilIcon size={12} />
-								<Text>Rename</Text>
-							</HStack>
-							<HStack
-								px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="var(--wc-accent-red)"
-								_hover={{ bg: 'var(--wc-accent-red-bg-8)' }}
-								onClick={() => { onDelete(thread.id); setMenuOpen(false); }}
-							>
-								<TrashIcon size={12} />
-								<Text>Delete</Text>
-							</HStack>
+							<MoreHorizontalIcon size={13} />
 						</Box>
-					)}
+					</Menu.Trigger>
+						<Menu.Positioner>
+							<Menu.Content
+								bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-overlay)"
+								borderRadius="md" py="1" minW="120px"
+								onClick={(e) => e.stopPropagation()}
+							>
+								<Menu.Item
+									value="rename"
+									onClick={() => setRenaming(true)}
+									style={{ fontSize: '12px', color: 'var(--wc-text-primary)' }}
+								>
+									<HStack gap="2">
+										<PencilIcon size={12} />
+										<Text>Rename</Text>
+									</HStack>
+								</Menu.Item>
+								<Menu.Item
+									value="delete"
+									onClick={() => onDelete(thread.id)}
+									style={{ fontSize: '12px', color: 'var(--wc-accent-red)' }}
+								>
+									<HStack gap="2">
+										<TrashIcon size={12} />
+										<Text>Delete</Text>
+									</HStack>
+								</Menu.Item>
+							</Menu.Content>
+						</Menu.Positioner>
+					</Menu.Root>
 				</Box>
 			</>
 			)}
@@ -348,7 +356,8 @@ function FolderSection({
 	const [open, setOpen] = useState(false);
 	const [renaming, setRenaming] = useState(false);
 	const [dragOver, setDragOver] = useState(false);
-	const [menuOpen, setMenuOpen] = useState(false);
+	const folderMenuRef = useRef<HTMLButtonElement>(null);
+	const getFolderAnchorRect = useCallback(() => folderMenuRef.current?.getBoundingClientRect(), [folderMenuRef]);
 	const setActiveWorkspaceId = useStore(s => s.setActiveWorkspaceId);
 	const setCurrentThreadId = useStore(s => s.setCurrentThreadId);
 	const setWorkspace = useStore(s => s.setWorkspace);
@@ -439,41 +448,51 @@ function FolderSection({
 					</Text>
 				)}
 				<Text fontSize="12px" color="var(--wc-text-faint)" flexShrink={0}>{threads.length}</Text>
-				<Box
-					onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
-					opacity={0.4}
-					cursor="pointer" p="0.5"
-					className="group-hover:!opacity-100"
-					_hover={{ opacity: 1, bg: 'var(--wc-bg-hover)' }}
-					borderRadius="sm"
-				>
-					<MoreHorizontalIcon size={12} />
-				</Box>
-				{menuOpen && (
-					<Box
-						position="absolute" right="0" top="100%" zIndex={50}
-						bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-overlay)"
-						borderRadius="md" py="1" minW="120px"
-						onClick={(e) => e.stopPropagation()}
-					>
-						<HStack
-							px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="var(--wc-text-primary)"
-							_hover={{ bg: 'var(--wc-bg-hover)' }}
-							onClick={() => { setRenaming(true); setMenuOpen(false); }}
+				<Menu.Root positioning={{ getFolderAnchorRect }}>
+					<Menu.Trigger asChild>
+						<Box
+							ref={folderMenuRef as any}
+							as="button"
+							opacity={0.4}
+							cursor="pointer" p="0.5"
+							className="group-hover:!opacity-100"
+							_hover={{ opacity: 1, bg: 'var(--wc-bg-hover)' }}
+							borderRadius="sm"
+							type="button"
+							onClick={(e) => e.stopPropagation()}
 						>
-							<PencilIcon size={12} />
-							<Text>Rename</Text>
-						</HStack>
-						<HStack
-							px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="var(--wc-accent-red)"
-							_hover={{ bg: 'var(--wc-accent-red-bg-8)' }}
-							onClick={() => { onDelete(folder.id); setMenuOpen(false); }}
+							<MoreHorizontalIcon size={12} />
+						</Box>
+					</Menu.Trigger>
+					<Menu.Positioner>
+						<Menu.Content
+							bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-overlay)"
+							borderRadius="md" py="1" minW="120px"
+							onClick={(e) => e.stopPropagation()}
 						>
-							<TrashIcon size={12} />
-							<Text>Delete</Text>
-						</HStack>
-					</Box>
-				)}
+							<Menu.Item
+								value="rename"
+								onClick={() => setRenaming(true)}
+								style={{ fontSize: '12px', color: 'var(--wc-text-primary)' }}
+							>
+								<HStack gap="2">
+									<PencilIcon size={12} />
+									<Text>Rename</Text>
+								</HStack>
+							</Menu.Item>
+							<Menu.Item
+								value="delete"
+								onClick={() => onDelete(folder.id)}
+								style={{ fontSize: '12px', color: 'var(--wc-accent-red)' }}
+							>
+								<HStack gap="2">
+									<TrashIcon size={12} />
+									<Text>Delete</Text>
+								</HStack>
+							</Menu.Item>
+						</Menu.Content>
+					</Menu.Positioner>
+				</Menu.Root>
 			</HStack>
 			{open && (
 				<Box pl="4" my="1">
