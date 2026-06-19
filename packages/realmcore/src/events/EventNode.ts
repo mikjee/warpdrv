@@ -499,10 +499,7 @@ export class EventNode implements IExternalNode {
 				if (!child) throw new Error("route missing child: " + childId);
 				return child.route(ev, { ...r, returnPath: prependSeg(UP, r.returnPath) });
 			}
-			if (!this.parent) {
-				debugger;
-				throw new Error("route reached a detached non-root node!");
-			}
+			if (!this.parent) throw new Error("route reached a detached non-root node!");
 			return this.parent.route(ev, { ...r, returnPath: prependSeg(this.nodeId, r.returnPath) });
 		}
 

@@ -5,6 +5,14 @@ import { useStore } from "@/store";
 import type { ISlashCommand } from "@/store/slices/slashCommands";
 import { CommandList, type ICommandListRef } from "./CmdList";
 
+function fuzzyMatch(text: string, query: string): boolean {
+	let qi = 0;
+	for (let ti = 0; ti < text.length && qi < query.length; ti++) {
+		if (text[ti] === query[qi]) qi++;
+	}
+	return qi === query.length;
+}
+
 export const commandSuggestion: Omit<SuggestionOptions, "editor"> = {
 	char: "/",
 	startOfLine: false,
@@ -13,8 +21,8 @@ export const commandSuggestion: Omit<SuggestionOptions, "editor"> = {
 		const q = query.toLowerCase();
 		const matched = new Set<ISlashCommand>();
 		for (const c of Object.values(useStore.getState().slashCommands)) {
-			if (c.name.toLowerCase().startsWith(q) ||
-				c.tags?.some(tag => tag.toLowerCase().startsWith(q))) {
+			if (fuzzyMatch(c.name.toLowerCase(), q) ||
+				c.tags?.some(tag => fuzzyMatch(tag.toLowerCase(), q))) {
 				matched.add(c);
 			}
 		}
