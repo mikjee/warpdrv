@@ -484,7 +484,7 @@ export class EventNode implements IExternalNode {
 				&& here.every((seg, i) => seg === target[i]);
 			const pivot = r.hasWildcard ? this.isRoot : isAncestorOfTarget;
 			if (pivot) return this.route(ev, { ...r, haveAncestor: true });
-			if (!this.parent) throw new Error("route reached a detached non-root node");
+			if (!this.parent) throw new Error("Route reached a detached non-root node - Absolute!");
 			return this.parent.route(ev, { ...r, returnPath: prependSeg(this.nodeId, r.returnPath) });
 		}
 
@@ -499,7 +499,10 @@ export class EventNode implements IExternalNode {
 				if (!child) throw new Error("route missing child: " + childId);
 				return child.route(ev, { ...r, returnPath: prependSeg(UP, r.returnPath) });
 			}
-			if (!this.parent) throw new Error("route reached a detached non-root node");
+			if (!this.parent) {
+				debugger;
+				throw new Error("route reached a detached non-root node!");
+			}
 			return this.parent.route(ev, { ...r, returnPath: prependSeg(this.nodeId, r.returnPath) });
 		}
 

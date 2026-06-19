@@ -9,6 +9,17 @@ export enum EGuardrailSubRole {
 	TOOL = 'tool',
 }
 
+export enum EGuardrailIssueType {
+	VIOLATION = 'violation',
+	WARNING = 'warning',
+}
+
+export interface IGuardrailIssue {
+	quote: string;
+	issue: string;
+	type: EGuardrailIssueType;
+}
+
 export interface IGuardrail {
 	name: string;
 	serverId: string;

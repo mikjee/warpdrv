@@ -3,11 +3,13 @@ import { EAppletHostType, EAppletScope } from '@warpcore/realmcore';
 import { EUISpaceLoc } from '@/store/slices/uiSpaces';
 import type { IAppletAPIFE } from '../lib/types';
 import type { TUiSpaceComponentDef } from '@/store/slices/uiSpaces';
-import { Box, Text, VStack, Flex } from '@chakra-ui/react';
+import { Box, Text, VStack, Flex, Spinner, Badge, AccordionRoot, AccordionItem as AccordionItemComp, AccordionItemTrigger, AccordionItemContent, HStack, Tabs } from '@chakra-ui/react';
+import { ChevronDown, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import { useAuiState } from '@assistant-ui/react';
 import { useStore } from '@/store';
 import type { IExtractedSlashCommand } from '@/pages/Chat/assistant-ui/docToString';
-import type { ITodoItem, IGuardrail } from '@warpcore/shared';
+import type { ITodoItem, IGuardrail, IGuardrailIssue } from '@warpcore/shared';
+import { EGuardrailIssueType } from '@warpcore/shared';
 import React from 'react';
 
 const EMPTY_TODOS: ITodoItem[] = [];
@@ -159,6 +161,128 @@ const GuardrailsPanel = React.memo(() => {
 	);
 });
 
+const GuardrailResults = React.memo(({ def, children }: { def: TUiSpaceComponentDef; children: React.ReactNode }) => {
+	const messageId = useAuiState(s => s.message.id);
+	const role = useAuiState(s => s.message.role);
+	const results = useStore(s => s.messageStates[messageId]?.guardrailResults) as Record<string, IGuardrailIssue[] | boolean>;
+
+	if (role !== 'assistant' || !results) return children;
+
+	const entries = Object.entries(results);
+	const processingCount = entries.filter(([, v]) => v === false).length;
+	const doneEntries = entries.filter(([, v]) => Array.isArray(v));
+	const totalViolations = doneEntries.reduce((acc, [, items]) => acc + (items as IGuardrailIssue[]).filter(i => i.type === EGuardrailIssueType.VIOLATION).length, 0);
+	const totalWarnings = doneEntries.reduce((acc, [, items]) => acc + (items as IGuardrailIssue[]).filter(i => i.type === EGuardrailIssueType.WARNING).length, 0);
+	const allClear = doneEntries.length === entries.length && totalViolations === 0 && totalWarnings === 0;
+
+	return (
+		<>
+			{children}
+			<Box mt="2">
+				<AccordionRoot collapsible defaultValue={['guardrails']}>
+					<AccordionItemComp value="guardrails" borderRadius="6px" borderWidth="1px" borderColor="var(--wc-border-subtle)">
+						<AccordionItemTrigger
+							style={{
+								borderRadius: '6px 6px 0 0',
+								background: 'var(--wc-bg-card)',
+								border: 'none',
+								cursor: 'pointer',
+								display: 'flex',
+								justifyContent: 'space-between',
+								alignItems: 'center',
+								width: '100%',
+							}}
+							p="2.5"
+							_hover={{ bg: 'var(--wc-bg-subtle)' }}
+							css={{ '&[data-state=open] .chevron': { transform: 'rotate(180deg)' } }}
+						>
+							<HStack gap="2">
+								{processingCount > 0 && <Spinner size="xs" color="var(--wc-text-muted)" />}
+								{totalViolations > 0 && <XCircle size={14} color="var(--wc-accent-red)" />}
+								{totalWarnings > 0 && <AlertTriangle size={14} color="var(--wc-accent-yellow)" />}
+								{allClear && <CheckCircle size={14} color="var(--wc-accent-green)" />}
+								<Text fontSize="xs" fontWeight="500" color="var(--wc-text-primary)">
+									Guardrails
+								</Text>
+								{totalViolations > 0 && (
+									<Badge color="var(--wc-accent-red)" bg="var(--wc-accent-red-bg-8)" px="1.5" py="0.5" fontSize="9px">{totalViolations}V</Badge>
+								)}
+								{totalWarnings > 0 && (
+									<Badge color="var(--wc-accent-yellow)" bg="var(--wc-accent-yellow-bg-8)" px="1.5" py="0.5" fontSize="9px">{totalWarnings}W</Badge>
+								)}
+								{processingCount > 0 && (
+									<Badge color="var(--wc-text-muted)" bg="var(--wc-bg-subtle)" px="1.5" py="0.5" fontSize="9px">{processingCount}...</Badge>
+								)}
+							</HStack>
+							<ChevronDown size={14} color="var(--wc-text-muted)" className="chevron" css={{ transition: 'transform 0.15s ease' }} />
+						</AccordionItemTrigger>
+						<AccordionItemContent>
+							{entries.length > 1 ? (
+								<Tabs.Root defaultValue={entries[0]?.[0] || ''}>
+									<Tabs.List gap="0" borderBottomWidth="1px" borderColor="var(--wc-border-subtle)">
+										{entries.map(([name]) => (
+											<Tabs.Trigger key={name} value={name} fontSize="xs" fontWeight="500" px="3" py="2" color="var(--wc-text-muted)">
+												{name}
+											</Tabs.Trigger>
+										))}
+										<Tabs.Indicator />
+									</Tabs.List>
+									{entries.map(([name, result]) => (
+										<Tabs.Content key={name} value={name} p="2.5">
+											{result === false
+												? <HStack gap="2"><Spinner size="xs" /><Text fontSize="xs" color="var(--wc-text-muted)">Processing...</Text></HStack>
+												: (result as IGuardrailIssue[]).length === 0
+													? <Text fontSize="xs" color="var(--wc-accent-green)">All clear</Text>
+													: <VStack gap="2" align="stretch">
+														{(result as IGuardrailIssue[]).map((item, i) => (
+															<GuardrailIssueItem key={i} item={item} />
+														))}
+													</VStack>
+											}
+										</Tabs.Content>
+									))}
+								</Tabs.Root>
+							) : (
+								<Box p="2.5">
+									{(() => {
+										const [name, result] = entries[0];
+										if (result === false) return <HStack gap="2"><Spinner size="xs" /><Text fontSize="xs" color="var(--wc-text-muted)">Processing {name}...</Text></HStack>;
+										const items = result as IGuardrailIssue[];
+										if (items.length === 0) return <Text fontSize="xs" color="var(--wc-accent-green)">{name} — All clear</Text>;
+										return (
+											<VStack gap="2" align="stretch">
+												{items.map((item, i) => (
+													<GuardrailIssueItem key={i} item={item} />
+												))}
+											</VStack>
+										);
+									})()}
+								</Box>
+							)}
+						</AccordionItemContent>
+					</AccordionItemComp>
+				</AccordionRoot>
+			</Box>
+		</>
+	);
+});
+
+const GuardrailIssueItem = React.memo(({ item }: { item: IGuardrailIssue }) => (
+	<Box p="2" borderRadius="md" bg="var(--wc-bg-subtle)" borderWidth="1px"
+		borderColor={item.type === EGuardrailIssueType.VIOLATION ? 'var(--wc-accent-red-border)' : 'var(--wc-accent-yellow-border)'}>
+		<Flex justifyContent="space-between" mb="1">
+			<Text fontSize="9px" fontWeight="600" textTransform="uppercase" letterSpacing="0.04em"
+				color={item.type === EGuardrailIssueType.VIOLATION ? 'var(--wc-accent-red)' : 'var(--wc-accent-yellow)'}>
+				{item.type}
+			</Text>
+			<Text fontSize="xs" color="var(--wc-text-primary)">{item.issue}</Text>
+		</Flex>
+		<Text fontSize="9px" color="var(--wc-text-tertiary)" fontStyle="italic" noWrap textOverflow="ellipsis" overflow="hidden">
+			{item.quote}
+		</Text>
+	</Box>
+));
+
 const registerGuardrailChip = (api: IAppletAPIFE, name: string) => {
 	api.registerComposerChip({
 		componentId: `guardrail-${name}`,
@@ -265,6 +389,7 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 	api.registerUiSpaceComponent(EUISpaceLoc.RIGHT_PANEL, TodoPanel, { label: 'Todo' });
 	api.registerUiSpaceComponent(EUISpaceLoc.RIGHT_PANEL, GuardrailsPanel, { label: 'Guardrails' });
 	api.registerUiSpaceComponent(EUISpaceLoc.MESSAGE, CompactIndicator, { label: 'Compact Indicator' });
+	api.registerUiSpaceComponent(EUISpaceLoc.MESSAGE, GuardrailResults, { label: 'GuardrailResults' });
 	api.registerComposerChip({
 		selectLabel: () => 'FEApplet',
 		selectIsActive: () => true,
@@ -283,7 +408,7 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 		}
 	}
 
-	api.eventNode.hook('../', 'bridge.preCompletion', async (eventApi) => {
+	setTimeout(() => api.eventNode.hook('..', 'bridge.preCompletion', async (eventApi) => {
 		const payload = eventApi.payload as { slashCommands: Array<{ name: string }> };
 		const guardrailCommands = ['create_guardrail', 'guardrail', 'delete_guardrail'];
 		for (const cmd of payload.slashCommands) {
@@ -292,7 +417,7 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 			}
 		}
 		return eventApi.result;
-	});
+	}), 100);
 };
 
 export const FEApplet: TAppletDefinition<IAppletAPIFE> = {

@@ -12,7 +12,9 @@ export class AppletHostFE extends AppletHost {
 		if (typeof window !== 'undefined') {
 			(window as any).eventNode = this.eventNode;
 		}
+		
 		const appletName = this.definition.name;
+
 		return {
 			eventNode: this.eventNode!,
 			useStore,

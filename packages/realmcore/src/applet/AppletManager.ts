@@ -36,8 +36,8 @@ constructor(
 		if (!this.hostClasses[definition.hostType] || definition.scope !== this.scope) return;
 
 		const eventNode = new EventNodeClass(definition.name, false);
-		const host = this.createHost(definition, eventNode);
 		await this.eventNode.addChild(eventNode);
+		const host = this.createHost(definition, eventNode);
 		try {
 			await host.start();
 		} catch (err) {

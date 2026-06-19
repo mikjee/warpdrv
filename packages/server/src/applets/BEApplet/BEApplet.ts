@@ -1,7 +1,7 @@
 import type { TAppletDefinition, IAppletFn } from '@warpcore/realmcore';
 import { EAppletHostType, EAppletScope } from '@warpcore/realmcore';
 import type { IAppletAPIBE } from '../lib/types';
-import type { IGuardrail } from '@warpcore/shared';
+import type { IGuardrail, IGuardrailIssue } from '@warpcore/shared';
 import { COMPACTION_PROMPT, GUARDRAIL_PROMPT, GUARDRAIL_RULESET_GENERIC_PROMPT } from './prompts';
 
 const fn: IAppletFn<IAppletAPIBE> = async (api: IAppletAPIBE) => {
@@ -88,8 +88,21 @@ const fn: IAppletFn<IAppletAPIBE> = async (api: IAppletAPIBE) => {
         const guardrails = threadState?.guardrails as Record<string, IGuardrail> | undefined;
         if (!guardrails) return;
 
-        const guardrailResults: Record<string, any> = {};
-        for (const guardrail of Object.values(guardrails).filter(g => g.active)) {
+        const activeGuardrails = Object.values(guardrails).filter(g => g.active);
+        if (!activeGuardrails.length) return;
+
+        // Immediately mark all as processing
+        const initialResults: Record<string, boolean> = {};
+        for (const g of activeGuardrails) {
+            initialResults[g.name] = false;
+        }
+        await api.eventNode.invoke('/warpcore', 'bridge.updateMessageState', {
+            messageId,
+            data: { guardrailResults: initialResults },
+        });
+
+        // Process one by one, save each result
+        for (const guardrail of activeGuardrails) {
             try {
                 const result = await api.eventNode.invoke('/warpcore', 'bridge.handlePureCompletion', {
                     inferenceRequestId: guardrail.name + '-' + messageId,
@@ -100,16 +113,23 @@ const fn: IAppletFn<IAppletAPIBE> = async (api: IAppletAPIBE) => {
                     }],
                     inferenceParams: { temperature: 0.1, maxTokens: 512 },
                 });
-                guardrailResults[guardrail.name] = result;
+                const text = result.content?.[0]?.text || '[]';
+                let parsed: IGuardrailIssue[] = [];
+                try {
+                    parsed = JSON.parse(text);
+                } catch {
+                    // If not valid JSON, treat as clean
+                }
+                // Read existing results, merge, save
+                const existing = (await api.eventNode.invoke('/warpcore', 'bridge.getMessageState', messageId)) as Record<string, unknown>;
+                const currentResults = (existing?.guardrailResults as Record<string, any>) || {};
+                await api.eventNode.invoke('/warpcore', 'bridge.updateMessageState', {
+                    messageId,
+                    data: { guardrailResults: { ...currentResults, [guardrail.name]: parsed } },
+                });
             } catch (err) {
                 console.error('[BEApplet] Guardrail error:', guardrail.name, err);
             }
-        }
-        if (Object.keys(guardrailResults).length) {
-            await api.eventNode.invoke('/warpcore', 'bridge.updateMessageState', {
-                messageId,
-                data: { guardrailResults },
-            });
         }
     });
 };
