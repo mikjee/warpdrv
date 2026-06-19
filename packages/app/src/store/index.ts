@@ -208,6 +208,7 @@ export const useStore = create<AppState>()(
 					setTempThreadServerId: bridge.setTempThreadServerId,
 					tempAutoEmbed: bridge.tempAutoEmbed,
 					setTempAutoEmbed: bridge.setTempAutoEmbed,
+					tempThreadState: bridge.tempThreadState,
 
 					// Attached tools
 					attachAllTools: bridge.attachAllTools,
@@ -234,7 +235,9 @@ export const useStore = create<AppState>()(
 				},
 				setThreadState: (threadId: TThreadId, data: Record<string, unknown>) => {
 					bridge.setThreadState(threadId, data);
-					updateThreadState(threadId, data);
+					if (threadId) {
+						updateThreadState(threadId, data);
+					}
 				},
 				setMessageState: (messageId: TMessageId, data: Record<string, unknown>) => {
 					bridge.setMessageState(messageId, data);

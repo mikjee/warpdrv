@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRealm } from '@/hooks/useRealm';
 import { Box, Button, Flex, IconButton, Text, HStack, Popover, Portal, Switch, Slider, VStack, Combobox, createListCollection } from '@chakra-ui/react';
@@ -355,10 +356,10 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 		clearPendingSlashCommands();
 
 		// Generate new thread ID if none exists - orchestrator will auto-create the thread
-		const threadId = currentThreadId ?? globalThis.crypto.randomUUID();
-		if (!currentThreadId) {
-			setCurrentThreadId(threadId);
-		}
+		const isNewThread = !currentThreadId;
+		const tempState = isNewThread ? useStore.getState().tempThreadState : null;
+		const threadId = currentThreadId ?? nanoid(6);
+		if (isNewThread) setCurrentThreadId(threadId);
 
 		// Process attachments - convert File objects to base64
 		const attachments = message.attachments || [];
@@ -437,6 +438,7 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 			attachAllTools,
 			attachedTools: attachAllTools ? undefined : attachedTools,
 			messageState: slashCommands.length > 0 ? { slashCommands } : {},
+			threadState: (isNewThread && tempState) ? tempState : undefined,
 		};
 
 		if (attachmentParts.length > 0) {

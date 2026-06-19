@@ -3,7 +3,7 @@ import type { ImmerSet, ImmerGet } from '../types';
 import type { AppState } from '../types';
 
 export type TUISpaceComponentId = string;
-export type TUISpaceComponent = () => React.Component;
+export type TUISpaceComponent = any;
 export type TAppletName = string;
 
 export interface TUiSpaceComponentDef {

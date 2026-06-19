@@ -2,7 +2,7 @@ import type { TAppletDefinition, IAppletFn } from '@warpcore/realmcore';
 import { EAppletHostType, EAppletScope } from '@warpcore/realmcore';
 import type { IAppletAPIBE } from '../lib/types';
 import type { IGuardrail } from '@warpcore/shared';
-import { COMPACTION_PROMPT } from './prompts';
+import { COMPACTION_PROMPT, GUARDRAIL_PROMPT, GUARDRAIL_RULESET_GENERIC_PROMPT } from './prompts';
 
 const fn: IAppletFn<IAppletAPIBE> = async (api: IAppletAPIBE) => {
     console.log('[BEApplet] Started');
@@ -37,7 +37,7 @@ const fn: IAppletFn<IAppletAPIBE> = async (api: IAppletAPIBE) => {
         let compactionBaseIndex = -1;
         const branch = eventApi.result as Array<{ id: string }>;
         for (let i = branch.length - 1; i >= 0; i--) {
-            const msgState = stateById[branch[i].id];
+            const msgState = stateById[branch[i]!.id];
             const commands = msgState?.slashCommands as Array<{ name: string }> | undefined;
             if (commands?.some(c => c.name === 'compact')) {
                 compactionBaseIndex = i;
@@ -96,7 +96,7 @@ const fn: IAppletFn<IAppletAPIBE> = async (api: IAppletAPIBE) => {
                     inferenceUrl,
                     messages: [...messages, {
                         role: 'system',
-                        content: guardrail.prompt || 'Review the assistant response.',
+                        content: GUARDRAIL_PROMPT + GUARDRAIL_RULESET_GENERIC_PROMPT + (guardrail.prompt || ''),
                     }],
                     inferenceParams: { temperature: 0.1, maxTokens: 512 },
                 });
@@ -108,7 +108,7 @@ const fn: IAppletFn<IAppletAPIBE> = async (api: IAppletAPIBE) => {
         if (Object.keys(guardrailResults).length) {
             await api.eventNode.invoke('/warpcore', 'bridge.updateMessageState', {
                 messageId,
-                data: { guardrails: guardrailResults },
+                data: { guardrailResults },
             });
         }
     });

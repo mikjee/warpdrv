@@ -12,7 +12,7 @@ export interface ISlashCommand {
 	description: string;
 	params: Record<string, ISlashCommandParam>;
 	tags?: string[];
-	execute: (api: ISlashCommandApi, params: Record<string, unknown>) => Promise<void>;
+	execute: (api: ISlashCommandApi, params: Record<string, string | number>) => Promise<void>;
 }
 
 interface SlashCommandsSlice {

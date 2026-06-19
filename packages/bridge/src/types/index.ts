@@ -380,6 +380,7 @@ export interface ICompletionRequest {
 	attachAllTools?: boolean;
 	attachedTools?: IToolAttachment[];
 	messageState?: Record<string, unknown>;
+	threadState?: Record<string, unknown>;
 }
 
 // ============================================================

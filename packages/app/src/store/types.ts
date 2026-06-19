@@ -201,6 +201,7 @@ export interface AppState {
 	setTempThreadServerId: (id: string | null) => void;
 	tempAutoEmbed: boolean;
 	setTempAutoEmbed: (v: boolean) => void;
+	tempThreadState: Record<string, unknown>;
 
 	// Attached tools
 	attachAllTools: boolean;
@@ -229,7 +230,7 @@ export interface AppState {
 	threadStates: Record<TThreadId, Record<string, unknown>>;
 	messageStates: Record<TMessageId, Record<string, unknown>>;
 	setWorkspaceState: (folderId: TFolderId, data: Record<string, unknown>) => void;
-	setThreadState: (threadId: TThreadId, data: Record<string, unknown>) => void;
+	setThreadState: (threadId: TThreadId | null, data: Record<string, unknown>) => void;
 	setMessageState: (messageId: TMessageId, data: Record<string, unknown>) => void;
 	initWorkspaceState: (folderId: TFolderId, data: Record<string, unknown>) => void;
 	initThreadState: (threadId: TThreadId, data: Record<string, unknown>) => void;

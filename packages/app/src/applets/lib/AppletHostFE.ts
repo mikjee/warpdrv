@@ -22,19 +22,23 @@ export class AppletHostFE extends AppletHost {
 			unregisterSlashCommand: (name: string) => {
 				useStore.getState().unregisterSlashCommand(name, appletName);
 			},
-			registerUiSpaceComponent: (spaceId: string, component: TUISpaceComponent, opts: { label: string }) => {
+			registerUiSpaceComponent: (spaceId: string, component: TUISpaceComponent, opts: { 
+				label: string,
+				componentId?: string,
+			}) => {
 				return useStore.getState().registerUiSpaceComponent({
 					location: spaceId as EUISpaceLoc,
 					component,
 					label: opts.label,
 					appletName,
+					componentId: opts.componentId,
 				});
 			},
 			unregisterUiSpaceComponent: (id: TUISpaceComponentId) => {
 				useStore.getState().unregisterUiSpaceComponent(appletName, id);
 			},
 			registerComposerChip: (options) => {
-				const id = nanoid();
+				const id = options.componentId ?? nanoid();
 				return useStore.getState().registerUiSpaceComponent({
 					componentId: id,
 					location: EUISpaceLoc.COMPOSER,

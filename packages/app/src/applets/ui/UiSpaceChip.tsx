@@ -1,29 +1,28 @@
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import { Box, IconButton, HStack } from '@chakra-ui/react';
 import { X } from 'lucide-react';
 import { useStore } from '@/store';
 import type { TUiSpaceComponentDef } from '@/store/slices/uiSpaces';
+import type { AppState } from '@/store/types';
 
 interface UiSpaceChipProps {
     def: TUiSpaceComponentDef;
-    label: string;
-    isActive: boolean;
+    selectLabel: (state: AppState) => string;
+    selectIsActive: (state: AppState) => boolean;
+    onSetIsActive: (active: boolean) => void;
     onClose?: (id: string) => void;
 }
 
-export const UiSpaceChip = memo(({ def, label, isActive, onClose }: UiSpaceChipProps) => {
-    const setProps = useStore(s => s.setUiSpaceComponentProps);
+export const UiSpaceChip = memo(({ def, selectLabel, selectIsActive, onSetIsActive, onClose }: UiSpaceChipProps) => {
+    const label = useStore(selectLabel);
+    const active = useStore(selectIsActive);
     const unregister = useStore(s => s.unregisterUiSpaceComponent);
 
-    const handleToggle = () => {
-        setProps(def.componentId, { isActive: !isActive });
-    };
-
-    const handleClose = (e: React.MouseEvent) => {
+    const handleClose = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
         onClose?.(def.componentId);
         unregister(def.appletName, def.componentId);
-    };
+    }, [def.componentId, def.appletName, onClose, unregister]);
 
     return (
         <Box
@@ -36,11 +35,11 @@ export const UiSpaceChip = memo(({ def, label, isActive, onClose }: UiSpaceChipP
             cursor="pointer"
             userSelect="none"
             transition="all 0.15s ease"
-            bg={isActive ? 'var(--wc-accent-purple-bg-15, rgba(167,139,250,0.15))' : 'var(--wc-bg-subtle)'}
+            bg={active ? 'var(--wc-accent-purple-bg-15, rgba(167,139,250,0.15))' : 'var(--wc-bg-subtle)'}
             borderWidth="1px"
-            borderColor={isActive ? 'var(--wc-accent-purple-border, rgba(167,139,250,0.25))' : 'var(--wc-border-subtle)'}
-            opacity={isActive ? 1 : 0.6}
-            onClick={handleToggle}
+            borderColor={active ? 'var(--wc-accent-purple-border, rgba(167,139,250,0.25))' : 'var(--wc-border-subtle)'}
+            opacity={active ? 1 : 0.6}
+            onClick={() => onSetIsActive(!active)}
         >
             <Box fontSize="xs" fontWeight="500" color="var(--wc-text-primary)">
                 {label}
@@ -52,7 +51,7 @@ export const UiSpaceChip = memo(({ def, label, isActive, onClose }: UiSpaceChipP
                     p="0"
                     minW="16px"
                     h="16px"
-                    color={isActive ? 'var(--wc-text-muted)' : 'var(--wc-text-faint)'}
+                    color={active ? 'var(--wc-text-muted)' : 'var(--wc-text-faint)'}
                     _hover={{ color: 'var(--wc-accent-red)', bg: 'transparent' }}
                     onClick={handleClose}
                 >

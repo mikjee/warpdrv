@@ -264,6 +264,7 @@ export class Orchestrator {
 					updatedAt: now,
 				};
 				await this.persistence.createThread(thread);
+				if (request.threadState) await this.persistence.updateThreadState(thread.id, request.threadState);
 				await this.persistence.setThreadConfig({
 					threadId: request.threadId,
 					presetId: request.presetId ?? null,
