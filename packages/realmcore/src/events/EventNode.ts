@@ -183,9 +183,7 @@ function matchSegs(pat: Array<string>, seg: Array<string>): boolean {
 // node
 
 export class EventNode implements IExternalNode {
-	public readonly nodeId: TNodeId;
 	public nodeAddr: TAddr;
-	public isRoot: boolean;
 	public parent: IExternalNode | null;
 	public children: Record<TNodeId, IExternalNode>;
 
@@ -204,9 +202,13 @@ export class EventNode implements IExternalNode {
 	// for a dropped subscriber can be purged in O(1).
 	public mapSubscriberToIds: Record<TSubscriberAddr, Set<TCallbackId>>;
 
-	constructor(nodeId: TNodeId, isRoot: boolean) {
-		this.nodeId = nodeId;
-		this.isRoot = isRoot;
+	constructor(
+		public readonly nodeId: TNodeId, 
+		public readonly isRoot: boolean, 
+
+		private onReady?: {(): void},
+		private onDispose?: {(): Promise<void>},
+	) {
 		this.nodeAddr = isRoot ? SEP + nodeId : "";
 		this.parent = null;
 		this.children = {};
@@ -238,6 +240,7 @@ export class EventNode implements IExternalNode {
 		this.parent = parent;
 		this.nodeAddr = parent.nodeAddr + SEP + this.nodeId;
 		for (const id in this.children) await this.children[id].addParent(this);
+		setTimeout(() => this.onReady?.(), 0);
 	}
 
 	public async removeParent(): Promise<void> {

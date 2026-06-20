@@ -1,4 +1,4 @@
-import type { EventNode } from '../events/EventNode';
+import type { EventNode, TCallback, TCallbackId } from '../events/EventNode';
 
 export enum EAppletHostType {
 	BE = 'be',
@@ -25,6 +25,13 @@ export interface TAppletDefinition<TApi = any> {
 	hostType: EAppletHostType;
 	scope: EAppletScope;
 }
+
+export type TAppletBaseAPI = {
+	eventNode: EventNode,
+	onReady: (cb: TCallback) => Promise<TCallbackId>,
+}
+
+export const APPLET_READY = "applet.ready";
 
 export type IAppletFn<TApi = any> = (api: TApi) => Promise<void>;
 

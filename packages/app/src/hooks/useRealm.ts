@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { nanoid } from 'nanoid';
 import { EventNode, RemoteNode, WSTransport } from '@warpcore/realmcore';
@@ -14,11 +14,13 @@ export function useRealm(currentThreadId: string | null) {
 		appletMgr: AppletManager;
 	}>(null);
 
+	const [isParentAttached, setParentAttached] = useState<boolean>(false);
+
 	if (!realmRef.current) {
 		console.log(`[Realm] Loading..`);
 
 		const nodeId = `chat-${nanoid(6)}`;
-		const chatNode = new EventNode(nodeId, false);
+		const chatNode = new EventNode(nodeId, false, () => setParentAttached(true));
 		(window as any).eventNode = chatNode;
 
 		const appletMgr = new AppletManager(
@@ -41,11 +43,13 @@ export function useRealm(currentThreadId: string | null) {
 
 		socket.on('connect', () => {
 			console.log(`[Realm] ✅ Connected as ${nodeId}.`);
-			appletMgr.initializeAll();
 		});
+
 		socket.on('disconnect', () => {
 			console.error(`[Realm] Disconnected!`);
+			setParentAttached(false);
 		});
+
 		socket.io.on('error', (err) => {
 			console.error(`[Realm] Manager error:`, err.message);
 		});
@@ -60,11 +64,18 @@ export function useRealm(currentThreadId: string | null) {
 	}
 
 	useEffect(() => {
-		realmRef.current?.appletMgr.updateScopeValue(currentThreadId ?? undefined);
+		if (!isParentAttached) return;
+		realmRef.current?.appletMgr.initializeAll();
+
 		return () => {
 			realmRef.current?.appletMgr.terminateAll();
 		};
-	}, [currentThreadId]);
+	}, [isParentAttached]);
+
+	useEffect(() => {
+		if (!isParentAttached) return;
+		realmRef.current?.appletMgr.updateScopeValue(currentThreadId ?? undefined);
+	}, [currentThreadId, isParentAttached]);
 
 	useEffect(() => {
 		const socket = realmRef.current?.socket;

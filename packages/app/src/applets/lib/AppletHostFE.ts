@@ -1,5 +1,5 @@
 import { nanoid } from 'nanoid';
-import { AppletHost } from '@warpcore/realmcore';
+import { AppletHost, TCallback } from '@warpcore/realmcore';
 import { useStore } from '@/store';
 import type { ISlashCommand } from '@/store/slices/slashCommands';
 import { EUISpaceLoc } from '@/store/slices/uiSpaces';
@@ -7,23 +7,22 @@ import type { TUISpaceComponentId, TUISpaceComponent } from '@/store/slices/uiSp
 import type { IAppletAPIFE } from './types';
 import { UiSpaceChip } from '../ui/UiSpaceChip';
 
-export class AppletHostFE extends AppletHost {
-	public override buildApi(): IAppletAPIFE {
-		if (typeof window !== 'undefined') {
-			(window as any).eventNode = this.eventNode;
-		}
-		
+export class AppletHostFE extends AppletHost<IAppletAPIFE> {
+	protected override buildApi(): IAppletAPIFE {
 		const appletName = this.definition.name;
+		const api = super.buildApi();
 
 		return {
-			eventNode: this.eventNode!,
+			...api,
 			useStore,
+
 			registerSlashCommand: (command: ISlashCommand) => {
 				useStore.getState().registerSlashCommand(command, appletName);
 			},
 			unregisterSlashCommand: (name: string) => {
 				useStore.getState().unregisterSlashCommand(name, appletName);
 			},
+
 			registerUiSpaceComponent: (spaceId: string, component: TUISpaceComponent, opts: { 
 				label: string,
 				componentId?: string,

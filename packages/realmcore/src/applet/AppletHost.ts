@@ -1,11 +1,11 @@
-import type { TAppletDefinition, IAppletFn } from './types';
-import { EAppletHostStatus } from './types';
-import type { EventNode } from '../events/EventNode';
+import type { TAppletDefinition, IAppletFn, TAppletBaseAPI } from './types';
+import { APPLET_READY, EAppletHostStatus } from './types';
+import type { EventNode, TCallback } from '../events/EventNode';
 
-export class AppletHost {
+export class AppletHost<TAppletAPI extends TAppletBaseAPI = TAppletBaseAPI> {
 	protected fn: IAppletFn;
 	protected status = EAppletHostStatus.NOT_RUNNING;
-	protected api: any = null;
+	protected api: TAppletAPI | null = null;
 	private startPromise: Promise<void> | null = null;
 	private terminationPromise: Promise<void> | null = null;
 
@@ -13,8 +13,13 @@ export class AppletHost {
 		this.fn = definition.fn;
 	}
 
-	public buildApi(): any {
-		throw new Error(`buildApi() must be implemented by ${this.constructor.name}`);
+	protected buildApi(): TAppletAPI {
+		const _api: TAppletAPI = {
+			eventNode: this.eventNode,
+			onReady: (cb: TCallback) => this.eventNode.on('.', APPLET_READY, cb),
+		} as TAppletAPI;
+
+		return _api;
 	}
 
 	protected setupHostHandlers(): void {

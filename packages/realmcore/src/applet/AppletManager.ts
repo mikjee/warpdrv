@@ -1,6 +1,6 @@
 import { AppletHost } from './AppletHost';
 import type { TAppletDefinition } from './types';
-import { EAppletHostType, EAppletScope } from './types';
+import { APPLET_READY, EAppletHostType, EAppletScope } from './types';
 import type { EventNode } from '../events/EventNode';
 import { EventNode as EventNodeClass } from '../events/EventNode';
 
@@ -12,7 +12,7 @@ constructor(
 		public eventNode: EventNode,
 		protected scope: EAppletScope,
 		protected scopeValue: string | undefined,
-		protected hostClasses: Partial<Record<EAppletHostType, typeof AppletHost>>,
+		protected hostClasses: Partial<Record<EAppletHostType, typeof AppletHost<any>>>,
 		protected applets: Record<string, TAppletDefinition>,
 		protected autoStart: Record<string, boolean> = {},
 	) {	}
@@ -23,43 +23,56 @@ constructor(
 		return new hostClass(definition, eventNode);
 	}
 
-	public async initialize(appletName: string, opts?: { terminate?: boolean }): Promise<void> {
+	public async initialize(appletName: string, opts?: { 
+		terminate?: boolean,
+		preventReady? : boolean,
+	}): Promise<boolean> {
 		if (opts?.terminate) {
 			await this.terminate(appletName);
 		} else {
 			const existing = this.activeApplets[appletName];
-			if (existing && existing.host.isRunning()) return;
+			if (existing && existing.host.isRunning()) return false;
 		}
 
 		const definition = this.applets[appletName];
-		if (!definition) return;
-		if (!this.hostClasses[definition.hostType] || definition.scope !== this.scope) return;
+		if (!definition) return false;
+		if (!this.hostClasses[definition.hostType] || definition.scope !== this.scope) return false;
 
 		const eventNode = new EventNodeClass(definition.name, false);
 		await this.eventNode.addChild(eventNode);
 		const host = this.createHost(definition, eventNode);
+		
 		try {
 			await host.start();
 		} catch (err) {
 			console.error(`[AppletManager] ${definition.name} failed to start:`, err);
 			await this.eventNode.removeChild(eventNode.nodeId);
-			return;
+			return false;
 		}
+
 		this.activeApplets[appletName] = { host, eventNode };
+		if (!opts?.preventReady) eventNode.broadcast(APPLET_READY);
+		return true;
 	}
 
 	public async initializeAll(): Promise<void> {
-		await this.terminateAll();
-		await Promise.all(
-			Object.keys(this.autoStart)
-				.filter(appletName => this.autoStart[appletName])
-				.map(appletName => this.initialize(appletName)),
+		const autoStartArr = Object.keys(this.autoStart)
+			.filter(appletName => this.autoStart[appletName]);
+
+		const statusArr = await Promise.all(
+			autoStartArr.map(appletName => this.initialize(appletName, { preventReady: true }))
 		);
+
+		autoStartArr
+			.filter((_, i) => statusArr[i])
+			.map(appletName => this.activeApplets[appletName].eventNode.broadcast(APPLET_READY))
 	}
 
 	public async updateScopeValue(newValue: string | undefined): Promise<void> {
 		newValue ??= undefined;
 		if (this.scopeValue === newValue) return;
+		
+		await this.terminateAll();
 		this.scopeValue = newValue;
 		await this.initializeAll();
 	}
