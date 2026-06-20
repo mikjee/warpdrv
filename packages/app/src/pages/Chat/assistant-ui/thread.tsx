@@ -974,14 +974,6 @@ const AssistantActionBar: FC = () => {
 				</Menu.Trigger>
 				<Menu.Positioner>
 					<Menu.Content>
-						<ActionBarPrimitive.Copy asChild>
-							<Menu.Item value="copy">
-								<HStack gap="2">
-									{isCopied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
-									<Text fontSize="12px">Copy</Text>
-								</HStack>
-							</Menu.Item>
-						</ActionBarPrimitive.Copy>
 						<ActionBarPrimitive.Reload asChild>
 							<Menu.Item value="reload" onClick={clearAnnotations}>
 								<HStack gap="2">
@@ -990,6 +982,15 @@ const AssistantActionBar: FC = () => {
 								</HStack>
 							</Menu.Item>
 						</ActionBarPrimitive.Reload>
+						<Menu.Separator />
+						<ActionBarPrimitive.Copy asChild>
+							<Menu.Item value="copy">
+								<HStack gap="2">
+									{isCopied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
+									<Text fontSize="12px">Copy</Text>
+								</HStack>
+							</Menu.Item>
+						</ActionBarPrimitive.Copy>
 						<ActionBarPrimitive.Edit asChild>
 							<Menu.Item value="edit">
 								<HStack gap="2">

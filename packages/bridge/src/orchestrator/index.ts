@@ -86,7 +86,7 @@ export class Orchestrator {
 	}
 
 	private installStateHandlers(): void {
-		this.eventNode.fn('bridge.getMessageStates', async (api) => {
+		this.eventNode.fn('bridge.getAllMessageStatesByThread', async (api) => {
 			const threadId = api.payload as string;
 			return await this.persistence.getMessageStatesByThreadId(threadId);
 		});
@@ -101,12 +101,22 @@ export class Orchestrator {
 			return await this.persistence.getWorkspaceState(folderId);
 		});
 
+		this.eventNode.fn('bridge.getMessageState', async (api) => {
+			const messageId = api.payload as string;
+			return await this.persistence.getMessageState(messageId);
+		});
+
+		this.eventNode.fn('bridge.updateMessageState', async (api) => {
+			const payload = api.payload as { messageId: string; data: Record<string, unknown> };
+			await this.persistence.updateMessageState(payload.messageId, payload.data);
+		});
+
 		this.eventNode.fn('bridge.handlePureCompletion', async (api) => {
 			const payload = api.payload as {
 				inferenceRequestId: string;
 				inferenceUrl: string;
 				messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>;
-				inferenceParams: Record<string, unknown>;
+				inferenceParams?: Record<string, unknown>;
 			};
 			const { inferenceRequestId, inferenceUrl, messages, inferenceParams } = payload;
 			const controller = new AbortController();
@@ -115,7 +125,7 @@ export class Orchestrator {
 				return await this.handlePureCompletions(
 					inferenceUrl,
 					messages,
-					inferenceParams,
+					inferenceParams || {},
 					(partType, deltaText) => {
 						this.eventNode.broadcast('bridge.pure_completion_chunk.' + inferenceRequestId, { partType, deltaText });
 					},
@@ -449,6 +459,7 @@ export class Orchestrator {
 				messageId: assistantMsg.id,
 				inferenceUrl,
 				messages,
+				message: finalMessage,
 			});
 		}
 

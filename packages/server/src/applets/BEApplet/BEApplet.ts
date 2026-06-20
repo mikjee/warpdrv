@@ -4,6 +4,7 @@ import type { IAppletAPIBE } from '../lib/types';
 import type { IGuardrail, IGuardrailIssue, IServer } from '@warpcore/shared';
 import { COMPACTION_PROMPT, GUARDRAIL_PROMPT, GUARDRAIL_RULESET_GENERIC_PROMPT } from './prompts';
 import { store } from '../../util/store';
+import { EMessagePartType, IChatMessage } from '@warpcore/bridge';
 
 const fn: IAppletFn<IAppletAPIBE> = async (api) => {
     console.log('[BEApplet] Started');
@@ -28,7 +29,7 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
 
             const messageStates = await api.eventNode.invoke(
                 '/warpcore',
-                'bridge.getMessageStates',
+                'bridge.getAllMessageStatesByThread',
                 payload.request.threadId,
             ) as Array<{ messageId: string; data: Record<string, unknown> }>;
 
@@ -79,8 +80,9 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
                 messageId: string;
                 inferenceUrl: string;
                 messages: Array<{ role: string; content: any }>;
+                message: IChatMessage,
             };
-            const { threadId, messageId, inferenceUrl, messages } = payload;
+            const { threadId, messageId, inferenceUrl, messages, message } = payload;
 
             const threadState = await api.eventNode.invoke(
                 '/warpcore',
@@ -108,30 +110,39 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
             for (const guardrail of activeGuardrails) {
                 try {
                     const grServer = await store.get<IServer>('servers:' + guardrail.serverId);
-                    if (!grServer) {
-                        console.warn('[BEApplet] Guardrail server not found:', guardrail.serverId);
-                        continue;
-                    }
+                    if (!grServer) throw '[BEApplet] Guardrail server not found:' + guardrail.serverId;
+
                     const grInferenceUrl = `http://127.0.0.1:${grServer.port}`;
+                    const prompt = GUARDRAIL_PROMPT + GUARDRAIL_RULESET_GENERIC_PROMPT + (guardrail.prompt || '')
+                        + 'Message/conversation to be review is below -\n'
+                        + message
+                            .content
+                            .filter(c => c.type === EMessagePartType.TEXT)
+                            .map(c => c.text)
+                            .join('\n');
+                    
                     const result = await api.eventNode.invoke('/warpcore', 'bridge.handlePureCompletion', {
                         inferenceRequestId: guardrail.name + '-' + messageId,
                         inferenceUrl: grInferenceUrl,
-                        messages: [...messages, {
-                            role: 'system',
-                            content: GUARDRAIL_PROMPT + GUARDRAIL_RULESET_GENERIC_PROMPT + (guardrail.prompt || ''),
+                        messages: [{
+                            role: 'user',
+                            content: prompt,
                         }],
-                        inferenceParams: { temperature: 0.1, maxTokens: 512 },
                     });
-                    const text = result.content?.[0]?.text || '[]';
+
+                    const text = result.content?.filter((c: any) => c.type === "text")?.[0] || 'Error';
+
                     let parsed: IGuardrailIssue[] = [];
                     try {
                         parsed = JSON.parse(text);
                     } catch {
-                        // If not valid JSON, treat as clean
+                        console.error("Invalid JSON Result")
                     }
+
                     // Read existing results, merge, save
                     const existing = (await api.eventNode.invoke('/warpcore', 'bridge.getMessageState', messageId)) as Record<string, unknown>;
                     const currentResults = (existing?.guardrailResults as Record<string, any>) || {};
+
                     await api.eventNode.invoke('/warpcore', 'bridge.updateMessageState', {
                         messageId,
                         data: { guardrailResults: { ...currentResults, [guardrail.name]: parsed } },

@@ -41,7 +41,9 @@ function ServerDot({ status }: { status: EServerStatus }) {
 
 export const SlashCmdServerSelector: TSlotRenderer = ({
 	value,
+	inputRef,
 	onChange,
+	onKeyDown,
 	onFocus,
 	onBlur,
 }) => {
@@ -49,6 +51,10 @@ export const SlashCmdServerSelector: TSlotRenderer = ({
 	const [isOpen, setIsOpen] = useState(false);
 	const triggerRef = useRef<HTMLSpanElement | null>(null);
 	const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+	useEffect(() => {
+		inputRef(triggerRef.current);
+	}, [inputRef]);
 
 	const servers = useMemo(
 		() =>
@@ -125,8 +131,17 @@ export const SlashCmdServerSelector: TSlotRenderer = ({
 			<span
 				ref={triggerRef}
 				contentEditable={false}
-				tabIndex={-1}
+				tabIndex={0}
 				onClick={toggleOpen}
+				onFocus={() => {
+					if (!isOpen) {
+						setIsOpen(true);
+						onFocus();
+					}
+				}}
+				onKeyDown={(e) => {
+					onKeyDown(e);
+				}}
 				style={{
 					display: "inline-flex",
 					alignItems: "center",
