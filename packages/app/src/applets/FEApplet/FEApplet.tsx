@@ -337,7 +337,7 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 			description: 'Create a custom guardrail',
 			params: {
 				name: { type: 'string', description: 'Guardrail name', index: 0 },
-				server: { type: 'string', description: 'Server ID', index: 1 },
+				server: { type: 'server', description: 'Server ID', index: 1 },
 				prompt: { type: 'string', description: 'Review prompt', index: 2 },
 				subrole: { type: 'string', description: 'all/text/tool', index: 3 },
 			},

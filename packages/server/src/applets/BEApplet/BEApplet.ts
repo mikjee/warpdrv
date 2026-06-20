@@ -1,8 +1,9 @@
 import type { TAppletDefinition, IAppletFn } from '@warpcore/realmcore';
 import { EAppletHostType, EAppletScope } from '@warpcore/realmcore';
 import type { IAppletAPIBE } from '../lib/types';
-import type { IGuardrail, IGuardrailIssue } from '@warpcore/shared';
+import type { IGuardrail, IGuardrailIssue, IServer } from '@warpcore/shared';
 import { COMPACTION_PROMPT, GUARDRAIL_PROMPT, GUARDRAIL_RULESET_GENERIC_PROMPT } from './prompts';
+import { store } from '../../util/store';
 
 const fn: IAppletFn<IAppletAPIBE> = async (api) => {
     console.log('[BEApplet] Started');
@@ -106,9 +107,15 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
             // Process one by one, save each result
             for (const guardrail of activeGuardrails) {
                 try {
+                    const grServer = await store.get<IServer>('servers:' + guardrail.serverId);
+                    if (!grServer) {
+                        console.warn('[BEApplet] Guardrail server not found:', guardrail.serverId);
+                        continue;
+                    }
+                    const grInferenceUrl = `http://127.0.0.1:${grServer.port}`;
                     const result = await api.eventNode.invoke('/warpcore', 'bridge.handlePureCompletion', {
                         inferenceRequestId: guardrail.name + '-' + messageId,
-                        inferenceUrl,
+                        inferenceUrl: grInferenceUrl,
                         messages: [...messages, {
                             role: 'system',
                             content: GUARDRAIL_PROMPT + GUARDRAIL_RULESET_GENERIC_PROMPT + (guardrail.prompt || ''),

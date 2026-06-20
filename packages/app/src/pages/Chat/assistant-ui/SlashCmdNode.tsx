@@ -6,8 +6,9 @@ import { ReactNodeViewRenderer, NodeViewWrapper, type NodeViewProps } from "@tip
 import Suggestion from "@tiptap/suggestion";
 import { useStore } from "@/store";
 import { commandSuggestion } from "./CmdSuggestion";
+import { SlashCmdServerSelector } from "./SlashCmdServerSelector";
 
-// paramType -> slot renderer; only "default" wired now, dropdown/event-fed types added later
+// paramType -> slot renderer; "default" and "server" wired, additional types added as needed
 type TSlotRenderer = (args: {
 	value: string;
 	placeholder: string;
@@ -42,6 +43,7 @@ const SLOT_RENDERERS: Record<string, TSlotRenderer> = {
 			}}
 		/>
 	),
+	server: SlashCmdServerSelector,
 };
 
 const parseArgs = (raw: string): Record<string, string> => {
