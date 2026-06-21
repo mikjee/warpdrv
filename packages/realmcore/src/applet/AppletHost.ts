@@ -1,5 +1,5 @@
 import type { TAppletDefinition, IAppletFn, TAppletBaseAPI } from './types';
-import { APPLET_READY, EAppletHostStatus } from './types';
+import { APPLET_READY, APPLET_TERMINATE, EAppletHostStatus } from './types';
 import type { EventNode, TCallback } from '../events/EventNode';
 
 export class AppletHost<TAppletAPI extends TAppletBaseAPI = TAppletBaseAPI> {
@@ -17,6 +17,7 @@ export class AppletHost<TAppletAPI extends TAppletBaseAPI = TAppletBaseAPI> {
 		const _api: TAppletAPI = {
 			eventNode: this.eventNode,
 			onReady: (cb: TCallback) => this.eventNode.on('.', APPLET_READY, cb),
+			onTerminate: (cb: TCallback) => this.eventNode.on('.', APPLET_TERMINATE, cb),
 		} as TAppletAPI;
 
 		return _api;

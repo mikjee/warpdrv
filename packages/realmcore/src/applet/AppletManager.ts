@@ -1,6 +1,6 @@
 import { AppletHost } from './AppletHost';
 import type { TAppletDefinition } from './types';
-import { APPLET_READY, EAppletHostType, EAppletScope } from './types';
+import { APPLET_READY, APPLET_TERMINATE, EAppletHostType, EAppletScope } from './types';
 import type { EventNode } from '../events/EventNode';
 import { EventNode as EventNodeClass } from '../events/EventNode';
 
@@ -84,6 +84,7 @@ constructor(
 		if (!entry) return Promise.resolve();
 
 		this.terminatingHosts[appletName] = (async () => {
+			await entry.eventNode.survey(APPLET_TERMINATE);
 			await entry.host.terminate();
 			await this.eventNode.removeChild(entry.eventNode.nodeId);
 			delete this.activeApplets[appletName];

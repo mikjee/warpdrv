@@ -29,9 +29,11 @@ export interface TAppletDefinition<TApi = any> {
 export type TAppletBaseAPI = {
 	eventNode: EventNode,
 	onReady: (cb: TCallback) => Promise<TCallbackId>,
+	onTerminate: (cb: TCallback) => Promise<TCallbackId>,
 }
 
 export const APPLET_READY = "applet.ready";
+export const APPLET_TERMINATE = "applet.terminate";
 
 export type IAppletFn<TApi = any> = (api: TApi) => Promise<void>;
 

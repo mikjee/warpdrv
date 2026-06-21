@@ -16,7 +16,7 @@ export const UiSpacePanel = React.memo(({ location }: { location: EUISpaceLoc })
         }}
             p="2.5"
         >
-            <AccordionRoot collapsible defaultValue={[]}>
+            <AccordionRoot collapsible defaultValue={[]} type="multiple">
                 {(componentIds ? Object.keys(componentIds) : []).map(id => {
                     const entry = entriesById[id];
                     if (!entry) return null;

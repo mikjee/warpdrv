@@ -113,7 +113,7 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
                     if (!grServer) throw '[BEApplet] Guardrail server not found:' + guardrail.serverId;
 
                     const grInferenceUrl = `http://127.0.0.1:${grServer.port}` || inferenceUrl;
-                    const prompt = GUARDRAIL_PROMPT + GUARDRAIL_RULESET_GENERIC_PROMPT + (guardrail.prompt || '')
+                    const prompt = GUARDRAIL_PROMPT + GUARDRAIL_RULESET_GENERIC_PROMPT + '\n' + (guardrail.prompt || '')
                         + 'Message/conversation to be review is below -\n'
                         + message
                             .content
@@ -131,13 +131,7 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
                     });
 
                     const text = result.content?.filter((c: any) => c.type === "text")?.[0] || 'Error';
-
-                    let parsed: IGuardrailIssue[] = [];
-                    try {
-                        parsed = JSON.parse(text);
-                    } catch {
-                        console.error("Invalid JSON Result")
-                    }
+                    const parsed: IGuardrailIssue[] =JSON.parse(text);
 
                     // Read existing results, merge, save
                     const existing = (await api.eventNode.invoke('/warpcore', 'bridge.getMessageState', messageId)) as Record<string, unknown>;

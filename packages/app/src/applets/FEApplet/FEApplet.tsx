@@ -326,8 +326,8 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 		console.log("[FEApplet] OnReady!");
 
 		api.registerSlashCommand({
-			name: 'testfe',
-			description: 'Test FE command with target and count params',
+			name: 'test',
+			description: 'Test command with target and count params',
 			params: {
 				target: { type: 'string', description: 'Target name', index: 0 },
 				count: { type: 'number', description: 'Count value', index: 1 },
@@ -347,8 +347,14 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 			description: 'Create a custom guardrail',
 			params: {
 				name: { type: 'string', description: 'Guardrail name', index: 0 },
-				subrole: { type: 'string', description: 'all/text/tool', index: 3 },
-				server: { type: 'server', description: 'Server ID', index: 1 },
+				subrole: { type: 'dropdown', description: 'target', index: 1, props: {
+					items: [
+						{ label: 'All', value: 'all' }, 
+						{ label: 'Tool Only', value: 'tool' },
+						{ label: 'Text Only', value: 'text' }
+					],
+				}},
+				server: { type: 'server', description: 'Server ID', index: 2 },
 			},
 			execute: async (_api, params, extraParams) => {
 				const state = api.useStore.getState();
@@ -364,7 +370,6 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 					prompt: extraParams?.prompt,
 					subRoleSelection: subRole,
 				} } });
-				registerGuardrailChip(api, params.name as string);
 			},
 		});
 
@@ -406,21 +411,30 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 				state.unregisterUiSpaceComponent('FEApplet', `guardrail-${params.name}`);
 			},
 		});
+		
 		api.registerUiSpaceComponent(EUISpaceLoc.RIGHT_PANEL, TodoPanel, { label: 'Todo' });
 		api.registerUiSpaceComponent(EUISpaceLoc.RIGHT_PANEL, GuardrailsPanel, { label: 'Guardrails' });
 		api.registerUiSpaceComponent(EUISpaceLoc.MESSAGE, CompactIndicator, { label: 'Compact Indicator' });
 		api.registerUiSpaceComponent(EUISpaceLoc.MESSAGE, GuardrailResults, { label: 'GuardrailResults' });
 
-		const state = api.useStore.getState();
-		const currentThreadId = state.currentThreadId;
-		const guardrails = (currentThreadId
-			? state.threadStates[currentThreadId]?.guardrails
-			: state.tempThreadState?.guardrails) as Record<string, IGuardrail> || {};
-		for (const g of Object.values(guardrails)) {
-			if (g.active) {
-				registerGuardrailChip(api, g.name);
+		const unsubscribe = useStore.subscribe(
+			(s) => {
+				const t = s.currentThreadId;
+				return t ? s.threadStates[t]?.guardrails : s.tempThreadState?.guardrails;
+			},
+			(guardrails, prevGuardrails) => {
+				const currNames = guardrails ? Object.keys(guardrails) : [];
+				const prevNames = prevGuardrails ? Object.keys(prevGuardrails) : [];
+				for (const name of currNames.filter(n => !prevNames.includes(n))) {
+					registerGuardrailChip(api, name);
+				}
+				for (const name of prevNames.filter(n => !currNames.includes(n))) {
+					useStore.getState().unregisterUiSpaceComponent('FEApplet', `guardrail-${name}`);
+				}
 			}
-		}
+		);
+
+		api.onTerminate(() => { unsubscribe(); });
 
 		api.eventNode.hook('..', 'bridge.preCompletion', async (eventApi) => {
 			const payload = eventApi.payload as { slashCommands: Array<{ name: string }> };
