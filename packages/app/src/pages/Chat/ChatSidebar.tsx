@@ -5,7 +5,7 @@ import { Plug } from 'lucide-react';
 import { ChatConfigContentPanel } from './ChatConfigSidebar';
 import { ChatToolsContentPanel } from './ChatToolsSidebar';
 import { ThreadSearchPanel } from './ThreadSearchPanel';
-import { UiSpacePanel } from './UiSpacePanel';
+import { UiSpacePanel } from './ui-space/UiSpacePanel';
 import type { IChatInferenceParams, IChatPreset } from '@warpcore/shared';
 import { LuPlug, LuSlidersHorizontal } from 'react-icons/lu';
 import { VscTools } from 'react-icons/vsc';

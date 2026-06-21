@@ -5,7 +5,7 @@ import { ChevronDown, Eye } from "lucide-react";
 import { EServerStatus, IServer } from "@warpcore/shared";
 import { useStore } from "@/store";
 
-type TSlotRenderer = (args: {
+type SlashCmdServerSelectorProps = {
 	value: string;
 	placeholder: string;
 	inputRef: (el: HTMLInputElement | null) => void;
@@ -13,7 +13,7 @@ type TSlotRenderer = (args: {
 	onKeyDown: (e: React.KeyboardEvent) => void;
 	onFocus: () => void;
 	onBlur: (e: React.FocusEvent) => void;
-}) => React.ReactNode;
+};
 
 function ServerDot({ status }: { status: EServerStatus }) {
 	const color =
@@ -39,7 +39,7 @@ function ServerDot({ status }: { status: EServerStatus }) {
 	);
 }
 
-export const SlashCmdServerSelector: TSlotRenderer = ({
+export const SlashCmdServerSelector: React.FC<SlashCmdServerSelectorProps> = ({
 	value,
 	inputRef,
 	onChange,

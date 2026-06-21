@@ -10,10 +10,20 @@ import { useStore } from '@/store';
 import type { IExtractedSlashCommand } from '@/pages/Chat/assistant-ui/docToString';
 import type { ITodoItem, IGuardrail, IGuardrailIssue } from '@warpcore/shared';
 import { EGuardrailIssueType } from '@warpcore/shared';
+import { useMemo } from 'react';
+import type { TDropdownItem } from '@/pages/Chat/assistant-ui/slash-command/SlashCmdDropdown';
 import React from 'react';
 
 const EMPTY_TODOS: ITodoItem[] = [];
 const EMPTY_GUARDRAILS: Record<string, IGuardrail> = {};
+
+function useGuardrailItems(): TDropdownItem[] {
+  const guardrails = useStore(s => {
+    const t = s.currentThreadId;
+    return (t ? s.threadStates[t]?.guardrails : s.tempThreadState?.guardrails) as Record<string, IGuardrail>;
+  });
+  return useMemo(() => guardrails ? Object.keys(guardrails).map(n => ({ label: n, value: n })) : [], [guardrails]);
+}
 
 const TodoPanel = React.memo(() => {
 	const threadId = useStore(s => s.currentThreadId);
@@ -337,11 +347,10 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 			description: 'Create a custom guardrail',
 			params: {
 				name: { type: 'string', description: 'Guardrail name', index: 0 },
-				server: { type: 'server', description: 'Server ID', index: 1 },
-				prompt: { type: 'string', description: 'Review prompt', index: 2 },
 				subrole: { type: 'string', description: 'all/text/tool', index: 3 },
+				server: { type: 'server', description: 'Server ID', index: 1 },
 			},
-			execute: async (_api, params) => {
+			execute: async (_api, params, extraParams) => {
 				const state = api.useStore.getState();
 				const threadId = state.currentThreadId;
 				const subroleMap: Record<string, string> = { all: 'all', text: 'text', tool: 'tool' };
@@ -352,18 +361,23 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 					serverId: params.server,
 					active: true,
 					type: 'custom',
-					prompt: params.prompt,
+					prompt: extraParams?.prompt,
 					subRoleSelection: subRole,
 				} } });
 				registerGuardrailChip(api, params.name as string);
 			},
 		});
+
 		api.registerSlashCommand({
 			name: 'guardrail',
 			description: 'Activate or deactivate a guardrail',
 			params: {
-				name: { type: 'string', description: 'Guardrail name', index: 0 },
-				action: { type: 'string', description: 'on/off', index: 1 },
+				action: { type: 'dropdown', description: 'on/off', index: 0, props: {
+					items: [{ label: 'on', value: 'on' }, { label: 'off', value: 'off' }],
+				}},
+				name: { type: 'dropdown', description: 'Guardrail name', index: 1, props: {
+					items: useGuardrailItems,
+				}},
 			},
 			execute: async (_api, params) => {
 				const state = api.useStore.getState();
@@ -373,11 +387,14 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 				state.setThreadState(threadId, { guardrails: { ...guardrails, [params.name!]: { ...guardrails[params.name!], active: params.action === 'on' } } });
 			},
 		});
+
 		api.registerSlashCommand({
 			name: 'delete_guardrail',
 			description: 'Delete a custom guardrail',
 			params: {
-				name: { type: 'string', description: 'Guardrail name', index: 0 },
+				name: { type: 'dropdown', description: 'Guardrail name', index: 0, props: {
+					items: useGuardrailItems,
+				}},
 			},
 			execute: async (_api, params) => {
 				const state = api.useStore.getState();
@@ -393,12 +410,6 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 		api.registerUiSpaceComponent(EUISpaceLoc.RIGHT_PANEL, GuardrailsPanel, { label: 'Guardrails' });
 		api.registerUiSpaceComponent(EUISpaceLoc.MESSAGE, CompactIndicator, { label: 'Compact Indicator' });
 		api.registerUiSpaceComponent(EUISpaceLoc.MESSAGE, GuardrailResults, { label: 'GuardrailResults' });
-		api.registerComposerChip({
-			selectLabel: () => 'FEApplet',
-			selectIsActive: () => true,
-			onSetIsActive: (active) => { console.log('[FEApplet] chip toggled', active); },
-			onClose: (id) => { console.log('[FEApplet] chip closed', id); },
-		});
 
 		const state = api.useStore.getState();
 		const currentThreadId = state.currentThreadId;
@@ -416,6 +427,7 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 			const guardrailCommands = ['create_guardrail', 'guardrail', 'delete_guardrail'];
 			for (const cmd of payload.slashCommands) {
 				if (guardrailCommands.includes(cmd.name)) {
+					console.log("Aborting send...");
 					return false;
 				}
 			}

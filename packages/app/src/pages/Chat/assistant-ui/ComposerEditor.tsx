@@ -4,7 +4,7 @@ import Document from "@tiptap/extension-document";
 import Paragraph from "@tiptap/extension-paragraph";
 import Text from "@tiptap/extension-text";
 import HardBreak from "@tiptap/extension-hard-break";
-import { SlashCommandNode } from "./SlashCmdNode";
+import { SlashCommandNode } from "./slash-command/SlashCmdNode";
 import { docToString, extractCommands } from "./docToString";
 import { setActiveComposerEditor, clearActiveComposerEditor } from "./composerEditorRegistry";
 import { useStore } from "@/store";

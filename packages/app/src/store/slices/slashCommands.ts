@@ -5,6 +5,7 @@ export interface ISlashCommandParam {
 	type: string;
 	description: string;
 	index: number;
+	props?: Record<string, unknown>;
 }
 
 export interface ISlashCommand {
@@ -12,14 +13,7 @@ export interface ISlashCommand {
 	description: string;
 	params: Record<string, ISlashCommandParam>;
 	tags?: string[];
-	execute: (api: ISlashCommandApi, params: Record<string, string | number>) => Promise<void>;
-}
-
-interface SlashCommandsSlice {
-	slashCommands: Record<string, ISlashCommand>;
-	slashCommandsByApplet: Record<string, Record<string, true>>;
-	registerSlashCommand: (command: ISlashCommand, appletName?: string) => void;
-	unregisterSlashCommand: (name: string, appletName?: string) => void;
+	execute: (api: ISlashCommandApi, params: Record<string, string | number>, extraParams?: Record<string, string>) => Promise<void>;
 }
 
 export const slashCommandsSlice = (

@@ -112,7 +112,7 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
                     const grServer = await store.get<IServer>('servers:' + guardrail.serverId);
                     if (!grServer) throw '[BEApplet] Guardrail server not found:' + guardrail.serverId;
 
-                    const grInferenceUrl = `http://127.0.0.1:${grServer.port}`;
+                    const grInferenceUrl = `http://127.0.0.1:${grServer.port}` || inferenceUrl;
                     const prompt = GUARDRAIL_PROMPT + GUARDRAIL_RULESET_GENERIC_PROMPT + (guardrail.prompt || '')
                         + 'Message/conversation to be review is below -\n'
                         + message

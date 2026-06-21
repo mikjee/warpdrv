@@ -73,8 +73,8 @@ import { DictationProvider, useDictation } from './DictationContext';
 import { WorkspaceView } from '../WorkspaceView';
 import { ComposerEditor, IWarpComposerEditorRef } from './ComposerEditor';
 import { insertComposerText, clearComposerEditor } from './composerEditorRegistry';
-import { ComposerUiSpace } from '../ComposerUiSpace';
-import { MessageUiSpace } from '../MessageUiSpace';
+import { ComposerUiSpace } from '../ui-space/ComposerUiSpace';
+import { MessageUiSpace } from '../ui-space/MessageUiSpace';
 import type { IExtractedSlashCommand } from './docToString';
 
 const tokenEncoder = encodingForModel('gpt-4o');

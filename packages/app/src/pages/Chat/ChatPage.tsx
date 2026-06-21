@@ -352,7 +352,7 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 		if (!isValidServer) return;
 		const text = (message.content as any[]).filter((p: any) => p.type === 'text').map((p: any) => p.text).join('');
 		const slashCommands = pendingSlashCommands;
-		await executeCommands();
+		await executeCommands({ prompt: text });
 		clearPendingSlashCommands();
 
 		// Generate new thread ID if none exists - orchestrator will auto-create the thread

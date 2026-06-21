@@ -7,9 +7,11 @@ import Suggestion from "@tiptap/suggestion";
 import { useStore } from "@/store";
 import { commandSuggestion } from "./CmdSuggestion";
 import { SlashCmdServerSelector } from "./SlashCmdServerSelector";
+import { SlashCmdDropdown } from "./SlashCmdDropdown";
+import { SlashCmdDefaultInput } from "./SlashCmdDefaultInput";
 
-// paramType -> slot renderer; "default" and "server" wired, additional types added as needed
-type TSlotRenderer = (args: {
+// paramType -> slot renderer; "default", "server", and "dropdown" wired, additional types added as needed
+type TSlotRendererProps = {
 	value: string;
 	placeholder: string;
 	inputRef: (el: HTMLInputElement | null) => void;
@@ -17,33 +19,12 @@ type TSlotRenderer = (args: {
 	onKeyDown: (e: React.KeyboardEvent) => void;
 	onFocus: () => void;
 	onBlur: (e: React.FocusEvent) => void;
-}) => React.ReactNode;
+};
+type TSlotRenderer = React.FC<TSlotRendererProps & Record<string, unknown>>;
 const SLOT_RENDERERS: Record<string, TSlotRenderer> = {
-	default: ({ value, placeholder, inputRef, onChange, onKeyDown, onFocus, onBlur }) => (
-		<input
-			type="text"
-			ref={inputRef}
-			value={value}
-			placeholder={placeholder}
-			onChange={(e) => onChange(e.target.value)}
-			onKeyDown={onKeyDown}
-			onFocus={onFocus}
-			onBlur={onBlur}
-			style={{
-				background: "var(--wc-bg-subtle, rgba(255,255,255,0.06))",
-				border: "none",
-				borderRadius: "4px",
-				color: "var(--wc-text-secondary)",
-				font: "inherit",
-				padding: "0 4px",
-				margin: "0 2px",
-				width: `${Math.max(placeholder.length, value.length, 4)}ch`,
-				minWidth: "8ch",
-				outline: "none",
-			}}
-		/>
-	),
+	default: SlashCmdDefaultInput,
 	server: SlashCmdServerSelector,
+	dropdown: SlashCmdDropdown,
 };
 
 const parseArgs = (raw: string): Record<string, string> => {
@@ -197,18 +178,19 @@ const SlashPill: React.FC<NodeViewProps> = (props) => {
 			>
 				<span style={{ fontWeight: 700 }}>/{name}</span>
 				{paramEntries.map(([key, param], i) => {
-					const renderer = SLOT_RENDERERS[param.type] ?? SLOT_RENDERERS.default;
+					const Renderer = SLOT_RENDERERS[param.type] ?? SLOT_RENDERERS.default!;
 					return (
 						<span key={key} style={{ display: "inline-flex", alignItems: "center" }}>
-							{renderer({
-								value: args[key] ?? "",
-								placeholder: `${param.type}`,
-								inputRef: (el) => { slotRefs.current[i] = el; },
-								onChange: (next) => setArg(key, next),
-								onKeyDown: (e) => onSlotKeyDown(i, e),
-								onFocus: () => onSlotFocus(i),
-								onBlur: onSlotBlur,
-							})}
+							<Renderer
+								value={args[key] ?? ""}
+								placeholder={param.type}
+								inputRef={(el) => { slotRefs.current[i] = el; }}
+								onChange={(next) => setArg(key, next)}
+								onKeyDown={(e) => onSlotKeyDown(i, e)}
+								onFocus={() => onSlotFocus(i)}
+								onBlur={onSlotBlur}
+								{...(param.props as Record<string, unknown>)}
+							/>
 						</span>
 					);
 				})}
