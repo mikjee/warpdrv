@@ -127,7 +127,6 @@ export const useStore = create<AppState>()(
 					toolCallsById: bridge.toolCallsById,
 					startingToolsByMessage: bridge.startingToolsByMessage,
 					isRunningByThread: bridge.isRunningByThread,
-					activeThreadId: bridge.activeThreadId,
 					inferenceError: bridge.inferenceError,
 					embeddingStatusByMessage: bridge.embeddingStatusByMessage,
 
@@ -174,7 +173,6 @@ export const useStore = create<AppState>()(
 					clearEmbeddingStatuses: bridge.clearEmbeddingStatuses,
 					seedThreadMessages: bridge.seedThreadMessages,
 					setThreads: bridge.setThreads,
-					setActiveThread: bridge.setActiveThread,
 					setHeadMessageId: bridge.setHeadMessageId,
 
 					// Current chat state
@@ -233,7 +231,8 @@ export const useStore = create<AppState>()(
 					bridge.setWorkspaceState(folderId, data);
 					updateWorkspaceState(folderId, data);
 				},
-				setThreadState: (threadId: TThreadId, data: Record<string, unknown>) => {
+				getCurrentThreadState: bridge.getCurrentThreadState,
+				setThreadState: (threadId: TThreadId | null, data: Record<string, unknown>) => {
 					bridge.setThreadState(threadId, data);
 					if (threadId) {
 						updateThreadState(threadId, data);

@@ -119,6 +119,7 @@ export const Thread: FC<{
 	const isValidServer = !!currentServerId && currentServer?.status === EServerStatus.RUNNING;
 	const supportsMultiModal = currentServer?.useMultiModal ?? false;
 	const chatFixedWidth = useStore(s => s.settings.chatFixedWidth ?? false);
+	const currentThreadId = useStore(s => s.currentThreadId);
 
 	const deleteMessageCtx = useMemo<DeleteMessageState>(() => {
 		let resolveFn: (() => void) | null = null;
@@ -146,49 +147,49 @@ export const Thread: FC<{
 			<DeleteMessageContext.Provider value={deleteMessageCtx}>
 				<DictationProvider>
 					<ThreadPrimitive.Root
-					className="aui-root aui-thread-root @container flex h-full flex-col"
-					style={{
-						["--thread-max-width" as string]: "44rem",
-						["--composer-radius" as string]: "24px",
-						["--composer-padding" as string]: "10px",
-					}}
-				>
-					<ThreadPrimitive.Viewport
-						turnAnchor="bottom"
-						autoScroll={false}
-						className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-6 pt-4"
-						style={{ overflowAnchor: "none" }}
+						className="aui-root aui-thread-root @container flex h-full flex-col"
+						style={{
+							["--thread-max-width" as string]: "44rem",
+							["--composer-radius" as string]: "24px",
+							["--composer-padding" as string]: "10px",
+						}}
 					>
-						{isLoading ? (
-							<div className="flex h-full items-center justify-center">
-								<div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-600 border-t-transparent" />
-							</div>
-						) : (
-							<>
-								<AuiIf condition={(s) => s.thread.isEmpty}>
-									<ThreadWelcome />
-								</AuiIf>
-
-								<div style={{ maxWidth: chatFixedWidth ? "960px" : "100%", margin: "0 auto", width: "100%" }}>
-									<ThreadPrimitive.Messages>
-										{ThreadMsgFn}
-									</ThreadPrimitive.Messages>
+						<ThreadPrimitive.Viewport
+							turnAnchor="bottom"
+							autoScroll={false}
+							className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-6 pt-4"
+							style={{ overflowAnchor: "none" }}
+						>
+							{isLoading ? (
+								<div className="flex h-full items-center justify-center">
+									<div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-600 border-t-transparent" />
 								</div>
-								<SelectionPopover />
-							</>
-						)}
+							) : (
+								<>
+									<AuiIf condition={(s) => s.thread.isEmpty}>
+										<ThreadWelcome />
+									</AuiIf>
 
-						{!isLoading && (
-							<div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,var(--wc-bg-page)_35%,var(--wc-bg-page)_100%)]">
-								<ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer flex flex-col gap-4 overflow-visible" style={{ width: "44rem" }}>
-									<ThreadScrollToBottom />
-									<Elicitation />
-									<AnnotationsBox />
-									<Composer />
-								</ThreadPrimitive.ViewportFooter>
-							</div>
-						)}
-					</ThreadPrimitive.Viewport>
+									<div style={{ maxWidth: chatFixedWidth ? "960px" : "100%", margin: "0 auto", width: "100%" }}>
+										<ThreadPrimitive.Messages>
+											{ThreadMsgFn}
+										</ThreadPrimitive.Messages>
+									</div>
+									<SelectionPopover />
+								</>
+							)}
+
+							{!isLoading && (
+								<div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,var(--wc-bg-page)_35%,var(--wc-bg-page)_100%)]">
+									<ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer flex flex-col gap-4 overflow-visible" style={{ width: "44rem" }}>
+										<ThreadScrollToBottom />
+										<Elicitation />
+										<AnnotationsBox />
+										<Composer />
+									</ThreadPrimitive.ViewportFooter>
+								</div>
+							)}
+						</ThreadPrimitive.Viewport>
 					</ThreadPrimitive.Root>
 
 					{deletingMessageId && (
@@ -332,6 +333,7 @@ const Composer: FC = () => {
 	const clearAnnotations = useStore(s => s.clearAnnotations);
 	const aui = useAui();
 	const composerText = useAuiState(s => s.composer.text);
+	const pendingSlashCommands = useStore(s => s.pendingSlashCommands);
 	const editorRef = useRef<IWarpComposerEditorRef>(null);
 
 	const handleChangeText = useCallback((text: string) => {
@@ -345,11 +347,13 @@ const Composer: FC = () => {
 			aui.composer().setText(fullText);
 			clearAnnotations();
 		}
+		if (!composerText.trim() && pendingSlashCommands.length > 0) {
+			aui.composer().setText("<continue>");
+		}
 		aui.composer().send({ startRun: true });
-	}, [aui, annotations, composerText, clearAnnotations]);
+	}, [aui, annotations, composerText, clearAnnotations, pendingSlashCommands.length]);
 
 	const composerDisabled = useAuiState(s => s.composer.isEmpty || !s.composer.isEditing);
-	const pendingSlashCommands = useStore(s => s.pendingSlashCommands);
 	const canSend = useCallback(() => {
 		if (!isValidServer) {
 			document.dispatchEvent(new CustomEvent('server-selector-shake'));
@@ -629,9 +633,13 @@ const ComposerAction: FC<{ onStreamChange?: (stream: MediaStream | null) => void
 			aui.composer().setText(fullText);
 			clearAnnotations();
 		}
-		aui.composer().send({ startRun: true });
+		if (!composerText.trim() && pendingSlashCommands.length > 0) {
+			aui.composer().setText("<continue>");
+		}
+		const send = aui.composer().send;
+		send({ startRun: true });
 		clearComposerEditor();
-	}, [isSendDisabled, annotations, composerText, clearAnnotations]);
+	}, [isSendDisabled, annotations, composerText, clearAnnotations, pendingSlashCommands.length]);
 
 	return (
 		<div className="aui-composer-action-wrapper relative flex items-center justify-between">

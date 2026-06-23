@@ -36,6 +36,7 @@ import { VscLayoutSidebarLeft, VscLayoutSidebarLeftOff, VscLayoutSidebarRight, V
 import { RiFontSize } from 'react-icons/ri';
 import mermaid from 'mermaid';
 import { useLocation } from 'react-router-dom';
+import { WithErrorBoundary } from '@/components/WithErrorBoundary';
 
 const getFileDataURL = (file: File): Promise<string> =>
 	new Promise((resolve, reject) => {
@@ -350,16 +351,23 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 	// V2: no message chain sent to backend — backend builds from persistence
 	const onNewV2 = useCallback(async (message: any) => {
 		if (!isValidServer) return;
-		const text = (message.content as any[]).filter((p: any) => p.type === 'text').map((p: any) => p.text).join('');
+		let text = (message.content as any[])
+			.filter((p: any) => p.type === 'text')
+			.map((p: any) => p.text)
+			.join('')
+			.trim();
+
+		if (text === "<continue>") text = "";
+			
 		const slashCommands = pendingSlashCommands;
 		await executeCommands({ prompt: text });
 		clearPendingSlashCommands();
 
 		// Generate new thread ID if none exists - orchestrator will auto-create the thread
-		const isNewThread = !currentThreadId;
-		const tempState = isNewThread ? useStore.getState().tempThreadState : null;
+		const state = useStore.getState();
+		const isNewThread = !currentThreadId || !state.threads[currentThreadId];
+		const tempState = isNewThread ? state.tempThreadState : null;
 		const threadId = currentThreadId ?? nanoid(6);
-		if (isNewThread) setCurrentThreadId(threadId);
 
 		// Process attachments - convert File objects to base64
 		const attachments = message.attachments || [];
@@ -455,9 +463,9 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 
 		// If text is empty (slash commands only), skip inference
 		if (!text.trim()) return;
-
-		// Pipe returned false — abort inference
 		if (!pipeResult) return;
+
+		if (isNewThread) setCurrentThreadId(threadId);
 
 		await fetch('/api/chat/completions', {
 			method: 'POST',
@@ -528,6 +536,7 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 		onEdit,
 		onReload: onReloadV2,
 		onCancel,
+		isDisabled: false,
 		// Called by assistant-ui when messages update (including branch switches)
 		setMessages: (newMessages: any) => {
 			// Extract the last message ID from the new messages
@@ -541,8 +550,7 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 		adapters: {
 			threadList: {
 				onSwitchToNewThread: async () => {
-					const newThreadId = globalThis.crypto.randomUUID();
-					setCurrentThreadId(newThreadId);
+					setCurrentThreadId(nanoid(6));
 				},
 				onSwitchToThread: async (threadId: string) => {
 					setCurrentThreadId(threadId);
@@ -577,7 +585,9 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 						)}
 						<Box flex="1" overflow="hidden">
 							<BranchTokensContext value={branchTokenCount}>
-								<Thread isLoading={isLoadingThread} currentServerId={currentServerId} />
+								<WithErrorBoundary >
+									<Thread isLoading={isLoadingThread} currentServerId={currentServerId} />
+								</WithErrorBoundary>
 							</BranchTokensContext>
 						</Box>
 						{/* New unified sidebar with tabs */}
@@ -814,7 +824,7 @@ export const ChatPage = React.memo(() => {
 							borderRadius="lg"
 							fontSize="13px"
 							fontWeight="500"
-							onClick={() => setCurrentThreadId(globalThis.crypto.randomUUID())}
+							onClick={() => setCurrentThreadId(nanoid(6))}
 						>
 							<Plus size={15} />
 							New Chat

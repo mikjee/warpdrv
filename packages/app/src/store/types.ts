@@ -41,8 +41,9 @@ import { IAnnotation } from '@/store/slices/annotations';
 import type { ISlashCommand } from '@/store/slices/slashCommands';
 import type { EUISpaceLoc, TAppletName, TUISpaceComponent, TUISpaceComponentId, TUiSpaceComponentDef } from '@/store/slices/uiSpaces';
 import type { EChatSidebarTab } from '@/store/slices/chatSidebar';
+import { IChatStoreState } from '@warpcore/bridge/store';
 
-export interface AppState {
+export interface AppState extends IChatStoreState{
 	// SSE Connection
 	sseConnected: boolean;
 	setSseConnected: (connected: boolean) => void;
@@ -155,7 +156,6 @@ export interface AppState {
 	toolCallsById: Record<TToolCallId, IToolCall>;
 	startingToolsByMessage: Record<TMessageId, string[]>;
 	isRunningByThread: Record<TThreadId, boolean>;
-	activeThreadId: TThreadId | null;
 
 	// Inference error tracking
 	inferenceError: { threadId: TThreadId; messageId: TMessageId; error: string } | null;
@@ -187,7 +187,6 @@ export interface AppState {
 	applyEmbeddingError: (error: string) => void;
 	seedThreadMessages: (threadId: TThreadId, messages: IChatMessage[]) => void;
 	setThreads: (threads: Record<TThreadId, IChatThread>) => void;
-	setActiveThread: (id: TThreadId | null) => void;
 	setHeadMessageId: (threadId: TThreadId, messageId: TMessageId) => void;
 
 	// Current chat state

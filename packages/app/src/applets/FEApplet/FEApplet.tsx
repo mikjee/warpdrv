@@ -19,8 +19,8 @@ const EMPTY_GUARDRAILS: Record<string, IGuardrail> = {};
 
 function useGuardrailItems(): TDropdownItem[] {
   const guardrails = useStore(s => {
-    const t = s.currentThreadId;
-    return (t ? s.threadStates[t]?.guardrails : s.tempThreadState?.guardrails) as Record<string, IGuardrail>;
+    const ts = s.getCurrentThreadState(s);
+    return ts?.guardrails as Record<string, IGuardrail>;
   });
   return useMemo(() => guardrails ? Object.keys(guardrails).map(n => ({ label: n, value: n })) : [], [guardrails]);
 }
@@ -130,12 +130,9 @@ const CompactIndicator = React.memo(({ def, children }: { def: TUiSpaceComponent
 });
 
 const GuardrailsPanel = React.memo(() => {
-	const threadId = useStore(s => s.currentThreadId);
 	const guardrails = useStore(s => {
-		if (threadId) {
-			return (s.threadStates[threadId]?.guardrails as Record<string, IGuardrail>) || EMPTY_GUARDRAILS;
-		}
-		return (s.tempThreadState?.guardrails as Record<string, IGuardrail>) || EMPTY_GUARDRAILS;
+		const ts = s.getCurrentThreadState(s);
+		return ts?.guardrails || EMPTY_GUARDRAILS;
 	});
 	const items = Object.values(guardrails);
 
@@ -298,21 +295,23 @@ const registerGuardrailChip = (api: IAppletAPIFE, name: string) => {
 		componentId: `guardrail-${name}`,
 		selectLabel: () => name,
 		selectIsActive: (s) => {
-			const threadId = s.currentThreadId;
-			const guardrails = (threadId ? s.threadStates[threadId]?.guardrails : s.tempThreadState?.guardrails) as Record<string, IGuardrail>;
+			const ts = s.getCurrentThreadState(s);
+			const guardrails = (ts?.guardrails || EMPTY_GUARDRAILS) as Record<string, IGuardrail>;
 			return guardrails?.[name]?.active ?? false;
 		},
 		onSetIsActive: (active) => {
 			const state = api.useStore.getState();
 			const threadId = state.currentThreadId;
-			const guardrails = (threadId ? state.threadStates[threadId]?.guardrails : state.tempThreadState?.guardrails) as Record<string, IGuardrail> || {};
+			const ts = state.getCurrentThreadState(state);
+			const guardrails = (ts?.guardrails || EMPTY_GUARDRAILS) as Record<string, IGuardrail>;
 			if (!guardrails[name]) return;
 			state.setThreadState(threadId, { guardrails: { ...guardrails, [name]: { ...guardrails[name], active } } });
 		},
 		onClose: () => {
 			const state = api.useStore.getState();
 			const threadId = state.currentThreadId;
-			const guardrails = (threadId ? state.threadStates[threadId]?.guardrails : state.tempThreadState?.guardrails) as Record<string, IGuardrail> || {};
+			const ts = state.getCurrentThreadState(state);
+			const guardrails = (ts?.guardrails || EMPTY_GUARDRAILS) as Record<string, IGuardrail>;
 			if (!guardrails[name]) return;
 			state.setThreadState(threadId, { guardrails: { ...guardrails, [name]: { ...guardrails[name], active: false } } });
 		},
@@ -359,9 +358,10 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 			execute: async (_api, params, extraParams) => {
 				const state = api.useStore.getState();
 				const threadId = state.currentThreadId;
+				const ts = state.getCurrentThreadState(state);
 				const subroleMap: Record<string, string> = { all: 'all', text: 'text', tool: 'tool' };
 				const subRole = subroleMap[params.subrole as string] || 'all';
-				const guardrails = (threadId ? state.threadStates[threadId]?.guardrails : state.tempThreadState?.guardrails) as Record<string, IGuardrail> || {};
+				const guardrails = (ts?.guardrails || EMPTY_GUARDRAILS) as Record<string, IGuardrail>;
 				state.setThreadState(threadId, { guardrails: { ...guardrails, [params.name!]: {
 					name: params.name,
 					serverId: params.server,
@@ -387,7 +387,8 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 			execute: async (_api, params) => {
 				const state = api.useStore.getState();
 				const threadId = state.currentThreadId;
-				const guardrails = (threadId ? state.threadStates[threadId]?.guardrails : state.tempThreadState?.guardrails) as Record<string, IGuardrail> || {};
+				const ts = state.getCurrentThreadState(state);
+				const guardrails = (ts?.guardrails || EMPTY_GUARDRAILS) as Record<string, IGuardrail>;
 				if (!guardrails[params.name!]) return;
 				state.setThreadState(threadId, { guardrails: { ...guardrails, [params.name!]: { ...guardrails[params.name!], active: params.action === 'on' } } });
 			},
@@ -404,7 +405,8 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 			execute: async (_api, params) => {
 				const state = api.useStore.getState();
 				const threadId = state.currentThreadId;
-				const guardrails = (threadId ? state.threadStates[threadId]?.guardrails : state.tempThreadState?.guardrails) as Record<string, IGuardrail> || {};
+				const ts = state.getCurrentThreadState(state);
+				const guardrails = (ts?.guardrails || EMPTY_GUARDRAILS) as Record<string, IGuardrail>;
 				if (!guardrails[params.name!]) return;
 				const { [params.name!]: _, ...rest } = guardrails;
 				state.setThreadState(threadId, { guardrails: rest });
@@ -418,10 +420,7 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 		api.registerUiSpaceComponent(EUISpaceLoc.MESSAGE, GuardrailResults, { label: 'GuardrailResults' });
 
 		const unsubscribe = useStore.subscribe(
-			(s) => {
-				const t = s.currentThreadId;
-				return t ? s.threadStates[t]?.guardrails : s.tempThreadState?.guardrails;
-			},
+			(s) => s.getCurrentThreadState(s)?.guardrails,
 			(guardrails, prevGuardrails) => {
 				const currNames = guardrails ? Object.keys(guardrails) : [];
 				const prevNames = prevGuardrails ? Object.keys(prevGuardrails) : [];
@@ -431,7 +430,8 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 				for (const name of prevNames.filter(n => !currNames.includes(n))) {
 					useStore.getState().unregisterUiSpaceComponent('FEApplet', `guardrail-${name}`);
 				}
-			}
+			},
+			{ fireImmediately: true }
 		);
 
 		api.onTerminate(() => { unsubscribe(); });

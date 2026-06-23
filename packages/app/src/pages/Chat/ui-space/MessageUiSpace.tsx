@@ -1,19 +1,33 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useStore } from '@/store';
-import { EUISpaceLoc } from '@/store/slices/uiSpaces';
+import { EUISpaceLoc, TUiSpaceComponentDef } from '@/store/slices/uiSpaces';
+import { WithErrorBoundary } from '@/components/WithErrorBoundary';
+
+const EMPTY: Array<TUiSpaceComponentDef> = [];
 
 export const MessageUiSpace = React.memo(({ children }: { children: React.ReactNode }) => {
     const componentIds = useStore(s => s.uiSpaceComponentsByLocation[EUISpaceLoc.MESSAGE]);
     const entriesById = useStore(s => s.uiSpaceComponentsById);
 
-    if (!componentIds || !Object.keys(componentIds).length) return children;
+    const components = useMemo(() => {
+        if (!componentIds || !Object.keys(componentIds).length) return EMPTY;
+        return Object
+            .keys(componentIds)
+            .map(id => entriesById[id])
+            .filter(entry => !!entry)
+            .map(entry => entry);
+    }, [
+        componentIds,
+        entriesById,
+    ]);
 
     let result = children;
-    for (const id of Object.keys(componentIds)) {
-        const entry = entriesById[id];
-        if (!entry) continue;
-        const Comp = entry.component;
-        result = <Comp def={entry} {...(entry.props || {})}>{result}</Comp>;
-    }
+    const fallback = children;
+
+    components.forEach((C) => {
+        result = <WithErrorBoundary fallback={fallback}>
+            <C.component def={C} {...(C.props || {})}>{result}</C.component>
+        </WithErrorBoundary>;
+    });
     return result;
 });

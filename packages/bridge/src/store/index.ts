@@ -38,7 +38,6 @@ export type ImmerGet<T> = () => T;
 export interface IChatStoreState {
 	// Threads - flat map keyed by thread ID
 	threads: Record<TThreadId, IChatThread>;
-	activeThreadId: TThreadId | null;
 
 	// Messages - nested map: threadId -> messageId -> IChatMessage
 	messagesByThread: Record<TThreadId, Record<TMessageId, IChatMessage>>;
@@ -111,7 +110,6 @@ export interface IChatStoreState {
 	applyElicitationResolved: (id: string) => void;
 	seedThreadMessages: (threadId: TThreadId, messages: IChatMessage[]) => void;
 	setThreads: (threads: Record<TThreadId, IChatThread>) => void;
-	setActiveThread: (id: TThreadId | null) => void;
 	setHeadMessageId: (threadId: TThreadId, messageId: TMessageId) => void;
 
 	// Current chat state actions
@@ -135,7 +133,8 @@ export interface IChatStoreState {
 	threadStates: Record<TThreadId, Record<string, unknown>>;
 	messageStates: Record<TMessageId, Record<string, unknown>>;
 	setWorkspaceState: (folderId: TFolderId, data: Record<string, unknown>) => void;
-	setThreadState: (threadId: TThreadId, data: Record<string, unknown>) => void;
+	getCurrentThreadState: (s?: IChatStoreState) => IChatStoreState["tempThreadState"] | undefined;
+	setThreadState: (threadId: TThreadId | null, data: Record<string, unknown>) => void;
 	setMessageState: (messageId: TMessageId, data: Record<string, unknown>) => void;
 	initWorkspaceState: (folderId: TFolderId, data: Record<string, unknown>) => void;
 	initThreadState: (threadId: TThreadId, data: Record<string, unknown>) => void;
@@ -159,7 +158,6 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 	const initialState = {
 		threads: {} as Record<TThreadId, IChatThread>,
 		startingToolsByMessage: {} as Record<TMessageId, string[]>,
-		activeThreadId: null as TThreadId | null,
 		messagesByThread: {} as Record<TThreadId, Record<TMessageId, IChatMessage>>,
 		chunksByMessageId: {},
 		headMessageIdByThread: {} as Record<TThreadId, TMessageId>,
@@ -228,7 +226,7 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 				delete draft.messagesByThread[threadId];
 				// Clear current thread if it was the deleted one
 				if (draft.currentThreadId === threadId) {
-					draft.currentThreadId = null;
+					draft.currentThreadId = crypto.randomUUID();
 				}
 			}),
 
@@ -520,11 +518,6 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 				draft.threads = threads;
 			}),
 
-setActiveThread: (id: TThreadId | null) =>
-		set((draft) => {
-			draft.activeThreadId = id;
-		}),
-
 		setHeadMessageId: (threadId: TThreadId, messageId: TMessageId) =>
 			set((draft) => {
 				draft.headMessageIdByThread[threadId] = messageId;
@@ -594,13 +587,17 @@ setActiveThread: (id: TThreadId | null) =>
 				draft.workspaceStates[folderId] = { ...(draft.workspaceStates[folderId] || {}), ...data };
 			});
 		},
+		getCurrentThreadState: (s) => {
+			s = s || _get();
+			const t = s.currentThreadId;
+			const haveThread = !!t && s.threads[t];
+			return haveThread ? s.threadStates[t] : s.tempThreadState;
+		},
 		setThreadState: (threadId: TThreadId | null, data: Record<string, unknown>) => {
 			set((draft) => {
-				if (threadId) {
-					draft.threadStates[threadId] = { ...(draft.threadStates[threadId] || {}), ...data };
-				} else {
-					draft.tempThreadState = { ...draft.tempThreadState, ...data };
-				}
+				const threadInStore = threadId  && draft.threads[threadId];
+				if (threadId && threadInStore) draft.threadStates[threadId] = { ...(draft.threadStates[threadId] || {}), ...data };
+				else draft.tempThreadState = { ...draft.tempThreadState, ...data };
 			});
 		},
 		setMessageState: (messageId: TMessageId, data: Record<string, unknown>) => {

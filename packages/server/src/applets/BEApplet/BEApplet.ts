@@ -130,7 +130,7 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
                         }],
                     });
 
-                    const text = result.content?.filter((c: any) => c.type === "text")?.[0] || 'Error';
+                    const text = result.content?.filter((c: any) => c.type === "text")?.[0]?.text || 'Error';
                     const parsed: IGuardrailIssue[] =JSON.parse(text);
 
                     // Read existing results, merge, save

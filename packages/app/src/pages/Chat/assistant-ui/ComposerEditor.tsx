@@ -1,4 +1,4 @@
-import { useImperativeHandle, forwardRef } from "react";
+import { useImperativeHandle, forwardRef, useRef } from "react";
 import { useEditor, EditorContent, Extension, type Editor } from "@tiptap/react";
 import Document from "@tiptap/extension-document";
 import Paragraph from "@tiptap/extension-paragraph";
@@ -25,19 +25,20 @@ interface IProps {
 }
 
 // drives Enter=send, Shift-Enter=newline
-const makeKeymap = (onEnter: () => void, canSend?: () => boolean) =>
+const makeKeymap = (getOnEnter: () => () => void, getCanSend: () => (() => boolean) | undefined) =>
 	Extension.create({
 		name: "warpComposerKeymap",
 		addKeyboardShortcuts() {
 			return {
 				Enter: () => {
+					const canSend = getCanSend();
 					if (canSend && !canSend()) return false;
 					const json = this.editor.getJSON();
-					const text = docToString(json).trim();
-					const commands = extractCommands(json);
-					if (!text && commands.length === 0) return false;
-					onEnter();
-					return true;
+const text = docToString(json).trim();
+				const commands = extractCommands(json);
+				if (!text && commands.length === 0) return false;
+				getOnEnter()();
+				return true;
 				},
 				"Shift-Enter": () => this.editor.commands.setHardBreak(),
 			};
@@ -46,13 +47,17 @@ const makeKeymap = (onEnter: () => void, canSend?: () => boolean) =>
 
 export const ComposerEditor = forwardRef<IWarpComposerEditorRef, IProps>((props, ref) => {
 	const setPendingSlashCommands = useStore(s => s.setPendingSlashCommands);
+	const onEnterRef = useRef(props.onEnter);
+	onEnterRef.current = props.onEnter;
+	const canSendRef = useRef(props.canSend);
+	canSendRef.current = props.canSend;
 	const editor = useEditor({
 		extensions: [
 			Document,
 			Paragraph,
 			Text,
 			HardBreak,
-			makeKeymap(props.onEnter, props.canSend),
+			makeKeymap(() => onEnterRef.current, () => canSendRef.current),
 			SlashCommandNode,
 		],
 		editorProps: {

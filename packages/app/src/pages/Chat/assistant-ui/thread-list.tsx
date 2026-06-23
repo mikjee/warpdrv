@@ -653,32 +653,6 @@ export const ThreadList: FC<{ onOpenSearch?: () => void }> = React.memo(({ onOpe
 
 	return (
 		<ThreadListPrimitive.Root className="aui-root aui-thread-list-root flex flex-col flex-1 min-h-0">
-			{/* Fixed header */}
-			{/* <Box flexShrink={0} mb="2" px="3">
-				<HStack
-					gap="1" px="2" py="1"
-					borderRadius="md" borderWidth="1px"
-					borderColor="var(--wc-border-subtle)"
-					bg="var(--wc-bg-card)"
-				>
-					<SearchIcon size={13} style={{ opacity: 0.3, flexShrink: 0 }} />
-					<Input
-						variant="subtle"
-						placeholder="Search threads..."
-						value={search}
-						onChange={(e) => setSearch(e.target.value)}
-size="2xs"
-						bg="var(--wc-bg-card)"
-						color="var(--wc-text-primary)"
-						_focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }}
-					/>
-					{search && (
-						<Box cursor="pointer" onClick={() => setSearch('')} opacity={0.3} _hover={{ opacity: 0.6 }}>
-							<XIcon size={12} />
-						</Box>
-					)}
-				</HStack>
-			</Box> */}
 			{onOpenSearch && (
 				<Box flexShrink={0} mb="2" px="3">
 					<Box
@@ -728,18 +702,6 @@ size="2xs"
 					</Box>
 				</HStack>
 				<HStack gap="1">
-					{/* {onOpenSearch && (
-						<Box
-							as="button" p="1" borderRadius="md"
-							color="var(--wc-text-faint)"
-							_hover={{ color: 'var(--wc-text-secondary)' }}
-							onClick={onOpenSearch}
-							title="Search"
-							mt="1"
-						>
-							<SearchIcon size={16} />
-						</Box>
-					)} */}
 					<Box
 						as="button" p="1" borderRadius="md"
 						color="var(--wc-text-faint)"
@@ -809,26 +771,6 @@ size="2xs"
 				</Box>
 				</VStack>
 			</Box>
-
-			{/* Fixed footer */}
-			{/* <Box flexShrink={0} mt="2" pt="2" borderTopWidth="1px" borderColor="var(--wc-bg-card)">
-				<ThreadListPrimitive.New asChild>
-					<Box
-						as="button"
-						w="100%" px="3" py="2"
-						borderRadius="md" borderWidth="1px"
-						borderColor="var(--wc-bg-hover)"
-						bg="var(--wc-bg-subtle)"
-						_hover={{ bg: 'var(--wc-bg-card)' }}
-						display="flex" alignItems="center" gap="2"
-						fontSize="12px" color="var(--wc-text-muted)"
-						cursor="pointer"
-					>
-						<PlusIcon size={14} />
-						<Text>New Chat</Text>
-					</Box>
-				</ThreadListPrimitive.New>
-			</Box> */}
 
 			{confirmDelete && (
 				<Portal>

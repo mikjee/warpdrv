@@ -73,7 +73,7 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 	);
 
 	const stop = useCallback(() => {
-		console.log('[Dictation] stopping: isActive→false, destroying session, stopping tracks');
+		//console.log('[Dictation] stopping: isActive→false, destroying session, stopping tracks');
 		setIsActive(false);
 		setSource(null);
 		if (isStartingRef.current) {
@@ -88,7 +88,7 @@ export const DictationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 	}, []);
 
 	const start = useCallback(async (src: 'composer' | 'popover' | 'global') => {
-		console.log('[Dictation] start called, isActive:', isActive, 'serverId:', selectedWhisperServerId, 'serverStatus:', activeWhisperServer?.status);
+		//console.log('[Dictation] start called, isActive:', isActive, 'serverId:', selectedWhisperServerId, 'serverStatus:', activeWhisperServer?.status);
 		if (isActiveRef.current) { console.log('[Dictation] start skipped: already active'); return; }
 		if (!selectedWhisperServerId || !activeWhisperServer) { console.log('[Dictation] start skipped: no server'); return; }
 		if (activeWhisperServer.status !== EWhisperServerStatus.RUNNING) { console.log('[Dictation] start skipped: server not running'); return; }

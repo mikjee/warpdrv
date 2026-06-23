@@ -63,7 +63,7 @@ function checkVadComplete() {
 	const generating = s.ttsIsGenerating;
 	const sent = s.ttsVadSentencesSent;
 	const done = s.ttsVadSentencesDone;
-	const threadId = s.activeThreadId;
+	const threadId = s.currentThreadId;
 	const running = threadId ? s.isRunningByThread[threadId] : false;
 	console.log('[TTS vad] checkVadComplete: queue=', queueLen, 'playing=', playing, 'generating=', generating, 'sent=', sent, 'done=', done, 'running=', running);
 	if (queueLen > 0 || playing) return;
