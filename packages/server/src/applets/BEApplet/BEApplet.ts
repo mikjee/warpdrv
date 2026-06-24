@@ -4,7 +4,7 @@ import type { IAppletAPIBE } from '../lib/types';
 import type { IGuardrail, IGuardrailIssue, IServer } from '@warpcore/shared';
 import { COMPACTION_PROMPT, GUARDRAIL_PROMPT, GUARDRAIL_RULESET_GENERIC_PROMPT } from './prompts';
 import { store } from '../../util/store';
-import { EMessagePartType, IChatMessage, TOpenAIMessage } from '@warpcore/bridge';
+import { IChatMessage, TOpenAIMessage } from '@warpcore/bridge';
 
 const fn: IAppletFn<IAppletAPIBE> = async (api) => {
     console.log('[BEApplet] Started');
@@ -96,9 +96,13 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
             const activeGuardrails = Object.values(guardrails).filter(g => g.isActive);
             if (!activeGuardrails.length) return;
 
-            // Extract tool names from the current message
-            const toolCalls = await api.eventNode.invoke('/warpcore', 'bridge.getToolCallsForMessage', messageId) as Array<{ toolName: string }>;
-            const toolNames = toolCalls.map(tc => tc.toolName.toLowerCase());
+            // Find current turn boundary
+            const assistantIndex = messages.map(m => m.role).lastIndexOf('assistant');
+            const beforePart3 = assistantIndex !== -1 ? messages.slice(0, assistantIndex) : messages;
+
+            // Tool names from the assistant message
+            const lastAssistant = messages[assistantIndex];
+            const toolNames = lastAssistant?.tool_calls?.map(tc => tc.function.name.toLowerCase()) || [];
 
             // Filter guardrails by triggerOnTools
             const applicableGuardrails = activeGuardrails.filter(g => {
@@ -139,36 +143,37 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
                             : Array.isArray(m.content)
                                 ? m.content.find((c: any) => c.type === 'text')?.text || ''
                                 : '';
-                        return `[${m.role}]: ${content}`;
+                        let result = `[${m.role}]: ${content}`;
+                        if (m.tool_calls?.length) {
+                            result += '\n' + m.tool_calls.map(tc => `[${tc.function.name}]: ${tc.function.arguments}`).join('\n');
+                        }
+                        return result;
                     };
 
                     const part1: Array<TOpenAIMessage> = [];
                     const part2: Array<TOpenAIMessage> = [];
                     const part3: Array<TOpenAIMessage> = [];
 
+                    // Part 3 - always included, just the assistant message
+                    part3.push({ role: "system", content: "<review>" });
+                    part3.push(messages[assistantIndex]!);
+
+                    // Part 1 - base from beforePart3
                     if (guardrail.includeBaseMessage) {
-                        if (messages.length >= 1) {
+                        if (beforePart3.length >= 1) {
                             part1.push({role: "system", content: "<base>"});
-                            part1.push(messages[0]!);
+                            part1.push(beforePart3[0]!);
                         }
-                        if (messages.length >= 2) part1.push(messages[1]!);
-                        if (messages.length) part1.push({ role: "system", content: "<latest>"});
+                        if (beforePart3.length >= 2) part1.push(beforePart3[1]!);
                     }
 
+                    // Part 2 - last N from beforePart3
                     if (guardrail.messagesCount && guardrail.messagesCount > 0) {
-                        part2.push(...messages.slice(-guardrail.messagesCount));
+                        part2.push({ role: "system", content: "<latest>" });
+                        part2.push(...beforePart3.slice(-guardrail.messagesCount));
                     }
 
-                    const currentTexts = message
-                        .content
-                        .filter(c => c.type === EMessagePartType.TEXT)
-                        .map(c => c.text);
-
-                    if (currentTexts.length) {
-                        part3.push({ role: "system", content: "<review>"});
-                        part3.push({ role: 'assistant', content: currentTexts.join('\n') });
-                    }
-
+                    // Merge with dedup (part 1/2 can overlap)
                     const all = [...part1, ...part2, ...part3];
                     const seen = new Set<TOpenAIMessage>();
                     const context = all.filter(m => {
@@ -179,7 +184,7 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
                     const contextTexts = context.map(toText);
 
                     const prompt = GUARDRAIL_PROMPT + GUARDRAIL_RULESET_GENERIC_PROMPT + '\n' + (guardrail.prompt || '')
-                        + 'Message/conversation to be review is below -\n'
+                        + 'Conversation/Message is below -\n'
                         + contextTexts.join('\n');
 
                     const result = await api.eventNode.invoke('/warpcore', 'bridge.handlePureCompletion', {

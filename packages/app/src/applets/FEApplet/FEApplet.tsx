@@ -254,14 +254,14 @@ const GuardrailRow = React.memo(({ guardrail }: { guardrail: IGuardrail }) => {
 
 					<Box>
 						<Text fontSize="9px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.04em" mb="1">
-							Tools
+							Trigger only on tool calls
 						</Text>
 						<Input
 							size="xs"
 							fontSize="xs"
 							value={guardrail.triggerOnTools || ''}
 							onChange={(e) => updateGuardrail({ triggerOnTools: e.target.value })}
-							placeholder="Tools"
+							placeholder="Comma-separated tool names"
 						/>
 					</Box>
 
@@ -283,7 +283,7 @@ const GuardrailRow = React.memo(({ guardrail }: { guardrail: IGuardrail }) => {
 						<Text fontSize="xs" color="var(--wc-text-primary)">Enable thinking</Text>
 					</Flex>
 
-					{guardrail.inferenceParams?.enableThinking && (
+					{!!guardrail.inferenceParams?.enableThinking && (
 						<Box>
 							<Text fontSize="9px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.04em" mb="1">
 								Reasoning effort
@@ -298,9 +298,24 @@ const GuardrailRow = React.memo(({ guardrail }: { guardrail: IGuardrail }) => {
 						</Box>
 					)}
 
+					<Flex gap="2" align="center">
+						<Switch.Root
+							size="sm"
+							checked={guardrail.includeBaseMessage ?? false}
+							onCheckedChange={(details) => updateGuardrail({ includeBaseMessage: details.checked })}
+							onClick={(e) => e.stopPropagation()}
+						>
+							<Switch.HiddenInput />
+							<Switch.Control css={{ bg: (guardrail.includeBaseMessage ?? false) ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
+								<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
+							</Switch.Control>
+						</Switch.Root>
+						<Text fontSize="xs" color="var(--wc-text-primary)">Include root message</Text>
+					</Flex>
+
 					<Box>
 						<Text fontSize="9px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.04em" mb="1">
-							Context messages
+							Include previous n messages
 						</Text>
 						<Input
 							size="xs"
@@ -313,26 +328,9 @@ const GuardrailRow = React.memo(({ guardrail }: { guardrail: IGuardrail }) => {
 						/>
 					</Box>
 
-					{draftMessagesCount > 0 && (
-						<Flex gap="2" align="center">
-							<Switch.Root
-								size="sm"
-								checked={guardrail.includeBaseMessage ?? false}
-								onCheckedChange={(details) => updateGuardrail({ includeBaseMessage: details.checked })}
-								onClick={(e) => e.stopPropagation()}
-							>
-								<Switch.HiddenInput />
-								<Switch.Control css={{ bg: (guardrail.includeBaseMessage ?? false) ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
-									<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
-								</Switch.Control>
-							</Switch.Root>
-							<Text fontSize="xs" color="var(--wc-text-primary)">Include base message</Text>
-						</Flex>
-					)}
-
 					<Box>
 						<Text fontSize="9px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.04em" mb="1">
-							Prompt
+							Custom Prompt
 						</Text>
 						<Textarea
 							size="xs"
