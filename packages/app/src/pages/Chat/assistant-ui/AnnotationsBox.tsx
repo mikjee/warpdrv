@@ -37,7 +37,7 @@ export const AnnotationsBox = React.memo(() => {
 						<HStack justify="space-between" align="center" gap="2">
 							<HStack flex="1" overflow="hidden" gap="1">
 								<Box as="span" fontSize="10px" fontWeight="600" color="var(--wc-accent-blue)" userSelect="none" flexShrink={0}>{index + 1}.</Box>
-								<Text fontSize="11px" color="var(--wc-text-muted)" fontFamily="mono" fontStyle="italic" overflow="hidden" textOverflow="ellipsis" flex="1" flexShrink={1}>"{annotation.selectedText}"</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)" fontFamily="mono" fontStyle="italic" overflow="hidden" textOverflow="ellipsis" flex="1" flexShrink={1}>"{annotation.selectedText}"</Text>
 							</HStack>
 							<Box
 								as="button"
@@ -56,7 +56,7 @@ export const AnnotationsBox = React.memo(() => {
 							</Box>
 						</HStack>
 						{annotation.comment && (
-							<Text fontSize="12px" color="var(--wc-text-primary)" mt="1" lineHeight="1.4">{annotation.comment}</Text>
+							<Text fontSize="13px" color="var(--wc-text-primary)" mt="1" lineHeight="1.4">{annotation.comment}</Text>
 						)}
 					</Box>
 				))}
