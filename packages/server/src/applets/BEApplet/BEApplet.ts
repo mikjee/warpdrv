@@ -4,7 +4,7 @@ import type { IAppletAPIBE } from '../lib/types';
 import type { IGuardrail, IGuardrailIssue, IServer } from '@warpcore/shared';
 import { COMPACTION_PROMPT, GUARDRAIL_PROMPT, GUARDRAIL_RULESET_GENERIC_PROMPT } from './prompts';
 import { store } from '../../util/store';
-import { EMessagePartType, IChatMessage } from '@warpcore/bridge';
+import { EMessagePartType, IChatMessage, TOpenAIMessage } from '@warpcore/bridge';
 
 const fn: IAppletFn<IAppletAPIBE> = async (api) => {
     console.log('[BEApplet] Started');
@@ -79,7 +79,7 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
                 threadId: string;
                 messageId: string;
                 inferenceUrl: string;
-                messages: Array<{ role: string; content: any }>;
+                messages: Array<TOpenAIMessage>;
                 message: IChatMessage,
             };
             const { threadId, messageId, inferenceUrl, messages, message } = payload;
@@ -96,9 +96,22 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
             const activeGuardrails = Object.values(guardrails).filter(g => g.isActive);
             if (!activeGuardrails.length) return;
 
+            // Extract tool names from the current message
+            const toolCalls = await api.eventNode.invoke('/warpcore', 'bridge.getToolCallsForMessage', messageId) as Array<{ toolName: string }>;
+            const toolNames = toolCalls.map(tc => tc.toolName.toLowerCase());
+
+            // Filter guardrails by triggerOnTools
+            const applicableGuardrails = activeGuardrails.filter(g => {
+                if (!g.triggerOnTools) return true;
+                const tools = g.triggerOnTools.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+                if (!tools.length) return true;
+                return tools.some(t => toolNames.includes(t));
+            });
+            if (!applicableGuardrails.length) return;
+
             // Immediately mark all as processing
             const initialResults: Record<string, boolean> = {};
-            for (const g of activeGuardrails) {
+            for (const g of applicableGuardrails) {
                 initialResults[g.name] = false;
             }
             await api.eventNode.invoke('/warpcore', 'bridge.updateMessageState', {
@@ -107,33 +120,63 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
             });
 
             // Process one by one, save each result
-            for (const guardrail of activeGuardrails) {
+            for (const guardrail of applicableGuardrails) {
                 try {
                     const grServer = await store.get<IServer>('servers:' + guardrail.serverId);
                     if (!grServer) throw '[BEApplet] Guardrail server not found:' + guardrail.serverId;
 
                     const grInferenceUrl = `http://127.0.0.1:${grServer.port}` || inferenceUrl;
 
-                    let contextTexts: string[] = [];
-                    if (guardrail.messagesCount && guardrail.messagesCount > 0) {
-                        const baseMessages: Array<{ role: string; content: any }> = [];
-                        if (guardrail.includeBaseMessage) {
-                            if (messages.length >= 1) baseMessages.push(messages[0]);
-                            if (messages.length >= 2) baseMessages.push(messages[1]);
+                    const toText = (m: TOpenAIMessage) => {
+                        if (m.role === "system") {
+                            if (m.content === "<base>") return `--- Conversation Root ---`;
+                            else if (m.content === "<latest>") return `--- Recent Messages ---`;
+                            else if (m.content === "<review>") return `--- Message to Review ---`;
                         }
-                        const lastN = messages.slice(-guardrail.messagesCount);
-                        const context = [...baseMessages, ...lastN.filter(m => !baseMessages.includes(m))];
-                        contextTexts = context.map(m => {
-                            const content = typeof m.content === 'string' ? m.content : Array.isArray(m.content) ? m.content.find((c: any) => c.type === 'text')?.text || '' : '';
-                            return `[${m.role}] ${content}`;
-                        });
+
+                        const content = typeof m.content === 'string'
+                            ? m.content
+                            : Array.isArray(m.content)
+                                ? m.content.find((c: any) => c.type === 'text')?.text || ''
+                                : '';
+                        return `[${m.role}]: ${content}`;
+                    };
+
+                    const part1: Array<TOpenAIMessage> = [];
+                    const part2: Array<TOpenAIMessage> = [];
+                    const part3: Array<TOpenAIMessage> = [];
+
+                    if (guardrail.includeBaseMessage) {
+                        if (messages.length >= 1) {
+                            part1.push({role: "system", content: "<base>"});
+                            part1.push(messages[0]!);
+                        }
+                        if (messages.length >= 2) part1.push(messages[1]!);
+                        if (messages.length) part1.push({ role: "system", content: "<latest>"});
                     }
-                    if (!contextTexts.length) {
-                        contextTexts = message
-                            .content
-                            .filter(c => c.type === EMessagePartType.TEXT)
-                            .map(c => c.text);
+
+                    if (guardrail.messagesCount && guardrail.messagesCount > 0) {
+                        part2.push(...messages.slice(-guardrail.messagesCount));
                     }
+
+                    const currentTexts = message
+                        .content
+                        .filter(c => c.type === EMessagePartType.TEXT)
+                        .map(c => c.text);
+
+                    if (currentTexts.length) {
+                        part3.push({ role: "system", content: "<review>"});
+                        part3.push({ role: 'assistant', content: currentTexts.join('\n') });
+                    }
+
+                    const all = [...part1, ...part2, ...part3];
+                    const seen = new Set<TOpenAIMessage>();
+                    const context = all.filter(m => {
+                        if (seen.has(m)) return false;
+                        seen.add(m);
+                        return true;
+                    });
+                    const contextTexts = context.map(toText);
 
                     const prompt = GUARDRAIL_PROMPT + GUARDRAIL_RULESET_GENERIC_PROMPT + '\n' + (guardrail.prompt || '')
                         + 'Message/conversation to be review is below -\n'

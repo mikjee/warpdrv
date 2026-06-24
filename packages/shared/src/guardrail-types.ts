@@ -1,9 +1,3 @@
-export enum EGuardrailSubRole {
-	ALL = 'all',
-	TEXT = 'text',
-	TOOL = 'tool',
-}
-
 export enum EGuardrailIssueType {
 	VIOLATION = 'violation',
 	WARNING = 'warning',
@@ -20,7 +14,7 @@ export interface IGuardrail {
 	serverId: string;
 	isActive: boolean;
 	prompt?: string;
-	subrole: EGuardrailSubRole;
+	triggerOnTools?: string;
 	inferenceParams?: Record<string, unknown>;
 	messagesCount?: number;
 	includeBaseMessage?: boolean;

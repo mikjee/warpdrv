@@ -31,7 +31,7 @@ import { folderNameToTopic } from '../util/topic';
 import { EChatRole, EMessagePartType, EToolCallStatus, EToolApprovalMode } from '../types';
 import { parseSSEBuffer, accumulateToolCallDelta, finalizeToolCalls, type IToolCallAccumulator } from '../parser';
 import { validateToolArgs, cleanSchema } from '../validation';
-import { convertMessagesToOpenAIFormat } from '../messageConverter';
+import { convertMessagesToOpenAIFormat, type TOpenAIMessage } from '../messageConverter';
 
 const MAX_PASSES = 10;
 
@@ -106,6 +106,11 @@ export class Orchestrator {
 			return await this.persistence.getMessageState(messageId);
 		});
 
+		this.eventNode.fn('bridge.getToolCallsForMessage', async (api) => {
+			const messageId = api.payload as string;
+			return await this.persistence.getToolCallsForMessage(messageId);
+		});
+
 		this.eventNode.fn('bridge.updateMessageState', async (api) => {
 			const payload = api.payload as { messageId: string; data: Record<string, unknown> };
 			await this.persistence.updateMessageState(payload.messageId, payload.data);
@@ -115,7 +120,7 @@ export class Orchestrator {
 			const payload = api.payload as {
 				inferenceRequestId: string;
 				inferenceUrl: string;
-				messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>;
+				messages: Array<TOpenAIMessage>;
 				inferenceParams?: Record<string, unknown>;
 			};
 			const { inferenceRequestId, inferenceUrl, messages, inferenceParams } = payload;
@@ -170,8 +175,8 @@ export class Orchestrator {
 		request: ICompletionRequest,
 		fromMessageId: TMessageId | undefined,
 		extraMessages: Array<any> = [],
-	): Promise<Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>> {
-		const baseMessages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }> = [];
+	): Promise<Array<TOpenAIMessage>> {
+		const baseMessages: Array<TOpenAIMessage> = [];
 
 		if (request.folderId) {
 			const ctx = await this.buildWorkspaceContext(request.folderId);
@@ -204,7 +209,7 @@ export class Orchestrator {
 		) as IChatMessage[];
 
 		const openAIMessages = convertMessagesToOpenAIFormat(processedChain, toolCallsMap);
-		baseMessages.push(...(openAIMessages as any[]));
+		baseMessages.push(...openAIMessages);
 		baseMessages.push(...extraMessages);
 
 		return baseMessages;
@@ -351,7 +356,7 @@ export class Orchestrator {
 				) as IChatMessage;
 
 				const converted = convertMessagesToOpenAIFormat([userMsg], {});
-				baseMessages.push(...(converted as any[]));
+				baseMessages.push(...converted);
 			}
 
 			await this.executePass(
@@ -401,7 +406,7 @@ export class Orchestrator {
 		inferenceUrl: string,
 		request: ICompletionRequest,
 		parentId: TMessageId | null,
-		messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>,
+		messages: Array<TOpenAIMessage>,
 		enabledTools: IToolDefinition[],
 		abortSignal: AbortSignal,
 	): Promise<void> {
@@ -519,7 +524,7 @@ export class Orchestrator {
 	// emits chunk and patch events. Returns whether tool calls fired.
 	private async runPass(
 		inferenceUrl: string,
-		messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>,
+		messages: Array<TOpenAIMessage>,
 		enabledTools: IToolDefinition[],
 		request: ICompletionRequest,
 		abortSignal: AbortSignal,
@@ -1173,7 +1178,7 @@ export class Orchestrator {
 
 	async handlePureCompletions(
 		inferenceUrl: string,
-		messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>,
+		messages: Array<TOpenAIMessage>,
 		inferenceParams: Record<string, unknown>,
 		onChunk?: TPureCompletionChunkHandler,
 		abortSignal?: AbortSignal,

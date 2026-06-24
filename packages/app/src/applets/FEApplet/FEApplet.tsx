@@ -254,12 +254,15 @@ const GuardrailRow = React.memo(({ guardrail }: { guardrail: IGuardrail }) => {
 
 					<Box>
 						<Text fontSize="9px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.04em" mb="1">
-							Target
+							Tools
 						</Text>
-						<SegmentGroup.Root value={guardrail.subrole} onValueChange={(details) => updateGuardrail({ subrole: details.value })}>
-							<SegmentGroup.Indicator />
-							<SegmentGroup.Items items={["all", "text", "tool"]} />
-						</SegmentGroup.Root>
+						<Input
+							size="xs"
+							fontSize="xs"
+							value={guardrail.triggerOnTools || ''}
+							onChange={(e) => updateGuardrail({ triggerOnTools: e.target.value })}
+							placeholder="Tools"
+						/>
 					</Box>
 
 					<Flex gap="2" align="center">
@@ -583,28 +586,20 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 			description: 'Create a custom guardrail',
 			params: {
 				name: { type: 'string', description: 'Guardrail name', index: 0 },
-				subrole: { type: 'dropdown', description: 'target', index: 1, props: {
-					items: [
-						{ label: 'All', value: 'all' }, 
-						{ label: 'Tool Only', value: 'tool' },
-						{ label: 'Text Only', value: 'text' }
-					],
-				}},
+				tools: { type: 'string', description: 'Comma-separated tool names (empty = all)', index: 1 },
 				server: { type: 'server', description: 'Server ID', index: 2 },
 			},
 			execute: async (_api, params, extraParams) => {
 				const state = api.useStore.getState();
 				const threadId = state.currentThreadId;
 				const ts = state.getCurrentThreadState(state);
-				const subroleMap: Record<string, string> = { all: 'all', text: 'text', tool: 'tool' };
-				const subRole = subroleMap[params.subrole as string] || 'all';
 				const guardrails = (ts?.guardrails || EMPTY_GUARDRAILS) as Record<string, IGuardrail>;
 				state.setThreadState(threadId, { guardrails: { ...guardrails, [params.name!]: {
 					name: params.name,
 					serverId: params.server,
 					isActive: true,
 					prompt: extraParams?.prompt,
-					subrole: subRole,
+					triggerOnTools: params.tools || undefined,
 				} } });
 			},
 		});
