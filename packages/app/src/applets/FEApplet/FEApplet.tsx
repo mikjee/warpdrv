@@ -420,6 +420,20 @@ const GuardrailResults = React.memo(({ def, children }: { def: TUiSpaceComponent
 	const totalWarnings = doneEntries.reduce((acc, [, items]) => acc + (items as IGuardrailIssue[]).filter(i => i.type === EGuardrailIssueType.WARNING).length, 0);
 	const allClear = doneEntries.length === entries.length && totalViolations === 0 && totalWarnings === 0;
 
+	// Collect all issues with guardrail name, violations first then warnings, sorted by name within each group
+	const allIssues: Array<{ guardrailName: string; issue: IGuardrailIssue }> = [];
+	for (const [name, result] of doneEntries) {
+		for (const item of result as IGuardrailIssue[]) {
+			allIssues.push({ guardrailName: name, issue: item });
+		}
+	}
+	const violations = allIssues.filter(i => i.issue.type === EGuardrailIssueType.VIOLATION).sort((a, b) => a.guardrailName.localeCompare(b.guardrailName));
+	const warnings = allIssues.filter(i => i.issue.type === EGuardrailIssueType.WARNING).sort((a, b) => a.guardrailName.localeCompare(b.guardrailName));
+	const sortedIssues = [...violations, ...warnings];
+
+	// Processing entries
+	const processingEntries = entries.filter(([, v]) => v === false);
+
 	return (
 		<>
 			{children}
@@ -462,30 +476,22 @@ const GuardrailResults = React.memo(({ def, children }: { def: TUiSpaceComponent
 							</HStack>
 						</AccordionItemTrigger>
 						<AccordionItemContent>
-							<Tabs.Root defaultValue={entries[0]?.[0] || ''}>
-								<Tabs.List gap="0" borderBottomWidth="1px" borderColor="var(--wc-border-subtle)">
-									{entries.map(([name]) => (
-										<Tabs.Trigger key={name} value={name} fontSize="sm" fontWeight="500" px="3" py="1.5" color="var(--wc-text-muted)">
-											{name}
-										</Tabs.Trigger>
-									))}
-									<Tabs.Indicator bg="var(--wc-bg-card)" />
-								</Tabs.List>
-								{entries.map(([name, result]) => (
-									<Tabs.Content key={name} value={name} p="2.5">
-										{result === false
-											? <HStack gap="2"><Spinner size="sm" /><Text fontSize="sm" color="var(--wc-text-muted)">Processing...</Text></HStack>
-											: (result as IGuardrailIssue[]).length === 0
-												? <Text fontSize="sm" color="var(--wc-accent-green)">All clear</Text>
-												: <VStack gap="2" align="stretch">
-													{(result as IGuardrailIssue[]).map((item, i) => (
-														<GuardrailIssueItem key={i} item={item} />
-													))}
-												</VStack>
-										}
-									</Tabs.Content>
-								))}
-							</Tabs.Root>
+							<Box p="2.5">
+								{allClear
+									? <Text fontSize="sm" color="var(--wc-accent-green)">All clear</Text>
+									: <VStack gap="2" align="stretch">
+										{processingEntries.map(([name]) => (
+											<HStack key={name} gap="2">
+												<Spinner size="sm" />
+												<Text fontSize="sm" color="var(--wc-text-muted)">Processing {name}...</Text>
+											</HStack>
+										))}
+										{sortedIssues.map(({ guardrailName, issue }, i) => (
+											<GuardrailIssueItem key={i} guardrailName={guardrailName} item={issue} />
+										))}
+									</VStack>
+								}
+							</Box>
 						</AccordionItemContent>
 					</AccordionItemComp>
 				</AccordionRoot>
@@ -494,18 +500,21 @@ const GuardrailResults = React.memo(({ def, children }: { def: TUiSpaceComponent
 	);
 });
 
-const GuardrailIssueItem = React.memo(({ item }: { item: IGuardrailIssue }) => {
+const GuardrailIssueItem = React.memo(({ guardrailName, item }: { guardrailName: string; item: IGuardrailIssue }) => {
 	const addAnnotation = useStore(s => s.addAnnotation);
 	const isViolation = item.type === EGuardrailIssueType.VIOLATION;
 
 	return (
 		<Box p="2" borderRadius="md" bg="var(--wc-bg-subtle)" borderWidth="1px"
 			borderColor={isViolation ? 'var(--wc-accent-red-border)' : 'var(--wc-accent-yellow-border)'}>
-			<Flex justifyContent="space-between" align="flex-start">
-				<HStack gap="2" flex="1" minW="0">
+			<Flex justifyContent="space-between" align="flex-start" mb={"0.5"}>
+				<HStack gap="2" flex="1" minW="0" align={"flex-start"}>
 					{isViolation
-						? <XCircle size={16} color="var(--wc-accent-red)" flexShrink={0} />
-						: <AlertTriangle size={16} color="var(--wc-accent-yellow)" flexShrink={0} />}
+						? <XCircle size={18} color="var(--wc-accent-red)" style={{ marginTop: "3px" }}/>
+						: <AlertTriangle size={18} color="var(--wc-accent-yellow)" style={{ marginTop: "3px" }} />}
+					<Badge px="1.5" py="0.5" mt="0.5" fontSize="10px" color="var(--wc-text-secondary)" bg="var(--wc-bg-active)">
+						{guardrailName}
+					</Badge>
 					<Text fontSize="sm" color="var(--wc-text-primary)" noWrap textOverflow="ellipsis">{item.issue}</Text>
 				</HStack>
 				<Box
