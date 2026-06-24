@@ -140,6 +140,7 @@ const GuardrailRow = React.memo(({ guardrail }: { guardrail: IGuardrail }) => {
 	const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 	const [draftName, setDraftName] = useDependantState(guardrail.name);
 	const [draftPrompt, setDraftPrompt] = useDependantState(guardrail.prompt || '');
+	const [draftMessagesCount, setDraftMessagesCount] = useDependantState(guardrail.messagesCount ?? 0);
 	const nameSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const promptSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -260,6 +261,71 @@ const GuardrailRow = React.memo(({ guardrail }: { guardrail: IGuardrail }) => {
 							<SegmentGroup.Items items={["all", "text", "tool"]} />
 						</SegmentGroup.Root>
 					</Box>
+
+					<Flex gap="2" align="center">
+						<Switch.Root
+							size="sm"
+							checked={guardrail.inferenceParams?.enableThinking as boolean}
+							onCheckedChange={(details) => {
+								const newParams = { ...(guardrail.inferenceParams || {}), enableThinking: details.checked };
+								updateGuardrail({ inferenceParams: newParams });
+							}}
+							onClick={(e) => e.stopPropagation()}
+						>
+							<Switch.HiddenInput />
+							<Switch.Control css={{ bg: (guardrail.inferenceParams?.enableThinking as boolean) ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
+								<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
+							</Switch.Control>
+						</Switch.Root>
+						<Text fontSize="xs" color="var(--wc-text-primary)">Enable thinking</Text>
+					</Flex>
+
+					{guardrail.inferenceParams?.enableThinking && (
+						<Box>
+							<Text fontSize="9px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.04em" mb="1">
+								Reasoning effort
+							</Text>
+							<SegmentGroup.Root value={guardrail.inferenceParams?.reasoningEffort as string || 'medium'} onValueChange={(details) => {
+								const newParams = { ...(guardrail.inferenceParams || {}), reasoningEffort: details.value };
+								updateGuardrail({ inferenceParams: newParams });
+							}}>
+								<SegmentGroup.Indicator />
+								<SegmentGroup.Items items={["low", "medium", "high"]} />
+							</SegmentGroup.Root>
+						</Box>
+					)}
+
+					<Box>
+						<Text fontSize="9px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.04em" mb="1">
+							Context messages
+						</Text>
+						<Input
+							size="xs"
+							fontSize="xs"
+							type="number"
+							min={0}
+							value={draftMessagesCount}
+							onChange={(e) => setDraftMessagesCount(Number(e.target.value))}
+							onBlur={() => updateGuardrail({ messagesCount: draftMessagesCount })}
+						/>
+					</Box>
+
+					{draftMessagesCount > 0 && (
+						<Flex gap="2" align="center">
+							<Switch.Root
+								size="sm"
+								checked={guardrail.includeBaseMessage ?? false}
+								onCheckedChange={(details) => updateGuardrail({ includeBaseMessage: details.checked })}
+								onClick={(e) => e.stopPropagation()}
+							>
+								<Switch.HiddenInput />
+								<Switch.Control css={{ bg: (guardrail.includeBaseMessage ?? false) ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
+									<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
+								</Switch.Control>
+							</Switch.Root>
+							<Text fontSize="xs" color="var(--wc-text-primary)">Include base message</Text>
+						</Flex>
+					)}
 
 					<Box>
 						<Text fontSize="9px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.04em" mb="1">

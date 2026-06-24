@@ -21,4 +21,7 @@ export interface IGuardrail {
 	isActive: boolean;
 	prompt?: string;
 	subrole: EGuardrailSubRole;
+	inferenceParams?: Record<string, unknown>;
+	messagesCount?: number;
+	includeBaseMessage?: boolean;
 }

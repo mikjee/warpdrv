@@ -113,14 +113,32 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
                     if (!grServer) throw '[BEApplet] Guardrail server not found:' + guardrail.serverId;
 
                     const grInferenceUrl = `http://127.0.0.1:${grServer.port}` || inferenceUrl;
-                    const prompt = GUARDRAIL_PROMPT + GUARDRAIL_RULESET_GENERIC_PROMPT + '\n' + (guardrail.prompt || '')
-                        + 'Message/conversation to be review is below -\n'
-                        + message
+
+                    let contextTexts: string[] = [];
+                    if (guardrail.messagesCount && guardrail.messagesCount > 0) {
+                        const baseMessages: Array<{ role: string; content: any }> = [];
+                        if (guardrail.includeBaseMessage) {
+                            if (messages.length >= 1) baseMessages.push(messages[0]);
+                            if (messages.length >= 2) baseMessages.push(messages[1]);
+                        }
+                        const lastN = messages.slice(-guardrail.messagesCount);
+                        const context = [...baseMessages, ...lastN.filter(m => !baseMessages.includes(m))];
+                        contextTexts = context.map(m => {
+                            const content = typeof m.content === 'string' ? m.content : Array.isArray(m.content) ? m.content.find((c: any) => c.type === 'text')?.text || '' : '';
+                            return `[${m.role}] ${content}`;
+                        });
+                    }
+                    if (!contextTexts.length) {
+                        contextTexts = message
                             .content
                             .filter(c => c.type === EMessagePartType.TEXT)
-                            .map(c => c.text)
-                            .join('\n');
-                    
+                            .map(c => c.text);
+                    }
+
+                    const prompt = GUARDRAIL_PROMPT + GUARDRAIL_RULESET_GENERIC_PROMPT + '\n' + (guardrail.prompt || '')
+                        + 'Message/conversation to be review is below -\n'
+                        + contextTexts.join('\n');
+
                     const result = await api.eventNode.invoke('/warpcore', 'bridge.handlePureCompletion', {
                         inferenceRequestId: guardrail.name + '-' + messageId,
                         inferenceUrl: grInferenceUrl,
@@ -128,6 +146,7 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
                             role: 'user',
                             content: prompt,
                         }],
+                        inferenceParams: guardrail.inferenceParams,
                     });
 
                     const text = result.content?.filter((c: any) => c.type === "text")?.[0]?.text || 'Error';
