@@ -93,7 +93,7 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
             const guardrails = threadState?.guardrails as Record<string, IGuardrail> | undefined;
             if (!guardrails) return;
 
-            const activeGuardrails = Object.values(guardrails).filter(g => g.active);
+            const activeGuardrails = Object.values(guardrails).filter(g => g.isActive);
             if (!activeGuardrails.length) return;
 
             // Immediately mark all as processing

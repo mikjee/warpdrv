@@ -3,16 +3,21 @@ import { EAppletHostType, EAppletScope } from '@warpcore/realmcore';
 import { EUISpaceLoc } from '@/store/slices/uiSpaces';
 import type { IAppletAPIFE } from '../lib/types';
 import type { TUiSpaceComponentDef } from '@/store/slices/uiSpaces';
-import { Box, Text, VStack, Flex, Spinner, Badge, AccordionRoot, AccordionItem as AccordionItemComp, AccordionItemTrigger, AccordionItemContent, HStack, Tabs } from '@chakra-ui/react';
-import { ChevronDown, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
+import { Box, Text, VStack, Flex, Spinner, Badge, AccordionRoot, AccordionItem as AccordionItemComp, AccordionItemTrigger, AccordionItemContent, HStack, Tabs, Switch, Input, Textarea, Button, SegmentGroup } from '@chakra-ui/react';
+import { ChevronDown, CheckCircle, AlertTriangle, XCircle, ChevronRight, Edit2, Trash2 } from 'lucide-react';
+import { FaShieldAlt } from 'react-icons/fa';
+import { LuListTodo } from 'react-icons/lu';
 import { useAuiState } from '@assistant-ui/react';
 import { useStore } from '@/store';
 import type { IExtractedSlashCommand } from '@/pages/Chat/assistant-ui/docToString';
 import type { ITodoItem, IGuardrail, IGuardrailIssue } from '@warpcore/shared';
 import { EGuardrailIssueType } from '@warpcore/shared';
-import { useMemo } from 'react';
+import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import type { TDropdownItem } from '@/pages/Chat/assistant-ui/slash-command/SlashCmdDropdown';
 import React from 'react';
+import { useDependantState } from '@/hooks/useDependantState';
+import { ConfirmDialog } from '@/components/dialogs/ConfirmDialog';
+import { ServerPicker } from '@/components/ServerPicker';
 
 const EMPTY_TODOS: ITodoItem[] = [];
 const EMPTY_GUARDRAILS: Record<string, IGuardrail> = {};
@@ -129,6 +134,184 @@ const CompactIndicator = React.memo(({ def, children }: { def: TUiSpaceComponent
 	);
 });
 
+const GuardrailRow = React.memo(({ guardrail }: { guardrail: IGuardrail }) => {
+	const [expanded, setExpanded] = useState(false);
+	const [editingName, setEditingName] = useState(false);
+	const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+	const [draftName, setDraftName] = useDependantState(guardrail.name);
+	const [draftPrompt, setDraftPrompt] = useDependantState(guardrail.prompt || '');
+	const nameSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const promptSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const updateGuardrail = useCallback((patch: Partial<IGuardrail>) => {
+		const state = useStore.getState();
+		const threadId = state.currentThreadId;
+		const ts = state.getCurrentThreadState(state);
+		const guardrails = (ts?.guardrails || EMPTY_GUARDRAILS) as Record<string, IGuardrail>;
+		if (!guardrails[guardrail.name]) return;
+		state.setThreadState(threadId, { guardrails: { ...guardrails, [guardrail.name]: { ...guardrails[guardrail.name], ...patch } } });
+	}, [guardrail.name]);
+
+	const flushName = useCallback(() => {
+		if (draftName === guardrail.name) return;
+		const state = useStore.getState();
+		const threadId = state.currentThreadId;
+		const ts = state.getCurrentThreadState(state);
+		const guardrails = (ts?.guardrails || EMPTY_GUARDRAILS) as Record<string, IGuardrail>;
+		if (!guardrails[guardrail.name]) return;
+		const { [guardrail.name]: oldEntry, ...rest } = guardrails;
+		const updatedEntry = { ...oldEntry, name: draftName };
+		state.setThreadState(threadId, { guardrails: { ...rest, [draftName]: updatedEntry } });
+	}, [draftName, guardrail.name]);
+
+	const handleNameBlur = useCallback(() => {
+		setEditingName(false);
+		if (nameSaveTimerRef.current) clearTimeout(nameSaveTimerRef.current);
+		nameSaveTimerRef.current = setTimeout(flushName, 200);
+	}, [flushName]);
+
+	const flushPrompt = useCallback(() => {
+		updateGuardrail({ prompt: draftPrompt });
+	}, [draftPrompt, updateGuardrail]);
+
+	const handlePromptBlur = useCallback(() => {
+		if (promptSaveTimerRef.current) clearTimeout(promptSaveTimerRef.current);
+		promptSaveTimerRef.current = setTimeout(flushPrompt, 200);
+	}, [flushPrompt]);
+
+	useEffect(() => {
+		return () => {
+			if (nameSaveTimerRef.current) clearTimeout(nameSaveTimerRef.current);
+			if (promptSaveTimerRef.current) clearTimeout(promptSaveTimerRef.current);
+		};
+	}, []);
+
+	const handleDelete = () => {
+		const state = useStore.getState();
+		const threadId = state.currentThreadId;
+		const ts = state.getCurrentThreadState(state);
+		const guardrails = (ts?.guardrails || EMPTY_GUARDRAILS) as Record<string, IGuardrail>;
+		if (!guardrails[guardrail.name]) return;
+		const { [guardrail.name]: _, ...rest } = guardrails;
+		state.setThreadState(threadId, { guardrails: rest });
+	};
+
+	return (
+		<Box borderWidth="1px" borderColor="var(--wc-border-subtle)" borderRadius="md" bg="var(--wc-bg-subtle)" overflow="hidden">
+			<Flex align="center" gap="2" p="2.5" cursor="pointer" onClick={() => setExpanded(!expanded)}>
+				{expanded ? <ChevronDown size={14} color="var(--wc-text-muted)" /> : <ChevronRight size={14} color="var(--wc-text-muted)" />}
+				{editingName ? (
+					<Input
+						size="xs"
+						fontSize="xs"
+						fontWeight="600"
+						value={draftName}
+						onChange={(e) => setDraftName(e.target.value)}
+						onBlur={handleNameBlur}
+						onKeyDown={(e) => { if (e.key === 'Enter') handleNameBlur(); }}
+						onClick={(e) => e.stopPropagation()}
+						flex="1"
+						minW="0"
+					/>
+				) : (
+					<Flex align="center" gap="1.5" flex="1" minW="0">
+						<Text fontSize="xs" fontWeight="600" color="var(--wc-text-primary)" textOverflow="ellipsis" overflow="hidden">
+							{draftName}
+						</Text>
+						
+						<Edit2
+							size={10}
+							color="var(--wc-text-faint)"
+							style={{ cursor: 'pointer', flexShrink: 0 }}
+							onClick={(e) => { e.stopPropagation(); setEditingName(true); }}
+						/>
+					</Flex>
+				)}
+
+				<Switch.Root
+					size="sm"
+					checked={guardrail.isActive}
+					onCheckedChange={(details) => updateGuardrail({ isActive: details.checked })}
+					onClick={(e) => e.stopPropagation()}
+				>
+					<Switch.HiddenInput />
+					<Switch.Control css={{ bg: guardrail.isActive ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
+						<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
+					</Switch.Control>
+				</Switch.Root>
+
+				</Flex>
+
+			{expanded && (
+				<VStack gap="2.5" px="2.5" pb="2.5" pt="0" align="stretch" opacity={guardrail.isActive ? 1 : 0.4}>
+					<Box>
+						<Text fontSize="9px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.04em" mb="1">
+							Server
+						</Text>
+						<ServerPicker value={guardrail.serverId} onChange={(id) => updateGuardrail({ serverId: id })} />
+					</Box>
+
+					<Box>
+						<Text fontSize="9px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.04em" mb="1">
+							Target
+						</Text>
+						<SegmentGroup.Root value={guardrail.subrole} onValueChange={(details) => updateGuardrail({ subrole: details.value })}>
+							<SegmentGroup.Indicator />
+							<SegmentGroup.Items items={["all", "text", "tool"]} />
+						</SegmentGroup.Root>
+					</Box>
+
+					<Box>
+						<Text fontSize="9px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.04em" mb="1">
+							Prompt
+						</Text>
+						<Textarea
+							size="xs"
+							fontSize="11px"
+							value={draftPrompt}
+							onChange={(e) => setDraftPrompt(e.target.value)}
+							onBlur={handlePromptBlur}
+							rows={3}
+							resize="vertical"
+							placeholder="Custom rules..."
+						/>
+					</Box>
+					
+					<Flex justifyContent="flex-end">
+						<Button
+							size="xs"
+							fontSize="10px"
+							px="2"
+							py="1"
+							borderRadius="sm"
+							bg="var(--wc-accent-red-bg-8)"
+							color="var(--wc-accent-red)"
+							borderWidth="1px"
+							borderColor="var(--wc-accent-red-border)"
+							_hover={{ bg: 'var(--wc-accent-red-hover)' }}
+							onClick={() => setDeleteConfirmOpen(true)}
+						>
+							<Trash2 size={10} style={{ marginRight: '4px' }} />
+							Delete
+						</Button>
+					</Flex>
+				</VStack>
+			)}
+
+			{deleteConfirmOpen && (
+				<ConfirmDialog
+					title="Delete Guardrail"
+					message={`Are you sure you want to delete "${draftName}"?`}
+					isOpen={true}
+					onConfirm={handleDelete}
+					onCancel={() => setDeleteConfirmOpen(false)}
+					confirmLabel="Delete"
+				/>
+			)}
+		</Box>
+	);
+});
+
 const GuardrailsPanel = React.memo(() => {
 	const guardrails = useStore(s => {
 		const ts = s.getCurrentThreadState(s);
@@ -149,20 +332,7 @@ const GuardrailsPanel = React.memo(() => {
 	return (
 		<VStack gap="2" p="3" align="stretch">
 			{items.map(g => (
-				<Box key={g.name} borderWidth="1px" borderColor="var(--wc-border-subtle)" borderRadius="md" p="2.5" bg="var(--wc-bg-subtle)">
-					<Flex justifyContent="space-between" mb="1.5">
-						<Text fontSize="xs" fontWeight="600" color="var(--wc-text-primary)">{g.name}</Text>
-						<Text fontSize="9px" fontWeight="600" letterSpacing="0.04em" textTransform="uppercase"
-							px="1.5" py="0.5" borderRadius="sm" borderWidth="1px"
-							color={g.active ? 'var(--wc-accent-green)' : 'var(--wc-text-muted)'}
-							bg={g.active ? 'var(--wc-accent-green-bg-8)' : 'var(--wc-bg-subtle)'}
-							borderColor={g.active ? 'var(--wc-accent-green-border)' : 'var(--wc-border-subtle)'}>
-							{g.active ? 'ACTIVE' : 'INACTIVE'}
-						</Text>
-					</Flex>
-					<Text fontSize="9px" color="var(--wc-text-muted)">Server: {g.serverId} · SubRole: {g.subRoleSelection}</Text>
-					{g.prompt && <Text fontSize="9px" color="var(--wc-text-tertiary)" textOverflow="ellipsis" overflow="hidden" mt="1">{g.prompt}</Text>}
-				</Box>
+				<GuardrailRow key={g.name} guardrail={g} />
 			))}
 		</VStack>
 	);
@@ -293,19 +463,20 @@ const GuardrailIssueItem = React.memo(({ item }: { item: IGuardrailIssue }) => (
 const registerGuardrailChip = (api: IAppletAPIFE, name: string) => {
 	api.registerComposerChip({
 		componentId: `guardrail-${name}`,
+		icon: FaShieldAlt,
 		selectLabel: () => name,
 		selectIsActive: (s) => {
 			const ts = s.getCurrentThreadState(s);
 			const guardrails = (ts?.guardrails || EMPTY_GUARDRAILS) as Record<string, IGuardrail>;
-			return guardrails?.[name]?.active ?? false;
+			return guardrails?.[name]?.isActive ?? false;
 		},
-		onSetIsActive: (active) => {
+		onSetIsActive: (isActive) => {
 			const state = api.useStore.getState();
 			const threadId = state.currentThreadId;
 			const ts = state.getCurrentThreadState(state);
 			const guardrails = (ts?.guardrails || EMPTY_GUARDRAILS) as Record<string, IGuardrail>;
 			if (!guardrails[name]) return;
-			state.setThreadState(threadId, { guardrails: { ...guardrails, [name]: { ...guardrails[name], active } } });
+			state.setThreadState(threadId, { guardrails: { ...guardrails, [name]: { ...guardrails[name], isActive } } });
 		},
 		onClose: () => {
 			const state = api.useStore.getState();
@@ -313,7 +484,7 @@ const registerGuardrailChip = (api: IAppletAPIFE, name: string) => {
 			const ts = state.getCurrentThreadState(state);
 			const guardrails = (ts?.guardrails || EMPTY_GUARDRAILS) as Record<string, IGuardrail>;
 			if (!guardrails[name]) return;
-			state.setThreadState(threadId, { guardrails: { ...guardrails, [name]: { ...guardrails[name], active: false } } });
+			state.setThreadState(threadId, { guardrails: { ...guardrails, [name]: { ...guardrails[name], isActive: false } } });
 		},
 	});
 };
@@ -365,10 +536,9 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 				state.setThreadState(threadId, { guardrails: { ...guardrails, [params.name!]: {
 					name: params.name,
 					serverId: params.server,
-					active: true,
-					type: 'custom',
+					isActive: true,
 					prompt: extraParams?.prompt,
-					subRoleSelection: subRole,
+					subrole: subRole,
 				} } });
 			},
 		});
@@ -390,7 +560,7 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 				const ts = state.getCurrentThreadState(state);
 				const guardrails = (ts?.guardrails || EMPTY_GUARDRAILS) as Record<string, IGuardrail>;
 				if (!guardrails[params.name!]) return;
-				state.setThreadState(threadId, { guardrails: { ...guardrails, [params.name!]: { ...guardrails[params.name!], active: params.action === 'on' } } });
+				state.setThreadState(threadId, { guardrails: { ...guardrails, [params.name!]: { ...guardrails[params.name!], isActive: params.action === 'on' } } });
 			},
 		});
 
@@ -414,8 +584,8 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 			},
 		});
 		
-		api.registerUiSpaceComponent(EUISpaceLoc.RIGHT_PANEL, TodoPanel, { label: 'Todo' });
-		api.registerUiSpaceComponent(EUISpaceLoc.RIGHT_PANEL, GuardrailsPanel, { label: 'Guardrails' });
+		api.registerUiSpaceComponent(EUISpaceLoc.RIGHT_PANEL, TodoPanel, { label: 'To-Do', icon: LuListTodo });
+		api.registerUiSpaceComponent(EUISpaceLoc.RIGHT_PANEL, GuardrailsPanel, { label: 'Guardrails', icon: FaShieldAlt });
 		api.registerUiSpaceComponent(EUISpaceLoc.MESSAGE, CompactIndicator, { label: 'Compact Indicator' });
 		api.registerUiSpaceComponent(EUISpaceLoc.MESSAGE, GuardrailResults, { label: 'GuardrailResults' });
 

@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid';
+import type React from 'react';
 import type { ImmerSet, ImmerGet } from '../types';
 import type { AppState } from '../types';
 
@@ -15,6 +16,7 @@ export interface TUiSpaceComponentDef {
 
     component: TUISpaceComponent;
     props?: Record<string, unknown>;
+    icon?: React.ComponentType<any>;
 }
 
 export enum EUISpaceLoc {
@@ -37,6 +39,7 @@ interface UiSpacesSlice {
 
         component: TUISpaceComponent;
         props?: Record<string, unknown>;
+        icon?: React.ComponentType<any>;
     }) => TUISpaceComponentId;
 
     unregisterUiSpaceComponent: (
@@ -65,6 +68,7 @@ export function uiSpacesSlice(set: ImmerSet<AppState>, get: ImmerGet<AppState>):
                     location: def.location,
                     component: def.component,
                     props: def.props,
+                    icon: def.icon,
                 };
                 draft.uiSpaceComponentsById[id] = entry;
                 if (!draft.uiSpaceComponentsByLocation[def.location]) {

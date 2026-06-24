@@ -41,9 +41,10 @@ export const UiSpaceChip = memo(({ def, selectLabel, selectIsActive, onSetIsActi
             opacity={active ? 1 : 0.6}
             onClick={() => onSetIsActive(!active)}
         >
-            <Box fontSize="xs" fontWeight="500" color="var(--wc-text-primary)">
-                {label}
-            </Box>
+{def.icon && <def.icon style={{ fontSize: '12px', color: 'var(--wc-text-muted)' }} />}
+			<Box fontSize="xs" fontWeight="500" color="var(--wc-text-primary)">
+				{label}
+			</Box>
             <HStack gap="0.5">
                 <IconButton
                     size="xs"

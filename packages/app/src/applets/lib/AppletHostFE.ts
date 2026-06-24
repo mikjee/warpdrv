@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid';
+import type React from 'react';
 import { AppletHost, TCallback } from '@warpcore/realmcore';
 import { useStore } from '@/store';
 import type { ISlashCommand } from '@/store/slices/slashCommands';
@@ -23,9 +24,10 @@ export class AppletHostFE extends AppletHost<IAppletAPIFE> {
 				useStore.getState().unregisterSlashCommand(name, appletName);
 			},
 
-			registerUiSpaceComponent: (spaceId: string, component: TUISpaceComponent, opts: { 
+			registerUiSpaceComponent: (spaceId: string, component: TUISpaceComponent, opts: {
 				label: string,
 				componentId?: string,
+				icon?: React.ComponentType<any>,
 			}) => {
 				return useStore.getState().registerUiSpaceComponent({
 					location: spaceId as EUISpaceLoc,
@@ -33,6 +35,7 @@ export class AppletHostFE extends AppletHost<IAppletAPIFE> {
 					label: opts.label,
 					appletName,
 					componentId: opts.componentId,
+					icon: opts.icon,
 				});
 			},
 			unregisterUiSpaceComponent: (id: TUISpaceComponentId) => {
@@ -47,6 +50,7 @@ export class AppletHostFE extends AppletHost<IAppletAPIFE> {
 					label: 'UiSpaceChip',
 					appletName,
 					props: options,
+					icon: options.icon,
 				});
 			},
 		};
