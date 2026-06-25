@@ -68,7 +68,7 @@
 <table>
 <tr>
 <td><img src="docs/screenshots/chat.png" alt="Chat interface" /></td>
-<td><img src="docs/screenshots/models.png" alt="Model browser" /></td>
+<td><img src="docs/screenshots/hero.png" alt="Model browser" /></td>
 </tr>
 <tr>
 <td><img src="docs/screenshots/backends.png" alt="Llama backends" /></td>
@@ -81,7 +81,7 @@
 
 <table>
 <tr>
-<td><img src="docs/screenshots/onboarding.png" alt="Onboarding welcome screen" /></td>
+<td><img src="docs/screenshots/models.png" alt="Onboarding welcome screen" /></td>
 <td><img src="docs/screenshots/launch.png" alt="Launch server dialog" /></td>
 </tr>
 <tr>
