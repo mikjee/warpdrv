@@ -180,7 +180,8 @@ export const useStore = create<AppState>()(
 					currentSystemPrompt: bridge.currentSystemPrompt,
 					currentInferenceParams: bridge.currentInferenceParams,
 					setCurrentThreadId: (id: TThreadId | null) => {
-						const current = bridge.currentThreadId;
+						const state = get();
+						const current = state.currentThreadId;
 						const switching = current != null && id !== current;
 						//console.log('[Store] setCurrentThreadId:', id, 'current=', current, 'switching=', switching);
 						bridge.setCurrentThreadId(id);
@@ -190,10 +191,10 @@ export const useStore = create<AppState>()(
 						}
 						annotations.clearAnnotations!();
 						annotations.setAnnotatorVisible!(false);
-						if (id && bridge.threads[id]) {
+						if (id && state.threads[id]) {
 							// Thread exists in store — derive workspace from its folderId
-							if (bridge.threads[id]!.folderId) {
-								set(s => { s.activeWorkspaceId = bridge.threads[id]!.folderId; });
+							if (state.threads[id]!.folderId) {
+								set(s => { s.activeWorkspaceId = state.threads[id]!.folderId; });
 							} else {
 								set(s => { s.activeWorkspaceId = null; });
 							}
