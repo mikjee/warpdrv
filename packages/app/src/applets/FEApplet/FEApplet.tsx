@@ -647,10 +647,6 @@ const GuardrailResults = React.memo(({ def, children }: { def: TUiSpaceComponent
 						>
 							<HStack gap="2">
 								<FaShieldAlt size={16} color="var(--wc-text-muted)" />
-								{processingCount > 0 && <Spinner size="xs" color="var(--wc-text-muted)" />}
-								{totalViolations > 0 && <XCircle size={14} color="var(--wc-accent-red)" />}
-								{totalWarnings > 0 && <AlertTriangle size={14} color="var(--wc-accent-yellow)" />}
-								{allClear && <CheckCircle size={14} color="var(--wc-accent-green)" />}
 								<Text fontSize="xs" fontWeight="500" color="var(--wc-text-primary)">
 									Guardrails
 								</Text>
@@ -661,7 +657,7 @@ const GuardrailResults = React.memo(({ def, children }: { def: TUiSpaceComponent
 									<Badge color="var(--wc-accent-yellow)" bg="var(--wc-accent-yellow-bg-8)" px="1.5" py="0.5" fontSize="11px">{totalWarnings} Warnings</Badge>
 								)}
 								{processingCount > 0 && (
-									<Badge color="var(--wc-text-muted)" bg="var(--wc-bg-subtle)" px="1.5" py="0.5" fontSize="11px">{processingCount}...</Badge>
+									<Badge color="var(--wc-text-muted)" bg="var(--wc-bg-subtle)" px="1.5" py="0.5" fontSize="11px">Running..</Badge>
 								)}
 								{allClear && <CheckCircle size={16} color="var(--wc-accent-green)" />}
 							</HStack>

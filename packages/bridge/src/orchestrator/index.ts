@@ -582,110 +582,110 @@ export class Orchestrator {
 		try {
 			while (true) {
 				const { done, value } = await reader.read();
-			if (done) break;
-			buffer += decoder.decode(value, { stream: true });
-			const { chunks, remaining } = parseSSEBuffer(buffer);
-			buffer = remaining;
+				if (done) break;
+				buffer += decoder.decode(value, { stream: true });
+				const { chunks, remaining } = parseSSEBuffer(buffer);
+				buffer = remaining;
 
-			for (const chunk of chunks) {
-				if (abortSignal.aborted) {
-					await this.flushReasoningPart(turn);
-					await this.flushTextPart(turn);
-					return { hadToolCalls: false, needsAsk: false, lastToolMessageId: null };
-				}
-				if (chunk.error || chunk.warpcore_event === 'error') {
-					streamError = chunk.error ?? 'Inference error from server';
-					break;
-				}
-				const delta = chunk.choices?.[0]?.delta;
+				for (const chunk of chunks) {
+					if (abortSignal.aborted) {
+						await this.flushReasoningPart(turn);
+						await this.flushTextPart(turn);
+						return { hadToolCalls: false, needsAsk: false, lastToolMessageId: null };
+					}
+					if (chunk.error || chunk.warpcore_event === 'error') {
+						streamError = chunk.error ?? 'Inference error from server';
+						break;
+					}
+					const delta = chunk.choices?.[0]?.delta;
 
-				if (delta?.content) {
-					fullText += delta.content;
-					if (turn.currentReasoningPart) { await this.flushReasoningPart(turn); }
-					if (!turn.currentTextPart) {
-						turn.currentTextPart = { id: crypto.randomUUID(), text: '' };
+					if (delta?.content) {
+						fullText += delta.content;
+						if (turn.currentReasoningPart) { await this.flushReasoningPart(turn); }
+						if (!turn.currentTextPart) {
+							turn.currentTextPart = { id: crypto.randomUUID(), text: '' };
+							this.broadcaster.emit({
+								type: 'message.patched',
+								messageId: turn.assistantMessageId,
+								threadId: request.threadId,
+								updates: {
+									addParts: [{
+										id: turn.currentTextPart.id,
+										type: EMessagePartType.TEXT,
+										orderIndex: turn.partOrderCounter,
+										text: '',
+									}],
+								},
+							});
+						}
+						turn.currentTextPart.text += delta.content;
 						this.broadcaster.emit({
-							type: 'message.patched',
+							type: 'message.chunk',
 							messageId: turn.assistantMessageId,
 							threadId: request.threadId,
-							updates: {
-								addParts: [{
-									id: turn.currentTextPart.id,
-									type: EMessagePartType.TEXT,
-									orderIndex: turn.partOrderCounter,
-									text: '',
-								}],
-							},
+							partId: turn.currentTextPart.id,
+							partType: EMessagePartType.TEXT,
+							deltaText: delta.content,
 						});
 					}
-					turn.currentTextPart.text += delta.content;
-					this.broadcaster.emit({
-						type: 'message.chunk',
-						messageId: turn.assistantMessageId,
-						threadId: request.threadId,
-						partId: turn.currentTextPart.id,
-						partType: EMessagePartType.TEXT,
-						deltaText: delta.content,
-					});
-				}
 
-				if (delta?.reasoning_content) {
-					reasoningText += delta.reasoning_content;
-					if (turn.currentTextPart) { await this.flushTextPart(turn); }
-					if (!turn.currentReasoningPart) {
-						turn.currentReasoningPart = { id: crypto.randomUUID(), text: '' };
+					if (delta?.reasoning_content) {
+						reasoningText += delta.reasoning_content;
+						if (turn.currentTextPart) { await this.flushTextPart(turn); }
+						if (!turn.currentReasoningPart) {
+							turn.currentReasoningPart = { id: crypto.randomUUID(), text: '' };
+							this.broadcaster.emit({
+								type: 'message.patched',
+								messageId: turn.assistantMessageId,
+								threadId: request.threadId,
+								updates: {
+									addParts: [{
+										id: turn.currentReasoningPart.id,
+										type: EMessagePartType.REASONING,
+										orderIndex: turn.partOrderCounter,
+										text: '',
+									}],
+								},
+							});
+						}
+						turn.currentReasoningPart.text += delta.reasoning_content;
 						this.broadcaster.emit({
-							type: 'message.patched',
+							type: 'message.chunk',
 							messageId: turn.assistantMessageId,
 							threadId: request.threadId,
-							updates: {
-								addParts: [{
-									id: turn.currentReasoningPart.id,
-									type: EMessagePartType.REASONING,
-									orderIndex: turn.partOrderCounter,
-									text: '',
-								}],
-							},
+							partId: turn.currentReasoningPart.id,
+							partType: EMessagePartType.REASONING,
+							deltaText: delta.reasoning_content,
 						});
 					}
-					turn.currentReasoningPart.text += delta.reasoning_content;
-					this.broadcaster.emit({
-						type: 'message.chunk',
-						messageId: turn.assistantMessageId,
-						threadId: request.threadId,
-						partId: turn.currentReasoningPart.id,
-						partType: EMessagePartType.REASONING,
-						deltaText: delta.reasoning_content,
-					});
-				}
 
-				if (delta?.tool_calls) {
-					for (const tc of delta.tool_calls) {
-						const hadName = !!toolCallAccumulators[tc.index]?.name;
-						accumulateToolCallDelta(toolCallAccumulators, tc);
-						if (!hadName) {
-							const name = toolCallAccumulators[tc.index]?.name;
-							if (name) {
-								this.broadcaster.emit({
-									type: 'tool_call.starting',
-									threadId: request.threadId,
-									messageId: turn.assistantMessageId,
-									name,
-								});
+					if (delta?.tool_calls) {
+						for (const tc of delta.tool_calls) {
+							const hadName = !!toolCallAccumulators[tc.index]?.name;
+							accumulateToolCallDelta(toolCallAccumulators, tc);
+							if (!hadName) {
+								const name = toolCallAccumulators[tc.index]?.name;
+								if (name) {
+									this.broadcaster.emit({
+										type: 'tool_call.starting',
+										threadId: request.threadId,
+										messageId: turn.assistantMessageId,
+										name,
+									});
+								}
 							}
 						}
 					}
-				}
 
-				const fr = chunk.choices?.[0]?.finish_reason;
-				if (fr) {
-					//console.log(new Date(), '[Orch] finish_reason received');
-					finishReason = fr;
+					const fr = chunk.choices?.[0]?.finish_reason;
+					if (fr) {
+						//console.log(new Date(), '[Orch] finish_reason received');
+						finishReason = fr;
+					}
+					if (chunk.timings) timings = chunk.timings as Record<string, number>;
+					if (chunk.usage) usage = chunk.usage as Record<string, number>;
 				}
-				if (chunk.timings) timings = chunk.timings as Record<string, number>;
-				if (chunk.usage) usage = chunk.usage as Record<string, number>;
 			}
-		}
 		} finally {
 			//console.log(new Date(), '[Orch] stream ended, flushing parts');
 			await this.flushReasoningPart(turn);
@@ -737,15 +737,6 @@ export class Orchestrator {
 			);
 		}
 
-		if (finalToolCalls.length === 0 || finishReason !== 'tool_calls') {
-			return { hadToolCalls: false, needsAsk: false, lastToolMessageId: null };
-		}
-
-		// Process tool calls — chain tool messages linearly off the assistant
-		let needsAsk = false;
-		let lastToolMessageId: TMessageId | null = null;
-		let previousToolMessageId: TMessageId = turn.assistantMessageId;
-
 		messages.push({
 			role: 'assistant',
 			content: fullText || (null as any),
@@ -755,6 +746,15 @@ export class Orchestrator {
 				function: { name: tc.name, arguments: tc.arguments },
 			})),
 		} as any);
+
+		if (finalToolCalls.length === 0 || finishReason !== 'tool_calls') {
+			return { hadToolCalls: false, needsAsk: false, lastToolMessageId: null };
+		}
+
+		// Process tool calls — chain tool messages linearly off the assistant
+		let needsAsk = false;
+		let lastToolMessageId: TMessageId | null = null;
+		let previousToolMessageId: TMessageId = turn.assistantMessageId;
 
 		for (const tc of finalToolCalls) {
 			if (abortSignal.aborted) return { hadToolCalls: true, needsAsk: false, lastToolMessageId };
