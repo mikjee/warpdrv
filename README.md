@@ -19,6 +19,8 @@
 
 <br />
 
+https://github.com/user-attachments/assets/70fdddd1-3183-4793-849b-fe1cdc85bc66
+
 <img src="docs/screenshots/themes.png" alt="warpdrv hero screenshot" width="800" />
 
 </div>
@@ -42,6 +44,10 @@
 - ⭐ **Multi-GPU Multi-Vendor** ⭐ Use any CUDA/ROCm/Vulkan hardware.
 - ⭐ **Build your own LLAMA** ⭐ Supports custom-built LLAMA.cpp.
 - ⭐ **Open Source** ⭐ No hidden code. No analytics.
+
+---
+
+https://github.com/user-attachments/assets/57f917a0-faf9-4a39-9a70-0fdc3f3f8658
 
 ---
 
