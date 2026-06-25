@@ -19,7 +19,7 @@
 
 <br />
 
-<img src="docs/screenshots/hero.png" alt="warpdrv hero screenshot" width="800" />
+<img src="docs/screenshots/themes.png" alt="warpdrv hero screenshot" width="800" />
 
 </div>
 
@@ -31,15 +31,17 @@
 
 ## What is warpdrv?
 
-warpdrv is a desktop toolkit for running local language models. It manages llama.cpp server instances across multiple GPU backends, parses GGUF models, and ships a built-in chat UI with full sampling controls — all in a single Tauri desktop app.
+**warpdrv** is a desktop toolkit for using local LLMs.
 
-## Why use this?
-
-- ⭐ **Try new models as soon as they are released** - Bring your own llama.cpp builds; not wait for vendor's release cycle.
-- ⭐ **Multi-backend, multi-GPU** - CUDA, ROCm, Vulkan; mix devices in one inference session.
-- ⭐ **Your daily driver** - Integrates with your favorite tools with a customizable router. batteries included.
-- ⭐ **Workshop tools** - Speculative decoding config, MCP integration, bash-based build recipes, KV cache checkpointing.
-- ⭐ **Open source** - No hidden code. No analytics.
+- ⭐ **Use Local LLMs** ⭐ Chat with local models, or integrate them with your favorite AI tools.
+- ⭐ **Rich Chat UI** ⭐ A polished chat interface supporting Elicitation, Graphs, Syntax Highlighting and more.
+- ⭐ **Voice** ⭐ Use Kokoro Text-To-Speech, Whisper Dictation, or combine them in Voice-Chat mode.
+- ⭐ **Built-in MCP** ⭐ Use tools that come with the built-in MCP server. Also supports external mcp.json.
+- ⭐ **RAG** ⭐ Build projects using Workspace and Embedding using local models.
+- ⭐ **Power Your Workflows** ⭐ Features such as Annotations, Guardrails, Compaction to drive your daily tasks.
+- ⭐ **Multi-GPU Multi-Vendor** ⭐ Use any CUDA/ROCm/Vulkan hardware.
+- ⭐ **Build your own LLAMA** ⭐ Supports custom-built LLAMA.cpp.
+- ⭐ **Open Source** ⭐ No hidden code. No analytics.
 
 ---
 
@@ -103,6 +105,10 @@ warpdrv is a desktop toolkit for running local language models. It manages llama
 **Models.** Browse and download from Hugging Face Hub directly inside warpdrv, with full download management. Local models are scanned, parsed, and organised into folders.
 
 **Chat.** A built-in chat UI with threads, folders, and full sampling configuration. MCP server integration handles tool calling with per-tool permission prompts.
+
+**Slash Commands.** Warpdrv comes with built-in slash-commands to perform tasks such as context compaction, using to-do lists, security and compliance guardrails using parallel adversarial local models.
+
+**Voice** You can launch Whisper servers for STT and use KokoroJS for TTS. The are combined together in a powerful voice chat mode which makes every conversation feel like a phone call. Comes with 7 different voices.
 
 ---
 
