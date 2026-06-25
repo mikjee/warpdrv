@@ -7,7 +7,7 @@ export const FetchRenderer = React.memo((props: {
 	url?: string,
 	[key: string]: unknown
 }) => {
-	const { url, ...rest } = props;
+	const { url, method, ...rest } = props;
 	const extras = Object.entries(rest).filter(([, v]) => v !== undefined);
 
 	return (
@@ -18,7 +18,10 @@ export const FetchRenderer = React.memo((props: {
 					{url ?? '(no url)'}
 				</Text>
 			</HStack>
-			{extras.length > 0 && (
+			<Text fontSize="10px" color="var(--wc-text-faint)" pt="1.5" pl="5">
+				Method: <Text as="span" color="var(--wc-text-muted)">{(method as string)}</Text>
+			</Text>
+			{/* {extras.length > 0 && (
 				<HStack gap="3" mt="1" pl="5" flexWrap="wrap">
 					{extras.map(([k, v]) => (
 						<Text key={k} fontSize="10px" color="var(--wc-text-faint)">
@@ -26,7 +29,7 @@ export const FetchRenderer = React.memo((props: {
 						</Text>
 					))}
 				</HStack>
-			)}
+			)} */}
 		</Box>
 	);
 });

@@ -1,13 +1,15 @@
 import http from 'http';
 import express from 'express';
 import cors from 'cors';
+import busboy from 'busboy';
 import { store } from '../util/store';
-import type { IServer, ISettings } from '@warpcore/shared';
-import { EServerStatus, DEFAULT_SETTINGS } from '@warpcore/shared';
+import type { IServer, ISettings, IWhisperServer } from '@warpcore/shared';
+import { EServerStatus, EWhisperServerStatus, DEFAULT_SETTINGS } from '@warpcore/shared';
 import { sseManager } from './sseManagerInstance';
 import { proxyAuthMiddleware } from '../middleware/auth';
 
 const SERVERS_PREFIX = 'servers:';
+const WHISPER_SERVERS_PREFIX = 'whisperServers:';
 const SETTINGS_KEY = 'settings:general';
 
 // Sticky routing: alias -> serverId
@@ -67,6 +69,65 @@ async function getAllAliases(): Promise<string[]> {
 		for (const a of (s.serverAlias ?? [])) aliases.add(a);
 	}
 	return [...aliases];
+}
+
+// Whisper server resolution
+async function resolveWhisperServer(alias: string): Promise<IWhisperServer | null> {
+	const servers = await store.list<IWhisperServer>(WHISPER_SERVERS_PREFIX);
+	const candidates = servers.filter(s => (s.serverAlias ?? []).includes(alias));
+	if (candidates.length === 0) return null;
+
+	const running = candidates.filter(s => s.status === EWhisperServerStatus.RUNNING);
+	if (running.length === 0) return null;
+
+	const healthy = running.filter(s => !s.error);
+	return healthy.length > 0 ? healthy[0]! : running[0]!;
+}
+
+async function getAllWhisperAliases(): Promise<string[]> {
+	const servers = await store.list<IWhisperServer>(WHISPER_SERVERS_PREFIX);
+	const aliases = new Set<string>();
+	for (const s of servers) {
+		for (const a of (s.serverAlias ?? [])) aliases.add(a);
+	}
+	return [...aliases];
+}
+
+// Extract model field from multipart form-data
+function extractModelFromMultipart(req: express.Request): Promise<string | null> {
+	return new Promise((resolve) => {
+		const bb = busboy({ headers: req.headers });
+		let model: string | null = null;
+		let consumed = 0;
+		const maxConsume = 1024 * 1024; // 1MB max for parsing
+
+		bb.on('field', (name, value) => {
+			if (name === 'model') model = value;
+		});
+
+		bb.on('file', (_name, _file) => {
+			_consume(_file);
+		});
+
+		bb.on('finish', () => resolve(model));
+
+		// Consume the request body but limit to avoid buffering large files
+		req.on('data', (chunk: Buffer) => {
+			consumed += chunk.length;
+			if (consumed <= maxConsume) {
+				bb.write(chunk);
+			}
+		});
+		req.on('end', () => {
+			if (consumed <= maxConsume) bb.end();
+			else bb.end();
+		});
+
+		function _consume(stream: NodeJS.ReadableStream) {
+			stream.on('data', () => {});
+			stream.resume();
+		}
+	});
 }
 
 // Proxy a request to a llama-server, streaming the response through
@@ -183,12 +244,101 @@ function createProxyApp(): express.Express {
 	// Apply auth middleware to all /v1/* routes
 	app.use('/v1/', proxyAuthMiddleware);
 
-	// GET /v1/models — list all available aliases
+	// POST /v1/audio/transcriptions — route to whisper server via multipart model field
+	app.post('/v1/audio/transcriptions', async (req, res) => {
+		// Buffer the entire request body first
+		const chunks: Buffer[] = [];
+		await new Promise<void>((resolve, reject) => {
+			req.on('data', (chunk: Buffer) => chunks.push(chunk));
+			req.on('end', resolve);
+			req.on('error', reject);
+		});
+		const body = Buffer.concat(chunks);
+
+		// Parse model field from buffered body using busboy
+		const model = await new Promise<string | null>((resolve) => {
+			const bb = busboy({ headers: req.headers });
+			let found: string | null = null;
+			bb.on('field', (name, value) => { if (name === 'model') found = value; });
+			bb.on('file', (_name, stream) => { stream.resume(); });
+			bb.on('finish', () => resolve(found));
+			bb.write(body);
+			bb.end();
+		});
+
+		if (!model) {
+			res.status(400).json({
+				error: {
+					message: 'Missing "model" field in form data',
+					type: 'invalid_request_error',
+					code: 400,
+				},
+			});
+			return;
+		}
+
+		const server = await resolveWhisperServer(model);
+
+		if (!server) {
+			const allAliases = await getAllWhisperAliases();
+			const aliasExists = allAliases.includes(model);
+
+			res.status(aliasExists ? 503 : 404).json({
+				error: {
+					message: aliasExists
+						? `No running whisper server for model "${model}"`
+						: `Unknown whisper model "${model}". Available: ${allAliases.join(', ') || 'none'}`,
+					type: aliasExists ? 'server_unavailable' : 'model_not_found',
+					code: aliasExists ? 503 : 404,
+				},
+			});
+			return;
+		}
+
+		// Forward buffered body to whisper server
+		const options: http.RequestOptions = {
+			hostname: '127.0.0.1',
+			port: server.port,
+			path: req.originalUrl,
+			method: req.method,
+			headers: {
+				'content-type': req.headers['content-type'] ?? 'multipart/form-data',
+				'content-length': String(body.length),
+				'accept': req.headers.accept ?? '*/*',
+			},
+		};
+
+		const proxyReq = http.request(options, (proxyRes) => {
+			const headers = { ...proxyRes.headers };
+			res.writeHead(proxyRes.statusCode ?? 200, headers);
+			proxyRes.pipe(res, { end: true });
+		});
+
+		proxyReq.on('error', (err) => {
+			if (!res.headersSent) {
+				res.status(502).json({
+					error: {
+						message: `Whisper server not responding: ${err.message}`,
+						type: 'proxy_error',
+						code: 502,
+					},
+				});
+			}
+		});
+
+		proxyReq.write(body);
+		proxyReq.end();
+	});
+
+	// GET /v1/models — list all available aliases (llama + whisper)
 	app.get('/v1/models', async (_req, res) => {
-		const aliases = await getAllAliases();
+		const [llamaAliases, whisperAliases] = await Promise.all([getAllAliases(), getAllWhisperAliases()]);
+		const seen: Record<string, boolean> = {};
+		const uniqueWhisper = whisperAliases.filter(a => seen[a] ? false : (seen[a] = true) as any);
+		const all = [...llamaAliases, ...uniqueWhisper];
 		res.json({
 			object: 'list',
-			data: aliases.map(alias => ({
+			data: all.map(alias => ({
 				id: alias,
 				object: 'model',
 				created: 0,

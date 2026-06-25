@@ -15,8 +15,9 @@ import { useStore } from '@/store';
 import { stopServer, restartServer, updateServer, clearStickyRoute } from '@/api/services';
 import type { IServer, IBackend, IBackendGroup, IModel, TServerId } from '@warpcore/shared';
 import { EServerStatus } from '@warpcore/shared';
-import { formatUptime, formatCount, QUANT_COLORS, StatPill } from './utils';
+import { formatUptime, formatCount, QUANT_COLORS, StatPill, formatLaunchCommand } from './utils';
 import { ServerSlots } from '@/pages/Servers/SlotPill';
+import { BsGpuCard } from "react-icons/bs";
 
 interface IServerCardProps {
 	serverId: TServerId;
@@ -103,7 +104,8 @@ export const ServerCard = React.memo(({
 		if (server.params.device) return server.params.device;
 
 		const firstDevice = backend?.detectedDevices[0];
-		return firstDevice ? `${firstDevice.name} (${firstDevice.id})` : 'Default';
+		// return firstDevice ? `${firstDevice.name} (${firstDevice.id})` : 'Default';
+		return firstDevice?.name ?? 'Default';
 	}, [backend, server]);
 
 	const getModelMaxContext = useCallback((): number | null => {
@@ -111,12 +113,13 @@ export const ServerCard = React.memo(({
 	}, [modelByPath, server]);
 
 	const model = modelByPath[server.modelPath];
-	const draftModel = server.params.specDecode?.draftModelPath ? modelByPath[server.params.specDecode.draftModelPath] : null;
+	// const draftModel = server.params.specDecode?.draftModelPath ? modelByPath[server.params.specDecode.draftModelPath] : null;
 	const deviceName = useMemo(getDeviceName, [getDeviceName]);
-	const modelMaxCtx = useMemo(getModelMaxContext, [getModelMaxContext]);
-	const configuredCtx = server.params.contextSize;
-	const displayCtx = useMemo(() => configuredCtx === 0 ? (modelMaxCtx ? formatCount(modelMaxCtx) : 'auto') : formatCount(configuredCtx), [configuredCtx, modelMaxCtx]);
-	const backendName = useMemo(() => group?.name ? `${group.name} (${backend?.name ?? 'Unknown'})` : backend?.name ?? "Backend Not Found!", [group, backend]);
+	// const modelMaxCtx = useMemo(getModelMaxContext, [getModelMaxContext]);
+	// const configuredCtx = server.params.contextSize;
+	// const displayCtx = useMemo(() => configuredCtx === 0 ? (modelMaxCtx ? formatCount(modelMaxCtx) : 'auto') : formatCount(configuredCtx), [configuredCtx, modelMaxCtx]);
+	// const backendName = useMemo(() => group?.name ? `${group.name} (${backend?.name ?? 'Unknown'})` : backend?.name ?? "Backend Not Found!", [group, backend]);
+	const backendName = useMemo(() => group?.name ?? backend?.name ?? "Backend Not Found!", [group, backend]);
 
 	return (
 		<Card
@@ -126,9 +129,9 @@ export const ServerCard = React.memo(({
 			gradientTo="transparent"
 			borderColor={isRunning ? 'var(--wc-accent-green-border)' : isLoading ? 'var(--wc-accent-yellow-border)' : undefined}
 		>
-			<VStack align="stretch" gap="2.5">
+			<VStack align="stretch" gap="3">
 				<Flex justify="space-between" align="start">
-					<HStack gap="3" pr="3">
+					<HStack gap="4" pr="3">
 						<Flex
 							w="10" h="10" borderRadius="lg" alignItems="center" justifyContent="center"
 							position="relative"
@@ -155,20 +158,19 @@ export const ServerCard = React.memo(({
 													<Box
 														fontSize="10px" fontFamily='"Geist Mono", monospace' color="var(--wc-text-secondary)"
 														bg="var(--wc-bg-subtle)" borderRadius="md" p="2.5"
-														whiteSpace="pre-wrap" wordBreak="break-all" lineHeight="1.4"
+														whiteSpace="pre-wrap" wordBreak="break-word" lineHeight="1.8"
 													>
-														{server.launchCommand}
+														{formatLaunchCommand(server.launchCommand ?? '')}
 													</Box>
 												</VStack>
 											</HoverCard.Content>
 										</HoverCard.Positioner>
 									</Portal>
 								</HoverCard.Root>
-								<StatusBadge status={server.status as EServerStatus} port={server.port} />
 								{server.serverAlias && server.serverAlias.length > 0 && (
 									<>
 										{server.serverAlias.map(alias => (
-											<Badge key={alias} px="1.5" py="0.25" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="var(--wc-special-indigo-bg)" color="var(--wc-special-indigo)" borderWidth="1px" borderColor="var(--wc-special-indigo-border)">
+											<Badge key={alias} px="1.5" py="0.5" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="var(--wc-special-indigo-bg)" color="var(--wc-special-indigo)" borderWidth="1px" borderColor="var(--wc-special-indigo-border)">
 												{alias}
 												<Button
 													size="xs"
@@ -177,7 +179,7 @@ export const ServerCard = React.memo(({
 													minW="auto"
 													h="14px"
 													w="14px"
-													ml="2"
+													ml="1"
 color="var(--wc-special-indigo)"
 					_hover={{ color: 'var(--wc-accent-red)', bg: 'var(--wc-accent-red-bg-8)' }}
 													borderRadius="md"
@@ -191,7 +193,7 @@ color="var(--wc-special-indigo)"
 								)}
 								<Popover.Root lazyMount unmountOnExit open={addingAliasOpen} onOpenChange={(details) => { if (!details.open) { setAddingAliasOpen(false); setNewAliasValue(''); } }}>
 									<Popover.Trigger asChild>
-										<Badge px="1.5" py="0.25" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="var(--wc-special-indigo-bg-subtle)" color="var(--wc-special-indigo)" borderWidth="1px" borderColor="var(--wc-special-indigo-border-subtle)" cursor="pointer" onClick={(e) => { e.stopPropagation(); setAddingAliasOpen(true); }}  title="Add Alias">
+										<Badge px="1.5" py="0.5" borderRadius="md" fontSize="11px" fontFamily='"Geist Mono", monospace' bg="var(--wc-special-indigo-bg-subtle)" color="var(--wc-special-indigo)" borderWidth="1px" borderColor="var(--wc-special-indigo-border-subtle)" cursor="pointer" onClick={(e) => { e.stopPropagation(); setAddingAliasOpen(true); }}  title="Add Alias">
 											<Plus size={10} />
 										</Badge>
 									</Popover.Trigger>
@@ -230,16 +232,18 @@ bg="var(--wc-bg-subtle)"
 										</Popover.Positioner>
 									</Portal>
 								</Popover.Root>
+								{(isRunning || isLoading) && <StatusBadge status={server.status as EServerStatus} port={server.port} />}
 								{isRunning && (
 									<HStack gap="1" color="var(--wc-text-muted)">
 										<Clock size={11} />
 										<Text fontSize="12px">{formatUptime(server.startedAt)}</Text>
 									</HStack>
 								)}
+								<ServerSlots serverId={serverId} />
 							</HStack>
-							<HStack gap="2.5" flexWrap="wrap" mt="1.5">
+							<HStack gap="4" flexWrap="wrap" mt="2.5">
 								<HStack gap="1">
-									<StatPill icon={<FaBrain size={12} />} label="Model" value={model?.name ?? "Model Not Found!"} />
+									<StatPill icon={<FaBrain size={13} />} label="Model" value={model?.name ?? "Model Not Found!"} />
 									{model?.mmprojFile && server.useMultiModal && (
 										<Icon color="var(--wc-special-vision-yellow)" boxSize="14px" ml="1" mr="1"><FaRegEye title="Vision"/></Icon>
 									)}
@@ -249,7 +253,7 @@ bg="var(--wc-bg-subtle)"
 									{model?.mmprojFile && server.useMultiModal && (
 										<Icon color="var(--wc-special-vision-red)" boxSize="14px" ml="1" mr="1"><LuSaveOff title="Cannot save checkpoints when multi-modal is enabled" /></Icon>
 									)}
-									{model?.primaryFile?.metadata?.quantType && (
+									{/* {model?.primaryFile?.metadata?.quantType ? (
 										<Badge
 											px="1.5" py="0.25" borderRadius="md" fontSize="10px"
 											fontFamily='"Geist Mono", monospace'
@@ -258,16 +262,26 @@ bg="var(--wc-bg-subtle)"
 											borderWidth="1px"
 											borderColor={`color-mix(in srgb, ${QUANT_COLORS[model.primaryFile.metadata.quantType] ?? 'rgba(255, 255, 255, 0.3)'} 30%, transparent)`}
 										>
-											{model.primaryFile.metadata.quantType}
+											{model?.name ?? "Model Not Found!"}
 										</Badge>
-									)}
+									) : (
+										<StatPill icon={<FaBrain size={12} />} label="Model" value={model?.name ?? "Model Not Found!"} />
+									)} */}
 								</HStack>
-								{server.params.specDecode?.enabled && draftModel && (
-									<StatPill icon={<Sparkles size={12} />} label="Draft" value={draftModel.name} />
+								{server.params.specDecode?.enabled && (
+									server.params.specDecode.mode === 'mtp' && (
+										<StatPill icon={<Sparkles size={13} />} label="Spec" value="MTP" />
+									) ||
+									server.params.specDecode.mode === 'ngram' && (
+										<StatPill icon={<Sparkles size={13} />} label="Spec" value="Ngram" />
+									) ||
+									server.params.specDecode.mode === 'draft' && (
+										<StatPill icon={<Sparkles size={13} />} label="Spec" value={"Draft"} />
+									)
 								)}
-								<StatPill icon={<Blocks size={12} />} label="Backend" value={backendName} />
-								<StatPill icon={<Cpu size={12} />} label="Device" value={deviceName} />
-								<StatPill icon={<FaBookOpen size={12} />} label="Context" value={`${displayCtx}`} />
+								<StatPill icon={<Blocks size={13} />} label={backend?.name || "Backend"} value={backendName} />
+								<StatPill icon={<BsGpuCard size={13} />} label="Device" value={deviceName} />
+								{/* <StatPill icon={<FaBookOpen size={12} />} label="Context" value={`${displayCtx}`} /> */}
 							</HStack>
 							{server.error && (
 								<Text fontSize="11px" color="var(--wc-accent-red)" lineClamp={1} mt="0.5">{server.error}</Text>
@@ -313,7 +327,6 @@ bg="var(--wc-bg-subtle)"
 						)}
 					</HStack>
 				</Flex>
-				<ServerSlots serverId={serverId} />
 			</VStack>
 
 			{removingAlias && (

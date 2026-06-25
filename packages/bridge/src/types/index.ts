@@ -73,6 +73,7 @@ export enum EStreamStatus {
 export interface IFolder {
 	id: TFolderId;
 	name: string;
+	topic: string;
 	parentId: TFolderId | null;
 	sortOrder: number;
 	createdAt: number;
@@ -80,6 +81,7 @@ export interface IFolder {
 
 export interface IFolderCreatePayload {
 	name: string;
+	topic?: string;
 	parentId?: TFolderId | null;
 	sortOrder?: number;
 }
@@ -87,6 +89,25 @@ export interface IFolderCreatePayload {
 export interface IReorderFolderEntry {
 	id: TFolderId;
 	sortOrder: number;
+}
+
+// ============================================================
+// Workspaces
+// Extends folders with a JSON `data` blob for workspace-specific fields.
+// 1:1 with folders via folderId (PK).
+// ============================================================
+export interface IWorkspace {
+	folderId: TFolderId;
+	data: Record<string, unknown>;
+}
+
+export interface IWorkspaceCreatePayload {
+	folderId: TFolderId;
+	data: Record<string, unknown>;
+}
+
+export interface IWorkspaceUpdatePayload {
+	data: Record<string, unknown>;
 }
 
 // ============================================================
@@ -117,6 +138,35 @@ export interface IChatThreadCreatePayload {
 export interface IListThreadsOptions {
 	query?: string;
 	folderId?: TFolderId | null;
+}
+
+// ============================================================
+// FTS Search
+// ============================================================
+export type ESearchMode = 'everywhere' | 'threads' | 'thread';
+
+export interface ISearchOptions {
+	mode: ESearchMode;
+	threadId?: string;
+	limit?: number;
+	offset?: number;
+}
+
+export interface ISearchResult {
+	type: 'message' | 'thread';
+	threadId: string;
+	threadTitle: string;
+	messageId?: string;
+	snippet?: string;
+	role?: string;
+	createdAt: number;
+}
+
+export interface ISearchThreadResult {
+	threadId: string;
+	threadTitle: string;
+	matchCount: number;
+	lastMatchAt: number;
 }
 
 // ============================================================
@@ -257,6 +307,14 @@ export interface IToolPermission {
 	approvalMode: EToolApprovalMode;
 }
 
+export interface IThreadToolPermission {
+	threadId: TThreadId;
+	serverName: string;
+	toolName: string;
+	enabled: boolean;
+	approvalMode: EToolApprovalMode;
+}
+
 // ============================================================
 // MCP Server
 // ============================================================
@@ -268,6 +326,7 @@ export interface IMcpServerEntry {
 	headers?: Record<string, string>;
 	timeout?: number;
 	warpdrv?: {
+		argDefaults?: Record<string, Record<string, string>>;
 		renderers?: Record<string, {
 			component: string;
 			propsMap?: Record<string, string>;
@@ -308,6 +367,9 @@ export interface ICompletionRequest {
 	userMessage?: ICompletionUserMessage;
 	parentId?: TMessageId | null;
 	serverId?: string;
+	whisperServerId?: string;
+	enableAutoEmbed?: boolean;
+	folderId?: TFolderId | null;
 	messages?: Array<{ role: string; content: string }>;
 	systemPrompt?: string;
 	inferenceParams: Record<string, unknown>;
@@ -317,6 +379,8 @@ export interface ICompletionRequest {
 	generateTitle?: boolean;
 	attachAllTools?: boolean;
 	attachedTools?: IToolAttachment[];
+	messageState?: Record<string, unknown>;
+	threadState?: Record<string, unknown>;
 }
 
 // ============================================================
@@ -372,7 +436,13 @@ export type IBridgeEvent =
 	| { type: 'inference.ended'; threadId: TThreadId; messageId: TMessageId }
 	| { type: 'inference.error'; threadId: TThreadId; messageId: TMessageId; error: string }
 	| { type: 'elicitation_request'; threadId: string; request: IElicitationRequest }
-	| { type: 'elicitation_resolved'; id: string };
+	| { type: 'elicitation_resolved'; id: string }
+	| { type: 'embedding.error'; error: string }
+	| { type: 'embedding.embedded'; messageId: TMessageId; threadId: TThreadId; modelId: string; topic: string }
+	| { type: 'embedding.removed'; messageId: TMessageId; modelId: string; topic: string }
+	| { type: 'workspace_state.updated'; folderId: TFolderId; data: Record<string, unknown> }
+	| { type: 'thread_state.updated'; threadId: TThreadId; data: Record<string, unknown> }
+	| { type: 'message_state.updated'; messageId: TMessageId; data: Record<string, unknown> };
 
 export interface IMessagePatch {
 	stats?: IChatMessageStats;

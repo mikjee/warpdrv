@@ -17,7 +17,7 @@ const SETTINGS_KEY = 'settings:general';
 // Cross-platform process tree kill.
 // Linux/macOS: signal the process group via negative PID.
 // Windows: taskkill /T /F walks the process tree and force-terminates.
-function killProcessTree(pid: number, signal: 'SIGTERM' | 'SIGKILL'): void {
+export function killProcessTree(pid: number, signal: 'SIGTERM' | 'SIGKILL'): void {
 	if (process.platform === 'win32') {
 		const args = signal === 'SIGKILL'
 			? ['/T', '/F', '/PID', String(pid)]
@@ -81,12 +81,85 @@ async function emitServerUpdate(serverId: string, status: EServerStatus, error: 
 		// Ignore errors - SSE is optional
 	}
 }
+// Build speculative decoding args for pre-9100 llama.cpp builds
+function buildSpecDecodeArgsPre9100(sd: ISpecDecodeParams): string[] {
+	const args: string[] = [];
+	const isNgram = sd.mode === 'ngram';
+	const isMtp = sd.mode === 'mtp';
+	// Ngram mode — draftless speculative decoding
+	if (isNgram && sd.specType && sd.specType !== 'none') {
+		args.push('--spec-type', sd.specType);
+		if (sd.ngramSizeN) args.push('--spec-ngram-size-n', String(sd.ngramSizeN));
+		if (sd.ngramSizeM) args.push('--spec-ngram-size-m', String(sd.ngramSizeM));
+		if ((sd.specType === 'ngram-map-k' || sd.specType === 'ngram-map-k4v') && sd.ngramMinHits) {
+			args.push('--spec-ngram-min-hits', String(sd.ngramMinHits));
+		}
+	}
+	// MTP mode
+	if (isMtp) {
+		args.push('--spec-type', 'draft-mtp');
+		if (sd.specDraftNMax) args.push('--spec-draft-n-max', String(sd.specDraftNMax));
+		if (sd.draftMin > 0) args.push('--draft-min', String(sd.draftMin));
+		if (sd.draftPMin > 0) args.push('--draft-p-min', String(sd.draftPMin));
+	}
+	// Draft model mode
+	if (!isNgram && !isMtp && sd.draftModelPath) {
+		args.push('--model-draft', sd.draftModelPath);
+		if (sd.draftDevice) args.push('--device-draft', sd.draftDevice);
+		if (sd.draftGpuLayers > 0) args.push('--gpu-layers-draft', String(sd.draftGpuLayers));
+		if (sd.draftContextSize > 0) args.push('--ctx-size-draft', String(sd.draftContextSize));
+	}
+	// Shared across modes
+	if (sd.draftMax > 0) args.push('--draft-max', String(sd.draftMax));
+	if (!isMtp && sd.draftMin > 0) args.push('--draft-min', String(sd.draftMin));
+	// Draft-model-only
+	if (!isMtp && !isNgram && sd.draftPMin > 0) args.push('--draft-p-min', String(sd.draftPMin));
+	return args;
+}
+
+// Build speculative decoding args for post-9100 llama.cpp builds
+function buildSpecDecodeArgsPost9100(sd: ISpecDecodeParams): string[] {
+	const args: string[] = [];
+	const isNgram = sd.mode === 'ngram';
+	const isMtp = sd.mode === 'mtp';
+	// Ngram mode — per-type args based on specType
+	if (isNgram && sd.specType && sd.specType !== 'none') {
+		args.push('--spec-type', sd.specType);
+		const prefix = sd.specType === 'ngram-mod-n' ? 'mod-n'
+			: sd.specType === 'ngram-map-k4v' ? 'map-k4v'
+			: sd.specType === 'ngram-map-k' ? 'map-k' : 'simple';
+		if (sd.ngramSizeN) args.push(`--spec-ngram-${prefix}-size-n`, String(sd.ngramSizeN));
+		if (sd.ngramSizeM) args.push(`--spec-ngram-${prefix}-size-m`, String(sd.ngramSizeM));
+		if (sd.ngramMinHits) args.push(`--spec-ngram-${prefix}-min-hits`, String(sd.ngramMinHits));
+	}
+	// MTP mode
+	if (isMtp) {
+		args.push('--spec-type', 'draft-mtp');
+		if (sd.specDraftNMax) args.push('--spec-draft-n-max', String(sd.specDraftNMax));
+		if (sd.draftMin > 0) args.push('--spec-draft-n-min', String(sd.draftMin));
+		if (sd.draftPMin > 0) args.push('--spec-draft-p-min', String(sd.draftPMin));
+	}
+	// Draft model mode
+	if (!isNgram && !isMtp && sd.draftModelPath) {
+		args.push('--model-draft', sd.draftModelPath);
+		if (sd.draftDevice) args.push('--device-draft', sd.draftDevice);
+		if (sd.draftGpuLayers > 0) args.push('--gpu-layers-draft', String(sd.draftGpuLayers));
+		if (sd.draftContextSize > 0) args.push('--ctx-size-draft', String(sd.draftContextSize));
+	}
+	// Shared new args
+	if (!isMtp && sd.draftMax > 0) args.push('--spec-draft-n-max', String(sd.draftMax));
+	if (!isMtp && sd.draftMin > 0) args.push('--spec-draft-n-min', String(sd.draftMin));
+	if (!isMtp && !isNgram && sd.draftPMin > 0) args.push('--spec-draft-p-min', String(sd.draftPMin));
+	return args;
+}
+
 // Build the llama-server command line args from params
 export function buildArgs(
 	modelPath: string,
 	mmprojPath: string | null,
 	params: ILaunchParams,
 	defaultArgs: string[],
+	buildNumber: number,
 	extraArgs?: Record<string, string>,
 	inferenceParams?: Partial<IChatInferenceParams>,
 ): string[] {
@@ -123,6 +196,7 @@ export function buildArgs(
 	if (params.noWarmup && !argsSet.has('--no-warmup')) args.push('--no-warmup');
 	if (params.jinja && !argsSet.has('--jinja')) args.push('--jinja');
 	if (params.swaFull && !argsSet.has('--swa-full')) args.push('--swa-full');
+	if (params.useEmbedding && !argsSet.has('--embedding')) args.push('--embedding');
 	if (params.kvQuantK !== EKvQuantType.F16) args.push('--cache-type-k', params.kvQuantK);
 	if (params.kvQuantV !== EKvQuantType.F16) args.push('--cache-type-v', params.kvQuantV);
 	if (params.chatTemplate) args.push('--chat-template', params.chatTemplate);
@@ -147,28 +221,10 @@ export function buildArgs(
 	// Speculative decoding
 	if (params.specDecode?.enabled) {
 		const sd = params.specDecode;
-		const isNgram = sd.mode === 'ngram';
-		// Ngram mode — draftless speculative decoding
-		if (isNgram && sd.specType && sd.specType !== 'none') {
-			args.push('--spec-type', sd.specType);
-			if (sd.ngramSizeN) args.push('--spec-ngram-size-n', String(sd.ngramSizeN));
-			if (sd.ngramSizeM) args.push('--spec-ngram-size-m', String(sd.ngramSizeM));
-			if ((sd.specType === 'ngram-map-k' || sd.specType === 'ngram-map-k4v') && sd.ngramMinHits) {
-				args.push('--spec-ngram-min-hits', String(sd.ngramMinHits));
-			}
-		}
-		// Draft model mode
-		if (!isNgram && sd.draftModelPath) {
-			args.push('--model-draft', sd.draftModelPath);
-			if (sd.draftDevice) args.push('--device-draft', sd.draftDevice);
-			if (sd.draftGpuLayers > 0) args.push('--gpu-layers-draft', String(sd.draftGpuLayers));
-			if (sd.draftContextSize > 0) args.push('--ctx-size-draft', String(sd.draftContextSize));
-		}
-		// Shared across modes
-		if (sd.draftMax > 0) args.push('--draft-max', String(sd.draftMax));
-		if (sd.draftMin > 0) args.push('--draft-min', String(sd.draftMin));
-		// Draft-model-only
-		if (!isNgram && sd.draftPMin > 0) args.push('--draft-p-min', String(sd.draftPMin));
+		const specArgs = buildNumber >= 9100
+			? buildSpecDecodeArgsPost9100(sd)
+			: buildSpecDecodeArgsPre9100(sd);
+		args.push(...specArgs);
 	}
 	args.push('--host', '0.0.0.0');
 	args.push('--port', String(params.port));
@@ -191,9 +247,10 @@ export async function buildServerArgs(
 	mmprojPath: string | null,
 	params: ILaunchParams,
 	defaultArgs: string[],
+	buildNumber: number,
 ): Promise<string[]> {
 	const checkpointDir = await getCheckpointsDir();
-	return buildArgs(modelPath, mmprojPath, params, defaultArgs, { 'slot-save-path': checkpointDir });
+	return buildArgs(modelPath, mmprojPath, params, defaultArgs, buildNumber, { 'slot-save-path': checkpointDir });
 }
 // Spawn a llama-server process
 export function spawnServer(
@@ -467,7 +524,6 @@ export function getTrackedServerIds(): string[] {
 // Auto-load latest compatible checkpoint if enabled on this server
 async function maybeAutoLoadCheckpoint(serverId: string): Promise<void> {
 	try {
-		const { store } = await import('../util/store');
 		const server = await store.get<IServer>(`servers:${serverId}`);
 		if (!server || !server.autoLoadCheckpointOnStart) return;
 		const all = await listCheckpoints({ serverId: null, threadId: null });
@@ -488,7 +544,6 @@ async function maybeAutoLoadCheckpoint(serverId: string): Promise<void> {
 // Auto-save all slots as a bundle if enabled on this server
 async function maybeAutoSaveCheckpoint(serverId: string): Promise<void> {
 	try {
-		const { store } = await import('../util/store');
 		const server = await store.get<IServer>(`servers:${serverId}`);
 		if (!server || !server.autoSaveCheckpointOnStop) return;
 		await saveCheckpoint({
@@ -687,11 +742,16 @@ export async function launchServer(server: IServer): Promise<void> {
 		usedPorts.add(server.port);
 	}
 
+	const buildNumber = backend.buildNumber
+		? parseInt(backend.buildNumber, 10)
+		: 0;
+
 	const args = await buildServerArgs(
 		server.modelPath,
 		mmprojPath,
 		launchParams,
 		backend.defaultArgs,
+		buildNumber,
 	);
 
 	const pid = spawnServer(

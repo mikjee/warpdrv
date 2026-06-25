@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo, type FC, type ReactNode, type DragEvent } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import {
-	Box, Flex, Text, HStack, VStack, Input, Portal,
+	Box, Flex, Text, HStack, VStack, Input, Portal, Menu,
 } from '@chakra-ui/react';
 import {
 	ThreadListPrimitive,
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import type { IChatThread as IBridgeChatThread, IFolder as IChatFolder } from '@warpcore/bridge';
 import { useStore } from '@/store';
+import { fetchWorkspace } from '@/api/services';
 import {
 	fetchFolders, fetchThreads, createFolder, updateFolder, deleteFolder, reorderFolders,
 } from '@/api/services';
@@ -226,7 +227,8 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect, onDelet
 	onDelete: (id: string) => void;
 }) {
 	const [renaming, setRenaming] = useState(false);
-	const [menuOpen, setMenuOpen] = useState(false);
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const getAnchorRect = useCallback(() => triggerRef.current?.getBoundingClientRect(), [triggerRef]);
 	const currentThreadId = useStore(s => s.currentThreadId);
 	const selected = thread.id === currentThreadId;
 
@@ -234,7 +236,8 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect, onDelet
 		<Box
 			w="100%"
 			className={`group ${selected ? 'selected' : ''}`}
-				bg={selected ? 'var(--wc-bg-card)' : undefined}
+			bg={selected ? 'var(--wc-bg-card)' : undefined}
+			border={ selected ? '1px solid var(--wc-border-strong)' : undefined }
 			draggable
 			onDragStart={(e: any) => {
 				e.dataTransfer.setData('threadId', thread.id);
@@ -249,7 +252,7 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect, onDelet
 			gap="1"
 			borderRadius="lg"
 			px="3"
-			py="0"
+			py="1"
 			_hover={{ bg: 'var(--wc-bg-hover)' }}
 		>
 			{renaming ? (
@@ -275,47 +278,54 @@ function ManualThreadListItem({ thread, onRename, onStartDrag, onSelect, onDelet
 							</Text> */}
 						</HStack>
 					</Box>
-				<Box position="relative">
-					<Box
-						cursor="pointer"
-						p="1"
-						mr="1"
-						borderRadius="sm"
-						opacity={0}
-						className="group-hover:!opacity-50"
-_hover={{ bg: 'var(--wc-bg-hover)' }}
-						onClick={(e) => {
-							e.stopPropagation();
-							setMenuOpen(!menuOpen);
-						}}
-					>
-						<MoreHorizontalIcon size={13} />
-					</Box>
-					{menuOpen && (
+			<Box position="relative">
+					<Menu.Root positioning={{ getAnchorRect }}>
+				<Menu.Trigger asChild>
 						<Box
-							position="absolute" right="0" top="100%" zIndex={50}
-bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-overlay)"
-							borderRadius="md" py="1" minW="120px"
+							ref={triggerRef as any}
+							as="button"
+							cursor="pointer"
+							p="1"
+							mr="1"
+							borderRadius="sm"
+							opacity={0}
+							className="group-hover:!opacity-50"
+							_hover={{ bg: 'var(--wc-bg-hover)' }}
+							type="button"
 							onClick={(e) => e.stopPropagation()}
 						>
-							<HStack
-								px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="var(--wc-text-primary)"
-								_hover={{ bg: 'var(--wc-bg-hover)' }}
-								onClick={() => { setRenaming(true); setMenuOpen(false); }}
-							>
-								<PencilIcon size={12} />
-								<Text>Rename</Text>
-							</HStack>
-							<HStack
-								px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="var(--wc-accent-red)"
-								_hover={{ bg: 'var(--wc-accent-red-bg-8)' }}
-								onClick={() => { onDelete(thread.id); setMenuOpen(false); }}
-							>
-								<TrashIcon size={12} />
-								<Text>Delete</Text>
-							</HStack>
+							<MoreHorizontalIcon size={13} />
 						</Box>
-					)}
+					</Menu.Trigger>
+						<Menu.Positioner>
+							<Menu.Content
+								bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-overlay)"
+								borderRadius="md" py="1" minW="120px"
+								onClick={(e) => e.stopPropagation()}
+							>
+								<Menu.Item
+									value="rename"
+									onClick={() => setRenaming(true)}
+									style={{ fontSize: '12px', color: 'var(--wc-text-primary)' }}
+								>
+									<HStack gap="2">
+										<PencilIcon size={12} />
+										<Text>Rename</Text>
+									</HStack>
+								</Menu.Item>
+								<Menu.Item
+									value="delete"
+									onClick={() => onDelete(thread.id)}
+									style={{ fontSize: '12px', color: 'var(--wc-accent-red)' }}
+								>
+									<HStack gap="2">
+										<TrashIcon size={12} />
+										<Text>Delete</Text>
+									</HStack>
+								</Menu.Item>
+							</Menu.Content>
+						</Menu.Positioner>
+					</Menu.Root>
 				</Box>
 			</>
 			)}
@@ -346,7 +356,24 @@ function FolderSection({
 	const [open, setOpen] = useState(false);
 	const [renaming, setRenaming] = useState(false);
 	const [dragOver, setDragOver] = useState(false);
-	const [menuOpen, setMenuOpen] = useState(false);
+	const folderMenuRef = useRef<HTMLButtonElement>(null);
+	const getFolderAnchorRect = useCallback(() => folderMenuRef.current?.getBoundingClientRect(), [folderMenuRef]);
+	const setActiveWorkspaceId = useStore(s => s.setActiveWorkspaceId);
+	const setCurrentThreadId = useStore(s => s.setCurrentThreadId);
+	const setWorkspace = useStore(s => s.setWorkspace);
+
+	const handleToggleOpen = () => {
+		if (!open) {
+			fetchWorkspace(folder.id).then(res => {
+				if (res.ok && res.data) setWorkspace(res.data);
+			});
+			setActiveWorkspaceId(folder.id);
+			setCurrentThreadId(globalThis.crypto.randomUUID());
+			setOpen(true);
+		} else {
+			setOpen(false);
+		}
+	};
 
 	function handleDragOver(e: DragEvent) {
 		e.preventDefault();
@@ -389,11 +416,11 @@ function FolderSection({
 				transition="background 0.15s"
 				border="1px solid var(--wc-border-default)"
 			>
-				<HStack
+		<HStack
 					gap="1" px="2" py="1.5" cursor="grab"
 					borderRadius="md"
 					_hover={{ bg: 'var(--wc-bg-card)' }}
-					onClick={() => setOpen(!open)}
+					onClick={handleToggleOpen}
 					position="relative"
 					draggable
 					onDragStart={(e) => handleFolderDragStart(e, folder.id)}
@@ -416,46 +443,56 @@ function FolderSection({
 						onCancel={() => setRenaming(false)}
 					/>
 				) : (
-					<Text flex="1" fontSize="13px" fontWeight="500" color="var(--wc-text-secondary)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" ml="1">
+					<Text flex="1" fontSize="14px" fontWeight="500" color="var(--wc-text-secondary)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" ml="1">
 						{folder.name}
 					</Text>
 				)}
 				<Text fontSize="12px" color="var(--wc-text-faint)" flexShrink={0}>{threads.length}</Text>
-				<Box
-					onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
-					opacity={0.4}
-					cursor="pointer" p="0.5"
-					className="group-hover:!opacity-100"
-					_hover={{ opacity: 1, bg: 'var(--wc-bg-hover)' }}
-					borderRadius="sm"
-				>
-					<MoreHorizontalIcon size={12} />
-				</Box>
-				{menuOpen && (
-					<Box
-						position="absolute" right="0" top="100%" zIndex={50}
-						bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-overlay)"
-						borderRadius="md" py="1" minW="120px"
-						onClick={(e) => e.stopPropagation()}
-					>
-						<HStack
-							px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="var(--wc-text-primary)"
-							_hover={{ bg: 'var(--wc-bg-hover)' }}
-							onClick={() => { setRenaming(true); setMenuOpen(false); }}
+				<Menu.Root positioning={{ getFolderAnchorRect }}>
+					<Menu.Trigger asChild>
+						<Box
+							ref={folderMenuRef as any}
+							as="button"
+							opacity={0.4}
+							cursor="pointer" p="0.5"
+							className="group-hover:!opacity-100"
+							_hover={{ opacity: 1, bg: 'var(--wc-bg-hover)' }}
+							borderRadius="sm"
+							type="button"
+							onClick={(e) => e.stopPropagation()}
 						>
-							<PencilIcon size={12} />
-							<Text>Rename</Text>
-						</HStack>
-						<HStack
-							px="2" py="1.5" gap="2" cursor="pointer" fontSize="12px" color="var(--wc-accent-red)"
-							_hover={{ bg: 'var(--wc-accent-red-bg-8)' }}
-							onClick={() => { onDelete(folder.id); setMenuOpen(false); }}
+							<MoreHorizontalIcon size={12} />
+						</Box>
+					</Menu.Trigger>
+					<Menu.Positioner>
+						<Menu.Content
+							bg="var(--wc-bg-elevated)" borderWidth="1px" borderColor="var(--wc-border-overlay)"
+							borderRadius="md" py="1" minW="120px"
+							onClick={(e) => e.stopPropagation()}
 						>
-							<TrashIcon size={12} />
-							<Text>Delete</Text>
-						</HStack>
-					</Box>
-				)}
+							<Menu.Item
+								value="rename"
+								onClick={() => setRenaming(true)}
+								style={{ fontSize: '12px', color: 'var(--wc-text-primary)' }}
+							>
+								<HStack gap="2">
+									<PencilIcon size={12} />
+									<Text>Rename</Text>
+								</HStack>
+							</Menu.Item>
+							<Menu.Item
+								value="delete"
+								onClick={() => onDelete(folder.id)}
+								style={{ fontSize: '12px', color: 'var(--wc-accent-red)' }}
+							>
+								<HStack gap="2">
+									<TrashIcon size={12} />
+									<Text>Delete</Text>
+								</HStack>
+							</Menu.Item>
+						</Menu.Content>
+					</Menu.Positioner>
+				</Menu.Root>
 			</HStack>
 			{open && (
 				<Box pl="4" my="1">
@@ -473,7 +510,7 @@ function FolderSection({
 // Main ThreadList component
 // ============================================================
 
-export const ThreadList: FC = React.memo(() => {
+export const ThreadList: FC<{ onOpenSearch?: () => void }> = React.memo(({ onOpenSearch }) => {
 	const threadsAPI = useThreadsAndFolders();
 	const [search, setSearch] = useState('');
 	const [sortField, setSortField] = useState<TSortField>('updatedAt');
@@ -616,34 +653,34 @@ export const ThreadList: FC = React.memo(() => {
 
 	return (
 		<ThreadListPrimitive.Root className="aui-root aui-thread-list-root flex flex-col flex-1 min-h-0">
-			{/* Fixed header */}
-			<Box flexShrink={0} mb="2">
-				<HStack
-					gap="1" px="2" py="1"
-					borderRadius="md" borderWidth="1px"
-					borderColor="var(--wc-border-subtle)"
-					bg="var(--wc-bg-card)"
-				>
-					<SearchIcon size={13} style={{ opacity: 0.3, flexShrink: 0 }} />
-					<Input
-						variant="subtle"
-						placeholder="Search threads..."
-						value={search}
-						onChange={(e) => setSearch(e.target.value)}
-size="2xs"
+			{onOpenSearch && (
+				<Box flexShrink={0} mb="2" px="3">
+					<Box
+						as="button"
+						w="full"
+						px="3"
+						py="2"
+						borderRadius="md"
+						borderWidth="1px"
+						borderColor="var(--wc-border-subtle)"
 						bg="var(--wc-bg-card)"
-						color="var(--wc-text-primary)"
-						_focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }}
-					/>
-					{search && (
-						<Box cursor="pointer" onClick={() => setSearch('')} opacity={0.3} _hover={{ opacity: 0.6 }}>
-							<XIcon size={12} />
-						</Box>
-					)}
-				</HStack>
-			</Box>
+						color="var(--wc-text-muted)"
+						_hover={{ bg: 'var(--wc-bg-hover)', color: 'var(--wc-text-primary)' }}
+						display="flex"
+						alignItems="center"
+						justifyContent="center"
+						gap="2"
+						fontSize="13px"
+						cursor="pointer"
+						onClick={onOpenSearch}
+					>
+						<SearchIcon size={15} />
+						<Text>Search</Text>
+					</Box>
+				</Box>
+			)}
 
-			<HStack gap="1" mb="2" px="1" justify="space-between" alignItems={"center"} flexShrink={0}>
+			<HStack px="3" gap="1" mb="2" justify="space-between" alignItems={"center"} flexShrink={0}>
 				<HStack gap="1">
 					<Box
 						as="button" px="2.5" py="1" borderRadius="md" fontSize="12px"
@@ -679,7 +716,7 @@ size="2xs"
 			</HStack>
 
 			{/* Scrollable thread list */}
-			<Box flex="1" overflowY="auto" css={{ '&::-webkit-scrollbar': { width: '4px' }, '&::-webkit-scrollbar-thumb': { background: 'var(--wc-text-disabled)', borderRadius: '2px' } }} borderTop="1px solid var(--wc-border-subtle)" pt="2" >
+			<Box px="3" flex="1" overflowY="auto" css={{ '&::-webkit-scrollbar': { width: '4px' }, '&::-webkit-scrollbar-thumb': { background: 'var(--wc-text-disabled)', borderRadius: '2px' } }} borderTop="1px solid var(--wc-border-subtle)" pt="2">
 				<VStack align="start" gap="0" w="full">
 				{threadsAPI.folders.map((f) => (
 					<FolderSection
@@ -692,7 +729,7 @@ size="2xs"
 						onReorderFolder={handleReorderFolders}
 						w="full"
 					>
-						<VStack gap="0" align="start" w="full">
+						<VStack gap="1" align="start" w="full">
 							{(threadsByFolderMap[f.id] ?? []).map(thread => (
 								<ManualThreadListItem 
 									key={thread.id}
@@ -718,7 +755,7 @@ size="2xs"
 					w="full"
 					py="1"
 				>
-					<VStack gap="0" align="start" w="full">
+					<VStack gap="1" align="start" w="full">
 						{rootThreads.map(thread => (
 							<ManualThreadListItem 
 								key={thread.id}
@@ -734,26 +771,6 @@ size="2xs"
 				</Box>
 				</VStack>
 			</Box>
-
-			{/* Fixed footer */}
-			{/* <Box flexShrink={0} mt="2" pt="2" borderTopWidth="1px" borderColor="var(--wc-bg-card)">
-				<ThreadListPrimitive.New asChild>
-					<Box
-						as="button"
-						w="100%" px="3" py="2"
-						borderRadius="md" borderWidth="1px"
-						borderColor="var(--wc-bg-hover)"
-						bg="var(--wc-bg-subtle)"
-						_hover={{ bg: 'var(--wc-bg-card)' }}
-						display="flex" alignItems="center" gap="2"
-						fontSize="12px" color="var(--wc-text-muted)"
-						cursor="pointer"
-					>
-						<PlusIcon size={14} />
-						<Text>New Chat</Text>
-					</Box>
-				</ThreadListPrimitive.New>
-			</Box> */}
 
 			{confirmDelete && (
 				<Portal>

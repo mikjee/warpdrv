@@ -1,11 +1,12 @@
-import { Box, Text, HStack, VStack, Flex, Input, Button, Spinner, Switch, Combobox, createListCollection, Portal } from '@chakra-ui/react';
-import { Settings, FolderOpen, Plus, Trash2, Save, ChevronDown, FolderInput, BookOpen } from 'lucide-react';
+import { Box, Text, HStack, VStack, Flex, Input, Button, Spinner, Switch, Combobox, createListCollection, Portal, NativeSelect, Slider } from '@chakra-ui/react';
+import { Settings, FolderOpen, Plus, Trash2, Save, ChevronDown, FolderInput, BookOpen, Mic } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { useDependantState } from '../../hooks/useDependantState';
 import { PageHeader } from '../../components/PageHeader';
 import { Card } from '../../components/Card';
 import { useMutation } from '../../hooks/useQuery';
 import { ConfirmDialog } from '../../components/dialogs/ConfirmDialog';
+import { KeyCapture } from '../../components/KeyCapture';
 import { updateSettings, startProxy, stopProxy } from '../../api/services';
 import type { ISettings } from '@warpcore/shared';
 import { ETheme } from '@warpcore/shared';
@@ -43,10 +44,47 @@ export function SettingsPage() {
 	const [checkpointsPath, setCheckpointsPath] = useDependantState(settings.checkpointsPath);
 	const [maxCheckpointDiskGB, setMaxCheckpointDiskGB] = useDependantState(settings.maxCheckpointDiskGB);
 	const [disableTitleGen, setDisableTitleGen] = useDependantState(settings.disableTitleGen);
+	const [micDeviceId, setMicDeviceId] = useDependantState(settings.micDeviceId ?? '');
+	const [kokoroVoice, setKokoroVoice] = useDependantState(settings.kokoroVoice ?? 'af_heart');
+	const [kokoroSpeed, setKokoroSpeed] = useDependantState(settings.kokoroSpeed ?? 1);
+	const [builtinMcpPort, setBuiltinMcpPort] = useDependantState(settings.builtinMcpPort ?? 11437);
+	const [builtinMcpExposeExternal, setBuiltinMcpExposeExternal] = useDependantState(settings.builtinMcpExposeExternal ?? false);
+	const [fsAllowedRoots, setFsAllowedRoots] = useDependantState<string[]>(settings.fsAllowedRoots ?? []);
+	const [newFsRoot, setNewFsRoot] = useState('');
+	const handleBrowseFsRoot = async () => {
+		if (typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__) {
+			try {
+				const mod = await import('@tauri-apps/plugin-dialog');
+				const path = await mod.open({ directory: true, multiple: false });
+				if (path && typeof path === 'string') setNewFsRoot(path);
+			} catch (err) {
+				console.error('[Settings] Failed to open directory picker:', err);
+			}
+		} else if (typeof window !== 'undefined' && 'showDirectoryPicker' in window) {
+			try {
+				const handle = await (window as any).showDirectoryPicker();
+				if (handle) setNewFsRoot(handle.name);
+			} catch (err: any) {
+				if (err.name !== 'AbortError') console.error('[Settings] Failed to open directory picker:', err);
+			}
+		} else {
+			toast('error', 'Directory picker not supported in this browser. Please type the path manually.');
+		}
+	};
+	const [micDevices, setMicDevices] = useState<Array<{ id: string; label: string }>>([]);
+	const [micPermissionGranted, setMicPermissionGranted] = useState(false);
 	const [newRoot, setNewRoot] = useState('');
 	const [saved, setSaved] = useState(false);
 	const [isDirty, setIsDirty] = useState(false);
 	const [localTheme, setLocalTheme] = useDependantState(settings.theme ?? ETheme.DARK);
+	const [appZoomLevel, setAppZoomLevel] = useDependantState(settings.appZoomLevel ?? 1.0);
+	const [chatFontSize, setChatFontSize] = useDependantState(settings.chatFontSize ?? 14);
+	const [chatFontFamily, setChatFontFamily] = useDependantState(settings.chatFontFamily ?? '');
+	const [chatFixedWidth, setChatFixedWidth] = useDependantState(settings.chatFixedWidth ?? false);
+	const [dictationPTTKey, setDictationPTTKey] = useDependantState(settings.dictationPTTKey ?? 'Insert');
+	const [dictationPTTModeHold, setDictationPTTModeHold] = useDependantState(settings.dictationPTTModeHold ?? false);
+	const [globalPTTKey, setGlobalPTTKey] = useDependantState(settings.globalPTTKey ?? '');
+	const [globalPTTModeHold, setGlobalPTTModeHold] = useDependantState(settings.globalPTTModeHold ?? false);
 	const themeCollection = createListCollection({
 		items: [
 			{ label: 'Amoled', value: ETheme.AMOLED },
@@ -81,6 +119,33 @@ export function SettingsPage() {
 		itemToString: (item) => item.label,
 		itemToValue: (item) => item.value,
 	});
+	const voiceCollection = createListCollection({
+		items: [
+			{ label: 'Heart (Female, US)', value: 'af_heart' },
+			{ label: 'Bella (Female, US)', value: 'af_bella' },
+			{ label: 'Nicole (Female, US)', value: 'af_nicole' },
+			{ label: 'Adam (Male, US)', value: 'am_adam' },
+			{ label: 'Michael (Male, US)', value: 'am_michael' },
+			{ label: 'Emma (Female, UK)', value: 'bf_emma' },
+			{ label: 'George (Male, UK)', value: 'bm_george' },
+		],
+		itemToString: (item) => item.label,
+		itemToValue: (item) => item.value,
+	});
+	const fontFamilyCollection = createListCollection({
+		items: [
+			{ label: 'Inter', value: 'Inter Variable, sans-serif' },
+			{ label: 'Geist', value: '"Geist", sans-serif' },
+			{ label: 'Geist Mono', value: '"Geist Mono", monospace' },
+			{ label: 'Arial', value: 'Arial, sans-serif' },
+			{ label: 'Verdana', value: 'Verdana, sans-serif' },
+			{ label: 'Georgia', value: 'Georgia, serif' },
+			{ label: 'Times New Roman', value: '"Times New Roman", serif' },
+			{ label: 'Courier New', value: '"Courier New", monospace' },
+		],
+		itemToString: (item) => item.label,
+		itemToValue: (item) => item.value,
+	});
 
 	const dirtySetter = useCallback((fn: (val: any) => void, val: any) => {
 		fn(val);
@@ -106,6 +171,56 @@ export function SettingsPage() {
 		};
 		checkOsAutoLaunch();
 	}, []);
+
+	// Check mic permission and enumerate devices
+	useEffect(() => {
+		const checkMicPermission = async () => {
+			try {
+				// Check permission state
+				const permission = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+				setMicPermissionGranted(permission.state === 'granted');
+
+				permission.addEventListener('change', () => {
+					setMicPermissionGranted(permission.state === 'granted');
+					if (permission.state === 'granted') enumerateMicDevices();
+				});
+			} catch {
+				// permissions.query not supported, try to enumerate
+				enumerateMicDevices();
+			}
+		};
+
+		const enumerateMicDevices = async () => {
+			try {
+				const devices = await navigator.mediaDevices.enumerateDevices();
+				const audioInputs = devices
+					.filter(d => d.kind === 'audioinput')
+					.map(d => ({ id: d.deviceId, label: d.label || `Microphone (${d.deviceId.slice(0, 8)}...)` }));
+				setMicDevices(audioInputs);
+			} catch {
+				setMicDevices([]);
+			}
+		};
+
+		checkMicPermission();
+	}, []);
+
+	const handleGrantMicPermission = async () => {
+		try {
+			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+			stream.getTracks().forEach(t => t.stop());
+			setMicPermissionGranted(true);
+			// Re-enumerate now that permission is granted
+			const devices = await navigator.mediaDevices.enumerateDevices();
+			const audioInputs = devices
+				.filter(d => d.kind === 'audioinput')
+				.map(d => ({ id: d.deviceId, label: d.label || `Microphone (${d.deviceId.slice(0, 8)}...)` }));
+			setMicDevices(audioInputs);
+			toast('success', 'Microphone access granted');
+		} catch (err) {
+			toast('error', 'Microphone access denied');
+		}
+	};
 
 	const handleAddRoot = () => {
 		const trimmed = newRoot.trim();
@@ -159,6 +274,11 @@ const handleSave = async () => {
 			dirtySetter(setModelRoots, [...modelRoots, pendingRoot]);
 			dirtySetter(setNewRoot, '');
 		}
+		const pendingFsRoot = newFsRoot.trim();
+		if (pendingFsRoot && !fsAllowedRoots.includes(pendingFsRoot)) {
+			dirtySetter(setFsAllowedRoots, [...fsAllowedRoots, pendingFsRoot]);
+			setNewFsRoot('');
+		}
 
 		const result = await saveMut.mutate({
 			modelRoots,
@@ -173,7 +293,21 @@ const handleSave = async () => {
 			maxCheckpointDiskGB,
 			disableTitleGen,
 			theme: localTheme,
-		});
+			micDeviceId,
+kokoroVoice,
+			kokoroSpeed,
+			builtinMcpPort,
+			builtinMcpExposeExternal,
+			fsAllowedRoots,
+			appZoomLevel,
+			chatFontSize,
+			chatFontFamily,
+			chatFixedWidth,
+dictationPTTKey,
+			dictationPTTModeHold,
+			globalPTTKey,
+			globalPTTModeHold,
+		}); 
 
 		if (saveMut.error) {
 			toast('error', saveMut.error);
@@ -269,6 +403,73 @@ const handleSave = async () => {
 									</Combobox.Positioner>
 								</Portal>
 							</Combobox.Root>
+						</VStack>
+					</Card>
+
+					{/* Appearance */}
+					<Card>
+						<VStack align="stretch" gap="4">
+							<Box>
+								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">Appearance</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)">App zoom and chat message styling</Text>
+							</Box>
+
+							{/* App Zoom */}
+							<VStack align="stretch" gap="2">
+								<HStack justify="space-between">
+									<Text fontSize="13px" color="var(--wc-text-secondary)">App Zoom</Text>
+									<Text fontSize="12px" color="var(--wc-text-muted)" fontFamily='"Geist Mono", monospace'>{Math.round(appZoomLevel * 100)}%</Text>
+								</HStack>
+								<Box as="input" type="range" min="0.5" max="3" step="0.05" value={appZoomLevel} onChange={(e) => dirtySetter(setAppZoomLevel, Number(e.target.value))} style={{ width: '100%', accentColor: 'var(--wc-accent-blue)' }} />
+								<HStack justify="space-between">
+									<Text fontSize="10px" color="var(--wc-text-faint)">50%</Text>
+									<Text fontSize="10px" color="var(--wc-text-faint)">300%</Text>
+								</HStack>
+							</VStack>
+
+							{/* Chat Font Size */}
+							<VStack align="stretch" gap="2">
+								<Text fontSize="13px" color="var(--wc-text-secondary)">Chat Font Size</Text>
+								<HStack gap="2">
+									<Input value={chatFontSize} onChange={e => dirtySetter(setChatFontSize, Math.min(32, Math.max(10, Number(e.target.value))))} type="number" min={10} max={32} size="sm" w="80px" bg="var(--wc-bg-card)" borderColor="var(--wc-border-default)" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }} />
+									<Text fontSize="13px" color="var(--wc-text-muted)">px</Text>
+								</HStack>
+							</VStack>
+
+							{/* Chat Font Family */}
+							<VStack align="stretch" gap="2">
+								<Text fontSize="13px" color="var(--wc-text-secondary)">Chat Font Family</Text>
+								<NativeSelect.Root value={chatFontFamily}>
+									<NativeSelect.Field
+										size="sm"
+										bg="var(--wc-bg-card)"
+										borderColor="var(--wc-border-default)"
+										color="var(--wc-text-primary)"
+										fontSize="13px"
+										borderRadius="lg"
+										onChange={(e) => dirtySetter(setChatFontFamily, e.target.value)}
+									>
+										<option value="">Default (Inter)</option>
+										{fontFamilyCollection.items.map(f => (
+											<option key={f.value} value={f.value} style={{ fontFamily: f.value }}>{f.label}</option>
+										))}
+									</NativeSelect.Field>
+								</NativeSelect.Root>
+							</VStack>
+
+							{/* Fixed Chat Width */}
+							<HStack justify="space-between" alignItems="center">
+								<Box flex="1">
+									<Text fontSize="13px" color="var(--wc-text-secondary)">Fixed Chat Width</Text>
+									<Text fontSize="11px" color="var(--wc-text-muted)">Max-width 960px instead of full-width</Text>
+								</Box>
+								<Switch.Root label='Fixed chat width' checked={chatFixedWidth} onCheckedChange={(details) => dirtySetter(setChatFixedWidth, details.checked)}>
+									<Switch.HiddenInput />
+									<Switch.Control css={{ bg: chatFixedWidth ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
+										<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
+									</Switch.Control>
+								</Switch.Root>
+							</HStack>
 						</VStack>
 					</Card>
 
@@ -394,6 +595,177 @@ const handleSave = async () => {
 						</VStack>
 					</Card>
 
+					{/* Voice / STT */}
+					<Card>
+						<VStack align="stretch" gap="4">
+							<Box>
+								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">Voice Input</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)">Microphone device for speech-to-text</Text>
+							</Box>
+							{!micPermissionGranted ? (
+								<Button
+									size="sm"
+									bg="var(--wc-accent-blue-bg-15)"
+									color="var(--wc-accent-blue)"
+									_hover={{ bg: 'var(--wc-accent-blue-bg-25)' }}
+									borderRadius="lg"
+									leftIcon={<Mic size={15} />}
+									onClick={handleGrantMicPermission}
+								>
+									Grant Microphone Access
+								</Button>
+							) : micDevices.length === 0 ? (
+								<Text fontSize="12px" color="var(--wc-text-faint)">No microphone devices found</Text>
+							) : (
+								<NativeSelect.Root value={micDeviceId}>
+									<NativeSelect.Field
+										size="sm"
+										bg="var(--wc-bg-card)"
+										borderColor="var(--wc-border-default)"
+										color="var(--wc-text-primary)"
+										fontSize="13px"
+										borderRadius="lg"
+										onChange={(e) => dirtySetter(setMicDeviceId, e.target.value)}
+									>
+										<option value="">Default Microphone</option>
+										{micDevices.map(d => (
+											<option key={d.id} value={d.id}>{d.label}</option>
+										))}
+									</NativeSelect.Field>
+								</NativeSelect.Root>
+							)}
+						</VStack>
+					</Card>
+
+					{/* Voice Output / TTS */}
+					<Card>
+						<VStack align="stretch" gap="4">
+							<Box>
+								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">Voice Output</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)">Kokoro TTS voice for reading assistant messages</Text>
+							</Box>
+							<Combobox.Root
+								collection={voiceCollection}
+								value={[kokoroVoice]}
+								onValueChange={(details) => {
+									dirtySetter(setKokoroVoice, details.value?.[0] as string || 'af_heart');
+								}}
+							>
+								<Combobox.Control>
+									<Combobox.Trigger asChild>
+										<Button
+											variant="outline"
+											size="sm"
+											justifyContent="space-between"
+											bg="var(--wc-bg-card)"
+											borderColor="var(--wc-border-default)"
+											color="var(--wc-text-primary)"
+											fontSize="13px"
+											borderRadius="lg"
+											fontWeight="500"
+										>
+											{voiceCollection.items.find(i => i.value === kokoroVoice)?.label ?? 'Heart (Female, US)'}
+											<ChevronDown size={14} />
+										</Button>
+									</Combobox.Trigger>
+								</Combobox.Control>
+								<Portal>
+									<Combobox.Positioner>
+										<Combobox.Content
+											bg="var(--wc-bg-elevated)"
+											borderWidth="1px"
+											borderColor="var(--wc-border-default)"
+											borderRadius="lg"
+											shadow="0 8px 32px rgba(0, 0, 0, 0.5)"
+											p="1"
+										>
+											{voiceCollection.items.map((item) => (
+												<Combobox.Item key={item.value} item={item} px="3" py="2" borderRadius="md" cursor="pointer" _hover={{ bg: 'var(--wc-bg-hover)' }} _highlighted={{ bg: 'var(--wc-bg-active)' }}>
+													<Text fontSize="12px" color="var(--wc-text-primary)">{item.label}</Text>
+													<Combobox.ItemIndicator />
+												</Combobox.Item>
+											))}
+										</Combobox.Content>
+									</Combobox.Positioner>
+								</Portal>
+							</Combobox.Root>
+							<VStack align="stretch" gap="2">
+								<HStack justify="space-between">
+									<Text fontSize="11px" color="var(--wc-text-muted)">TTS Speed</Text>
+									<Text fontSize="11px" color="var(--wc-text-tertiary)">{kokoroSpeed.toFixed(1)}x</Text>
+								</HStack>
+								<Slider.Root
+									w="full"
+									size="sm"
+									colorPalette="blue"
+									value={[kokoroSpeed]}
+									min={0.5}
+									max={3}
+									step={0.1}
+									onValueChange={(details) => dirtySetter(setKokoroSpeed, details.value[0])}
+								>
+									<Slider.Control>
+										<Slider.Track>
+											<Slider.Range />
+										</Slider.Track>
+										<Slider.Thumbs />
+									</Slider.Control>
+								</Slider.Root>
+							</VStack>
+						</VStack>
+					</Card>
+
+					{/* Dictation */}
+					<Card>
+						<VStack align="stretch" gap="4">
+							<Box>
+								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">Dictation</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)">Push-to-talk key for voice dictation.</Text>
+							</Box>
+							<KeyCapture
+								value={dictationPTTKey}
+								onChange={(key) => dirtySetter(setDictationPTTKey, key)}
+								onDisable={() => dirtySetter(setDictationPTTKey, '')}
+							/>
+							<HStack gap="3" align="center">
+								<Text fontSize="13px" color="var(--wc-text-secondary)">Hold Mode</Text>
+								<Switch.Root checked={dictationPTTModeHold} onCheckedChange={(details) => dirtySetter(setDictationPTTModeHold, details.checked)}>
+									<Switch.HiddenInput />
+									<Switch.Control css={{ bg: dictationPTTModeHold ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
+										<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
+									</Switch.Control>
+								</Switch.Root>
+								<Text fontSize="12px" color="var(--wc-text-muted)">{dictationPTTModeHold ? 'Hold to record, release to stop' : 'Toggle on/off'}</Text>
+							</HStack>
+						</VStack>
+					</Card>
+
+					{/* Global PTT */}
+					<Card>
+						<VStack align="stretch" gap="4">
+							<Box>
+								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">Global PTT</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)">OS-wide push-to-talk shortcut for dictation anywhere.</Text>
+							</Box>
+							<KeyCapture
+								value={globalPTTKey}
+								onChange={(key) => dirtySetter(setGlobalPTTKey, key)}
+								onDisable={() => dirtySetter(setGlobalPTTKey, '')}
+								label="PTT Key"
+							/>
+							<HStack gap="3" align="center">
+								<Text fontSize="13px" color="var(--wc-text-secondary)">Hold Mode</Text>
+								<Switch.Root checked={globalPTTModeHold} onCheckedChange={(details) => dirtySetter(setGlobalPTTModeHold, details.checked)}>
+									<Switch.HiddenInput />
+									<Switch.Control css={{ bg: globalPTTModeHold ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
+										<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
+									</Switch.Control>
+								</Switch.Root>
+								<Text fontSize="12px" color="var(--wc-text-muted)">{globalPTTModeHold ? 'Hold to record, release to stop' : 'Toggle on/off'}</Text>
+							</HStack>
+						</VStack>
+					</Card>
+
 					{/* API */}
 					<Card>
 						<VStack align="stretch" gap="4">
@@ -406,6 +778,57 @@ const handleSave = async () => {
 								<Text fontSize="13px" color="var(--wc-text-faint)">:</Text>
 								<Input value={apiPort} onChange={e => dirtySetter(setApiPort, Number(e.target.value))} type="number" size="sm" w="100px" bg="var(--wc-bg-card)" borderColor="var(--wc-border-default)" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }} />
 							</HStack>
+						</VStack>
+					</Card>
+					<Card>
+						<VStack align="stretch" gap="4">
+							<Box>
+								<Text fontSize="14px" fontWeight="600" color="var(--wc-text-heading)" mb="1">Built-in MCP Server (warpmcp)</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)">Exposes built-in tools (file_read, file_write, dir_list, shell_exec, fetch) via MCP. Restarts on port or exposure change.</Text>
+							</Box>
+							<HStack gap="3">
+								<Text fontSize="13px" color="var(--wc-text-muted)" w="100px">Port</Text>
+								<Input value={builtinMcpPort} onChange={e => dirtySetter(setBuiltinMcpPort, Number(e.target.value))} type="number" size="sm" w="100px" bg="var(--wc-bg-card)" borderColor="var(--wc-border-default)" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" textAlign="center" _focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }} />
+							</HStack>
+							<HStack gap="3">
+								<Switch.Root label='Expose to external clients' checked={builtinMcpExposeExternal} onCheckedChange={(details) => dirtySetter(setBuiltinMcpExposeExternal, details.checked)}>
+									<Switch.HiddenInput />
+									<Switch.Control css={{ bg: builtinMcpExposeExternal ? 'var(--wc-switch-active)' : 'var(--wc-bg-active)' }}>
+										<Switch.Thumb css={{ bg: 'var(--wc-special-switch-thumb)' }} />
+									</Switch.Control>
+									<Switch.Label ml="2" fontSize="13px" userSelect="none">
+										Bind on 0.0.0.0 (off = loopback only)
+									</Switch.Label>
+								</Switch.Root>
+							</HStack>
+							<Box>
+								<Text fontSize="13px" fontWeight="500" color="var(--wc-text-heading)" mb="1">File-system allowed roots</Text>
+								<Text fontSize="12px" color="var(--wc-text-muted)" mb="2">file_read, file_write, dir_list are disabled when empty. Paths checked after symlink resolution.</Text>
+								<VStack align="stretch" gap="2">
+									{fsAllowedRoots.map((root, idx) => (
+										<HStack key={idx} gap="2">
+											<Input value={root} readOnly size="sm" flex="1" bg="var(--wc-bg-card)" borderColor="var(--wc-border-default)" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" />
+											<Button size="sm" variant="ghost" onClick={() => dirtySetter(setFsAllowedRoots, fsAllowedRoots.filter((_, i) => i !== idx))}>
+												<Trash2 size={14} />
+											</Button>
+										</HStack>
+									))}
+									<HStack gap="2">
+										<Input value={newFsRoot} onChange={e => setNewFsRoot(e.target.value)} placeholder="/absolute/path" size="sm" flex="1" bg="var(--wc-bg-card)" borderColor="var(--wc-border-default)" color="var(--wc-text-primary)" fontFamily='"Geist Mono", monospace' fontSize="13px" borderRadius="lg" />
+										<Button size="sm" variant="ghost" color="var(--wc-text-secondary)" _hover={{ color: 'var(--wc-accent-purple)', bg: 'var(--wc-accent-purple-hover-bg)' }} borderRadius="lg" minW="8" px="0" onClick={handleBrowseFsRoot} title="Browse directory">
+											<FolderOpen size={14} />
+										</Button>
+										<Button size="sm" variant="ghost" onClick={() => {
+											const p = newFsRoot.trim();
+											if (!p || fsAllowedRoots.includes(p)) return;
+											dirtySetter(setFsAllowedRoots, [...fsAllowedRoots, p]);
+											setNewFsRoot('');
+										}}>
+											<Plus size={14} />
+										</Button>
+									</HStack>
+								</VStack>
+							</Box>
 						</VStack>
 					</Card>
 

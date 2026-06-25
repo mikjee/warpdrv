@@ -8,11 +8,15 @@ import { PageHeader } from '@/components/PageHeader';
 import { useStore } from '@/store';
 import { updateSettings, removeServer } from '@/api/services';
 import { useMutation } from '@/hooks/useQuery';
-import type { IServer, IBackend, IBackendGroup, IModel, TSortField, TSortOrder } from '@warpcore/shared';
-import { EServerStatus } from '@warpcore/shared';
+import type { IServer, IBackend, IBackendGroup, IModel, TSortField, TSortOrder, IWhisperServer, IWhisperBackend } from '@warpcore/shared';
+import { EServerStatus, EWhisperServerStatus } from '@warpcore/shared';
+import { removeWhisperServer, stopWhisperServer, restartWhisperServer } from '@/api/whisperServices';
 import { ServerCard } from './ServerCard';
+import { WhisperServerCard } from './WhisperServerCard';
 import { LaunchServerDialog } from './LaunchServer/LaunchServerDialog';
+import { WhisperLaunchDialog } from './LaunchWhisper/WhisperLaunchDialog';
 import { ServerLogs } from './ServerLogs';
+import { WhisperServerLogs } from './WhisperServerLogs';
 import { ConfirmDialog } from '@/components/dialogs/ConfirmDialog';
 import { SaveCheckpointDialog } from './Checkpoints/SaveCheckpointDialog';
 import { LoadCheckpointDialog } from './Checkpoints/LoadCheckpointDialog';
@@ -23,15 +27,40 @@ const FIELD_LABELS: Record<TSortField, string> = {
 	backend: 'Backend',
 };
 
+type UnifiedServerEntry =
+	| { __type: 'llama'; server: IServer }
+	| { __type: 'whisper'; server: IWhisperServer };
+
+function isServerRunning(server: { status: EServerStatus | EWhisperServerStatus }): boolean {
+	return server.status === EServerStatus.RUNNING || server.status === EWhisperServerStatus.RUNNING;
+}
+
+function getEffectiveStartTime(server: { status: EServerStatus | EWhisperServerStatus; startedAt: number | null }): number {
+	const isLoading = server.status === EServerStatus.LOADING || server.status === EWhisperServerStatus.LOADING;
+	return isLoading ? Date.now() : (server.startedAt ?? 0);
+}
+
+function getBackendName(entry: UnifiedServerEntry, backends: Record<string, IBackend>, groups: Record<string, IBackendGroup>, whisperBackends: Record<string, IWhisperBackend>): string {
+	if (entry.__type === 'llama') {
+		const s = entry.server;
+		return s.backendGroupId ? groups[s.backendGroupId]?.name ?? 'Unknown' : backends[s.backendId!]?.name ?? 'Unknown';
+	} else {
+		return whisperBackends[entry.server.backendId ?? '']?.name ?? 'Unknown';
+	}
+}
+
 export const ServersPage = React.memo(() => {
 	const servers = useStore((s) => s.servers);
 	const serversArr = useMemo(() => Object.values(servers), [servers]);
+	const whisperServers = useStore((s) => s.whisperServers);
+	const whisperServersArr = useMemo(() => Object.values(whisperServers), [whisperServers]);
+	const whisperModels = useStore((s) => s.whisperModels);
+	const whisperBackends = useStore((s) => s.whisperBackends);
 	const backends = useStore((s) => s.backends);
 	const groups = useStore((s) => s.backendGroups);
 	const models = useStore((s) => s.models);
 	const settings = useStore(s => s.settings);
 
-	// Filter and sort state
 	const [searchQuery, setSearchQuery] = useState('');
 	const [runningOnly, setRunningOnly] = useState(false);
 	const [sortField, setSortField] = useDependantState(settings.serversSortField);
@@ -39,7 +68,11 @@ export const ServersPage = React.memo(() => {
 
 	// Dialog state
 	const [showLaunch, setShowLaunch] = useState(false);
+	const [showWhisperLaunch, setShowWhisperLaunch] = useState(false);
+	const [editingWhisperServerId, setEditingWhisperServerId] = useState<string | null>(null);
+	const [deletingWhisperServerId, setDeletingWhisperServerId] = useState<string | null>(null);
 	const [logsServerId, setLogsServerId] = useState<string | null>(null);
+	const [logsWhisperServerId, setLogsWhisperServerId] = useState<string | null>(null);
 	const [editingServerId, setEditingServerId] = useState<string | null>(null);
 	const [saveCheckpointServerId, setSaveCheckpointServerId] = useState<string | null>(null);
 	const [loadCheckpointServerId, setLoadCheckpointServerId] = useState<string | null>(null);
@@ -67,78 +100,117 @@ export const ServersPage = React.memo(() => {
 		return modelMap;
 	}, [models]);
 
-	// Filter and sort servers
-	const filteredServers = useMemo(() => {
-		let result = [...serversArr];
+	const whisperModelByPath = useMemo(() => {
+		const modelMap: Record<string, any> = {};
+		Object.values(whisperModels || {}).forEach(m => {
+			if (m.primaryFile) modelMap[m.primaryFile.filePath] = m;
+			m.files.forEach(f => {
+				if (!m.primaryFile || f.filePath !== m.primaryFile.filePath) modelMap[f.filePath] = m;
+			});
+		});
+		return modelMap;
+	}, [whisperModels]);
 
-		// Fuzzy search matching against multiple fields
-		function matchesSearch(server: IServer, query: string): boolean {
-			if (!query.trim()) return true;
-			const q = query.toLowerCase();
-			const backend = backends[server.backendId || ''];
-			const group = groups[server.backendGroupId || ''];
-			const model = modelByPath[server.modelPath];
+	function matchesSearch(entry: UnifiedServerEntry, query: string): boolean {
+		if (!query.trim()) return true;
+		const q = query.toLowerCase();
 
+		if (entry.__type === 'llama') {
+			const s = entry.server;
+			const backend = backends[s.backendId || ''];
+			const group = groups[s.backendGroupId || ''];
+			const model = modelByPath[s.modelPath];
 			const searchableParts = [
-				server.serverName,
-				...(server.serverAlias ?? []),
+				s.serverName,
+				...(s.serverAlias ?? []),
 				backend?.name ?? '',
 				group?.name ?? '',
 				model?.name ?? '',
-				model?.primaryFile?.filePath ?? server.modelPath,
+				model?.primaryFile?.filePath ?? s.modelPath,
 			];
-
+			return searchableParts.some(part => part?.toLowerCase().includes(q));
+		} else {
+			const s = entry.server;
+			const backend = whisperBackends[s.backendId ?? ''];
+			const model = whisperModelByPath[s.modelPath];
+			const searchableParts = [
+				s.serverName,
+				...(s.serverAlias ?? []),
+				backend?.name ?? '',
+				model?.name ?? '',
+				s.modelPath,
+			];
 			return searchableParts.some(part => part?.toLowerCase().includes(q));
 		}
+	}
+
+	function sortEntries(a: UnifiedServerEntry, b: UnifiedServerEntry): number {
+		let comparison = 0;
+
+		switch (sortField) {
+			case 'name':
+				comparison = a.server.serverName.localeCompare(b.server.serverName);
+				break;
+			case 'recency': {
+				const aTime = getEffectiveStartTime(a.server);
+				const bTime = getEffectiveStartTime(b.server);
+				comparison = bTime - aTime;
+				break;
+			}
+			case 'backend': {
+				const backendA = getBackendName(a, backends, groups, whisperBackends);
+				const backendB = getBackendName(b, backends, groups, whisperBackends);
+				comparison = backendA.localeCompare(backendB);
+				break;
+			}
+		}
+
+		return sortOrder === 'asc' ? comparison : -comparison;
+	}
+
+	const unifiedServers = useMemo(() => {
+		const llamaEntries: UnifiedServerEntry[] = serversArr
+			.map(s => ({ __type: 'llama' as const, server: s }));
+		const whisperEntries: UnifiedServerEntry[] = whisperServersArr
+			.map(s => ({ __type: 'whisper' as const, server: s }));
+
+		let result = [...llamaEntries, ...whisperEntries];
 
 		if (searchQuery.trim()) {
-			result = result.filter(s => matchesSearch(s, searchQuery));
+			result = result.filter(e => matchesSearch(e, searchQuery));
 		}
 
 		if (runningOnly) {
-			result = result.filter(s => s.status === EServerStatus.RUNNING);
+			result = result.filter(e => isServerRunning(e.server));
 		}
 
-		result.sort((a, b) => {
-			let comparison = 0;
-
-			switch (sortField) {
-				case 'name':
-					comparison = a.serverName.localeCompare(b.serverName);
-					break;
-				case 'recency': {
-					const aEffective = a.status === EServerStatus.LOADING ? Date.now() : (a.startedAt ?? 0);
-					const bEffective = b.status === EServerStatus.LOADING ? Date.now() : (b.startedAt ?? 0);
-					comparison = bEffective - aEffective;
-					break;
-				}
-				case 'backend': {
-					const backendA = a.backendGroupId ? groups[a.backendGroupId]?.name ?? 'Unknown' : backends[a.backendId!]?.name ?? 'Unknown';
-					const backendB = b.backendGroupId ? groups[b.backendGroupId]?.name ?? 'Unknown' : backends[b.backendId!]?.name ?? 'Unknown';
-					comparison = backendA.localeCompare(backendB);
-					break;
-				}
-			}
-
-			return sortOrder === 'asc' ? comparison : -comparison;
-		});
+		result.sort(sortEntries);
 
 		return result;
-	}, [servers, searchQuery, sortField, sortOrder, runningOnly, backends, groups, modelByPath ]);
+	}, [serversArr, whisperServersArr, searchQuery, sortField, sortOrder, runningOnly, backends, groups, whisperBackends, modelByPath, whisperModelByPath]);
 
 	const removeCallback = useCallback((id: string) => removeServer(id), []);
 
-	// Mutations
 	const { mutate: removeMut, loading } = useMutation<string, null>(removeCallback);
 	const handleRemove = useCallback(async (id: string) => { await removeMut(id); setDeletingServerId(null); }, [
 		removeMut
 	]);
 
+	const handleDeleteWhisper = useCallback(async (id: string) => {
+		await removeWhisperServer(id);
+		setDeletingWhisperServerId(null);
+	}, []);
+
+	const llamaRunningCount = serversArr.filter(s => s.status === EServerStatus.RUNNING).length;
+	const whisperRunningCount = whisperServersArr.filter(s => s.status === EWhisperServerStatus.RUNNING).length;
+
+	const showEmptyState = unifiedServers.length === 0;
+
 	return (
 		<Box>
 			<PageHeader
 				title="Servers"
-				subtitle={`${serversArr.filter(s => s.status === EServerStatus.RUNNING).length} / ${serversArr.length} Running`}
+				subtitle={`${llamaRunningCount}/${serversArr.length} LLM, ${whisperRunningCount}/${whisperServersArr.length} Whisper Running`}
 				icon={<Server size={20} />}
 				actions={
 					<HStack gap="3">
@@ -241,54 +313,89 @@ export const ServersPage = React.memo(() => {
 					</HStack>
 				}
 				actionsRight={
-					<Button
-						size="sm"
-						bg="var(--wc-accent-blue-bg-12)"
-						color="var(--wc-accent-blue)"
-						borderWidth="1px" borderColor="var(--wc-accent-blue-border)"
-						_hover={{ bg: 'var(--wc-accent-blue-hover-bg)' }}
-						borderRadius="lg"
-						fontSize="13px"
-						fontWeight="600"
-						transition="all 0.2s ease"
-						onClick={() => setShowLaunch(true)}
-						display={"flex"}
-						flexDirection={"row"}
-						alignItems={"center"}
-						justifyContent={"center"}
-					>
-						<Play size={15} />
-						Launch Server
-					</Button>
+					<HStack gap="3">
+						<Button
+							size="sm"
+							bg="var(--wc-accent-blue-bg-12)"
+							color="var(--wc-accent-blue)"
+							borderWidth="1px" borderColor="var(--wc-accent-blue-border)"
+							_hover={{ bg: 'var(--wc-accent-blue-hover-bg)' }}
+							borderRadius="lg"
+							fontSize="13px"
+							fontWeight="600"
+							transition="all 0.2s ease"
+							onClick={() => setShowLaunch(true)}
+							display="flex"
+							flexDirection="row"
+							alignItems="center"
+							justifyContent="center"
+						>
+							<Play size={15} />
+							Launch LLaMa
+						</Button>
+						<Button
+							size="sm"
+							bg="var(--wc-accent-green-bg-12)"
+							color="var(--wc-accent-green)"
+							borderWidth="1px" borderColor="var(--wc-accent-green-border)"
+							_hover={{ bg: 'var(--wc-accent-green-hover-bg)' }}
+							borderRadius="lg"
+							fontSize="13px"
+							fontWeight="600"
+							transition="all 0.2s ease"
+							onClick={() => setShowWhisperLaunch(true)}
+							display="flex"
+							flexDirection="row"
+							alignItems="center"
+							justifyContent="center"
+						>
+							<Play size={15} />
+							Launch Whisper
+						</Button>
+					</HStack>
 				}
 			/>
 
-			<Box pt="76px" px="4" pb="4">
-				{filteredServers.length === 0 ? (
+			<Box pt="76px" px="2" pb="2">
+				{showEmptyState ? (
 					<Flex
 						h="300px" alignItems="center" justifyContent="center"
 						borderWidth="1px" borderColor="var(--wc-border-subtle)" borderRadius="xl" borderStyle="dashed"
 					>
 						<VStack gap="3" color="var(--wc-text-muted)">
 							<Server size={40} />
-							<Text fontSize="14px">{serversArr.length === 0 ? 'No servers running' : 'No matching servers'}</Text>
-							<Text fontSize="12px" color="var(--wc-text-disabled)">{serversArr.length === 0 ? 'Click "Launch Server" to get started' : 'Try adjusting your filters or search query'}</Text>
+							<Text fontSize="14px">{(serversArr.length + whisperServersArr.length) === 0 ? 'No servers running' : 'No matching servers'}</Text>
+							<Text fontSize="12px" color="var(--wc-text-disabled)">{(serversArr.length + whisperServersArr.length) === 0 ? 'Click "Launch Server" or "Launch Whisper" to get started' : 'Try adjusting your filters or search query'}</Text>
 						</VStack>
 					</Flex>
 				) : (
-					<VStack align="stretch" gap="4">
-						{filteredServers.map(server => (
-							<ServerCard
-								key={server.id}
-								serverId={server.id}
-								modelByPath={modelByPath}
-								onShowLogs={setLogsServerId}
-								onEdit={setEditingServerId}
-								onSaveCheckpoint={setSaveCheckpointServerId}
-								onLoadCheckpoint={setLoadCheckpointServerId}
-								onConfirmDelete={setDeletingServerId}
-							/>
-						))}
+					<VStack align="stretch" gap="2">
+						{unifiedServers.map(entry => {
+							if (entry.__type === 'llama') {
+								return (
+									<ServerCard
+										key={entry.server.id}
+										serverId={entry.server.id}
+										modelByPath={modelByPath}
+										onShowLogs={setLogsServerId}
+										onEdit={setEditingServerId}
+										onSaveCheckpoint={setSaveCheckpointServerId}
+										onLoadCheckpoint={setLoadCheckpointServerId}
+										onConfirmDelete={setDeletingServerId}
+									/>
+								);
+							}
+							return (
+								<WhisperServerCard
+									key={entry.server.id}
+									serverId={entry.server.id}
+									modelByPath={whisperModelByPath}
+									onShowLogs={setLogsWhisperServerId}
+									onEdit={setEditingWhisperServerId}
+									onConfirmDelete={setDeletingWhisperServerId}
+								/>
+							);
+						})}
 					</VStack>
 				)}
 			</Box>
@@ -299,6 +406,10 @@ export const ServersPage = React.memo(() => {
 
 			{logsServer && (
 				<ServerLogs serverId={logsServer.id} serverName={logsServer.serverName} onClose={onCloseServerLogs} />
+			)}
+
+			{logsWhisperServerId && whisperServers[logsWhisperServerId] && (
+				<WhisperServerLogs serverId={logsWhisperServerId} serverName={whisperServers[logsWhisperServerId]!.serverName} onClose={() => setLogsWhisperServerId(null)} />
 			)}
 
 			{editingServerId && (
@@ -330,6 +441,28 @@ export const ServersPage = React.memo(() => {
 					isLoading={loading}
 					onCancel={() => setDeletingServerId(null)}
 					onConfirm={() => handleRemove(deletingServer.id)}
+				/>
+			)}
+
+			{showWhisperLaunch && (
+				<WhisperLaunchDialog onClose={() => setShowWhisperLaunch(false)} />
+			)}
+
+			{editingWhisperServerId && (
+				<WhisperLaunchDialog
+					onClose={() => setEditingWhisperServerId(null)}
+					serverId={editingWhisperServerId}
+				/>
+			)}
+
+			{deletingWhisperServerId && whisperServers[deletingWhisperServerId] && (
+				<ConfirmDialog
+					title="Delete Whisper Server?"
+					message={`This will remove "${whisperServers[deletingWhisperServerId]!.serverName}" from your configuration.`}
+					isOpen={true}
+					isLoading={false}
+					onCancel={() => setDeletingWhisperServerId(null)}
+					onConfirm={() => handleDeleteWhisper(deletingWhisperServerId)}
 				/>
 			)}
 		</Box>

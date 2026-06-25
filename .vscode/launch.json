@@ -12,7 +12,7 @@
 				"server,app",
 				"-c",
 				"blue,green",
-				"cd packages/server && cross-env CONTROL_API_PORT=4401 npx tsx src/index.ts",
+				"cd packages/server && cross-env CONTROL_API_PORT=4401 DEBUG='socket.io:*,engine.io:*' npx tsx src/index.ts",
 				"cd packages/app && cross-env CONTROL_API_PORT=4401 npx vite"
 			],
 			"console": "integratedTerminal",
@@ -25,7 +25,8 @@
 			"cwd": "${workspaceFolder}/packages/server",
 			"runtimeExecutable": "npx",
 			"env": {
-				"CONTROL_API_PORT": "4401"
+				"CONTROL_API_PORT": "4401",
+				"DEBUG": "socket.io:*,engine.io:*"
 			},
 			"runtimeArgs": [
 				"tsx",

@@ -10,10 +10,20 @@ interface ITreeEntry {
 	children?: ITreeEntry[];
 }
 
+function normalizeEntries(entries: any[]): ITreeEntry[] {
+	return entries.map(e => ({
+		name: e.name,
+		type: e.type === 'dir' ? 'directory' : e.type === 'symlink' || e.type === 'other' ? 'file' : e.type,
+		children: Array.isArray(e.children) ? normalizeEntries(e.children) : undefined,
+	}));
+}
+
 function parseEntries(text: string): ITreeEntry[] | null {
 	try {
 		const parsed = JSON.parse(text);
-		if (Array.isArray(parsed)) return parsed as ITreeEntry[];
+		if (Array.isArray(parsed)) return normalizeEntries(parsed);
+		if (parsed && typeof parsed === 'object' && Array.isArray(parsed.entries))
+			return normalizeEntries(parsed.entries);
 		return null;
 	} catch {
 		return null;

@@ -383,9 +383,23 @@ fn main() {
     // Check if launched with --hidden flag (from autostart)
     let launched_hidden = std::env::args().any(|arg| arg == "--hidden");
 
+ #[tauri::command]
+fn type_text(text: String) {
+    use enigo::{Enigo, Keyboard, Settings};
+    match Enigo::new(&Settings::default()) {
+        Ok(mut enigo) => {
+            if let Err(e) = enigo.text(&text) {
+                eprintln!("[WarpCore] type_text failed: {:?}", e);
+            }
+        }
+        Err(e) => eprintln!("[WarpCore] enigo init failed: {:?}", e),
+    }
+}
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        // .plugin(tauri_plugin_devtools::init())
         .plugin(tauri_plugin_autostart::init(
 		tauri_plugin_autostart::MacosLauncher::LaunchAgent,
 		Some(vec!["--hidden"]),
@@ -430,6 +444,18 @@ fn main() {
                     base64_encode(html.as_bytes())
                 );
                 let _ = window.navigate(data_url.parse().unwrap());
+
+				#[cfg(target_os = "linux")]
+				{
+					use webkit2gtk::WebViewExt;
+					use webkit2gtk::PermissionRequestExt;
+					let _ = window.with_webview(|webview| {
+						webview.inner().connect_permission_request(|_, request| {
+							request.allow();
+							true
+						});
+					});
+				}
                 if !should_start_minimized {
                     let _ = window.show();
                 } else {
@@ -437,6 +463,18 @@ fn main() {
                 }
             }
 
+            // Global hotkey listener (rdev) -> emit "hotkey://key" { code, down }
+            let hk_handle = app.handle().clone();
+            thread::spawn(move || {
+                let _ = rdev::listen(move |event| {
+                    let (code, down) = match event.event_type {
+                        rdev::EventType::KeyPress(k) => (format!("{:?}", k), true),
+                        rdev::EventType::KeyRelease(k) => (format!("{:?}", k), false),
+                        _ => return,
+                    };
+                    let _ = hk_handle.emit("hotkey://key", serde_json::json!({ "code": code, "down": down }));
+                });
+            });
             // Spawn server in background
             let app_handle = app.handle().clone();
             thread::spawn(move || {
@@ -491,6 +529,7 @@ fn main() {
             let open_item = MenuItemBuilder::with_id("open", "Show warpdrv").build(app)?;
             let hide_item = MenuItemBuilder::with_id("hide", "Hide warpdrv").build(app)?;
             let restart_item = MenuItemBuilder::with_id("restart", "Restart Server").build(app)?;
+            let devtools_item = MenuItemBuilder::with_id("devtools", "Toggle DevTools").build(app)?;
             let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
 
             let menu = MenuBuilder::new(app)
@@ -498,6 +537,8 @@ fn main() {
                 .item(&hide_item)
                 .separator()
                 .item(&restart_item)
+                .separator()
+                .item(&devtools_item)
                 .separator()
                 .item(&quit_item)
                 .build()?;
@@ -513,11 +554,20 @@ fn main() {
                             let _ = window.set_focus();
                         }
                     }
-                    "hide" => {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.hide();
-                        }
-                    }
+"hide" => {
+			if let Some(window) = app.get_webview_window("main") {
+				let _ = window.hide();
+			}
+		}
+		"devtools" => {
+			if let Some(window) = app.get_webview_window("main") {
+				if window.is_devtools_open() {
+					window.close_devtools();
+				} else {
+					window.open_devtools();
+				}
+			}
+		}
                     "restart" => {
                         if let Some(mut child) = app.state::<ServerProcess>().0.lock().unwrap().take() {
                             let _ = child.kill();
@@ -535,22 +585,27 @@ fn main() {
                             });
                         }
                     }
-                    "quit" => {
-                        // Save current window size before quitting
-                        if let Some(window) = app.get_webview_window("main") {
-                            if let Ok(size) = window.inner_size() {
-                                let _ = save_window_size(size.width, size.height);
-                                println!("[WarpCore] Saved window size: {}x{}", size.width, size.height);
-                            }
-                        }
+"quit" => {
+			// Save current window size before quitting
+			if let Some(window) = app.get_webview_window("main") {
+				if let Ok(size) = window.inner_size() {
+					let _ = save_window_size(size.width, size.height);
+					println!("[WarpCore] Saved window size: {}x{}", size.width, size.height);
+				}
+			}
 
-                        // First, stop all llama-server instances via API
-                        if is_server_running(server_port) {
-                            let _ = reqwest::blocking::Client::new()
-                                .post(format!("http://localhost:{}/api/servers/stop-all", server_port))
-                                .send();
-                            thread::sleep(Duration::from_millis(500));
-                        }
+			// Stop all llama-server instances via API
+			if is_server_running(server_port) {
+				let _ = reqwest::blocking::Client::new()
+					.post(format!("http://localhost:{}/api/servers/stop-all", server_port))
+					.send();
+				thread::sleep(Duration::from_millis(500));
+				// Stop all whisper-server instances via API
+				let _ = reqwest::blocking::Client::new()
+					.post(format!("http://localhost:{}/api/whisper-servers/stop-all", server_port))
+					.send();
+				thread::sleep(Duration::from_millis(500));
+			}
 
                         // Then kill the Node.js server process
                         if let Some(mut child) = app.state::<ServerProcess>().0.lock().unwrap().take() {
@@ -596,6 +651,7 @@ fn main() {
 
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![type_text])
         .run(tauri::generate_context!())
         .expect("error while running WarpCore Desktop");
 }

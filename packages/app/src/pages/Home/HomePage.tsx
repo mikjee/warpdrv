@@ -13,9 +13,11 @@ import { CreateServerStep } from './Steps/CreateServerStep';
 import { ServersTile } from './Tiles/ServersTile';
 import { BackendsTile } from './Tiles/BackendsTile';
 import { ModelsTile } from './Tiles/ModelsTile';
+import { DownloadsTile } from './Tiles/DownloadsTile';
 import { ProxyTile } from './Tiles/ProxyTile';
 import { McpTile } from './Tiles/McpTile';
 import { AppServerTile } from './Tiles/AppServerTile';
+import { KokoroTile } from './Tiles/KokoroTile';
 import { UpdateBanner } from '@/components/UpdateBanner';
 
 export const HomePage = React.memo(() => {
@@ -107,11 +109,13 @@ color="var(--wc-text-muted)"
 						gap="4"
 					>
 						<ServersTile />
+						<ProxyTile />
+						<KokoroTile />
+						<AppServerTile />
+						<McpTile />
 						<BackendsTile />
 						<ModelsTile />
-						<ProxyTile />
-						<McpTile />
-						<AppServerTile />
+						<DownloadsTile />
 					</Box>
 
 

@@ -38,6 +38,36 @@ import "./theme/theme-kimbie-dark.scss";
 import "./theme/theme-everforest-hard.scss";
 import "./theme/theme-solarized-light.scss";
 
+// Global error reporting to server
+const reportError = (payload: Record<string, unknown>) => {
+	try {
+		fetch('/api/client-log', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(payload),
+			keepalive: true,
+		}).catch(() => {});
+	} catch {}
+};
+
+window.addEventListener('error', (e) => {
+	reportError({ level: 'error', message: e.message, stack: e.error?.stack, url: e.filename });
+});
+
+window.addEventListener('unhandledrejection', (e) => {
+	const reason = e.reason;
+	reportError({ level: 'error', message: String(reason?.message ?? reason), stack: reason?.stack });
+});
+
+const origConsoleError = console.error;
+console.error = (...args) => {
+	origConsoleError(...args);
+	reportError({
+		level: 'error',
+		message: args.map(a => a instanceof Error ? a.stack ?? a.message : typeof a === 'string' ? a : JSON.stringify(a)).join(' '),
+	});
+};
+
 function OnboardingWrapper() {
 	const isOnboardingComplete = useStore(s => s.settings.isOnboardingComplete);
 	if (isOnboardingComplete === true) return null;

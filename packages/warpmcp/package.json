@@ -1,0 +1,16 @@
+{
+	"name": "@warpcore/warpmcp",
+	"private": true,
+	"version": "0.1.0",
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.29.0",
+		"express": "^5.1.0"
+	},
+	"devDependencies": {
+		"@types/express": "^5.0.2",
+		"typescript": "^5.8.3"
+	}
+}

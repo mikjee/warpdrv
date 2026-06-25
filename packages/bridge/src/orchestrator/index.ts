@@ -9,6 +9,7 @@
 // All state changes emit events via the broadcaster. No direct SSE.
 // ============================================================
 import crypto from 'crypto';
+import type { EventNode } from '@warpcore/realmcore';
 import type { IMcpClient, IPermissions, IPersistence, IBridgeBroadcaster } from '../types/interfaces';
 import type {
 	ICompletionRequest,
@@ -22,11 +23,15 @@ import type {
 	IMessagePartToolCall,
 	TMessageId,
 	TThreadId,
+	TFolderId,
+	IFolder,
+	IWorkspace,
 } from '../types';
+import { folderNameToTopic } from '../util/topic';
 import { EChatRole, EMessagePartType, EToolCallStatus, EToolApprovalMode } from '../types';
 import { parseSSEBuffer, accumulateToolCallDelta, finalizeToolCalls, type IToolCallAccumulator } from '../parser';
 import { validateToolArgs, cleanSchema } from '../validation';
-import { convertMessagesToOpenAIFormat, mergeConsecutiveMessages } from '../messageConverter';
+import { convertMessagesToOpenAIFormat, type TOpenAIMessage } from '../messageConverter';
 
 const MAX_PASSES = 10;
 
@@ -35,6 +40,7 @@ export interface IOrchestratorConfig {
 	permissions: IPermissions;
 	persistence: IPersistence;
 	broadcaster: IBridgeBroadcaster;
+	eventNode: EventNode;
 	onMcpServersChanged?: (servers: Record<string, unknown>) => void;
 }
 
@@ -51,6 +57,14 @@ interface IPassResult {
 	lastToolMessageId: TMessageId | null;
 }
 
+export interface IPureCompletionResult {
+	content: IMessagePart[];
+	stats: IChatMessageStats | null;
+	finishReason: string;
+}
+
+export type TPureCompletionChunkHandler = (partType: string, deltaText: string) => void;
+
 // Track in-flight inference URLs per thread so resume can continue
 const threadInferenceUrls: Map<TThreadId, string> = new Map();
 
@@ -59,12 +73,83 @@ export class Orchestrator {
 	private permissions: IPermissions;
 	private persistence: IPersistence;
 	private broadcaster: IBridgeBroadcaster;
+	private eventNode: EventNode;
+	private pureCompletionControllers: Record<string, AbortController> = {};
 
 	constructor(config: IOrchestratorConfig) {
 		this.mcpClient = config.mcpClient;
 		this.permissions = config.permissions;
 		this.persistence = config.persistence;
 		this.broadcaster = config.broadcaster;
+		this.eventNode = config.eventNode;
+		this.installStateHandlers();
+	}
+
+	private installStateHandlers(): void {
+		this.eventNode.fn('bridge.getAllMessageStatesByThread', async (api) => {
+			const threadId = api.payload as string;
+			return await this.persistence.getMessageStatesByThreadId(threadId);
+		});
+
+		this.eventNode.fn('bridge.getThreadState', async (api) => {
+			const threadId = api.payload as string;
+			return await this.persistence.getThreadState(threadId);
+		});
+
+		this.eventNode.fn('bridge.getWorkspaceState', async (api) => {
+			const folderId = api.payload as string;
+			return await this.persistence.getWorkspaceState(folderId);
+		});
+
+		this.eventNode.fn('bridge.getMessageState', async (api) => {
+			const messageId = api.payload as string;
+			return await this.persistence.getMessageState(messageId);
+		});
+
+		this.eventNode.fn('bridge.getToolCallsForMessage', async (api) => {
+			const messageId = api.payload as string;
+			return await this.persistence.getToolCallsForMessage(messageId);
+		});
+
+		this.eventNode.fn('bridge.updateMessageState', async (api) => {
+			const payload = api.payload as { messageId: string; data: Record<string, unknown> };
+			await this.persistence.updateMessageState(payload.messageId, payload.data);
+		});
+
+		this.eventNode.fn('bridge.handlePureCompletion', async (api) => {
+			const payload = api.payload as {
+				inferenceRequestId: string;
+				inferenceUrl: string;
+				messages: Array<TOpenAIMessage>;
+				inferenceParams?: Record<string, unknown>;
+			};
+			const { inferenceRequestId, inferenceUrl, messages, inferenceParams } = payload;
+			const controller = new AbortController();
+			this.pureCompletionControllers[inferenceRequestId] = controller;
+			try {
+				return await this.handlePureCompletions(
+					inferenceUrl,
+					messages,
+					inferenceParams || {},
+					(partType, deltaText) => {
+						this.eventNode.broadcast('bridge.pure_completion_chunk.' + inferenceRequestId, { partType, deltaText });
+					},
+					controller.signal,
+				);
+			} finally {
+				delete this.pureCompletionControllers[inferenceRequestId];
+			}
+		});
+
+		this.eventNode.fn('bridge.cancelPureCompletion', async (api) => {
+			const id = api.payload as string;
+			const controller = this.pureCompletionControllers[id];
+			if (controller) {
+				controller.abort();
+				delete this.pureCompletionControllers[id];
+			}
+			return { cancelled: !!controller };
+		});
 	}
 
 	// Walk parentId chain from a given message ID up to root, return root-to-leaf
@@ -82,6 +167,87 @@ export class Orchestrator {
 			currentId = msg.parentId ?? undefined;
 		}
 		return chain.reverse();
+	}
+
+	// Build the full message chain for an inference pass:
+	// workspace context + system prompt + branch history from DB + any extra messages.
+	private async buildMessageChain(
+		request: ICompletionRequest,
+		fromMessageId: TMessageId | undefined,
+		extraMessages: Array<any> = [],
+	): Promise<Array<TOpenAIMessage>> {
+		const baseMessages: Array<TOpenAIMessage> = [];
+
+		if (request.folderId) {
+			const ctx = await this.buildWorkspaceContext(request.folderId);
+			if (ctx) baseMessages.push(ctx);
+		}
+
+		if (request.systemPrompt) {
+			baseMessages.push({ role: 'system', content: request.systemPrompt });
+		}
+
+		const allMessages = await this.persistence.getMessages(request.threadId);
+		const allToolCalls = await this.persistence.getToolCallsForThread(request.threadId);
+		const toolCallsMap: Record<string, IToolCall> = {};
+		for (const tc of allToolCalls) toolCallsMap[tc.id] = tc;
+
+		const branchChain = this.buildBranchChain(allMessages, fromMessageId);
+
+		// Pipe branch for compaction — applet can truncate
+		const processedChain = await this.eventNode.pipe(
+			'bridge.buildBranchChain',
+			{
+				allMessages,
+				branch: branchChain,
+				request,
+				fromMessageId,
+				extraMessages,
+			},
+			'.',
+			branchChain,
+		) as IChatMessage[];
+
+		const openAIMessages = convertMessagesToOpenAIFormat(processedChain, toolCallsMap);
+		baseMessages.push(...openAIMessages);
+		baseMessages.push(...extraMessages);
+
+		return baseMessages;
+	}
+
+	private async buildWorkspaceContext(folderId: TFolderId): Promise<{ role: 'system'; content: string } | null> {
+		const workspace = await this.persistence.getWorkspace(folderId);
+		if (!workspace) return null;
+		const folder = await this.persistence.getFolder(folderId);
+		if (!folder) return null;
+		const desc = (workspace.data as Record<string, unknown>)?.description as string | undefined;
+		const content = desc ? `Workspace: ${folder.name}\n${desc}` : `Workspace: ${folder.name}`;
+		return { role: 'system', content };
+	}
+
+	private async resolveWsVars(threadId: TThreadId): Promise<Record<string, unknown> | null> {
+		const thread = await this.persistence.getThread(threadId);
+		if (!thread) return null;
+
+		if (thread.folderId) {
+			const folder = await this.persistence.getFolder(thread.folderId);
+			if (!folder) return null;
+			const workspace = await this.persistence.getWorkspace(thread.folderId);
+			const wsVars: Record<string, unknown> = {
+				threadId,
+				folderId: folder.id,
+				topic: folder.topic,
+				name: folder.name,
+			};
+			if (workspace) {
+				for (const [key, value] of Object.entries(workspace.data)) {
+					wsVars[key] = value;
+				}
+			}
+			return wsVars;
+		}
+
+		return { threadId, folderId: null, topic: 'global', name: 'global' };
 	}
 
 	// V2: builds message chain from persistence instead of receiving it from frontend
@@ -104,15 +270,16 @@ export class Orchestrator {
 				thread = {
 					id: request.threadId,
 					title,
-					folderId: null,
+					folderId: request.folderId ?? null,
 					systemPrompt: '',
-					meta: JSON.stringify({ serverId: request.serverId ?? null, tags: [] }),
+					meta: JSON.stringify({ serverId: request.serverId ?? null, whisperServerId: request.whisperServerId ?? null, tags: [], enableAutoEmbed: request.enableAutoEmbed ?? false }),
 					totalPromptTokens: 0,
 					totalCompletionTokens: 0,
 					createdAt: now,
 					updatedAt: now,
 				};
 				await this.persistence.createThread(thread);
+				if (request.threadState) await this.persistence.updateThreadState(thread.id, request.threadState);
 				await this.persistence.setThreadConfig({
 					threadId: request.threadId,
 					presetId: request.presetId ?? null,
@@ -170,34 +337,26 @@ export class Orchestrator {
 				};
 				await this.persistence.createMessage(userMsg);
 				await this.persistence.incrementThreadTokens(request.threadId, userMsg.stats!.actualTokens ?? 0, 0);
+				if (request.messageState) {
+					await this.persistence.updateMessageState(userMessageId, request.messageState);
+				}
 				this.broadcaster.emit({ type: 'message.created', message: userMsg });
 				parentForAssistant = userMessageId;
 			}
 			const enabledTools = await this.resolveEnabledTools(request);
 
 			// Build base messages for LLM context — V2: from persistence
-			let baseMessages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }> = [];
-
-			// Add system prompt if provided
-			if (request.systemPrompt) {
-				baseMessages.push({ role: 'system', content: request.systemPrompt });
-			}
-
-			// Load branch chain from persistence and convert to OpenAI format
-			const allMessages = await this.persistence.getMessages(request.threadId);
-			const allToolCalls = await this.persistence.getToolCallsForThread(request.threadId);
-			const toolCallsMap: Record<string, IToolCall> = {};
-			for (const tc of allToolCalls) toolCallsMap[tc.id] = tc;
-
-			const branchChain = this.buildBranchChain(allMessages, request.parentId ?? undefined);
-			const merged = mergeConsecutiveMessages(branchChain);
-			const openAIMessages = convertMessagesToOpenAIFormat(merged, toolCallsMap);
-			baseMessages.push(...(openAIMessages as any[]));
-
-			// Add the new user message
+			let baseMessages = await this.buildMessageChain(request, request.parentId ?? undefined);
 			if (userMsg) {
+				userMsg = await this.eventNode.pipe(
+					'bridge.preConvertNewMsg',
+					{ request, userMsg },
+					'.',
+					userMsg,
+				) as IChatMessage;
+
 				const converted = convertMessagesToOpenAIFormat([userMsg], {});
-				baseMessages.push(...(converted as any[]));
+				baseMessages.push(...converted);
 			}
 
 			await this.executePass(
@@ -247,7 +406,7 @@ export class Orchestrator {
 		inferenceUrl: string,
 		request: ICompletionRequest,
 		parentId: TMessageId | null,
-		messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>,
+		messages: Array<TOpenAIMessage>,
 		enabledTools: IToolDefinition[],
 		abortSignal: AbortSignal,
 	): Promise<void> {
@@ -280,7 +439,9 @@ export class Orchestrator {
 			);
 		} finally {
 			// Final checkpoint patch with full message state, then inference.ended
+			//console.log(new Date(), '[Orch] executePass finally, reading message from DB');
 			const finalMessage = await this.persistence.getMessage(assistantMsg.id);
+			//console.log(new Date(), '[Orch] message read from DB, emitting replaceParts');
 			if (finalMessage) {
 				this.broadcaster.emit({
 					type: 'message.patched',
@@ -292,10 +453,18 @@ export class Orchestrator {
 					},
 				});
 			}
+			//console.log(new Date(), '[Orch] emitting inference.ended');
 			this.broadcaster.emit({
 				type: 'inference.ended',
 				threadId: request.threadId,
 				messageId: assistantMsg.id,
+			});
+			this.eventNode.broadcast('bridge.inference.finish', {
+				threadId: request.threadId,
+				messageId: assistantMsg.id,
+				inferenceUrl,
+				messages,
+				message: finalMessage,
 			});
 		}
 
@@ -355,7 +524,7 @@ export class Orchestrator {
 	// emits chunk and patch events. Returns whether tool calls fired.
 	private async runPass(
 		inferenceUrl: string,
-		messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>,
+		messages: Array<TOpenAIMessage>,
 		enabledTools: IToolDefinition[],
 		request: ICompletionRequest,
 		abortSignal: AbortSignal,
@@ -413,110 +582,115 @@ export class Orchestrator {
 		try {
 			while (true) {
 				const { done, value } = await reader.read();
-			if (done) break;
-			buffer += decoder.decode(value, { stream: true });
-			const { chunks, remaining } = parseSSEBuffer(buffer);
-			buffer = remaining;
+				if (done) break;
+				buffer += decoder.decode(value, { stream: true });
+				const { chunks, remaining } = parseSSEBuffer(buffer);
+				buffer = remaining;
 
-			for (const chunk of chunks) {
-				if (abortSignal.aborted) {
-					await this.flushReasoningPart(turn);
-					await this.flushTextPart(turn);
-					return { hadToolCalls: false, needsAsk: false, lastToolMessageId: null };
-				}
-				if (chunk.error || chunk.warpcore_event === 'error') {
-					streamError = chunk.error ?? 'Inference error from server';
-					break;
-				}
-				const delta = chunk.choices?.[0]?.delta;
+				for (const chunk of chunks) {
+					if (abortSignal.aborted) {
+						await this.flushReasoningPart(turn);
+						await this.flushTextPart(turn);
+						return { hadToolCalls: false, needsAsk: false, lastToolMessageId: null };
+					}
+					if (chunk.error || chunk.warpcore_event === 'error') {
+						streamError = chunk.error ?? 'Inference error from server';
+						break;
+					}
+					const delta = chunk.choices?.[0]?.delta;
 
-				if (delta?.content) {
-					fullText += delta.content;
-					if (turn.currentReasoningPart) { await this.flushReasoningPart(turn); }
-					if (!turn.currentTextPart) {
-						turn.currentTextPart = { id: crypto.randomUUID(), text: '' };
+					if (delta?.content) {
+						fullText += delta.content;
+						if (turn.currentReasoningPart) { await this.flushReasoningPart(turn); }
+						if (!turn.currentTextPart) {
+							turn.currentTextPart = { id: crypto.randomUUID(), text: '' };
+							this.broadcaster.emit({
+								type: 'message.patched',
+								messageId: turn.assistantMessageId,
+								threadId: request.threadId,
+								updates: {
+									addParts: [{
+										id: turn.currentTextPart.id,
+										type: EMessagePartType.TEXT,
+										orderIndex: turn.partOrderCounter,
+										text: '',
+									}],
+								},
+							});
+						}
+						turn.currentTextPart.text += delta.content;
 						this.broadcaster.emit({
-							type: 'message.patched',
+							type: 'message.chunk',
 							messageId: turn.assistantMessageId,
 							threadId: request.threadId,
-							updates: {
-								addParts: [{
-									id: turn.currentTextPart.id,
-									type: EMessagePartType.TEXT,
-									orderIndex: turn.partOrderCounter,
-									text: '',
-								}],
-							},
+							partId: turn.currentTextPart.id,
+							partType: EMessagePartType.TEXT,
+							deltaText: delta.content,
 						});
 					}
-					turn.currentTextPart.text += delta.content;
-					this.broadcaster.emit({
-						type: 'message.chunk',
-						messageId: turn.assistantMessageId,
-						threadId: request.threadId,
-						partId: turn.currentTextPart.id,
-						partType: EMessagePartType.TEXT,
-						deltaText: delta.content,
-					});
-				}
 
-				if (delta?.reasoning_content) {
-					reasoningText += delta.reasoning_content;
-					if (turn.currentTextPart) { await this.flushTextPart(turn); }
-					if (!turn.currentReasoningPart) {
-						turn.currentReasoningPart = { id: crypto.randomUUID(), text: '' };
+					if (delta?.reasoning_content) {
+						reasoningText += delta.reasoning_content;
+						if (turn.currentTextPart) { await this.flushTextPart(turn); }
+						if (!turn.currentReasoningPart) {
+							turn.currentReasoningPart = { id: crypto.randomUUID(), text: '' };
+							this.broadcaster.emit({
+								type: 'message.patched',
+								messageId: turn.assistantMessageId,
+								threadId: request.threadId,
+								updates: {
+									addParts: [{
+										id: turn.currentReasoningPart.id,
+										type: EMessagePartType.REASONING,
+										orderIndex: turn.partOrderCounter,
+										text: '',
+									}],
+								},
+							});
+						}
+						turn.currentReasoningPart.text += delta.reasoning_content;
 						this.broadcaster.emit({
-							type: 'message.patched',
+							type: 'message.chunk',
 							messageId: turn.assistantMessageId,
 							threadId: request.threadId,
-							updates: {
-								addParts: [{
-									id: turn.currentReasoningPart.id,
-									type: EMessagePartType.REASONING,
-									orderIndex: turn.partOrderCounter,
-									text: '',
-								}],
-							},
+							partId: turn.currentReasoningPart.id,
+							partType: EMessagePartType.REASONING,
+							deltaText: delta.reasoning_content,
 						});
 					}
-					turn.currentReasoningPart.text += delta.reasoning_content;
-					this.broadcaster.emit({
-						type: 'message.chunk',
-						messageId: turn.assistantMessageId,
-						threadId: request.threadId,
-						partId: turn.currentReasoningPart.id,
-						partType: EMessagePartType.REASONING,
-						deltaText: delta.reasoning_content,
-					});
-				}
 
-				if (delta?.tool_calls) {
-					for (const tc of delta.tool_calls) {
-						const hadName = !!toolCallAccumulators[tc.index]?.name;
-						accumulateToolCallDelta(toolCallAccumulators, tc);
-						if (!hadName) {
-							const name = toolCallAccumulators[tc.index]?.name;
-							if (name) {
-								this.broadcaster.emit({
-									type: 'tool_call.starting',
-									threadId: request.threadId,
-									messageId: turn.assistantMessageId,
-									name,
-								});
+					if (delta?.tool_calls) {
+						for (const tc of delta.tool_calls) {
+							const hadName = !!toolCallAccumulators[tc.index]?.name;
+							accumulateToolCallDelta(toolCallAccumulators, tc);
+							if (!hadName) {
+								const name = toolCallAccumulators[tc.index]?.name;
+								if (name) {
+									this.broadcaster.emit({
+										type: 'tool_call.starting',
+										threadId: request.threadId,
+										messageId: turn.assistantMessageId,
+										name,
+									});
+								}
 							}
 						}
 					}
-				}
 
-				const fr = chunk.choices?.[0]?.finish_reason;
-				if (fr) finishReason = fr;
-				if (chunk.timings) timings = chunk.timings as Record<string, number>;
-				if (chunk.usage) usage = chunk.usage as Record<string, number>;
+					const fr = chunk.choices?.[0]?.finish_reason;
+					if (fr) {
+						//console.log(new Date(), '[Orch] finish_reason received');
+						finishReason = fr;
+					}
+					if (chunk.timings) timings = chunk.timings as Record<string, number>;
+					if (chunk.usage) usage = chunk.usage as Record<string, number>;
+				}
 			}
-		}
 		} finally {
+			//console.log(new Date(), '[Orch] stream ended, flushing parts');
 			await this.flushReasoningPart(turn);
 			await this.flushTextPart(turn);
+			//console.log(new Date(), '[Orch] parts flushed');
 		}
 
 		await this.flushReasoningPart(turn);
@@ -535,6 +709,7 @@ export class Orchestrator {
 		const finalToolCalls = finalizeToolCalls(toolCallAccumulators);
 
 		if (timings || usage) {
+			//console.log(new Date(), '[Orch] emitting stats patch');
 			const actualTokens = Math.ceil((fullText.length + reasoningText.length) / 4);
 			const stats: IChatMessageStats = {
 				promptTokens: (usage?.prompt_tokens ?? timings?.prompt_n ?? 0),
@@ -547,27 +722,20 @@ export class Orchestrator {
 				predictedMs: timings?.predicted_ms ?? 0,
 			};
 			await this.persistence.updateMessage(turn.assistantMessageId, { stats });
+			//console.log(new Date(), '[Orch] stats persisted, emitting patch');
 			this.broadcaster.emit({
 				type: 'message.patched',
 				messageId: turn.assistantMessageId,
 				threadId: request.threadId,
 				updates: { stats },
 			});
+			//console.log(new Date(), '[Orch] stats patch emitted');
 			await this.persistence.incrementThreadTokens(
 				request.threadId,
 				0,
 				stats.actualTokens ?? 0,
 			);
 		}
-
-		if (finalToolCalls.length === 0 || finishReason !== 'tool_calls') {
-			return { hadToolCalls: false, needsAsk: false, lastToolMessageId: null };
-		}
-
-		// Process tool calls — chain tool messages linearly off the assistant
-		let needsAsk = false;
-		let lastToolMessageId: TMessageId | null = null;
-		let previousToolMessageId: TMessageId = turn.assistantMessageId;
 
 		messages.push({
 			role: 'assistant',
@@ -579,10 +747,21 @@ export class Orchestrator {
 			})),
 		} as any);
 
+		if (finalToolCalls.length === 0 || finishReason !== 'tool_calls') {
+			return { hadToolCalls: false, needsAsk: false, lastToolMessageId: null };
+		}
+
+		// Process tool calls — chain tool messages linearly off the assistant
+		let needsAsk = false;
+		let lastToolMessageId: TMessageId | null = null;
+		let previousToolMessageId: TMessageId = turn.assistantMessageId;
+
 		for (const tc of finalToolCalls) {
 			if (abortSignal.aborted) return { hadToolCalls: true, needsAsk: false, lastToolMessageId };
 
-			const serverName = this.mcpClient.findToolServer(tc.name);
+			const enabledTool = enabledTools.find(t => t.name === tc.name);
+			const serverName = enabledTool?.serverName ?? this.mcpClient.findToolServer(tc.name);
+			//console.log('[Orch] tool call:', { toolName: tc.name, serverName, threadId: request.threadId });
 			let args: Record<string, unknown> = {};
 			try { args = JSON.parse(tc.arguments || '{}'); } catch { /* empty */ }
 
@@ -665,7 +844,8 @@ export class Orchestrator {
 				continue;
 			}
 
-			const approvalMode = await this.permissions.getToolApprovalMode(serverName!, tc.name);
+			const approvalMode = await this.permissions.getToolApprovalMode(request.threadId, serverName!, tc.name);
+			//console.log('[Orch] approvalMode:', approvalMode);
 
 			if (approvalMode === EToolApprovalMode.ASK) {
 				needsAsk = true;
@@ -699,7 +879,10 @@ export class Orchestrator {
 			this.broadcaster.emit({ type: 'tool_call.updated', toolCall: executingTc });
 
 			try {
-				const mcpResult = await this.mcpClient.executeToolCall(serverName!, tc.name, args);
+				const wsVars = await this.resolveWsVars(request.threadId);
+				const finalArgs = this.mcpClient.prepareToolArgs(serverName!, tc.name, args, wsVars);
+				console.log('[orchestrator] tool call:', serverName, tc.name, 'wsVars:', wsVars, 'finalArgs:', JSON.stringify(finalArgs));
+				const mcpResult = await this.mcpClient.executeToolCall(serverName!, tc.name, finalArgs, request.threadId);
 				const resultStr = JSON.stringify(mcpResult.content);
 				const finalStatus = mcpResult.isError ? EToolCallStatus.ERROR : EToolCallStatus.COMPLETED;
 				const completedTc: IToolCall = {
@@ -801,7 +984,10 @@ export class Orchestrator {
 
 			try {
 				const args = JSON.parse(tc.arguments);
-				const mcpResult = await this.mcpClient.executeToolCall(tc.serverName, tc.toolName, args, tc.threadId);
+				const wsVars = await this.resolveWsVars(tc.threadId);
+				const finalArgs = this.mcpClient.prepareToolArgs(tc.serverName, tc.toolName, args, wsVars);
+				console.log('[orchestrator] resume tool call:', tc.serverName, tc.toolName, 'wsVars:', wsVars, 'finalArgs:', JSON.stringify(finalArgs));
+				const mcpResult = await this.mcpClient.executeToolCall(tc.serverName, tc.toolName, finalArgs, tc.threadId);
 				const resultStr = JSON.stringify(mcpResult.content);
 				const finalStatus = mcpResult.isError ? EToolCallStatus.ERROR : EToolCallStatus.COMPLETED;
 				const completedTc: IToolCall = {
@@ -871,24 +1057,8 @@ export class Orchestrator {
 			}));
 
 		// All tool calls resolved — trigger next inference pass
-		// V2: build conversation context from persistence
 		const enabledTools = await this.resolveEnabledTools(request);
-
-		const allMessages = await this.persistence.getMessages(request.threadId);
-		const allToolCalls = await this.persistence.getToolCallsForThread(request.threadId);
-		const toolCallsMap: Record<string, IToolCall> = {};
-		for (const t of allToolCalls) toolCallsMap[t.id] = t;
-
-		const branchChain = this.buildBranchChain(allMessages, tc.messageId);
-		const merged = mergeConsecutiveMessages(branchChain);
-		const openAIMessages = convertMessagesToOpenAIFormat(merged, toolCallsMap);
-
-		const baseMessages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>; tool_call_id?: string }> = [];
-		if (request.systemPrompt) {
-			baseMessages.push({ role: 'system', content: request.systemPrompt });
-		}
-		baseMessages.push(...(openAIMessages as any[]));
-		baseMessages.push(...(toolOpenAIMessages as any[]));
+		const baseMessages = await this.buildMessageChain(request, tc.messageId, toolOpenAIMessages);
 
 		await this.executePass(
 			inferenceUrl,
@@ -962,14 +1132,14 @@ export class Orchestrator {
 		const allTools = this.mcpClient.getAllTools();
 
 		if (attachAllTools) {
-			return this.permissions.getEnabledTools(allTools);
+			return this.permissions.getEnabledTools(request.threadId, allTools);
 		}
 
 		if (attachedTools && attachedTools.length > 0) {
 			const filtered = allTools.filter(t =>
 				attachedTools.some(a => a.serverName === t.serverName && a.toolName === t.name)
 			);
-			return this.permissions.getEnabledTools(filtered);
+			return this.permissions.getEnabledTools(request.threadId, filtered);
 		}
 
 		return [];
@@ -1004,5 +1174,141 @@ export class Orchestrator {
 	private truncateTitle(text: string): string {
 		const words = text.split(/\s+/).filter(Boolean).slice(0, 5);
 		return words.join(' ') || 'New Chat';
+	}
+
+	async handlePureCompletions(
+		inferenceUrl: string,
+		messages: Array<TOpenAIMessage>,
+		inferenceParams: Record<string, unknown>,
+		onChunk?: TPureCompletionChunkHandler,
+		abortSignal?: AbortSignal,
+	): Promise<IPureCompletionResult> {
+		const body: Record<string, unknown> = {
+			model: 'model',
+			messages,
+			stream: true,
+			...this.buildInferenceParams(inferenceParams),
+		};
+
+		const response = await fetch(`${inferenceUrl}/v1/chat/completions`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer warpcore' },
+			body: JSON.stringify(body),
+			signal: abortSignal,
+		});
+
+		if (!response.ok || !response.body) {
+			const errBody = await response.text().catch(() => '');
+			throw new Error(`Inference error ${response.status}: ${errBody}`);
+		}
+
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder();
+		let buffer = '';
+		let fullText = '';
+		let reasoningText = '';
+		let timings: Record<string, number> | null = null;
+		let usage: Record<string, number> | null = null;
+		let finishReason = '';
+		let streamError: string | null = null;
+
+		const parts: IMessagePart[] = [];
+		let partOrder = 0;
+		let currentTextPart: { id: string; text: string } | null = null;
+		let currentReasoningPart: { id: string; text: string } | null = null;
+
+		const flushText = (): void => {
+			if (!currentTextPart || !currentTextPart.text) return;
+			parts.push({
+				id: currentTextPart.id,
+				type: EMessagePartType.TEXT,
+				orderIndex: partOrder++,
+				text: currentTextPart.text,
+			});
+			currentTextPart = null;
+		};
+
+		const flushReasoning = (): void => {
+			if (!currentReasoningPart || !currentReasoningPart.text) return;
+			parts.push({
+				id: currentReasoningPart.id,
+				type: EMessagePartType.REASONING,
+				orderIndex: partOrder++,
+				text: currentReasoningPart.text,
+			});
+			currentReasoningPart = null;
+		};
+
+		try {
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				buffer += decoder.decode(value, { stream: true });
+				const { chunks, remaining } = parseSSEBuffer(buffer);
+				buffer = remaining;
+
+				for (const chunk of chunks) {
+					if (abortSignal?.aborted) {
+						flushReasoning();
+						flushText();
+						return { content: parts, stats: null, finishReason: 'aborted' };
+					}
+					if (chunk.error || chunk.warpcore_event === 'error') {
+						streamError = chunk.error ?? 'Inference error from server';
+						break;
+					}
+
+					const delta = chunk.choices?.[0]?.delta;
+
+					if (delta?.content) {
+						fullText += delta.content;
+						if (currentReasoningPart) flushReasoning();
+						if (!currentTextPart) {
+							currentTextPart = { id: crypto.randomUUID(), text: '' };
+						}
+						currentTextPart.text += delta.content;
+						onChunk?.('text', delta.content);
+					}
+
+					if (delta?.reasoning_content) {
+						reasoningText += delta.reasoning_content;
+						if (currentTextPart) flushText();
+						if (!currentReasoningPart) {
+							currentReasoningPart = { id: crypto.randomUUID(), text: '' };
+						}
+						currentReasoningPart.text += delta.reasoning_content;
+						onChunk?.('reasoning', delta.reasoning_content);
+					}
+
+					const fr = chunk.choices?.[0]?.finish_reason;
+					if (fr) finishReason = fr;
+					if (chunk.timings) timings = chunk.timings as Record<string, number>;
+					if (chunk.usage) usage = chunk.usage as Record<string, number>;
+				}
+			}
+		} finally {
+			flushReasoning();
+			flushText();
+		}
+
+		if (streamError) {
+			throw new Error(streamError);
+		}
+
+		const actualTokens = Math.ceil((fullText.length + reasoningText.length) / 4);
+		const stats: IChatMessageStats | null = (timings || usage)
+			? {
+				promptTokens: (usage?.prompt_tokens ?? timings?.prompt_n ?? 0),
+				completionTokens: (usage?.completion_tokens ?? timings?.predicted_n ?? 0),
+				reasoningTokens: (usage?.reasoning_tokens ?? 0),
+				actualTokens,
+				promptPerSecond: timings?.prompt_per_second ?? 0,
+				predictedPerSecond: timings?.predicted_per_second ?? 0,
+				promptMs: timings?.prompt_ms ?? 0,
+				predictedMs: timings?.predicted_ms ?? 0,
+			}
+			: null;
+
+		return { content: parts, stats, finishReason };
 	}
 }

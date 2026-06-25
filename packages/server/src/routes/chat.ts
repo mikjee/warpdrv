@@ -1,10 +1,14 @@
 import { Router } from 'express';
 import crypto from 'crypto';
+import { createSession } from 'better-sse';
 import { persistence, orchestrator, broadcaster } from '../index';
 import { store } from '../util/store';
 import type { IChatThreadCreatePayload, IChatMessageCreatePayload } from '@warpcore/shared';
+import { EServerStatus } from '@warpcore/shared';
 import { EChatRole, EMessagePartType, ICompletionRequest, type IFolder } from '@warpcore/bridge';
+import { folderNameToTopic } from '@warpcore/bridge/util/topic';
 import type { IServer } from '@warpcore/shared';
+import { embeddingManager } from '../services/embeddingManager';
 
 export const chatRouter = Router();
 const activeAborts = new Map<string, AbortController>();
@@ -39,7 +43,7 @@ chatRouter.get('/threads', async (req, res) => {
 				title: body.title ?? 'New Chat',
 				folderId: body.folderId ?? null,
 				systemPrompt: body.systemPrompt ?? '',
-				meta: JSON.stringify({ serverId: body.serverId ?? null, tags: body.tags ?? [] }),
+				meta: JSON.stringify({ serverId: body.serverId ?? null, whisperServerId: body.whisperServerId ?? null, tags: body.tags ?? [], enableAutoEmbed: body.enableAutoEmbed ?? false }),
 				totalPromptTokens: body.totalPromptTokens ?? 0,
 				totalCompletionTokens: body.totalCompletionTokens ?? 0,
 				createdAt: now,
@@ -66,6 +70,51 @@ chatRouter.get('/threads/:id', async (req, res) => {
 	}
 });
 
+// GET /api/chat/threads/:threadId/embeddings
+chatRouter.get('/threads/:threadId/embeddings', async (req, res) => {
+	try {
+		const threadId = req.params.threadId;
+		const serverId = req.query.serverId as string;
+		if (!serverId) {
+			res.status(400).json({ ok: false, data: null, error: 'serverId required' });
+			return;
+		}
+		const server = await store.get<IServer>(`servers:${serverId}`);
+		if (!server) {
+			res.status(404).json({ ok: false, data: null, error: 'Server not found' });
+			return;
+		}
+		const thread = await persistence.getThread(threadId);
+		const folderId = thread?.folderId;
+		const topic = folderId ? (await persistence.getFolder(folderId))?.topic ?? 'global' : 'global';
+		const statuses = await persistence.getThreadEmbeddingStatuses(threadId, server.modelPath, topic);
+		res.json({ ok: true, data: { messageIds: Array.from(statuses) }, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+// POST /api/chat/embedding/configure
+chatRouter.post('/embedding/configure', async (req, res) => {
+	try {
+		const { serverId } = req.body as { serverId: string };
+		if (!serverId) {
+			return res.status(400).json({ ok: false, error: 'serverId required' });
+		}
+		const server = await store.get<IServer>(`servers:${serverId}`);
+		if (!server) {
+			return res.status(404).json({ ok: false, error: 'Server not found' });
+		}
+		if (server.status !== EServerStatus.RUNNING) {
+			return res.status(400).json({ ok: false, error: 'Server not running' });
+		}
+		await embeddingManager.configure(serverId);
+		res.json({ ok: true, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, error: String(err) });
+	}
+});
+
 // PUT /api/chat/threads/:id
 chatRouter.put('/threads/:id', async (req, res) => {
 	try {
@@ -78,7 +127,9 @@ chatRouter.put('/threads/:id', async (req, res) => {
 		const meta = JSON.parse(thread.meta || '{}');
 		const strMeta = JSON.stringify({
 			serverId: body.serverId ?? meta.serverId,
+			whisperServerId: body.whisperServerId ?? meta.whisperServerId,
 			tags: body.tags ?? meta.tags,
+			enableAutoEmbed: body.enableAutoEmbed ?? meta.enableAutoEmbed,
 		});
 
 		await persistence.updateThread(req.params.id, {
@@ -108,14 +159,52 @@ chatRouter.put('/threads/:id', async (req, res) => {
 // DELETE /api/chat/threads/:id
 chatRouter.delete('/threads/:id', async (req, res) => {
 	try {
-		await persistence.deleteThread(req.params.id);
+		const threadId = req.params.id;
+		const embeddings = await persistence.deleteThreadCascade(threadId);
+		await embeddingManager.deleteEmbeddingsForThread(embeddings);
 		broadcaster.emit({
 			type: 'thread.deleted',
-			threadId: req.params.id,
+			threadId,
 		});
 		res.json({ ok: true, data: null, error: null });
 	} catch (err) {
 		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+// ============================================================
+// FTS Search
+// ============================================================
+
+// GET /api/chat/search
+chatRouter.get('/search', async (req, res) => {
+	try {
+		const q = req.query.q as string;
+		const mode = req.query.mode as string;
+		const threadId = req.query.threadId as string | undefined;
+		const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+		const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : undefined;
+
+		if (!q || !q.trim()) {
+			return res.json({ ok: true, data: [], total: 0, error: null });
+		}
+		if (!mode || !['everywhere', 'threads', 'thread'].includes(mode)) {
+			return res.status(400).json({ ok: false, data: null, error: 'Invalid or missing mode' });
+		}
+		if (mode === 'thread' && !threadId) {
+			return res.status(400).json({ ok: false, data: null, error: 'threadId required for thread mode' });
+		}
+
+		if (mode === 'threads') {
+			const data = await persistence.searchThreads(q, { limit, offset });
+			return res.json({ ok: true, data, total: data.length, error: null });
+		}
+
+		const data = await persistence.searchMessages(q, { mode: mode as 'everywhere' | 'thread', threadId, limit, offset });
+		res.json({ ok: true, data, total: data.length, error: null });
+	} catch (err) {
+		console.error('[Server] GET /api/chat/search - error:', err);
+		res.status(500).json({ ok: false, data: [], total: 0, error: String(err) });
 	}
 });
 
@@ -157,6 +246,44 @@ chatRouter.post('/threads/:id/messages', async (req, res) => {
 	}
 });
 
+// POST /api/chat/messages/:messageId/embed
+chatRouter.post('/messages/:messageId/embed', async (req, res) => {
+	try {
+		const messageId = req.params.messageId;
+		const message = await persistence.getMessage(messageId);
+		if (!message) {
+			return res.status(404).json({ ok: false, data: null, error: 'Message not found' });
+		}
+		const folderId = message.threadId ? (await persistence.getThread(message.threadId))?.folderId : null;
+		const topic = folderId ? (await persistence.getFolder(folderId))?.topic ?? 'global' : 'global';
+		console.log('[embedding] POST embed:', messageId, topic);
+		await embeddingManager.embedMessage(messageId, topic);
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		console.error('[embedding] POST embed error:', err);
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+// DELETE /api/chat/messages/:messageId/embed
+chatRouter.delete('/messages/:messageId/embed', async (req, res) => {
+	try {
+		const messageId = req.params.messageId;
+		const message = await persistence.getMessage(messageId);
+		if (!message) {
+			return res.status(404).json({ ok: false, data: null, error: 'Message not found' });
+		}
+		const folderId = message.threadId ? (await persistence.getThread(message.threadId))?.folderId : null;
+		const topic = folderId ? (await persistence.getFolder(folderId))?.topic ?? 'global' : 'global';
+		console.log('[embedding] DELETE embed:', messageId, topic);
+		await embeddingManager.deleteEmbeddingForMessage(messageId, message.threadId);
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		console.error('[embedding] DELETE embed error:', err);
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
 // ============================================================
 // Folders
 // ============================================================
@@ -173,9 +300,16 @@ chatRouter.get('/folders', async (_req, res) => {
 chatRouter.post('/folders', async (req, res) => {
 		try {
 			const { name, parentId, sortOrder } = req.body;
+			const folderName = name || 'New Folder';
+			const topic = folderNameToTopic(folderName);
+			const unique = await persistence.isTopicUnique(topic);
+			if (!unique) {
+				return res.status(409).json({ ok: false, data: null, error: `Topic "${topic}" already exists` });
+			}
 			const folder: IFolder = {
 				id: crypto.randomUUID(),
-				name: name || 'New Folder',
+				name: folderName,
+				topic,
 				parentId: parentId ?? null,
 				sortOrder: sortOrder ?? 0,
 				createdAt: Date.now(),
@@ -197,10 +331,148 @@ chatRouter.put('/folders/:id', async (req, res) => {
 		}
 	});
 
+chatRouter.put('/folders/:id/topic', async (req, res) => {
+		try {
+			const { topic } = req.body as { topic: string };
+			if (!topic) {
+				return res.status(400).json({ ok: false, data: null, error: 'Topic is required' });
+			}
+			const folder = await persistence.getFolder(req.params.id);
+			if (!folder) {
+				return res.status(404).json({ ok: false, data: null, error: 'Folder not found' });
+			}
+			if (topic === folder.topic) {
+				return res.json({ ok: true, data: null, error: null });
+			}
+			const unique = await persistence.isTopicUnique(topic, req.params.id);
+			if (!unique) {
+				return res.status(409).json({ ok: false, data: null, error: `Topic "${topic}" already exists or is reserved` });
+			}
+			const oldTopic = folder.topic;
+			await persistence.updateFolder(req.params.id, { topic });
+			await embeddingManager.renameTopic(oldTopic, topic);
+			res.json({ ok: true, data: null, error: null });
+		} catch (err) {
+			res.status(500).json({ ok: false, data: null, error: String(err) });
+		}
+	});
+
 chatRouter.delete('/folders/:id', async (req, res) => {
 	try {
 		await persistence.deleteFolder(req.params.id);
 		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+// ============================================================
+// Workspaces
+// ============================================================
+
+chatRouter.post('/workspaces/:folderId', async (req, res) => {
+	try {
+		const { data } = req.body as { data: Record<string, unknown> };
+		await persistence.createWorkspace({ folderId: req.params.folderId, data: data ?? {} });
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+chatRouter.get('/workspaces/:folderId', async (req, res) => {
+	try {
+		const workspace = await persistence.getWorkspace(req.params.folderId);
+		res.json({ ok: true, data: workspace, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+chatRouter.put('/workspaces/:folderId', async (req, res) => {
+	try {
+		const { data } = req.body as { data: Record<string, unknown> };
+		await persistence.updateWorkspace(req.params.folderId, data);
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+chatRouter.delete('/workspaces/:folderId', async (req, res) => {
+	try {
+		await persistence.deleteWorkspace(req.params.folderId);
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+// ============================================================
+// Persisted States
+// ============================================================
+
+chatRouter.get('/workspaces/:folderId/state', async (req, res) => {
+	try {
+		const data = await persistence.getWorkspaceState(req.params.folderId);
+		res.json({ ok: true, data, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+chatRouter.put('/workspaces/:folderId/state', async (req, res) => {
+	try {
+		const { data } = req.body as { data: Record<string, unknown> };
+		await persistence.updateWorkspaceState(req.params.folderId, data);
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+chatRouter.get('/threads/:threadId/state', async (req, res) => {
+	try {
+		const data = await persistence.getThreadState(req.params.threadId);
+		res.json({ ok: true, data, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+chatRouter.put('/threads/:threadId/state', async (req, res) => {
+	try {
+		const { data } = req.body as { data: Record<string, unknown> };
+		await persistence.updateThreadState(req.params.threadId, data);
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+chatRouter.get('/messages/:messageId/state', async (req, res) => {
+	try {
+		const data = await persistence.getMessageState(req.params.messageId);
+		res.json({ ok: true, data, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+chatRouter.put('/messages/:messageId/state', async (req, res) => {
+	try {
+		const { data } = req.body as { data: Record<string, unknown> };
+		await persistence.updateMessageState(req.params.messageId, data);
+		res.json({ ok: true, data: null, error: null });
+	} catch (err) {
+		res.status(500).json({ ok: false, data: null, error: String(err) });
+	}
+});
+
+chatRouter.get('/threads/:threadId/message-states', async (req, res) => {
+	try {
+		const states = await persistence.getMessageStatesByThreadId(req.params.threadId);
+		res.json({ ok: true, data: states, error: null });
 	} catch (err) {
 		res.status(500).json({ ok: false, data: null, error: String(err) });
 	}
@@ -344,7 +616,6 @@ chatRouter.post('/cancel/:threadId', (req, res) => {
 // GET /api/chat/events — global SSE channel for all bridge events
 chatRouter.get('/events', async (req, res) => {
 	console.log('[Chat SSE] New client connection');
-	const { createSession } = await import('better-sse');
 	const session = await createSession(req, res);
 	const channel = (broadcaster as any).getChannel();
 	channel.register(session);
@@ -403,11 +674,8 @@ chatRouter.delete('/messages/:id', async (req, res) => {
 			return;
 		}
 		const threadId = msg.threadId;
-		
-		// Delete the message from database
+		await embeddingManager.deleteEmbeddingForMessage(messageId, threadId);
 		await persistence.deleteMessage(messageId);
-		
-		// Emit SSE event for all clients
 		broadcaster.emit({
 			type: 'message.deleted',
 			messageId,
@@ -436,12 +704,14 @@ chatRouter.put('/folders/reorder', async (req, res) => {
 });
 
 chatRouter.post('/tool-calls/:id/resume', async (req, res) => {
-	const { decision, threadId, serverId, systemPrompt, inferenceParams } = req.body as {
+	const { decision, threadId, serverId, systemPrompt, inferenceParams, attachAllTools, attachedTools } = req.body as {
 		decision: 'approve' | 'deny';
 		threadId: string;
 		serverId: string;
 		systemPrompt?: string;
 		inferenceParams: Record<string, unknown>;
+		attachAllTools?: boolean;
+		attachedTools?: any[];
 	};
 
 	if (decision !== 'approve' && decision !== 'deny') {
@@ -466,6 +736,8 @@ chatRouter.post('/tool-calls/:id/resume', async (req, res) => {
 		serverId,
 		systemPrompt,
 		inferenceParams: inferenceParams as any,
+		attachAllTools,
+		attachedTools,
 	};
 
 	// Track abort for this resume — same pattern as completions route

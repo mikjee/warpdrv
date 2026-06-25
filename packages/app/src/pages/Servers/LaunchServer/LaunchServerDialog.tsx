@@ -16,6 +16,7 @@ import { BackendPickerCard } from './BackendPickerCard';
 import { SpeculativeDecodingCard } from './SpeculativeDecodingCard';
 import { ContextKVCard } from './ContextKVCard';
 import { MultiModalCard } from './MultiModalCard';
+import { EmbeddingCard } from './EmbeddingCard';
 import { RecommendedParamsCard } from './RecommendedParamsCard';
 import { OptionsCard } from './OptionsCard';
 import { Footer } from './Footer';
@@ -229,6 +230,7 @@ export const LaunchServerDialog = React.memo(({ onClose, serverId }: ILaunchServ
 						<VStack gap="5" flex="1" minW="0" align="stretch">
 							<ContextKVCard params={params} onParamChange={updateParam} meta={meta} />
 							<MultiModalCard useMultiModal={useMultiModal} onUseMultiModalChange={setUseMultiModal} hasMmproj={!!selectedEntry?.model.mmprojFile} />
+							<EmbeddingCard useEmbedding={params.useEmbedding ?? false} onUseEmbeddingChange={v => updateParam('useEmbedding', v)} />
 							<RecommendedParamsCard
 								useRecommended={useRecommendedInferParams} onUseRecommendedChange={setUseRecommendedInferParams}
 								selectedEntry={selectedEntry ?? null}

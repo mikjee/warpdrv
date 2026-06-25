@@ -3,11 +3,12 @@ import { Box } from '@chakra-ui/react';
 import { updateSettings } from '@/api/services';
 import { StepWelcome } from './steps/StepWelcome';
 import { StepModelFolders } from './steps/StepModelFolders';
+import { StepBackends } from './steps/StepBackends';
 import { StepGuide } from './steps/StepGuide';
 import { StepDone } from './steps/StepDone';
 import { useTauriWindow } from '@/hooks/useTauriWindow';
 
-const STEPS = [StepWelcome, StepModelFolders, StepGuide, StepDone];
+const STEPS = [StepWelcome, StepModelFolders, StepBackends, StepGuide, StepDone];
 const TOTAL_STEPS = STEPS.length;
 
 export interface IStepProps {

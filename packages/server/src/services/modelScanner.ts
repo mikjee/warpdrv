@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import type { IModel, IGgufFile } from '@warpcore/shared';
 import { parseGgufMetadata } from './ggufParser';
 import { store } from '../util/store';
+import { Dirent } from 'fs';
 
 const MODELS_CACHE_KEY = 'models:cache';
 
@@ -60,7 +61,7 @@ async function scanDirRecursive(
 	userSegment: string | null,
 	cachedModels: IModel[],
 ): Promise<IModel[]> {
-	let entries: import('fs').Dirent[];
+	let entries: Dirent[];
 	try {
 		entries = await fs.readdir(dirPath, { withFileTypes: true });
 	} catch (err) {
@@ -83,6 +84,7 @@ async function scanDirRecursive(
 	const dirFiles: IGgufFile[] = [];
 	for (const entry of ggufEntries) {
 		const ggufFile = await buildGgufFile(dirPath, entry.name, cachedFilesByPath);
+		// if (ggufFile.metadata?.architecture === 'whisper') continue;
 		dirFiles.push(ggufFile);
 	}
 

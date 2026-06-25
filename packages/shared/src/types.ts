@@ -41,7 +41,9 @@ export interface IBackend {
 	defaultArgs: string[];
 	description: string;
 	validation: EValidationStatus;
-	version: string; // detected build version
+	version: string; // compiled GPU backends (e.g. 'CUDA, Vulkan')
+	buildNumber: string; // llama.cpp build number (e.g. '9293')
+	gitCommit: string; // git commit hash of this build (e.g. '1acee6bf8')
 	detectedDevices: IDevice[];
 	createdAt: number;
 	updatedAt: number;
@@ -129,7 +131,7 @@ export interface IModel {
 // ============================================================
 export interface ISpecDecodeParams {
 	enabled: boolean;
-	mode?: 'draft' | 'ngram'; // undefined → 'draft' (backward compat)
+	mode?: 'draft' | 'ngram' | 'mtp'; // undefined → 'draft' (backward compat)
 	// Shared across modes
 	draftMax: number; // max tokens to draft per step
 	draftMin: number; // min tokens to draft per step
@@ -139,8 +141,11 @@ export interface ISpecDecodeParams {
 	draftGpuLayers: number;
 	draftContextSize: number; // 0 = loaded from model
 	draftPMin: number; // acceptance probability threshold (0.0-1.0)
-	// Ngram-only (optional)
+	// Spec type for draft/MTP mode (e.g. "mtp" for Mamba Transition Prediction)
 	specType?: ESpecType;
+	// MTP-specific: max draft tokens per step (maps to --spec-draft-n-max)
+	specDraftNMax?: number;
+	// Ngram-only (optional)
 	ngramSizeN?: number; // lookup n-gram length
 	ngramSizeM?: number; // draft m-gram length
 	ngramMinHits?: number; // min occurrences before drafting (ngram-map-k* only)
@@ -154,6 +159,7 @@ export const DEFAULT_SPEC_DECODE_PARAMS: ISpecDecodeParams = {
 	draftMax: 16,
 	draftMin: 0,
 	draftPMin: 0.75,
+	specDraftNMax: 3,
 };
 // ============================================================
 // Server Launch Params
@@ -186,6 +192,7 @@ export interface ILaunchParams {
 	splitMode?: ESplitMode; // layer | row | tensor
 	gpuSplitValues?: number[]; // per-GPU proportions, zeros exclude devices
 	mainGpu?: number; // -1 = default, >=0 = explicit GPU index
+	useEmbedding?: boolean; // enables --embedding flag for embedding-capable server
 }
 // Default launch params
 export const DEFAULT_LAUNCH_PARAMS: ILaunchParams = {
@@ -210,6 +217,7 @@ export const DEFAULT_LAUNCH_PARAMS: ILaunchParams = {
 	extraArgs: '',
 	parallelSlots: 4,
 	specDecode: { ...DEFAULT_SPEC_DECODE_PARAMS },
+	useEmbedding: false,
 };
 // ============================================================
 // Running Servers
@@ -320,6 +328,20 @@ export interface ISettings {
 	showRawJSONChatConfig?: boolean; // if true, show JSON editor instead of UI controls in chat config
 	isOnboardingComplete?: boolean; // if false or undefined, show onboarding overlay
 	theme?: ETheme;
+	micDeviceId?: string; // app-level mic device selection for STT
+	kokoroVoice?: string; // kokoro TTS voice selection
+	kokoroSpeed?: number; // kokoro TTS speed multiplier
+	builtinMcpPort?: number;
+	builtinMcpExposeExternal?: boolean;
+	fsAllowedRoots?: string[];
+	appZoomLevel?: number;
+	chatFontSize?: number;
+	chatFontFamily?: string;
+	chatFixedWidth?: boolean;
+	dictationPTTKey?: string;
+	dictationPTTModeHold?: boolean;
+	globalPTTKey?: string;
+	globalPTTModeHold?: boolean;
 }
 export const DEFAULT_SETTINGS: ISettings = {
 	modelRoots: [],
@@ -341,7 +363,7 @@ export const DEFAULT_SETTINGS: ISettings = {
 	checkpointsSortField: 'recency',
 	checkpointsSortOrder: 'desc',
 	startMinimized: false,
-	sidebarCollapsed: false,
+	sidebarCollapsed: true,
 	windowWidth: 1100,
 	windowHeight: 750,
 	checkpointsPath: '',
@@ -349,6 +371,19 @@ export const DEFAULT_SETTINGS: ISettings = {
 	disableTitleGen: false,
 	isOnboardingComplete: false,
 	theme: ETheme.DARK,
+	kokoroVoice: 'af_heart',
+	kokoroSpeed: 1.0,
+	builtinMcpPort: 11437,
+	builtinMcpExposeExternal: false,
+	fsAllowedRoots: [],
+	appZoomLevel: 1.0,
+	chatFontSize: 14,
+	chatFontFamily: '',
+	chatFixedWidth: false,
+	dictationPTTKey: 'Insert',
+	dictationPTTModeHold: false,
+	globalPTTKey: '',
+	globalPTTModeHold: false,
 };
 // ============================================================
 // VRAM Calculator
@@ -395,8 +430,10 @@ export interface IChatThreadCreatePayload {
 	title?: string;
 	folderId?: string | null;
 	serverId?: string | null;
+	whisperServerId?: string | null;
 	systemPrompt?: string;
 	tags?: string[];
+	enableAutoEmbed?: boolean;
 	totalPromptTokens?: number;
 	totalCompletionTokens?: number;
 }
@@ -528,4 +565,46 @@ export interface IAccessTokenUpdatePayload {
 export interface IAccessTokenCreateResult {
 	token: string; // the raw Bearer token - shown once, never again
 	info: IAccessTokenInfo;
+}
+export type TOs = 'win' | 'linux' | 'mac';
+export type TArch = 'x64' | 'arm64';
+export type TGpuVendor = 'nvidia' | 'amd' | 'intel' | 'apple' | 'unknown';
+export interface IGpuInfo {
+	vendor: TGpuVendor;
+	name: string;
+	driverVersion: string | null;
+}
+export interface IHardwareInfo {
+	os: TOs;
+	arch: TArch;
+	gpus: IGpuInfo[];
+}
+export type TBackendKind = 'cuda' | 'rocm' | 'vulkan' | 'metal' | 'cpu' | 'hip' | 'sycl';
+export type TReleaseSource = 'upstream' | 'lemonade';
+export interface IBackendAsset {
+	key: string;
+	source: TReleaseSource;
+	os: TOs;
+	arch: TArch;
+	backend: TBackendKind;
+	backendVersion: string | null;
+	gpuArch: string | null;
+	llamaBuild: string;
+	url: string;
+	size: number;
+	filename: string;
+}
+export interface IKokoroStatus {
+	installed: boolean;
+	basePath: string;
+	modelPath: string;
+	configPath: string;
+	voicePaths: string[];
+}
+// ============================================================
+// Todos
+// ============================================================
+export interface ITodoItem {
+	text: string;
+	status: 'pending' | 'done';
 }

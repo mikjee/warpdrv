@@ -1,21 +1,56 @@
 import { Box, Text, HStack, Flex, Badge, Button, Spinner, Input } from '@chakra-ui/react';
 import {
 	FolderOpen, Search, MoreVertical, ExternalLink, Eye, RefreshCw,
-	FolderOpen as FolderIcon, Trash2, ChevronUp, ChevronDown,
+	FolderOpen as FolderIcon, Trash2, ChevronUp, ChevronDown, Mic,
 } from 'lucide-react';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { PageHeader } from '../../components/PageHeader';
 import { useMutation } from '../../hooks/useQuery';
 import { useStore } from '../../store';
-import { scanModels, reparseModel } from '../../api/services';
+import { scanModels, scanWhisperModels, reparseModel } from '../../api/services';
 import { openExternal } from '../../utils/openExternal';
-import type { IModel } from '@warpcore/shared';
+import type { IModel, IWhisperModel } from '@warpcore/shared';
 
 // ============================================================
 // Helpers
 // ============================================================
 
 import { QUANT_COLORS } from '@/lib/constants';
+
+type ModelView = 'llama' | 'whisper';
+
+// Normalize a whisper model to IModel shape for display
+function normalizeWhisper(m: IWhisperModel): IModel {
+	const meta = m.primaryFile?.metadata;
+	return {
+		id: m.id,
+		user: m.user,
+		name: m.name,
+		dirPath: m.dirPath,
+		files: m.files.map(f => ({
+			...f,
+			shardIndex: null,
+			shardTotal: null,
+			isMmproj: false,
+			parentModel: null,
+		}) as any),
+		primaryFile: m.primaryFile ? ({
+			...m.primaryFile,
+			shardIndex: null,
+			shardTotal: null,
+			isMmproj: false,
+			parentModel: null,
+			metadata: {
+				quantType: meta?.ftype ?? '-',
+				architecture: `whisper (${meta?.modelSize ?? 'unknown'})`,
+				paramCount: meta?.modelSize ?? '-',
+				contextLength: meta?.contextLength ?? 0,
+			},
+		} as any) : null,
+		mmprojFile: null,
+		totalSizeMb: m.totalSizeMb,
+	};
+}
 
 function formatSize(mb: number): string {
 	if (mb >= 1024) return (mb / 1024).toFixed(1) + ' GB';
@@ -208,9 +243,16 @@ function SortHeader({
 
 export function ModelsPage() {
 	const modelsRecord = useStore(s => s.models);
-	const models = useMemo(() => Object.values(modelsRecord), [modelsRecord]);
+	const whisperModelsRecord = useStore(s => s.whisperModels);
+	const llamaModels = useMemo(() => Object.values(modelsRecord), [modelsRecord]);
+	const whisperModels = useMemo(() => Object.values(whisperModelsRecord || {}).map(normalizeWhisper), [whisperModelsRecord]);
+	const [view, setView] = useState<ModelView>('llama');
+	const models = view === 'whisper' ? whisperModels : llamaModels;
 	const scanMut = useMutation<void, IModel[]>(
 		useCallback(() => scanModels() as Promise<any>, [])
+	);
+	const scanWhisperMut = useMutation<void, any[]>(
+		useCallback(() => scanWhisperModels() as Promise<any>, [])
 	);
 	const reparseMut = useMutation<string, IModel>(
 		useCallback((id: string) => reparseModel(id) as Promise<any>, [])
@@ -225,7 +267,10 @@ export function ModelsPage() {
 	}, []);
 
 	const handleScan = async () => {
-		await scanMut.mutate(undefined as any);
+		await Promise.all([
+			scanMut.mutate(undefined as any),
+			scanWhisperMut.mutate(undefined as any),
+		]);
 	};
 
 	const filtered = useMemo(() => {
@@ -260,38 +305,74 @@ export function ModelsPage() {
 		<Box>
 <PageHeader
 				title="Models"
-				subtitle={`${models.length} LLMs`}
-				icon={<FolderOpen size={20} />}
+				subtitle={`${models.length} ${view === 'whisper' ? 'Whisper' : 'LLM'} model${models.length !== 1 ? 's' : ''}`}
+				icon={view === 'whisper' ? <Mic size={20} /> : <FolderOpen size={20} />}
 				actions={
-					<Box position="relative">
-						<Search
-							size={14}
-							style={{
-								position: 'absolute',
-								left: '10px',
-								top: '50%',
-								transform: 'translateY(-50%)',
-								color: 'var(--wc-text-muted)',
-								pointerEvents: 'none',
-							}}
-						/>
-						<Input
-							placeholder="Search models..."
-							value={search}
-							onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-							size="sm"
-							pl="8"
-							w="220px"
-							bg="var(--wc-bg-card)"
-							borderColor="var(--wc-border-default)"
+					<HStack gap="3">
+						<HStack
+							as="label"
+							cursor="pointer"
+							bg={view === 'llama' ? 'var(--wc-accent-blue-bg-12)' : 'var(--wc-bg-card)'}
+							borderWidth="1px"
+							borderColor={view === 'llama' ? 'var(--wc-accent-blue-border)' : 'var(--wc-border-default)'}
 							borderRadius="lg"
-							fontSize="13px"
-							color="var(--wc-text-primary)"
-							_placeholder={{ color: 'var(--wc-text-faint)' }}
-							_hover={{ borderColor: 'var(--wc-border-hover)' }}
-							_focus={{ borderColor: 'var(--wc-accent-blue-focus)', boxShadow: 'none' }}
-						/>
-					</Box>
+							px="3"
+							py="1.5"
+							gap="2"
+							_hover={{ bg: 'var(--wc-accent-blue-bg-8)' }}
+							transition="all 0.15s ease"
+						>
+							<input type="radio" name="modelView" checked={view === 'llama'} onChange={() => setView('llama')} style={{ display: 'none' }} />
+							<FolderOpen size={14} color={view === 'llama' ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)'} />
+							<Text fontSize="13px" fontWeight="500" color={view === 'llama' ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)'}>LLMs</Text>
+						</HStack>
+						<HStack
+							as="label"
+							cursor="pointer"
+							bg={view === 'whisper' ? 'var(--wc-accent-green-bg-12)' : 'var(--wc-bg-card)'}
+							borderWidth="1px"
+							borderColor={view === 'whisper' ? 'var(--wc-accent-green-border)' : 'var(--wc-border-default)'}
+							borderRadius="lg"
+							px="3"
+							py="1.5"
+							gap="2"
+							_hover={{ bg: 'var(--wc-accent-green-bg-8)' }}
+							transition="all 0.15s ease"
+						>
+							<input type="radio" name="modelView" checked={view === 'whisper'} onChange={() => setView('whisper')} style={{ display: 'none' }} />
+							<Mic size={14} color={view === 'whisper' ? 'var(--wc-accent-green)' : 'var(--wc-text-muted)'} />
+							<Text fontSize="13px" fontWeight="500" color={view === 'whisper' ? 'var(--wc-accent-green)' : 'var(--wc-text-muted)'}>Whisper</Text>
+						</HStack>
+						<Box position="relative">
+							<Search
+								size={14}
+								style={{
+									position: 'absolute',
+									left: '10px',
+									top: '50%',
+									transform: 'translateY(-50%)',
+									color: 'var(--wc-text-muted)',
+									pointerEvents: 'none',
+								}}
+							/>
+							<Input
+								placeholder="Search models..."
+								value={search}
+								onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+								size="sm"
+								pl="8"
+								w="220px"
+								bg="var(--wc-bg-card)"
+								borderColor="var(--wc-border-default)"
+								borderRadius="lg"
+								fontSize="13px"
+								color="var(--wc-text-primary)"
+								_placeholder={{ color: 'var(--wc-text-faint)' }}
+								_hover={{ borderColor: 'var(--wc-border-hover)' }}
+								_focus={{ borderColor: 'var(--wc-accent-blue-focus)', boxShadow: 'none' }}
+							/>
+						</Box>
+					</HStack>
 				}
 				actionsRight={
 					<Button

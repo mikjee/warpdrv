@@ -1,12 +1,14 @@
 import React, { useState, useContext, useCallback, useMemo } from 'react';
 import { Box, Text, HStack } from '@chakra-ui/react';
-import { Wrench, Check, Ban, Loader, AlertCircle, X } from 'lucide-react';
+import { Wrench, Check, Ban, Loader, AlertCircle, X, Lock } from 'lucide-react';
 import { ToolCallBlock } from '@/pages/Chat/assistant-ui/ToolCallBlock';
 import { useStore } from '@/store';
-import { EToolCallStatus } from '@warpcore/bridge';
+import { EToolCallStatus, EToolApprovalMode } from '@warpcore/bridge';
 import { ServerStatusContext } from './thread';
 import { autoResolveRenderer } from './tool-renderers/resolver';
-import { RendererErrorBoundary } from './tool-renderers/RendererErrorBoundary';
+import { WithErrorBoundary } from '../../../components/WithErrorBoundary';
+import { useToast } from '@/components/ToastProvider';
+import { decideMcpToolCall, setThreadToolPermission, fetchThreadPermissions } from '@/api/mcpServices';
 
 interface IToolCallBlockWrapperProps {
 	toolCallId: string;
@@ -41,21 +43,46 @@ export const ToolCallBlockWrapper = React.memo(({ toolCallId, toolName, serverNa
 	const toolCall = useStore(s => s.toolCallsById[toolCallId]);
 	const serverState = useStore(s => serverName ? s.mcpServers[serverName] : undefined);
 	const toolCallRenderers = useStore(s => s.toolCallRenderers);
+	const attachAllTools = useStore(s => s.attachAllTools);
+	const attachedTools = useStore(s => s.attachedTools);
 	const [deciding, setDeciding] = useState(false);
+	const toast = useToast();
 
 	const handleDecision = useCallback(async (decision: 'approve' | 'deny') => {
 		if (!currentThreadId || !currentServerId) return;
-		const { decideMcpToolCall } = await import('@/api/mcpServices');
 		setDeciding(true);
 		try {
 			await decideMcpToolCall(
 				toolCallId, decision, currentThreadId, currentServerId,
-				currentSystemPrompt, currentInferenceParams
+				currentSystemPrompt, currentInferenceParams,
+				undefined,
+				attachAllTools,
+				attachedTools
 			);
 		} finally {
 			setDeciding(false);
 		}
-	}, [toolCallId, currentThreadId, currentServerId, currentSystemPrompt, currentInferenceParams]);
+	}, [toolCallId, currentThreadId, currentServerId, currentSystemPrompt, currentInferenceParams, attachAllTools, attachedTools]);
+
+	const handleAlwaysApprove = useCallback(async () => {
+		if (!currentThreadId || !currentServerId || !serverName) return;
+		setDeciding(true);
+		try {
+			await setThreadToolPermission(currentThreadId, serverName, toolName, true, EToolApprovalMode.ALLOWED);
+			const res = await fetchThreadPermissions(currentThreadId);
+			if (res.ok) useStore.getState().setThreadToolPermissions(currentThreadId, res.data.threadOverrides);
+			await decideMcpToolCall(
+				toolCallId, 'approve', currentThreadId, currentServerId,
+				currentSystemPrompt, currentInferenceParams,
+				undefined,
+				attachAllTools,
+				attachedTools
+			);
+			toast({ title: `"${toolName}" will always be approved for this thread`, status: 'success', duration: 3000 });
+		} finally {
+			setDeciding(false);
+		}
+	}, [toolCallId, toolName, serverName, currentThreadId, currentServerId, currentSystemPrompt, currentInferenceParams, attachAllTools, attachedTools, toast]);
 
 
 	const displayStatus: EToolCallStatus = toolCall?.status ?? (
@@ -84,9 +111,9 @@ export const ToolCallBlockWrapper = React.memo(({ toolCallId, toolName, serverNa
 				mappedArgs[targetKey] = v;
 			}
 			return (
-				<RendererErrorBoundary fallback={fallback}>
+				<WithErrorBoundary fallback={fallback}>
 					<ExplicitComponent {...mappedArgs} {...(rendererCfg.props ?? {})} result={result} />
-				</RendererErrorBoundary>
+				</WithErrorBoundary>
 			);
 		}
 		// Priority 2: auto-match via keywords + canRender
@@ -94,9 +121,9 @@ export const ToolCallBlockWrapper = React.memo(({ toolCallId, toolName, serverNa
 		if (resolved) {
 			const { component: AutoComponent, props } = resolved;
 			return (
-				<RendererErrorBoundary fallback={fallback}>
+				<WithErrorBoundary fallback={fallback}>
 					<AutoComponent {...props} result={result} />
-				</RendererErrorBoundary>
+				</WithErrorBoundary>
 			);
 		}
 		// Priority 3: default fallback
@@ -104,11 +131,11 @@ export const ToolCallBlockWrapper = React.memo(({ toolCallId, toolName, serverNa
 	}, [serverState, toolName, toolCallRenderers, args, result]);
 
 	return (
-		<Box my="2" borderWidth="1px" borderColor="var(--wc-border-default)" borderRadius="lg" bg="var(--wc-bg-surface)" overflow="hidden">
-			<HStack gap="2" px="3" py="2" bg="var(--wc-bg-surface)">
-				<Wrench size={13} color="var(--wc-text-secondary)" />
-				<Text fontSize="12px" fontWeight="500" color="var(--wc-text-primary)">{toolName}</Text>
-				<Text fontSize="11px" color="var(--wc-text-faint)">{serverName}</Text>
+		<Box m="-3.5" borderRadius="lg" bg="var(--wc-bg-surface)" overflow="hidden" borderBottomColor={"var(--wc-border-subtle)"} borderBottomWidth={1}>
+			<HStack gap="3" px="3" py="2.5" borderBottomColor={"var(--wc-border-subtle)"} borderBottomWidth={1}>
+				<Wrench size={13} color="var(--wc-text-tertiary)" />
+				<Text fontSize="13px" fontWeight="700" color="var(--wc-text-secondary)">{toolName}</Text>
+				<Text fontSize="12px" color="var(--wc-text-faint)">{serverName}</Text>
 				<Box flex="1" />
 				<HStack gap="1">
 					{isExecuting && (
@@ -139,15 +166,24 @@ export const ToolCallBlockWrapper = React.memo(({ toolCallId, toolName, serverNa
 				</HStack>
 			</HStack>
 
+			{displayStatus === EToolCallStatus.ERROR && toolCall?.error && (
+				<Box px="3" py="2" borderTopWidth="1px" borderColor="var(--wc-border-subtle)">
+					<Text fontSize="11px" color="var(--wc-accent-red)" whiteSpace="pre-wrap" wordBreak="break-word">{toolCall.error}</Text>
+				</Box>
+			)}
+
 			{body}
 
 			{isPending && !deciding && (
 				<HStack gap="2" px="3" py="2" justify="flex-end" borderTopWidth="1px" borderColor="var(--wc-border-subtle)">
+					<Box as="button" px="3" py="1" fontSize="12px" borderRadius="sm" bg="var(--wc-accent-green-bg-15)" color="var(--wc-accent-green)" _hover={{ bg: 'var(--wc-accent-green-hover)' }} onClick={() => handleDecision('approve')}>
+						<HStack gap="1"><Check size={12} /><Text fontSize="12px">Allow Once</Text></HStack>
+					</Box>
+					<Box as="button" px="3" py="1" fontSize="12px" borderRadius="sm" bg="var(--wc-accent-yellow-bg-8)" color="var(--wc-accent-yellow-strong)" _hover={{ bg: 'var(--wc-accent-yellow-hover-bg)' }} onClick={() => handleAlwaysApprove()}>
+						<HStack gap="1"><Lock size={12} /><Text fontSize="12px">Allow Always</Text></HStack>
+					</Box>
 					<Box as="button" px="3" py="1" fontSize="12px" borderRadius="sm" bg="var(--wc-accent-red-bg-12)" color="var(--wc-accent-red-alt)" _hover={{ bg: 'var(--wc-accent-red-hover)' }} onClick={() => handleDecision('deny')}>
 						<HStack gap="1"><X size={12} /><Text fontSize="12px">Deny</Text></HStack>
-					</Box>
-					<Box as="button" px="3" py="1" fontSize="12px" borderRadius="sm" bg="var(--wc-accent-green-bg-15)" color="var(--wc-accent-green)" _hover={{ bg: 'var(--wc-accent-green-hover)' }} onClick={() => handleDecision('approve')}>
-						<HStack gap="1"><Check size={12} /><Text fontSize="12px">Approve</Text></HStack>
 					</Box>
 				</HStack>
 			)}

@@ -271,4 +271,39 @@ export class McpClientManager implements IMcpClient {
 		}
 		return null;
 	}
+
+	prepareToolArgs(
+		serverName: string,
+		toolName: string,
+		args: Record<string, unknown>,
+		wsVars: Record<string, unknown> | null,
+	): Record<string, unknown> {
+		const entry = this.clients[serverName];
+		if (!entry) return args;
+
+		// Merge arg defaults from warpdrv config
+		const defaults = entry.config.warpdrv?.argDefaults?.[toolName];
+		const merged = { ...defaults, ...args };
+
+		// Interpolate {{ws.<key>}} in all string values
+		if (!wsVars) return merged;
+		return this.interpolateArgs(merged, wsVars);
+	}
+
+	private interpolateArgs(args: Record<string, unknown>, wsVars: Record<string, unknown>): Record<string, unknown> {
+		const result: Record<string, unknown> = {};
+		for (const [key, value] of Object.entries(args)) {
+			if (typeof value === 'string') {
+				result[key] = value.replace(/\{\{ws\.(\w+)\}\}/g, (_match, wsKey) => {
+					const resolved = wsVars[wsKey];
+					return resolved !== undefined ? String(resolved) : `{{ws.${wsKey}}}`;
+				});
+			} else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+				result[key] = this.interpolateArgs(value as Record<string, unknown>, wsVars);
+			} else {
+				result[key] = value;
+			}
+		}
+		return result;
+	}
 }

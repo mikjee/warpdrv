@@ -1,5 +1,5 @@
 import { Box, Text, HStack, VStack, Flex, Badge, Button, Input, Collapsible, InputGroup, Combobox, createListCollection, Portal, Link as ChakraLink } from '@chakra-ui/react';
-import { Blocks, Plus, Terminal, Layers, ChevronDown, ChevronRight, Search, ArrowUpAZ, ArrowDownZA } from 'lucide-react';
+import { Blocks, Plus, Terminal, Layers, ChevronDown, ChevronRight, Search, ArrowUpAZ, ArrowDownZA, CheckCircle, AlertCircle, Edit, Trash2, Mic } from 'lucide-react';
 import { useState, useCallback, useMemo } from 'react';
 import { useDependantState } from '../../hooks/useDependantState';
 import { PageHeader } from '../../components/PageHeader';
@@ -9,12 +9,15 @@ import { useStore } from '../../store';
 import { deleteBackend, validateBackend, createBackendGroup, deleteBackendGroup, activateBackendInGroup, restartServer, updateBackendGroup, updateSettings } from '../../api/services';
 import { BackendDialog } from './BackendDialog';
 import { BackendGroupDialog } from './BackendGroupDialog';
+import { WhisperBackendDialog } from './WhisperBackendDialog';
 import { ConfirmDialog } from '../../components/dialogs/ConfirmDialog';
 import { ActivateBackendDialog } from './ActivateBackendDialog';
 import { BackendRow } from './BackendRow';
 import { BackendGroupCard } from './BackendGroupCard';
 import { openExternal } from '../../utils/openExternal';
-import type { IBackend, IBackendGroup, IServer, TBackendSortField } from '@warpcore/shared';
+import type { IBackend, IBackendGroup, IServer, TBackendSortField, IWhisperBackend, TWhisperBackendId } from '@warpcore/shared';
+import { EValidationStatus } from '@warpcore/shared';
+import { removeWhisperBackend, createWhisperBackend } from '../../api/whisperServices';
 import { EServerStatus } from '@warpcore/shared';
 
 const FIELD_LABELS: Record<TBackendSortField, string> = {
@@ -26,11 +29,17 @@ const FIELD_LABELS: Record<TBackendSortField, string> = {
 export function BackendsPage() {
 	const backends = useStore((s) => s.backends);
 	const groups = useStore((s) => s.backendGroups);
+	const whisperBackends = useStore((s) => s.whisperBackends);
 
 	const backendsArr = useMemo(() => Object.values(backends), [backends]);
 	const groupsArr = useMemo(() => Object.values(groups), [groups]);
+	const whisperBackendsArr = useMemo(() => Object.values(whisperBackends), [whisperBackends]);
 
 	const [showAddDialog, setShowAddDialog] = useState(false);
+	const [showAddWhisperDialog, setShowAddWhisperDialog] = useState(false);
+	const [editingWhisperBackend, setEditingWhisperBackend] = useState<IWhisperBackend | null>(null);
+	const [deletingWhisperId, setDeletingWhisperId] = useState<string | null>(null);
+	const [whisperExpanded, setWhisperExpanded] = useState(true);
 	const [showAddGroup, setShowAddGroup] = useState(false);
 	const [editingBackend, setEditingBackend] = useState<IBackend | null>(null);
 	const [editingGroup, setEditingGroup] = useState<IBackendGroup | null>(null);
@@ -60,6 +69,15 @@ export function BackendsPage() {
 	const deleteGroupMut = useMutation<string, null>(
 		useCallback((id: string) => deleteBackendGroup(id), [])
 	);
+
+	const deleteWhisperMut = useMutation<string, null>(
+		useCallback((id: string) => removeWhisperBackend(id), [])
+	);
+
+	const handleDeleteWhisper = async (id: string) => {
+		await deleteWhisperMut.mutate(id);
+		setDeletingWhisperId(null);
+	};
 
 	const handleDelete = async (id: string) => {
 		await deleteMut.mutate(id);
@@ -311,7 +329,7 @@ export function BackendsPage() {
 								</VStack>
 							</Flex>
 						) : (
-							<VStack align="stretch" gap="3">
+							<VStack align="stretch" gap="2">
 								{filteredAndSortedBackends.map(backend => (
 									<BackendRow
 										key={backend.id}
@@ -382,6 +400,68 @@ export function BackendsPage() {
 						</Collapsible.Content>
 					</Collapsible.Root>
 				</Box>
+
+				{/* Whisper Backends Section */}
+				<Box borderWidth="1px" borderColor="var(--wc-border-subtle)" borderRadius="xl" bg="var(--wc-bg-surface)" overflow="hidden">
+					<Flex px="4" py="3" mb="4" align="center" justify="space-between" cursor="pointer" onClick={() => setWhisperExpanded(!whisperExpanded)} _hover={{ bg: 'var(--wc-bg-surface)' }} transition="background 0.15s ease">
+						<HStack gap="3">
+							<Box color="var(--wc-text-muted)">{whisperExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</Box>
+							<Blocks size={16} color="var(--wc-text-tertiary)" />
+							<Text fontSize="13px" fontWeight="600" color="var(--wc-text-heading)">Whisper.cpp Backends</Text>
+							<Badge size="sm" px="1.5" borderRadius="full" bg="var(--wc-bg-hover)" color="var(--wc-text-muted)" fontSize="10px" fontWeight="600">{whisperBackendsArr.length}</Badge>
+						</HStack>
+						<Button size="xs" variant="ghost" color="var(--wc-text-tertiary)" _hover={{ bg: 'var(--wc-accent-green-bg-15)', color: 'var(--wc-accent-green)' }} onClick={(e) => { e.stopPropagation(); setShowAddWhisperDialog(true); }}>
+							<Plus size={15} />
+						</Button>
+					</Flex>
+					<Collapsible.Root open={whisperExpanded}>
+						<Collapsible.Content>
+							<Box px="4" pb="3">
+								{whisperBackendsArr.length === 0 ? (
+									<Flex h="150px" alignItems="center" justifyContent="center">
+										<VStack gap="3" color="var(--wc-text-faint)">
+											<Blocks size={40} />
+											<Text fontSize="14px">No whisper backends registered</Text>
+											<Text fontSize="12px" color="var(--wc-text-faint)" textAlign="center">
+												Build whisper.cpp from source and register the whisper-server binary here.
+											</Text>
+										</VStack>
+									</Flex>
+								) : (
+									<VStack align="stretch" gap="3">
+										{whisperBackendsArr.map(backend => (
+											<Box key={backend.id} px="3" py="2" borderRadius="lg" bg="var(--wc-bg-card)" borderWidth="1px" borderColor="var(--wc-border-subtle)">
+												<Flex justify="space-between" align="center">
+													<HStack gap="3" flex="1" minW="0">
+														<Flex w="10" h="10" borderRadius="lg" alignItems="center" justifyContent="center" bg="var(--wc-bg-surface)">
+															<Mic size={20} color="var(--wc-text-tertiary)" />
+														</Flex>
+														<Box flex="1" minW="0">
+															<HStack gap="2">
+																<Text fontSize="13px" fontWeight="500" color="var(--wc-text-primary)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">{backend.name}</Text>
+																{backend.validation === EValidationStatus.VALID && <CheckCircle size={14} color="var(--wc-accent-green)" />}
+																{backend.validation === EValidationStatus.INVALID && <AlertCircle size={14} color="var(--wc-accent-red)" />}
+															</HStack>
+															<Text fontSize="11px" color="var(--wc-text-muted)" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">{backend.path}</Text>
+														</Box>
+													</HStack>
+													<HStack gap="1">
+														<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-blue)', bg: 'var(--wc-accent-blue-bg-8)' }} borderRadius="md" onClick={() => setEditingWhisperBackend(backend)}>
+															<Edit size={14} />
+														</Button>
+														<Button size="xs" variant="ghost" color="var(--wc-text-muted)" _hover={{ color: 'var(--wc-accent-red)', bg: 'var(--wc-accent-red-bg-8)' }} borderRadius="md" onClick={() => setDeletingWhisperId(backend.id)}>
+															<Trash2 size={14} />
+														</Button>
+													</HStack>
+												</Flex>
+											</Box>
+										))}
+									</VStack>
+								)}
+							</Box>
+						</Collapsible.Content>
+					</Collapsible.Root>
+				</Box>
 			</VStack>
 			</Box>
 
@@ -439,6 +519,30 @@ export function BackendsPage() {
 					onClose={() => setActivatingBackend(null)}
 					groupId={activatingBackend.groupId}
 					newBackendId={activatingBackend.newBackendId}
+				/>
+			)}
+
+			{showAddWhisperDialog && (
+				<WhisperBackendDialog
+					onClose={() => setShowAddWhisperDialog(false)}
+				/>
+			)}
+
+			{editingWhisperBackend && (
+				<WhisperBackendDialog
+					editBackendId={editingWhisperBackend.id}
+					onClose={() => setEditingWhisperBackend(null)}
+				/>
+			)}
+
+			{deletingWhisperId && (
+				<ConfirmDialog
+					title="Delete Whisper Backend?"
+					message="This will remove the whisper backend from your configuration."
+					isOpen={true}
+					isLoading={deleteWhisperMut.loading}
+					onCancel={() => setDeletingWhisperId(null)}
+					onConfirm={() => handleDeleteWhisper(deletingWhisperId)}
 				/>
 			)}
 		</Box>

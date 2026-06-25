@@ -1,6 +1,6 @@
 import type { AppState, ImmerSet, ImmerGet } from '../types';
-import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, IRecipesInitPayload, IRunsStepStartedPayload, IRunsStepOutputPayload, IRunsStepFinishedPayload, IRunsFinishedPayload, ERecipeStreamKind, ISseSlotStatePayload, ISseServerSlotsSnapshotPayload, IServerSlotsState, ISseCheckpointPayload, ISseCheckpointDeletedPayload, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings } from '@warpcore/shared';
-import { ERecipeStepStatus, EServerStatus } from '@warpcore/shared';
+import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, IRecipesInitPayload, IRunsStepStartedPayload, IRunsStepOutputPayload, IRunsStepFinishedPayload, IRunsFinishedPayload, ERecipeStreamKind, ISseSlotStatePayload, ISseServerSlotsSnapshotPayload, IServerSlotsState, ISseCheckpointPayload, ISseCheckpointDeletedPayload, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings, TWhisperBackendId, IWhisperBackend, TWhisperServerId, IWhisperServer, IWhisperModel } from '@warpcore/shared';
+import { ERecipeStepStatus, EServerStatus, EWhisperServerStatus } from '@warpcore/shared';
 
 interface SSEHandlersSlice {
 	SSEHandlers: Record<string, (data: any) => void>;
@@ -117,6 +117,51 @@ export const sseHandlersSlice = (
 		'backend-groups:update': (data: IBackendGroup) => setState((state) => { state.backendGroups[data.id] = data; }),
 		'backend-groups:delete': (data: IBackendGroup) => setState((state) => { delete state.backendGroups[data.id]; }),
 
+		// Whisper Backends
+		'whisperBackends:init': (data: Record<TWhisperBackendId, IWhisperBackend>) => setState((state) => { state.whisperBackends = data; }),
+		'whisperBackends:update': (data: IWhisperBackend) => setState((state) => { state.whisperBackends[data.id] = data; }),
+		'whisperBackends:delete': (data: IWhisperBackend) => setState((state) => { delete state.whisperBackends[data.id]; }),
+
+		// Whisper Servers
+		'whisperServers:init': (data: Record<TWhisperServerId, IWhisperServer>) => setState((state) => { state.whisperServers = data; }),
+		'whisperServers:update': (data: Record<TWhisperServerId, IWhisperServer>) => setState((state) => {
+			for (const [id, server] of Object.entries(data)) {
+				state.whisperServers[id] = server;
+			}
+			// Auto-select when a server becomes running and no server is selected or selected one isn't running
+			for (const [id, server] of Object.entries(data)) {
+				if (server.status === EWhisperServerStatus.RUNNING) {
+					const currentId = state.selectedWhisperServerId;
+					if (!currentId) {
+						state.selectedWhisperServerId = id;
+					} else {
+						const currentServer = state.whisperServers[currentId];
+						if (!currentServer || currentServer.status !== EWhisperServerStatus.RUNNING) {
+							state.selectedWhisperServerId = id;
+						}
+					}
+				}
+			}
+		}),
+		'whisperServers:delete': (data: Record<TWhisperServerId, null>) => setState((state) => {
+			for (const id of Object.keys(data)) {
+				delete state.whisperServers[id];
+			}
+		}),
+		'whisperServers:logs': (data: Record<string, string[]>) => setState((state) => {
+			for (const [serverId, lines] of Object.entries(data)) {
+				const logs = state.whisperServerLogs[serverId] || [];
+				const appended = [...logs, ...lines];
+				state.whisperServerLogs[serverId] = appended.length > 500 ? appended.slice(-500) : appended;
+			}
+		}),
+
+		// Whisper Models
+		'whisperModels:init': (data: IWhisperModel[]) => setState((state) => {
+			state.whisperModels = {};
+			for (const m of data) state.whisperModels[m.id] = m;
+		}),
+
 		// Models
 		'models:init': (data: IModel[]) => setState((state) => {
 			state.models = {};
@@ -134,9 +179,27 @@ export const sseHandlersSlice = (
 			state.settings = { ...state.settings, ...data };
 		}),
 
+		// Embedding
+		'embedding:init': (data) => setState((state) => {
+			if (data.serverId) {
+				state.selectedEmbeddingServerId = data.serverId;
+			}
+		}),
+		'embedding.configured': (data) => setState((state) => {
+			state.selectedEmbeddingServerId = data.serverId;
+		}),
+
 		// MCP
 		'mcp:init': (data) => setState((state) => { state.mcpServers = data; }),
 		'mcp:servers': (data) => setState((state) => { state.mcpServers = data; }),
+		'mcp:permissions:init': (data) => setState((state) => {
+			state.serverPermissions = data.servers;
+			state.toolPermissions = data.tools;
+		}),
+		'mcp:permissions:update': (data) => setState((state) => {
+			state.serverPermissions = data.servers;
+			state.toolPermissions = data.tools;
+		}),
 
 		// Recipes
 		'recipes:init': (data: IRecipesInitPayload) => setState((state) => {

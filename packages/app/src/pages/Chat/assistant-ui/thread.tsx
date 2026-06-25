@@ -7,11 +7,14 @@ import { MarkdownText } from "./markdown-text";
 import { ToolFallback } from "./tool-fallback";
 import { ToolCallBlockWrapper } from "./ToolCallBlockWrapper";
 import { TooltipIconButton } from "./tooltip-icon-button";
+import { KokoroTTSButton } from "./KokoroTTS";
+import { EmbeddingToggle } from "./EmbeddingToggle";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { VscTools } from "react-icons/vsc";
-import { Box, Image, Popover, Switch, AccordionRoot, AccordionItem as AccordionItemComp, AccordionItemTrigger, AccordionItemContent, HStack, VStack, Text } from '@chakra-ui/react';
+import { LuDatabaseZap } from "react-icons/lu";
+import { Box, Image, Menu, Portal, Popover, Switch, AccordionRoot, AccordionItem as AccordionItemComp, AccordionItemTrigger, AccordionItemContent, HStack, VStack, Text } from '@chakra-ui/react';
 import {
 	ActionBarMorePrimitive,
 	ActionBarPrimitive,
@@ -23,7 +26,7 @@ import {
 	MessagePrimitive,
 	SuggestionPrimitive,
 	ThreadPrimitive,
-	useAuiState,
+	useAuiState, useAui, useAuiEvent,
 } from "@assistant-ui/react";
 import {
 	ArrowDownIcon,
@@ -37,6 +40,7 @@ import {
 	DownloadIcon,
 	Info,
 	MoreHorizontalIcon,
+	MoreVertical,
 	PencilIcon,
 	RefreshCwIcon,
 	SendHorizonal,
@@ -44,11 +48,16 @@ import {
 	SquareIcon,
 	Timer,
 	Trash2,
+	Volume2,
 } from "lucide-react";
-import React, { useCallback, useContext, useMemo, useState, type FC } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState, type FC } from "react";
 import { BranchTokensContext, ChatConfigContext } from "@/pages/Chat/ChatPage";
 import { useStore } from "@/store";
+import { VoiceWaveform } from "./VoiceWaveform";
+import { TTSFlameWaveform } from "./TTSFlameWaveform";
 import { ThreadServerSelector } from "@/pages/Chat/assistant-ui/ServerSelector";
+import { ThreadWhisperServerSelector } from "@/pages/Chat/assistant-ui/WhisperServerSelector";
+import { VoiceInput } from "@/pages/Chat/assistant-ui/VoiceInput";
 import { deleteMessage } from "@/api/services";
 import { useMessageTiming } from "@assistant-ui/react";
 import { BrainCircuitIcon, ClockIcon } from "lucide-react";
@@ -57,8 +66,27 @@ import { EMcpServerStatus, IToolAttachment } from "@warpcore/bridge";
 import { encodingForModel } from 'js-tiktoken';
 import { IconButton } from '@chakra-ui/react';
 import { Elicitation } from './Elicitation';
+import { AnnotationsBox } from './AnnotationsBox';
+import { ConfirmDialog } from '@/components/dialogs/ConfirmDialog';
+import { SelectionPopover } from './SelectionPopover';
+import { DictationProvider, useDictation } from './DictationContext';
+import { WorkspaceView } from '../WorkspaceView';
+import { ComposerEditor, IWarpComposerEditorRef } from './ComposerEditor';
+import { insertComposerText, clearComposerEditor } from './composerEditorRegistry';
+import { ComposerUiSpace } from '../ui-space/ComposerUiSpace';
+import { MessageUiSpace } from '../ui-space/MessageUiSpace';
+import type { IExtractedSlashCommand } from './docToString';
 
 const tokenEncoder = encodingForModel('gpt-4o');
+
+interface DeleteMessageState {
+	messageId: string | null;
+	isLoading: boolean;
+	open: (messageId: string) => void;
+	close: () => void;
+	confirm: () => Promise<void>;
+}
+const DeleteMessageContext = React.createContext<DeleteMessageState | null>(null);
 
 interface IServerStatusContext {
 	currentServerId: string | null;
@@ -74,12 +102,15 @@ export const ServerStatusContext = React.createContext<IServerStatusContext>({
 	supportsMultiModal: false,
 });
 
-export const Thread: FC<{ 
-	isLoading?: boolean, 
+export const Thread: FC<{
+	isLoading?: boolean,
 	currentServerId: TServerId | null
 }> = React.memo(({ isLoading = false, currentServerId }) => {
 	const ThreadMsgFn = useCallback(() => <ThreadMessage />, []);
 	const serversMap = useStore(s => s.servers);
+	const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+	const [deletingLoading, setDeletingLoading] = useState(false);
+
 	const currentServer = useMemo(() => currentServerId ? serversMap[currentServerId] || null : null, [
 		currentServerId,
 		serversMap
@@ -87,49 +118,93 @@ export const Thread: FC<{
 	const currentServerStatus = currentServer?.status || null;
 	const isValidServer = !!currentServerId && currentServer?.status === EServerStatus.RUNNING;
 	const supportsMultiModal = currentServer?.useMultiModal ?? false;
+	const chatFixedWidth = useStore(s => s.settings.chatFixedWidth ?? false);
+	const currentThreadId = useStore(s => s.currentThreadId);
+
+	const deleteMessageCtx = useMemo<DeleteMessageState>(() => {
+		let resolveFn: (() => void) | null = null;
+		const handleConfirm = async () => {
+			setDeletingLoading(true);
+			try {
+				await deleteMessage(deletingMessageId!);
+			} finally {
+				setDeletingLoading(false);
+				setDeletingMessageId(null);
+				if (resolveFn) resolveFn();
+			}
+		};
+		return {
+			messageId: deletingMessageId,
+			isLoading: deletingLoading,
+			open: (messageId: string) => setDeletingMessageId(messageId),
+			close: () => setDeletingMessageId(null),
+			confirm: handleConfirm,
+		};
+	}, [deletingMessageId, deletingLoading]);
+
 	return (
 		<ServerStatusContext.Provider value={{ currentServerId, currentServerStatus, isValidServer, supportsMultiModal }}>
-			<ThreadPrimitive.Root
-			className="aui-root aui-thread-root @container flex h-full flex-col"
-			style={{
-				["--thread-max-width" as string]: "44rem",
-				["--composer-radius" as string]: "24px",
-				["--composer-padding" as string]: "10px",
-			}}
-		>
-			<ThreadPrimitive.Viewport
-				turnAnchor="bottom"
-				autoScroll={false}
-				className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-6 pt-4"
-				style={{ overflowAnchor: "none" }}
-			>
-				{isLoading ? (
-					<div className="flex h-full items-center justify-center">
-						<div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-600 border-t-transparent" />
-					</div>
-				) : (
-					<>
-						<AuiIf condition={(s) => s.thread.isEmpty}>
-							<ThreadWelcome />
-						</AuiIf>
+			<DeleteMessageContext.Provider value={deleteMessageCtx}>
+				<DictationProvider>
+					<ThreadPrimitive.Root
+						className="aui-root aui-thread-root @container flex h-full flex-col"
+						style={{
+							["--thread-max-width" as string]: "44rem",
+							["--composer-radius" as string]: "24px",
+							["--composer-padding" as string]: "10px",
+						}}
+					>
+						<ThreadPrimitive.Viewport
+							turnAnchor="bottom"
+							autoScroll={false}
+							className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-6 pt-4"
+							style={{ overflowAnchor: "none" }}
+						>
+							{isLoading ? (
+								<div className="flex h-full items-center justify-center">
+									<div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-600 border-t-transparent" />
+								</div>
+							) : (
+								<>
+									<AuiIf condition={(s) => s.thread.isEmpty}>
+										<ThreadWelcome />
+									</AuiIf>
 
-						<ThreadPrimitive.Messages>
-							{ThreadMsgFn}
-						</ThreadPrimitive.Messages>
-					</>
-				)}
+									<div style={{ maxWidth: chatFixedWidth ? "960px" : "100%", margin: "0 auto", width: "100%" }}>
+										<ThreadPrimitive.Messages>
+											{ThreadMsgFn}
+										</ThreadPrimitive.Messages>
+									</div>
+									<SelectionPopover />
+								</>
+							)}
 
-				{!isLoading && (
-					<div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,var(--wc-bg-page)_35%,var(--wc-bg-page)_100%)]">
-						<ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer w-full max-w-(--thread-max-width) flex flex-col gap-4 overflow-visible">
-							<ThreadScrollToBottom />
-							<Elicitation />
-							<Composer />
-						</ThreadPrimitive.ViewportFooter>
-					</div>
-				)}
-			</ThreadPrimitive.Viewport>
-			</ThreadPrimitive.Root>
+							{!isLoading && (
+								<div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col items-center gap-4 pb-4 md:pb-6 pt-4 bg-[linear-gradient(to_bottom,transparent_0%,var(--wc-bg-page)_35%,var(--wc-bg-page)_100%)]">
+									<ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer flex flex-col gap-4 overflow-visible" style={{ width: "44rem" }}>
+										<ThreadScrollToBottom />
+										<Elicitation />
+										<AnnotationsBox />
+										<Composer />
+									</ThreadPrimitive.ViewportFooter>
+								</div>
+							)}
+						</ThreadPrimitive.Viewport>
+					</ThreadPrimitive.Root>
+
+					{deletingMessageId && (
+						<ConfirmDialog
+							title="Delete Message"
+							message="Are you sure you want to delete this message?"
+							isOpen={true}
+							onConfirm={deleteMessageCtx.confirm}
+							onCancel={deleteMessageCtx.close}
+							isLoading={deletingLoading}
+							confirmLabel="Delete"
+						/>
+					)}
+				</DictationProvider>
+			</DeleteMessageContext.Provider>
 		</ServerStatusContext.Provider>
 	);
 });
@@ -137,9 +212,16 @@ export const Thread: FC<{
 const ThreadMessage: FC = () => {
 	const role = useAuiState((s) => s.message.role);
 	const isEditing = useAuiState((s) => s.message.composer.isEditing);
-	if (isEditing) return <EditComposer />;
-	if (role === "user") return <UserMessage />;
-	return <AssistantMessage />;
+	const parts = useAuiState((s) => s.message.content);
+	const hasToolCalls = parts.some((part: any) => part.type === 'tool-call');
+
+	let msg;
+	if (isEditing) msg = <EditComposer />;
+	else if (role === "user") msg = <UserMessage />;
+	else if (hasToolCalls) msg = <ToolMessage />;
+	else msg = <AssistantMessage />;
+
+	return msg;
 };
 
 const ThreadScrollToBottom: FC = () => {
@@ -157,6 +239,10 @@ const ThreadScrollToBottom: FC = () => {
 };
 
 const ThreadWelcome: FC = () => {
+	const activeWorkspaceId = useStore(s => s.activeWorkspaceId);
+	if (activeWorkspaceId) {
+		return <WorkspaceView folderId={activeWorkspaceId} />;
+	}
 	return (
 		<div className="aui-thread-welcome-root mx-auto my-auto flex w-full max-w-(--thread-max-width) grow flex-col">
 			<div className="aui-thread-welcome-center flex w-full grow flex-col items-center justify-center">
@@ -224,7 +310,7 @@ const ContextUsageBar: FC = () => {
 	const total = branchTokensCount + inputTokens;
 	const ctxLabel = contextSize > 0 ? (contextSize > 1000 ? `${(contextSize / 1000).toFixed(0)}k` : String(contextSize)) : '?';
 	const pct = contextSize > 0 ? Math.min((total / contextSize) * 100, 100) : 0;
-	const color = pct > 90 ? 'var(--wc-accent-red)' : pct > 70 ? 'var(--wc-accent-yellow-strong)' : 'var(--wc-text-disabled)';
+	const color = pct > 90 ? 'var(--wc-accent-red)' : pct > 70 ? 'var(--wc-accent-yellow-strong)' : 'var(--wc-text-muted)';
 
 	return (
 		<div className="flex items-center gap-2 px-1 pt-1" title={`Context: ${total.toLocaleString()} / ${contextSize > 0 ? contextSize.toLocaleString() : '?'} tokens`}>
@@ -240,16 +326,80 @@ const ContextUsageBar: FC = () => {
 
 const Composer: FC = () => {
 	const { isValidServer } = useContext(ServerStatusContext);
-	
-	const handleSubmit = (e: React.FormEvent) => {
-		if (!isValidServer) {
-			e.preventDefault();
-			document.dispatchEvent(new CustomEvent('server-selector-shake'));
+	const { waveformStream, setWaveformStream, subscribeTranscript } = useDictation();
+	const annotatorVisible = useStore(s => s.annotatorVisible);
+	const ttsIsSpeaking = useStore(s => s.ttsIsSpeaking);
+	const annotations = useStore(s => s.annotations);
+	const clearAnnotations = useStore(s => s.clearAnnotations);
+	const aui = useAui();
+	const composerText = useAuiState(s => s.composer.text);
+	const pendingSlashCommands = useStore(s => s.pendingSlashCommands);
+	const editorRef = useRef<IWarpComposerEditorRef>(null);
+
+	const handleChangeText = useCallback((text: string) => {
+		aui.composer().setText(text);
+	}, [aui]);
+
+	const handleEnter = useCallback(() => {
+		// Annotation injection moved to FEApplet bridge.preCompletion hook
+		// if (annotations.length > 0) {
+		// 	const lines = annotations.map((a, i) => `${i + 1}. "${a.selectedText}"\n   ${a.comment}`);
+		// 	const fullText = (lines.join('\n\n') + (composerText.trim() ? '\n\n' + composerText : '')).trim();
+		// 	aui.composer().setText(fullText);
+		// 	clearAnnotations();
+		// }
+		if (!composerText.trim() && (pendingSlashCommands.length > 0 || annotations.length > 0)) {
+			aui.composer().setText("<continue>");
 		}
+		aui.composer().send({ startRun: true });
+	}, [aui, annotations, composerText, clearAnnotations, pendingSlashCommands.length]);
+
+	const composerDisabled = useAuiState(s => s.composer.isEmpty || !s.composer.isEditing);
+	const canSend = useCallback(() => {
+		if (!isValidServer) {
+			document.dispatchEvent(new CustomEvent('server-selector-shake'));
+			return false;
+		}
+		if (composerDisabled && annotations.length === 0 && pendingSlashCommands.length === 0) return false;
+		return true;
+	}, [isValidServer, composerDisabled, annotations.length, pendingSlashCommands.length]);
+	useAuiEvent("composer.send", () => {
+		editorRef.current?.clear();
+	});
+
+	// Subscribe to dictation transcripts — only act when popover is not visible
+	useEffect(() => {
+		if (annotatorVisible) return;
+		const unsubscribe = subscribeTranscript((text: string) => {
+			const ed = editorRef.current?.getEditor();
+			if (!ed) return;
+			const needsSpace = !ed.getText().endsWith(' ');
+			ed.chain().focus().insertContent((needsSpace ? ' ' : '') + text).run();
+		});
+		return unsubscribe;
+	}, [annotatorVisible, subscribeTranscript, aui]);
+
+	const handleSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!isValidServer) {
+			document.dispatchEvent(new CustomEvent('server-selector-shake'));
+			return;
+		}
+		// Annotation injection moved to FEApplet bridge.preCompletion hook
+		// if (annotations.length === 0) return;
+		// const lines = annotations.map((a, i) => `${i + 1}. "${a.selectedText}"\n   ${a.comment}`);
+		// const fullText = (lines.join('\n\n') + (composerText.trim() ? '\n\n' + composerText : '')).trim();
+		// aui.composer().setText(fullText);
+		// clearAnnotations();
+		if (!composerText.trim() && (pendingSlashCommands.length > 0 || annotations.length > 0)) {
+			aui.composer().setText("<continue>");
+		}
+		aui.composer().send({ startRun: true });
 	};
-	
+
 	return (
 		<ComposerPrimitive.Root onSubmit={handleSubmit} className="aui-composer-root relative flex w-full flex-col">
+			{ttsIsSpeaking ? <TTSFlameWaveform /> : null}
 			<ComposerPrimitive.AttachmentDropzone asChild>
 				<div
 					data-slot="composer-shell"
@@ -257,21 +407,21 @@ const Composer: FC = () => {
 					style={{
 						background: "var(--wc-bg-elevated)",
 						boxShadow: "0px 10px 10px 10px rgba(0,0,0,0.15)",
-						borderColor: "var(--wc-border-subtle)",
+						borderColor: "var(--wc-border-default)",
 					}}
 				>
 					<ComposerAttachments />
-				 <ComposerPrimitive.Input
-						placeholder="Send a message..."
-						className="aui-composer-input max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-sm outline-none aui-composer-input"
-						style={{ color: 'var(--wc-text-primary)' }}
-						rows={1}
-						autoFocus
-						aria-label="Message input"
-						autoComplete="off"
-					/>
-					<ComposerAction />
-					<ContextUsageBar />
+					<ComposerUiSpace />
+<ComposerEditor
+					ref={editorRef}
+					placeholder="Send a message..."
+					className="aui-composer-editor max-h-32 min-h-10 w-full overflow-y-auto bg-transparent px-1.75 py-1 text-sm"
+					onChangeText={handleChangeText}
+					onEnter={handleEnter}
+					canSend={canSend}
+				/>
+					<ComposerAction onStreamChange={setWaveformStream} />
+					{waveformStream ? <VoiceWaveform stream={waveformStream} width={680} /> : <ContextUsageBar />}
 				</div>
 			</ComposerPrimitive.AttachmentDropzone>
 		</ComposerPrimitive.Root>
@@ -315,36 +465,6 @@ const ReasoningEffortToggle: FC = () => {
 		</IconButton>
 	);
 };
-
-const ToolsToggle: FC = React.memo(() => {
-	const attachAllTools = useStore(s => s.attachAllTools);
-	const setAttachedTools = useStore(s => s.setAttachedTools);
-	const toggle = () => {
-		const next = !attachAllTools;
-		setAttachedTools(next, []);
-	};
-	const label = attachAllTools ? 'Tools' : 'Off';
-	const color = attachAllTools ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)';
-	return (
-		<IconButton
-			variant="outline"
-			size="md"
-			px="3"
-			ml="1"
-			borderRadius={"lg"}
-			borderWidth="1px"
-			borderColor={attachAllTools ? color : "var(--wc-border-default)"}
-			_hover={{ bg: 'var(--wc-bg-hover)' }}
-			color={color}
-			onClick={toggle}
-			className="flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors hover:bg-accent"
-			title={`Tools: ${label} (click to toggle)`}
-		>
-			<VscTools className={`${attachAllTools ? '' : 'opacity-40'}`} />
-			<span style={{ fontSize: "12px" }}>{label}</span>
-		</IconButton>
-	);
-});
 
 const ToolsSelector: FC = React.memo(() => {
 	const attachAllTools = useStore(s => s.attachAllTools);
@@ -437,7 +557,9 @@ const ToolsSelector: FC = React.memo(() => {
 									</Switch.Root>
 								</HStack>
 								<AccordionRoot collapsible defaultValue={[]}>
-									{connectedServers.map(([serverName, state]) => (
+							{connectedServers.map(([serverName, state]) => {
+									const activeCount = attachedTools.filter(t => t.serverName === serverName).length;
+									return (
 										<AccordionItemComp key={serverName} value={serverName} style={{ border: 'none' }}>
 											<AccordionItemTrigger
 												style={{
@@ -452,10 +574,10 @@ const ToolsSelector: FC = React.memo(() => {
 													width: '100%',
 												}}
 											>
-												<Text fontSize="11px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em">
+												<Text fontSize="11px" fontWeight="600" color={activeCount ? 'var(--wc-accent-blue)' : 'var(--wc-text-muted)'} textTransform="uppercase" letterSpacing="0.05em">
 													{serverName}
 												</Text>
-												<Text fontSize="10px" color="var(--wc-text-faint)">{state.tools.length}</Text>
+												<Text fontSize="10px" color={activeCount ? 'var(--wc-accent-blue)' : 'var(--wc-text-faint)'}>{state.tools.length}{activeCount ? ` (${activeCount})` : ''}</Text>
 											</AccordionItemTrigger>
 											<AccordionItemContent pt="1" pb="2" px="2" style={{ border: 'none' }}>
 												<VStack gap="1.5" align="stretch">
@@ -485,7 +607,8 @@ const ToolsSelector: FC = React.memo(() => {
 												</VStack>
 											</AccordionItemContent>
 										</AccordionItemComp>
-									))}
+									);
+								})}
 								</AccordionRoot>
 							</VStack>
 						)}
@@ -496,10 +619,33 @@ const ToolsSelector: FC = React.memo(() => {
 	);
 });
 
-const ComposerAction: FC = () => {
+const ComposerAction: FC<{ onStreamChange?: (stream: MediaStream | null) => void }> = ({ onStreamChange }) => {
 	const { isValidServer, supportsMultiModal } = useContext(ServerStatusContext);
 	const currentThreadId = useStore(s => s.currentThreadId);
 	const canAttach = isValidServer && supportsMultiModal;
+	const aui = useAui();
+	const annotations = useStore(s => s.annotations);
+	const clearAnnotations = useStore(s => s.clearAnnotations);
+	const composerDisabled = useAuiState(s => s.composer.isEmpty || !s.composer.isEditing);
+	const composerText = useAuiState(s => s.composer.text);
+	const pendingSlashCommands = useStore(s => s.pendingSlashCommands);
+	const isSendDisabled = composerDisabled && annotations.length === 0 && pendingSlashCommands.length === 0;
+
+	const handleSend = useCallback(() => {
+		if (isSendDisabled) return;
+		// Annotation injection moved to FEApplet bridge.preCompletion hook
+		// if (annotations.length > 0) {
+		// 	const lines = annotations.map((a, i) => `${i + 1}. "${a.selectedText}"\n   ${a.comment}`);
+		// 	const fullText = (lines.join('\n\n') + (composerText.trim() ? '\n\n' + composerText : '')).trim();
+		// 	aui.composer().setText(fullText);
+		// 	clearAnnotations();
+		// }
+		if (!composerText.trim() && (pendingSlashCommands.length > 0 || annotations.length > 0)) {
+			aui.composer().setText("<continue>");
+		}
+		aui.composer().send({ startRun: true });
+		clearComposerEditor();
+	}, [isSendDisabled, annotations, composerText, clearAnnotations, pendingSlashCommands.length]);
 
 	return (
 		<div className="aui-composer-action-wrapper relative flex items-center justify-between">
@@ -508,28 +654,32 @@ const ComposerAction: FC = () => {
 				<ReasoningEffortToggle />
 				{/* <ToolsToggle /> */}
 				<ToolsSelector />
+				<EmbeddingToggle />
 			</div>
 			<div className="flex items-center gap-2">
+				<VoiceInput threadId={currentThreadId} onTranscript={(text) => {
+					insertComposerText(text);
+				}} aui={aui} onStreamChange={onStreamChange} />
+				<ThreadWhisperServerSelector />
 				<ThreadServerSelector threadId={currentThreadId} />
 				<AuiIf condition={(s) => !s.thread.isRunning}>
-					<ComposerPrimitive.Send asChild>
-						<TooltipIconButton
-							disabled={!isValidServer}
-							tooltip={!isValidServer ? "Select and start a model first" : "Send message"}
-							side="bottom"
-							type="button"
-							variant="outline"
-							className={`${!isValidServer ? 'opacity-50 cursor-not-allowed' : ''} aui-composer-send size-9`}
-							aria-label={!isValidServer ? "Send message - model not selected" : "Send message"}
-							style={!isValidServer
-								? { color: 'var(--wc-text-muted)', borderColor: 'var(--wc-border-default)', backgroundColor: 'transparent' }
-								: { color: 'var(--wc-accent-blue)', borderColor: 'var(--wc-accent-blue-border)', backgroundColor: 'var(--wc-accent-blue-bg-8)' }
-							}
-							_hover={!isValidServer ? undefined : { color: 'var(--wc-accent-blue-hover)', borderColor: 'var(--wc-accent-blue-border)', backgroundColor: 'var(--wc-accent-blue-bg-10)' }}
-						>
-							<SendHorizonal className="aui-composer-send-icon size-4" />
-						</TooltipIconButton>
-					</ComposerPrimitive.Send>
+					<TooltipIconButton
+						onClick={handleSend}
+						disabled={!isValidServer || isSendDisabled}
+						tooltip={!isValidServer ? "Select and start a model first" : "Send message"}
+						side="bottom"
+						type="button"
+						variant="outline"
+						className={`${(!isValidServer || isSendDisabled) ? 'opacity-50 cursor-not-allowed' : ''} aui-composer-send size-9`}
+						aria-label={!isValidServer ? "Send message - model not selected" : "Send message"}
+						style={!isValidServer
+							? { color: 'var(--wc-text-muted)', borderColor: 'var(--wc-border-default)', backgroundColor: 'transparent' }
+							: { color: 'var(--wc-accent-blue)', borderColor: 'var(--wc-accent-blue-border)', backgroundColor: 'var(--wc-accent-blue-bg-8)' }
+						}
+						_hover={!isValidServer ? undefined : { color: 'var(--wc-accent-blue-hover)', borderColor: 'var(--wc-accent-blue-border)', backgroundColor: 'var(--wc-accent-blue-bg-10)' }}
+					>
+						<SendHorizonal className="aui-composer-send-icon size-4" />
+					</TooltipIconButton>
 				</AuiIf>
 				<AuiIf condition={(s) => s.thread.isRunning}>
 					<ComposerPrimitive.Cancel asChild>
@@ -595,6 +745,49 @@ const StatsTooltip: FC = () => {
 	);
 };
 
+const EmbeddingStatus: FC = React.memo(() => {
+	const messageId = useAuiState(s => s.message.id);
+	const embedded = useStore(s => s.embeddingStatusByMessage[messageId]);
+	const selectedServerId = useStore(s => s.selectedEmbeddingServerId);
+	const servers = useStore(s => s.servers);
+	const applyEmbeddingEmbedded = useStore(s => s.applyEmbeddingEmbedded);
+	const removeEmbeddingStatus = useStore(s => s.removeEmbeddingStatus);
+	const [loading, setLoading] = useState(false);
+	const selectedServer = selectedServerId ? servers[selectedServerId] : null;
+
+	const handleClick = useCallback(async () => {
+		if (!selectedServer || loading) return;
+		setLoading(true);
+		try {
+			if (embedded) {
+				const res = await fetch(`/api/chat/messages/${messageId}/embed?serverId=${encodeURIComponent(selectedServer.id)}&topic=global`, { method: 'DELETE' });
+				if (res.ok) removeEmbeddingStatus(messageId);
+			} else {
+				const res = await fetch(`/api/chat/messages/${messageId}/embed?serverId=${encodeURIComponent(selectedServer.id)}&topic=global`, { method: 'POST' });
+				if (res.ok) applyEmbeddingEmbedded(messageId);
+			}
+		} catch { /* ignore */ }
+		finally { setLoading(false); }
+	}, [messageId, embedded, selectedServer, loading, applyEmbeddingEmbedded, removeEmbeddingStatus]);
+
+	if (!selectedServer || selectedServer.status !== EServerStatus.RUNNING) return null;
+
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<div className="cursor-pointer p-1 rounded hover:bg-muted/50 transition-colors" style={{ margin: "0 8px 0 0", opacity: loading ? 0.5 : 1 }} onClick={handleClick}>
+					<LuDatabaseZap size={16} style={{ color: embedded ? "var(--wc-accent-purple)" : "var(--wc-text-muted)" }} />
+				</div>
+			</TooltipTrigger>
+			<TooltipContent align="start" sideOffset={4} side="bottom">
+				<div className="text-sm" style={{ color: 'var(--wc-special-white)', boxShadow: "0 0 10px black" }}>
+					<span>{embedded ? 'Embedded (click to remove)' : 'Embed message'}</span>
+				</div>
+			</TooltipContent>
+		</Tooltip>
+	);
+});
+
 const ToolCallRenderer: FC = () => {
 	const part = useAuiState(s => s.part);
 	
@@ -642,26 +835,34 @@ const AssistantMessage: FC = React.memo(() => {
 	const status = useAuiState((s) => s.message.status?.type);
 	const messageId = useAuiState((s) => s.message.id);
 	const startingTools = useStore((s) => s.startingToolsByMessage[messageId]);
+	const chatFontSize = useStore(s => s.settings.chatFontSize ?? 14);
+	const chatFontFamily = useStore(s => s.settings.chatFontFamily ?? '');
 	// Skip rendering empty assistant messages (converted TOOL messages)
 	// BUT render if status is "running" so the loading indicator appears during prompt processing
 	if (parts.length === 0 && status !== 'running') return null;
 
 	return (
 		<MessagePrimitive.Root
-			className="aui-assistant-message-root fade-in slide-in-from-bottom-1 relative mx-auto w-full  animate-in py-3 duration-150"
+			className="aui-assistant-message-root fade-in slide-in-from-bottom-1 relative mx-auto w-full animate-in py-3 duration-150"
 			data-role="assistant"
+			data-message-id={messageId}
+			style={{
+				paddingRight: "100px",
+			}}
 		>
-			<div className="aui-assistant-message-content wrap-break-word px-2 text-[14px] leading-relaxed" style={{ color: 'var(--wc-text-primary)' }}>
-				<MessagePrimitive.Parts
-					components={componentsMap}
-				/>
-				{startingTools && startingTools.length > 0 && (
-					<div className="mt-2 text-md italic" style={{ color: 'var(--wc-text-tertiary)' }}>
-						calling: {startingTools.join(', ')}...
-					</div>
-				)}
-				<MessageError />
-			</div>
+			<MessageUiSpace>
+				<div className="aui-assistant-message-content wrap-break-word px-2 leading-relaxed" style={{ color: 'var(--wc-text-primary)', fontSize: `${chatFontSize}px`, fontFamily: chatFontFamily || undefined, backgroundColor: "var(--wc-bg-subtle)", padding: "15px", borderRadius: "15px" }}>
+					<MessagePrimitive.Parts
+						components={componentsMap}
+					/>
+					{startingTools && startingTools.length > 0 && (
+						<div className="mt-2 text-md italic" style={{ color: 'var(--wc-text-tertiary)' }}>
+							calling: {startingTools.join(', ')}...
+						</div>
+					)}
+					<MessageError />
+				</div>
+			</MessageUiSpace>
 
 			<div className="aui-assistant-message-footer mt-1 ml-2 flex min-h-6 items-center gap-1">
 				 <StatsTooltip />
@@ -720,57 +921,242 @@ const ActionBarIcon: FC<{ children: React.ReactNode; onClick?: () => void }> = (
 );
 
 const DeleteMessageButton: FC<{ messageId: string }> = ({ messageId }) => {
-	const handleDelete = useCallback(async () => {
-		if (!confirm('Delete this message?')) return;
-		await deleteMessage(messageId);
-	}, [messageId]);
-	
+	const ctx = useContext(DeleteMessageContext);
 	return (
-		<ActionBarIcon onClick={handleDelete}>
-			<Trash2 size={14} />
-		</ActionBarIcon>
+		<HStack gap="2" onClick={() => ctx?.open(messageId)}>
+			<Trash2 size={14} color="var(--wc-accent-red)" />
+			<Text fontSize="12px" color="var(--wc-accent-red)">Delete</Text>
+		</HStack>
 	);
 };
+
+const BrowserTTS = React.memo(() => {
+	const [speaking, setSpeaking] = useState(false);
+	const parts = useAuiState((s) => s.message.content);
+	const messageText = useMemo(() => {
+		if (!parts || parts.length === 0) return '';
+		return parts
+			.filter((p: any) => p.type === 'text')
+			.map((p: any) => p.text)
+			.join('\n\n');
+	}, [parts]);
+
+	const handleSpeak = useCallback(() => {
+		if (speaking) {
+			window.speechSynthesis.cancel();
+			setSpeaking(false);
+			return;
+		}
+		if (!messageText.trim()) return;
+		window.speechSynthesis.cancel();
+		const utterance = new SpeechSynthesisUtterance(messageText);
+		utterance.onend = () => setSpeaking(false);
+		utterance.onerror = () => setSpeaking(false);
+		setSpeaking(true);
+		window.speechSynthesis.speak(utterance);
+	}, [speaking, messageText]);
+
+	return (
+		<ActionBarIcon onClick={handleSpeak}>
+			{speaking ? <SquareIcon size={14} /> : <Volume2 size={14} />}
+		</ActionBarIcon>
+	);
+});
 
 const AssistantActionBar: FC = () => {
 	const messageId = useAuiState((s) => s.message.id);
 	const isCopied = useAuiState((s) => s.message.isCopied);
-	
+	const kokoroInstalled = useStore((s) => s.kokoroStatus?.installed);
+	const clearAnnotations = useStore((s) => s.clearAnnotations);
+
+	const ref = useRef<HTMLDivElement | null>(null)
+  	const getAnchorRect = () => ref.current!.getBoundingClientRect()
+
 	return (
 		<ActionBarPrimitive.Root
 			className="aui-assistant-action-bar-root col-start-3 row-start-2 -ml-1"
-			style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+			style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: "visible" }}
 		>
-			<ActionBarPrimitive.Copy asChild>
-				<ActionBarIcon>
-					{isCopied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
-				</ActionBarIcon>
-			</ActionBarPrimitive.Copy>
+			{kokoroInstalled ? <KokoroTTSButton /> : <BrowserTTS />}
+			<EmbeddingStatus />
 
-			<ActionBarPrimitive.Reload asChild>
-				<ActionBarIcon>
-					<RefreshCwIcon size={14} />
-				</ActionBarIcon>
-			</ActionBarPrimitive.Reload>
-
-			<DeleteMessageButton messageId={messageId} />
+			<Menu.Root positioning={{ getAnchorRect }}>
+				<Menu.Trigger asChild>
+					<ActionBarIcon>
+						<MoreVertical size={14} ref={ref}/>
+					</ActionBarIcon>
+				</Menu.Trigger>
+				<Menu.Positioner>
+					<Menu.Content>
+						<ActionBarPrimitive.Reload asChild>
+							<Menu.Item value="reload" onClick={clearAnnotations}>
+								<HStack gap="2">
+									<RefreshCwIcon size={14} />
+									<Text fontSize="12px">Reload</Text>
+								</HStack>
+							</Menu.Item>
+						</ActionBarPrimitive.Reload>
+						<Menu.Separator />
+						<ActionBarPrimitive.Copy asChild>
+							<Menu.Item value="copy">
+								<HStack gap="2">
+									{isCopied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
+									<Text fontSize="12px">Copy</Text>
+								</HStack>
+							</Menu.Item>
+						</ActionBarPrimitive.Copy>
+						<ActionBarPrimitive.Edit asChild>
+							<Menu.Item value="edit">
+								<HStack gap="2">
+									<PencilIcon size={14} />
+									<Text fontSize="12px">Edit</Text>
+								</HStack>
+							</Menu.Item>
+						</ActionBarPrimitive.Edit>
+						<Menu.Separator />
+						<Menu.Item value="delete">
+							<DeleteMessageButton messageId={messageId} />
+						</Menu.Item>
+					</Menu.Content>
+				</Menu.Positioner>
+			</Menu.Root>
 
 		</ActionBarPrimitive.Root>
 	);
 };
 
+const ToolMessage: FC = React.memo(() => {
+	const parts = useAuiState((s) => s.message.content);
+	const status = useAuiState((s) => s.message.status?.type);
+	const messageId = useAuiState((s) => s.message.id);
+	const chatFontSize = useStore(s => s.settings.chatFontSize ?? 14);
+	const chatFontFamily = useStore(s => s.settings.chatFontFamily ?? '');
+	if (parts.length === 0 && status !== 'running') return null;
+
+	return (
+		<MessagePrimitive.Root
+			className="aui-tool-message-root fade-in slide-in-from-bottom-1 relative mx-auto w-full animate-in py-3 duration-150"
+			data-role="tool"
+			data-message-id={messageId}
+			style={{
+				paddingRight: "100px",
+			}}
+		>
+			<MessageUiSpace>
+				<div className="aui-tool-message-content wrap-break-word px-2 leading-relaxed" style={{ color: 'var(--wc-text-primary)', fontSize: `${chatFontSize}px`, fontFamily: chatFontFamily || undefined, backgroundColor: "var(--wc-bg-subtle)", padding: "15px", borderRadius: "15px", display: "flex", flexDirection: "column", gap: "40px" }}>
+					<MessagePrimitive.Parts
+						components={componentsMap}
+					/>
+					<MessageError />
+				</div>
+			</MessageUiSpace>
+
+			<div className="aui-tool-message-footer mt-1 ml-2 flex min-h-6 items-center gap-1">
+				<StatsTooltip />
+				<BranchPicker />
+				<ToolActionBar />
+			</div>
+		</MessagePrimitive.Root>
+	);
+});
+
+const ToolActionBar: FC = () => {
+	const messageId = useAuiState((s) => s.message.id);
+	const clearAnnotations = useStore((s) => s.clearAnnotations);
+
+	const ref = useRef<HTMLDivElement | null>(null)
+  	const getAnchorRect = () => ref.current!.getBoundingClientRect()
+
+	return (
+		<ActionBarPrimitive.Root
+			className="aui-tool-action-bar-root col-start-3 row-start-2 -ml-1"
+			style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: "visible" }}
+		>
+			<EmbeddingStatus />
+
+			<Menu.Root positioning={{ getAnchorRect }}>
+				<Menu.Trigger asChild>
+					<ActionBarIcon>
+						<MoreVertical size={14} ref={ref}/>
+					</ActionBarIcon>
+				</Menu.Trigger>
+				<Menu.Positioner>
+					<Menu.Content>
+						<ActionBarPrimitive.Reload asChild>
+							<Menu.Item value="reload" onClick={clearAnnotations}>
+								<HStack gap="2">
+									<RefreshCwIcon size={14} />
+									<Text fontSize="12px">Reload</Text>
+								</HStack>
+							</Menu.Item>
+						</ActionBarPrimitive.Reload>
+						<Menu.Separator />
+						<Menu.Item value="delete">
+							<DeleteMessageButton messageId={messageId} />
+						</Menu.Item>
+					</Menu.Content>
+				</Menu.Positioner>
+			</Menu.Root>
+		</ActionBarPrimitive.Root>
+	);
+};
+
+const MessageSlashCommands: FC = () => {
+	const messageId = useAuiState(s => s.message.id);
+	const messageState = useStore(s => s.messageStates[messageId]);
+	const slashCommands = messageState?.slashCommands as IExtractedSlashCommand[] | undefined;
+	if (!slashCommands?.length) return null;
+
+	return (
+		<div className="flex flex-wrap gap-1.5 mt-2 pt-2" style={{ borderTop: '1px solid var(--wc-border-subtle)' }}>
+			{slashCommands.map((cmd, i) => (
+				<span
+					key={i}
+					style={{
+						display: "inline-flex",
+						alignItems: "center",
+						gap: "4px",
+						borderRadius: "6px",
+						padding: "2px 6px",
+						fontSize: "0.8125rem",
+						fontWeight: 500,
+						lineHeight: "1.4",
+						background: "var(--wc-accent-purple-bg-15, rgba(167,139,250,0.15))",
+						border: "1px solid var(--wc-accent-purple-border, rgba(167,139,250,0.25))",
+						color: "var(--wc-text-primary)",
+					}}
+				>
+					<span style={{ fontWeight: 700 }}>/{cmd.name}</span>
+					{Object.keys(cmd.params).length > 0 && (
+						<span style={{ color: "var(--wc-text-secondary)" }}>
+							{Object.entries(cmd.params).map(([k, v]) => `${k}=${v}`).join(' ')}
+						</span>
+					)}
+				</span>
+			))}
+		</div>
+	);
+};
+
 const UserMessage: FC = () => {
+	const chatFontSize = useStore(s => s.settings.chatFontSize ?? 14);
+	const chatFontFamily = useStore(s => s.settings.chatFontFamily ?? '');
+	const messageId = useAuiState((s) => s.message.id);
 	return (
 		<MessagePrimitive.Root
 			className="aui-user-message-root fade-in slide-in-from-bottom-1 mx-auto flex w-full flex-col gap-2 animate-in px-2 py-3 duration-150"
 			data-role="user"
+			data-message-id={messageId}
 		>
 			<UserMessageAttachments />
-			<div className="flex justify-end">
-				<div className="aui-user-message-content wrap-break-word peer rounded-2xl bg-muted px-4 py-2.5 text-foreground text-[14px] empty:hidden max-w-[80%]">
-					<MessagePrimitive.Parts />
+			<MessageUiSpace>
+				<div className="flex justify-end">
+					<div className="aui-user-message-content wrap-break-word peer rounded-2xl bg-muted px-4 py-2.5 text-foreground empty:hidden max-w-[80%]" style={{ fontSize: `${chatFontSize}px`, fontFamily: chatFontFamily || undefined }}>
+						<MessagePrimitive.Parts />
+						<MessageSlashCommands />
+					</div>
 				</div>
-			</div>
+			</MessageUiSpace>
 			<div className="aui-user-message-footer flex min-h-6 items-center justify-end">
 				<StatsTooltip />
 				<UserActionBar />
@@ -782,20 +1168,42 @@ const UserMessage: FC = () => {
 
 const UserActionBar: FC = () => {
 	const messageId = useAuiState((s) => s.message.id);
-	const message = useAuiState((s) => s.message);
-	
+	const kokoroInstalled = useStore((s) => s.kokoroStatus?.installed);
+
+	const ref = useRef<HTMLDivElement | null>(null)
+  	const getAnchorRect = () => ref.current!.getBoundingClientRect()
+
 	return (
 		<ActionBarPrimitive.Root
 			className="aui-user-action-bar-root"
-			style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+			style={{ display: 'flex', alignItems: 'center', gap: '4px', overflow: "visible" }}
 		>
-			<ActionBarPrimitive.Edit asChild>
-				<ActionBarIcon>
-					<PencilIcon size={14} />
-				</ActionBarIcon>
-			</ActionBarPrimitive.Edit>
-			
-			<DeleteMessageButton messageId={messageId} />
+			{kokoroInstalled ? <KokoroTTSButton /> : <BrowserTTS />}
+			<EmbeddingStatus />
+
+			<Menu.Root positioning={{ getAnchorRect }}>
+				<Menu.Trigger asChild>
+					<ActionBarIcon>
+						<MoreVertical size={14} ref={ref}/>
+					</ActionBarIcon>
+				</Menu.Trigger>
+				<Menu.Positioner>
+					<Menu.Content>
+						<ActionBarPrimitive.Edit asChild>
+							<Menu.Item value="edit">
+								<HStack gap="2">
+									<PencilIcon size={14} />
+									<Text fontSize="12px">Edit</Text>
+								</HStack>
+							</Menu.Item>
+						</ActionBarPrimitive.Edit>
+						<Menu.Separator />
+						<Menu.Item value="delete">
+							<DeleteMessageButton messageId={messageId} />
+						</Menu.Item>
+					</Menu.Content>
+				</Menu.Positioner>
+			</Menu.Root>
 		</ActionBarPrimitive.Root>
 	);
 };

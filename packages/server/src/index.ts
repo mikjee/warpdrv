@@ -4,6 +4,10 @@ import cookieParser from 'cookie-parser';
 import { store } from './util/store';
 import { settingsRouter } from './routes/settings';
 import { backendsRouter } from './routes/backends';
+import { hardwareRouter } from './routes/hardware';
+import { releasesRouter } from './routes/releases';
+import { kokoroRouter } from './routes/kokoro';
+import { initKokoroService } from './services/kokoroService';
 import { backendGroupsRouter } from './routes/backendGroups';
 import { modelsRouter, loadCachedModels, getCachedModels } from './routes/models';
 import { serversRouter} from './routes/servers';
@@ -12,7 +16,7 @@ import { hubRouter } from './routes/hub';
 import { tokensRouter } from './routes/tokens';
 import { authRouter } from './routes/auth';
 import { authMiddleware } from './middleware/auth';
-import type { ISettings, IServer, IDownload, IDevice, IBackend, IBackendGroup } from '@warpcore/shared';
+import type { ISettings, IServer, IDownload, IDevice, IBackend, IBackendGroup, IWhisperBackend, IWhisperServer } from '@warpcore/shared';
 import type { TBackendId, TBackendGroupId } from '@warpcore/shared';
 import { DEFAULT_SETTINGS, EServerStatus, EDownloadStatus, SSE_CHANNELS_CHECKPOINT } from '@warpcore/shared';
 import { runMigrations } from './services/migrationRunner';
@@ -28,10 +32,21 @@ import { getAllServerSlots, getServerSlots } from './services/slotStateTracker';
 import { listCheckpoints } from './services/checkpointService';
 import { recipesRouter } from './routes/recipes';
 import { checkpointsRouter } from './routes/checkpoints';
+import { clientLogsRouter } from './routes/clientLogs';
+import { whisperBackendsRouter } from './routes/whisperBackends';
+import { whisperServersRouter } from './routes/whisperServers';
+import { whisperModelsRouter, loadCachedWhisperModels, getCachedWhisperModels } from './routes/whisperModels';
 import { setRecipeRunnerSSE, getActiveRun } from './services/recipeRunner';
 import { listRecipes } from './services/recipeStore';
 import { getAllDownloads, getAllDownloadsRecord } from './services/downloadManager';
-import { SqlitePersistence, McpClientManager, McpConfig, PermissionManager, Orchestrator, SseBroadcaster } from '@warpcore/bridge/server';
+import { SqlitePersistence, SqlitePersistenceWithBroadcast, McpClientManager, McpConfig, PermissionManager, Orchestrator, SseBroadcaster } from '@warpcore/bridge/server';
+import { EventNode } from '@warpcore/realmcore';
+import { bootWarpmcp } from './warpmcpRunner';
+import { TodoManager } from './services/todoManager';
+import { embeddingManager } from './services/embeddingManager';
+import { getDataDir } from './util/mcpConfig';
+import { serveStaticApp } from './middleware/serveStatic';
+import { initRealm } from './services/initRealm';
 import path from 'path';
 import os from 'os';
 
@@ -43,9 +58,12 @@ export let mcpClient: McpClientManager;
 export let orchestrator: Orchestrator;
 export let mcpConfig: McpConfig;
 export let broadcaster: SseBroadcaster;
+export let todoManager: TodoManager;
 
 import { execSync } from 'child_process';
 import { launchAutoStartServers, reconcileServers } from './services/processManager';
+import { reconcileWhisperServers, launchAutoStartWhisperServers } from './services/whisperProcessManager';
+import { createServer } from 'http';
 
 function resolveShellPath(): string | null {
 	try {
@@ -84,17 +102,21 @@ async function main() {
 	await reconcileServers();
 
 	// Initialize bridge persistence
-	const { getDataDir } = await import('./util/mcpConfig');
 	const dataDir = getDataDir();
-	persistence = new SqlitePersistence(path.join(dataDir, 'chat.db'));
+	broadcaster = new SseBroadcaster();
+	persistence = new SqlitePersistenceWithBroadcast(path.join(dataDir, 'chat.db'), {}, broadcaster);
 	await persistence.init();
+	todoManager = new TodoManager(persistence);
 
 	// Initialize MCP
 	mcpConfig = new McpConfig(path.join(dataDir, 'mcp.json'));
-	broadcaster = new SseBroadcaster();
 	mcpClient = new McpClientManager(undefined, broadcaster);
 	const permissions = new PermissionManager(persistence);
-	orchestrator = new Orchestrator({ mcpClient, permissions, persistence, broadcaster });
+	const eventNode = new EventNode('warpcore', true);
+	orchestrator = new Orchestrator({ mcpClient, permissions, persistence, broadcaster, eventNode });
+
+	// Initialize embedding manager
+	await embeddingManager.initialize(persistence, broadcaster, dataDir);
 
 	// Connect MCP servers in parallel (non-blocking)
 	const mcpCfg = mcpConfig.read();
@@ -108,27 +130,48 @@ async function main() {
 		}
 		console.log(`[MCP] Initial connection phase complete`);
 	});
+	bootWarpmcp().catch(err => console.error('[warpmcp] Failed to start:', err)); 
+	initKokoroService().catch(() => {});
 
 	// Pending approvals will be handled by the orchestrator on next completion
 
 	// Load cached model scan results
 	await loadCachedModels();
 
+	// Load cached whisper model scan results
+	await loadCachedWhisperModels();
+
 	// Launch auto-start servers after all data has loaded
 	await launchAutoStartServers();
 
+	// Reconcile and launch auto-start whisper servers
+	await reconcileWhisperServers();
+	await launchAutoStartWhisperServers();
+
 	const app = express();
+
+	// Cross-origin isolation for Web Worker SharedArrayBuffer
+	app.use((req, res, next) => {
+		res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+		res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+		next();
+	});
 
 	app.use(cors());
 	app.use(express.json({ limit: '50mb' }));
 	app.use(cookieParser());
 	// Auth routes (no middleware - public endpoints)
 	app.use('/api/auth', authRouter);
+	// Client log route (no auth — server may not be up when errors occur)
+	app.use('/api/client-log', clientLogsRouter);
 	// Token routes (require admin auth)
 	app.use('/api/tokens', authMiddleware, tokensRouter);
 	// API routes with auth middleware
 	app.use('/api/settings', authMiddleware, settingsRouter);
 	app.use('/api/backends', authMiddleware, backendsRouter);
+	app.use('/api/hardware', authMiddleware, hardwareRouter);
+	app.use('/api/releases', authMiddleware, releasesRouter);
+	app.use('/api/kokoro', authMiddleware, kokoroRouter);
 	app.use('/api/backend-groups', authMiddleware, backendGroupsRouter);
 	app.use('/api/models', authMiddleware, modelsRouter);
 	app.use('/api/servers', authMiddleware, serversRouter);
@@ -141,6 +184,9 @@ async function main() {
 	app.use('/api/summary', authMiddleware, summaryRouter);
 	app.use('/api/recipes', authMiddleware, recipesRouter);
 	app.use('/api/checkpoints', authMiddleware, checkpointsRouter);
+	app.use('/api/whisper-backends', authMiddleware, whisperBackendsRouter);
+	app.use('/api/whisper-servers', authMiddleware, whisperServersRouter);
+	app.use('/api/whisper-models', authMiddleware, whisperModelsRouter);
 	// SSE endpoint (protected by auth)
 	app.get('/api/events', authMiddleware, async (req, res) => {
 		console.log('[SSE] New client');
@@ -157,7 +203,6 @@ async function main() {
 	});
 
 	// Static frontend serving (production only)
-	const { serveStaticApp } = await import('./middleware/serveStatic');
 	serveStaticApp(app);
 
 	// Health check
@@ -259,6 +304,11 @@ async function main() {
 			return Object.keys(states).length > 0 ? states : null;
 		}, 1000);
 
+		sseManager.onConnect('mcp:permissions:init', async () => ({
+			servers: await persistence.getAllServerPermissions(),
+			tools: await persistence.getAllToolPermissions(),
+		}));
+
 		// Phase 1: Backends
 		sseManager.onConnect('backends:init', async () => {
 			const backends = await store.list<IBackend>(BACKENDS_PREFIX);
@@ -290,11 +340,42 @@ async function main() {
 			return settings;
 		});
 
+		// Whisper Backends
+		const WHISPER_BACKENDS_PREFIX = 'whisperBackends:';
+
+		sseManager.onConnect('whisperBackends:init', async () => {
+			const backends = await store.list<IWhisperBackend>(WHISPER_BACKENDS_PREFIX);
+			return backends.reduce((acc, b) => {
+				acc[b.id] = b;
+				return acc;
+			}, {} as Record<string, IWhisperBackend>);
+		});
+
+		// Whisper Servers
+		const WHISPER_SERVERS_PREFIX = 'whisperServers:';
+
+		sseManager.onConnect('whisperServers:init', async () => {
+			const servers = await store.list<IWhisperServer>(WHISPER_SERVERS_PREFIX);
+			return servers.reduce((acc, s) => {
+				acc[s.id] = s;
+				return acc;
+			}, {} as Record<string, IWhisperServer>);
+		});
+
+		// Whisper Models
+		sseManager.onConnect('whisperModels:init', async () => {
+			return getCachedWhisperModels();
+		});
+
 	}
 
 	registerSSEChannels();
 
 	setRecipeRunnerSSE(sseManager);
+
+	sseManager.onConnect('embedding:init', async () => {
+		return { serverId: embeddingManager.getCurrentServerId() };
+	});
 
 	sseManager.onConnect('recipes:init', async () => {
 		const recipes = await listRecipes();
@@ -303,7 +384,13 @@ async function main() {
 		return { recipes: recipesMap, activeRun: getActiveRun() };
 	});
 
-	app.listen(port, host, () => {
+	const httpServer = createServer(app);
+
+	// Initialize realm events
+	await initRealm(httpServer, eventNode);
+
+	// Start server
+	httpServer.listen(port, host, () => {
 		console.log(`[WarpCore] API server listening on ${host}:${port}`);
 		if (envPort) {
 			console.log(`[WarpCore] Port set via CONTROL_API_PORT environment variable`);

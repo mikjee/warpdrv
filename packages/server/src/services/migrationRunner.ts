@@ -1,7 +1,7 @@
 import { store } from '../util/store';
 import { DEFAULT_SPEC_DECODE_PARAMS } from '@warpcore/shared';
 const SCHEMA_KEY = '_schemaVersion';
-const CURRENT_SCHEMA = 8;
+const CURRENT_SCHEMA = 9;
 // Each migration transforms data from version N to N+1
 // Add new migrations as the data shape evolves
 type TMigrationFn = () => Promise<void>;
@@ -100,6 +100,17 @@ const migrations: Record<number, TMigrationFn> = {
 	8: async () => {
 		await store.del('models:cache');
 		console.log('[migration] Cleared model cache for parentModel grouping fix');
+	},
+	// Migration v9: add buildNumber and gitCommit to backends
+	9: async () => {
+		const backends = await store.list<Record<string, unknown>>('backends:');
+		for (const backend of backends) {
+			if (!backend.buildNumber || !backend.gitCommit) {
+				backend.buildNumber = '';
+				backend.gitCommit = '';
+				await store.put('backends:' + backend.id, backend);
+			}
+		}
 	},
 };
 export async function runMigrations(): Promise<void> {

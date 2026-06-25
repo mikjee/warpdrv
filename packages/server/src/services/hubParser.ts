@@ -55,7 +55,7 @@ export function groupSplitFilesByModel(files: IHubFile[]): Map<string, IHubFile[
 	const groups = new Map<string, IHubFile[]>();
 
 	for (const file of files) {
-		if (!file.isGguf) continue;
+		if (!file.isGguf && !file.isWhisperBin) continue;
 
 		const { shardIndex, shardTotal, parentModel } = extractShardInfo(file.filename);
 
@@ -89,7 +89,7 @@ export function processGgufFiles(files: IHubFile[]): IHubFile[] {
 	const processed: IHubFile[] = [];
 
 	for (const file of files) {
-		if (!file.isGguf) {
+		if (!file.isGguf && !file.isWhisperBin) {
 			processed.push(file);
 			continue;
 		}
@@ -171,7 +171,7 @@ export async function fetchAllGgufFiles(
 		const dirs: IHubRawDir[] = [];
 
 		for (const item of contents) {
-			if (item.type === 'file' && String(item.path).endsWith('.gguf')) {
+			if (item.type === 'file' && (String(item.path).endsWith('.gguf') || String(item.path).endsWith('.bin'))) {
 				files.push(item as IHubRawFile);
 			} else if (item.type === 'directory') {
 				dirs.push(item as IHubRawDir);
@@ -200,6 +200,7 @@ export function mapFilesToHubFiles(
 		const filename = String(raw.path ?? '');
 		const size = Number(raw.size ?? 0);
 		const isGguf = filename.endsWith('.gguf');
+		const isWhisperBin = filename.endsWith('.bin');
 
 		// Extract quant type from the basename
 		const basename = path.basename(filename);
@@ -223,6 +224,7 @@ export function mapFilesToHubFiles(
 			filename,
 			size,
 			isGguf,
+			isWhisperBin,
 			quantType,
 			isDownloaded,
 			downloadedInRoot,

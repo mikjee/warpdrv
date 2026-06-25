@@ -1,12 +1,19 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
-import { Settings, ChevronRight } from 'lucide-react';
+import { Settings, ChevronRight, SearchIcon } from 'lucide-react';
 import { Plug } from 'lucide-react';
 import { ChatConfigContentPanel } from './ChatConfigSidebar';
 import { ChatToolsContentPanel } from './ChatToolsSidebar';
+import { ThreadSearchPanel } from './ThreadSearchPanel';
+import { UiSpacePanel } from './ui-space/UiSpacePanel';
 import type { IChatInferenceParams, IChatPreset } from '@warpcore/shared';
 import { LuPlug, LuSlidersHorizontal } from 'react-icons/lu';
 import { VscTools } from 'react-icons/vsc';
+import { TbApps } from 'react-icons/tb';
+import { useStore } from '@/store';
+import { useShallow } from 'zustand/react/shallow';
+import { EChatSidebarTab } from '@/store/slices/chatSidebar';
+import { EUISpaceLoc } from '@/store/slices/uiSpaces';
 
 interface IChatSidebarProps {
 	configParams: IChatInferenceParams;
@@ -25,34 +32,61 @@ export const ChatSidebar = React.memo(({
 	onConfigSystemPromptChange,
 	onConfigPresetSelect,
 }: IChatSidebarProps) => {
-	const [open, setOpen] = useState(false);
-	const [activeTab, setActiveTab] = useState<'config' | 'tools'>('config');
+	const chatSidebarOpen = useStore(s => s.chatSidebarOpen);
+	const chatSidebarTab = useStore(s => s.chatSidebarTab);
+	const setChatSidebarOpen = useStore(s => s.setChatSidebarOpen);
+	const openChatSidebarTab = useStore(s => s.openChatSidebarTab);
+	const currentThreadId = useStore(s => s.currentThreadId);
+
+	// ESC to close sidebar when in search mode
+	useEffect(() => {
+		if (!chatSidebarOpen || chatSidebarTab !== EChatSidebarTab.SEARCH) return;
+		const handler = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') {
+				e.preventDefault();
+				setChatSidebarOpen(false);
+			}
+		};
+		document.addEventListener('keydown', handler);
+		return () => document.removeEventListener('keydown', handler);
+	}, [chatSidebarOpen, chatSidebarTab, setChatSidebarOpen]);
+
+	const toggleTab = (tab: EChatSidebarTab) => {
+		if (chatSidebarTab === tab && chatSidebarOpen) {
+			setChatSidebarOpen(false);
+		} else {
+			openChatSidebarTab(tab);
+		}
+	};
 
 	return (
 		<Flex direction="row" h="100%" borderLeftWidth="1px" borderColor="var(--wc-border-subtle)">
 			{/* Content panel (conditional) */}
-			{open && (
+			{chatSidebarOpen && (
 				<Box
 					w="300px"
-					// bg="rgba(0,0,0,0.15)"
 					overflowY="auto"
 					css={{
 						'&::-webkit-scrollbar': { width: '4px' },
 						'&::-webkit-scrollbar-thumb': { background: 'var(--wc-text-disabled)', borderRadius: '2px' },
 					}}
 				>
-					{activeTab === 'config' ? (
-						<ChatConfigContentPanel
-							params={configParams}
-							systemPrompt={configSystemPrompt}
-							selectedPresetId={configSelectedPresetId}
-							onParamsChange={onConfigParamsChange}
-							onSystemPromptChange={onConfigSystemPromptChange}
-							onPresetSelect={onConfigPresetSelect}
-						/>
-					) : (
-						<ChatToolsContentPanel />
-					)}
+					{(() => {
+						if (chatSidebarTab === EChatSidebarTab.CONFIG) return (
+							<ChatConfigContentPanel
+								params={configParams}
+								systemPrompt={configSystemPrompt}
+								selectedPresetId={configSelectedPresetId}
+								onParamsChange={onConfigParamsChange}
+								onSystemPromptChange={onConfigSystemPromptChange}
+								onPresetSelect={onConfigPresetSelect}
+							/>
+						);
+						if (chatSidebarTab === EChatSidebarTab.TOOLS) return <ChatToolsContentPanel threadId={currentThreadId} />;
+						if (chatSidebarTab === EChatSidebarTab.SEARCH) return <ThreadSearchPanel threadId={currentThreadId} />;
+						if (chatSidebarTab === EChatSidebarTab.RIGHT_PANEL) return <UiSpacePanel location={EUISpaceLoc.RIGHT_PANEL} />;
+						return null;
+					})()}
 				</Box>
 			)}
 
@@ -60,61 +94,80 @@ export const ChatSidebar = React.memo(({
 			<Flex
 				w="60px"
 				borderLeftWidth="1px"
-borderColor="var(--wc-border-subtle)"
+ borderColor="var(--wc-border-subtle)"
 				flexDirection="column"
 				alignItems="center"
 				pt="2"
-				// bg="rgba(0,0,0,0.05)"
 			>
-				{/* Config tab */}
+				{/* Search tab */}
 				<Flex
-					onClick={() => {
-						if (activeTab === 'config' && open) {
-							setOpen(false);
-						} else {
-							setActiveTab('config');
-							setOpen(true);
-						}
-					}}
+					onClick={() => toggleTab(EChatSidebarTab.SEARCH)}
 					px="3"
 					py="2.5"
 					borderRadius="lg"
 					cursor="pointer"
 					transition="all 0.15s"
-					bg={activeTab === 'config' && open ? 'var(--wc-bg-card)' : 'transparent'}
+					bg={chatSidebarTab === EChatSidebarTab.SEARCH && chatSidebarOpen ? 'var(--wc-bg-card)' : 'transparent'}
 					borderWidth="1px"
-					borderColor={activeTab === 'config' && open ? 'var(--wc-border-default)' : 'transparent'}
+					borderColor={chatSidebarTab === EChatSidebarTab.SEARCH && chatSidebarOpen ? 'var(--wc-border-default)' : 'transparent'}
 					_hover={{ bg: 'var(--wc-bg-card)', color: 'var(--wc-text-primary)' }}
 				>
-					<LuSlidersHorizontal size={18} color={activeTab === 'config' && open ? 'var(--wc-text-primary)' : 'var(--wc-text-muted)'} />
+					<SearchIcon size={18} color={chatSidebarTab === EChatSidebarTab.SEARCH && chatSidebarOpen ? 'var(--wc-text-primary)' : 'var(--wc-text-muted)'} />
 				</Flex>
 
-				{/* Tools tab */}
+				{/* Applets tab */}
 				<Flex
 					mt="1"
-					onClick={() => {
-						if (activeTab === 'tools' && open) {
-							setOpen(false);
-						} else {
-							setActiveTab('tools');
-							setOpen(true);
-						}
-					}}
+					onClick={() => toggleTab(EChatSidebarTab.RIGHT_PANEL)}
 					px="3"
 					py="2.5"
 					borderRadius="lg"
 					cursor="pointer"
 					transition="all 0.15s"
-					bg={activeTab === 'tools' && open ? 'var(--wc-bg-card)' : 'transparent'}
+					bg={chatSidebarTab === EChatSidebarTab.RIGHT_PANEL && chatSidebarOpen ? 'var(--wc-bg-card)' : 'transparent'}
 					borderWidth="1px"
-					borderColor={activeTab === 'tools' && open ? 'var(--wc-border-default)' : 'transparent'}
+					borderColor={chatSidebarTab === EChatSidebarTab.RIGHT_PANEL && chatSidebarOpen ? 'var(--wc-border-default)' : 'transparent'}
 					_hover={{ bg: 'var(--wc-bg-card)', color: 'var(--wc-text-primary)' }}
 				>
-					<Plug size={18} color={activeTab === 'tools' && open ? 'var(--wc-text-primary)' : 'var(--wc-text-muted)'} />
+					<TbApps size={18} color={chatSidebarTab === EChatSidebarTab.RIGHT_PANEL && chatSidebarOpen ? 'var(--wc-text-primary)' : 'var(--wc-text-muted)'} />
+				</Flex>
+
+				{/* MCP tab */}
+				<Flex
+					mt="1"
+					onClick={() => toggleTab(EChatSidebarTab.TOOLS)}
+					px="3"
+					py="2.5"
+					borderRadius="lg"
+					cursor="pointer"
+					transition="all 0.15s"
+					bg={chatSidebarTab === EChatSidebarTab.TOOLS && chatSidebarOpen ? 'var(--wc-bg-card)' : 'transparent'}
+					borderWidth="1px"
+					borderColor={chatSidebarTab === EChatSidebarTab.TOOLS && chatSidebarOpen ? 'var(--wc-border-default)' : 'transparent'}
+					_hover={{ bg: 'var(--wc-bg-card)', color: 'var(--wc-text-primary)' }}
+				>
+					<Plug size={18} color={chatSidebarTab === EChatSidebarTab.TOOLS && chatSidebarOpen ? 'var(--wc-text-primary)' : 'var(--wc-text-muted)'} />
+				</Flex>
+
+				{/* Config tab */}
+				<Flex
+					mt="1"
+					onClick={() => toggleTab(EChatSidebarTab.CONFIG)}
+					px="3"
+					py="2.5"
+					borderRadius="lg"
+					cursor="pointer"
+					transition="all 0.15s"
+					bg={chatSidebarTab === EChatSidebarTab.CONFIG && chatSidebarOpen ? 'var(--wc-bg-card)' : 'transparent'}
+					borderWidth="1px"
+					borderColor={chatSidebarTab === EChatSidebarTab.CONFIG && chatSidebarOpen ? 'var(--wc-border-default)' : 'transparent'}
+					_hover={{ bg: 'var(--wc-bg-card)', color: 'var(--wc-text-primary)' }}
+				>
+					<LuSlidersHorizontal size={18} color={chatSidebarTab === EChatSidebarTab.CONFIG && chatSidebarOpen ? 'var(--wc-text-primary)' : 'var(--wc-text-muted)'} />
 				</Flex>
 
 				{/* Close button (only when open) */}
-				{open && (
+				{chatSidebarOpen && (
 					<Flex
 						mt="auto"
 						mb="2"
@@ -126,7 +179,7 @@ borderColor="var(--wc-border-subtle)"
 						borderWidth="1px"
 						borderColor="transparent"
 						_hover={{ bg: 'var(--wc-bg-card)' }}
-						onClick={() => setOpen(false)}
+						onClick={() => setChatSidebarOpen(false)}
 					>
 						<ChevronRight size={18} color="var(--wc-text-muted)" />
 					</Flex>

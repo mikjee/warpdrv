@@ -37,6 +37,7 @@ import { McpPage } from '../pages/MCP/McpPage';
 import { RecipesPage } from '../pages/Recipes/RecipesPage';
 import { CheckpointsPage } from '../pages/Checkpoints/CheckpointsPage';
 import { useTauriWindow } from '@/hooks/useTauriWindow';
+import { ResizeHandles } from './ResizeHandles';
 
 // Page lifecycle config: closeOnSwitch=false means page persists (hidden but not unmounted)
 type TPageConfig = {
@@ -249,7 +250,7 @@ function SidebarLink({
 			<Box
 				w="100%"
 				h="1px"
-				bg="rgba(255, 255, 255, 0.1)"
+				bg="rgba(255, 255, 255, 0.085)"
 				my="2"
 			/>
 		);
@@ -304,11 +305,11 @@ export const Shell = React.memo(() => {
 	const { data: summary } = useSummary();
 	const location = useLocation();
 	const currentPath = location.pathname;
-	const settings = useStore(s => s.settings);
+	// const settings = useStore(s => s.settings);
 	const sseConnected = useStore(s => s.sseConnected);
-	const [collapsed] = useDependantState(settings.sidebarCollapsed);
+	// const [collapsed] = useDependantState(settings.sidebarCollapsed);
 
-	const isCollapsed = collapsed;
+	const isCollapsed = true;
 
 	const {
 		installHook,
@@ -318,7 +319,8 @@ export const Shell = React.memo(() => {
 	installHook();
 
 	return (
-		<Flex direction="column" h="100%" overflow="hidden">
+		<Flex direction="column" h="100%" overflow="hidden" position="relative">
+			<ResizeHandles />
 			<Flex flex="1" overflow="hidden">
 				{/* Sidebar */}
 				<Flex
@@ -326,14 +328,14 @@ export const Shell = React.memo(() => {
 					direction="column"
 					w={isCollapsed ? '60px' : '220px'}
 					minW={isCollapsed ? '60px' : '220px'}
-					// borderRightWidth="1px"
-					// borderColor="rgba(255, 255, 255, 0.065)"
+					borderRightWidth="1px"
+					borderColor="rgba(255, 255, 255, 0.1)"
 					px={isCollapsed ? '2' : '4'}
-					pt={'3'}
+					pt={'2'}
 					pb={("0")}
 					gap="0"
 					zIndex={100}
-					boxShadow={"0px 0px 10px rgba(0,0,0,0.5)"}
+					// boxShadow={"0px 0px 10px rgba(0,0,0,0.5)"}
 					style={{
 						userSelect: 'none',
 						userDrag: 'none',
@@ -345,11 +347,11 @@ export const Shell = React.memo(() => {
 					<HStack
 						px={isCollapsed ? '0' : '2'}
 						py="2"
-						mb="4"
+						mb="3"
 						justifyContent="center"
 					>
 						<Flex w="32px" h="32px" borderRadius="md" overflow="hidden" flexShrink={0} alignItems="center" justifyContent="center">
-							<Image src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+							<Image src="/logo.png" alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
 						</Flex>
 					</HStack>
 

@@ -37,7 +37,6 @@ export function BackendGroupDialog({ onClose, editGroupId }: IBackendGroupDialog
 	const [saving, setSaving] = useState(false);
 
 	const [showActivateDialog, setShowActivateDialog] = useState(false);
-	const [pendingSave, setPendingSave] = useState<IPendingSave | null>(null);
 	const originalActiveBackendId = group?.activeBackendId ?? null;
 
 	const hasActiveChange = isEdit && activeBackendId !== originalActiveBackendId;
@@ -79,7 +78,13 @@ export function BackendGroupDialog({ onClose, editGroupId }: IBackendGroupDialog
 		};
 
 		if (hasActiveChange && group && affectedServers.length > 0) {
-			setPendingSave(saveData);
+			const savePayload: IBackendGroupUpdatePayload = {
+				name: saveData.name,
+				description: saveData.description,
+				backendIds: saveData.backendIds,
+			};
+			const ok = await completeSave(savePayload, true);
+			if (!ok) return;
 			handleShowActivateDialog();
 			return;
 		}
@@ -87,28 +92,27 @@ export function BackendGroupDialog({ onClose, editGroupId }: IBackendGroupDialog
 		await completeSave(saveData);
 	};
 
-	const completeSave = async (saveData: IPendingSave) => {
+	const completeSave = async (saveData: IBackendGroupUpdatePayload | IBackendGroupCreatePayload, skipClose = false): Promise<boolean> => {
 		setSaving(true);
-		const updatePayload: IBackendGroupUpdatePayload = { name: saveData.name, description: saveData.description, backendIds: saveData.backendIds, activeBackendId: saveData.activeBackendId };
-		const createPayload: IBackendGroupCreatePayload = { name: saveData.name, description: saveData.description, backendIds: saveData.backendIds, activeBackendId: saveData.activeBackendId };
 
 		const result = isEdit
-			? await updateBackendGroup(group!.id, updatePayload)
-			: await createBackendGroup(createPayload);
+			? await updateBackendGroup(group!.id, saveData as IBackendGroupUpdatePayload)
+			: await createBackendGroup(saveData as IBackendGroupCreatePayload);
 
 		setSaving(false);
 		if (result.ok) {
 			toast('success', isEdit ? `Group "${saveData.name}" updated` : `Group "${saveData.name}" created`);
-			onClose();
+			if (!skipClose) onClose();
+			return true;
 		} else {
 			toast('error', result.error ?? (isEdit ? 'Failed to update group' : 'Failed to create group'));
+			return false;
 		}
 	};
 
 	const handleActivationComplete = useCallback(() => {
-		if (!pendingSave || !group) return;
-		completeSave(pendingSave);
-	}, [pendingSave, group]);
+		onClose();
+	}, []);
 
 	const canSave = name.trim() && selectedBackendIds.length > 0 && !saving && !showActivateDialog;
 
@@ -205,7 +209,7 @@ export function BackendGroupDialog({ onClose, editGroupId }: IBackendGroupDialog
 				</Box>
 			</Box>
 
-			{showActivateDialog && pendingSave && group && (
+			{showActivateDialog && group && (
 				<Portal>
 					<ActivateBackendDialog
 						isOpen={true}

@@ -15,9 +15,11 @@ import type {
 	TMessageId,
 	TMessagePartId,
 	TToolCallId,
+	TFolderId,
 	IMcpServerState,
 	IServerPermission,
 	IToolPermission,
+	IThreadToolPermission,
 	IThreadPatch,
 	IElicitationRequest,
 } from '../types';
@@ -36,7 +38,6 @@ export type ImmerGet<T> = () => T;
 export interface IChatStoreState {
 	// Threads - flat map keyed by thread ID
 	threads: Record<TThreadId, IChatThread>;
-	activeThreadId: TThreadId | null;
 
 	// Messages - nested map: threadId -> messageId -> IChatMessage
 	messagesByThread: Record<TThreadId, Record<TMessageId, IChatMessage>>;
@@ -60,16 +61,30 @@ export interface IChatStoreState {
 	// Last inference error (cleared after toast is shown)
 	inferenceError: { threadId: TThreadId; messageId: TMessageId; error: string } | null;
 
+	// Last embedding error (cleared after toast is shown)
+	embeddingError: { error: string } | null;
+
+	// Embedding status - messageIds that have embeddings for current selection
+	embeddingStatusByMessage: Record<TMessageId, true>;
+	setThreadEmbeddingStatuses: (messageIds: string[]) => void;
+	applyEmbeddingEmbedded: (messageId: string) => void;
+	removeEmbeddingStatus: (messageId: string) => void;
+	clearEmbeddingStatuses: () => void;
+
 	// MCP State
 	mcpServers: Record<string, IMcpServerState>;
 	serverPermissions: IServerPermission[];
 	toolPermissions: IToolPermission[];
+	threadToolPermissions: Record<TThreadId, IThreadToolPermission[]>;
 
 	// Current chat state (for active thread context)
 	currentThreadId: TThreadId | null;
 	currentSystemPrompt: string;
 	currentInferenceParams: Record<string, unknown>;
 	tempThreadServerId: string | null;
+	tempAutoEmbed: boolean;
+	tempThreadState: Record<string, unknown>;
+	selectedWhisperServerId: string | null;
 
 	// Attached tools (for active thread context)
 	attachAllTools: boolean;
@@ -90,11 +105,11 @@ export interface IChatStoreState {
 	applyInferenceStarted: (threadId: TThreadId, messageId: TMessageId) => void;
 	applyInferenceEnded: (threadId: TThreadId, messageId: TMessageId) => void;
 	applyInferenceError: (threadId: TThreadId, messageId: TMessageId, error: string) => void;
+	applyEmbeddingError: (error: string) => void;
 	applyElicitationRequest: (threadId: TThreadId, request: IElicitationRequest) => void;
 	applyElicitationResolved: (id: string) => void;
 	seedThreadMessages: (threadId: TThreadId, messages: IChatMessage[]) => void;
 	setThreads: (threads: Record<TThreadId, IChatThread>) => void;
-	setActiveThread: (id: TThreadId | null) => void;
 	setHeadMessageId: (threadId: TThreadId, messageId: TMessageId) => void;
 
 	// Current chat state actions
@@ -102,6 +117,8 @@ export interface IChatStoreState {
 	setCurrentSystemPrompt: (prompt: string) => void;
 	setCurrentInferenceParams: (params: Record<string, unknown>) => void;
 	setTempThreadServerId: (id: string | null) => void;
+	setTempAutoEmbed: (v: boolean) => void;
+	setSelectedWhisperServerId: (id: string | null) => void;
 
 	// Attached tools actions
 	setAttachedTools: (attachAll: boolean, tools: IToolAttachment[]) => void;
@@ -109,6 +126,22 @@ export interface IChatStoreState {
 	// MCP Actions
 	setMcpServers: (servers: Record<string, IMcpServerState>) => void;
 	setPermissions: (serverPerms: IServerPermission[], toolPerms: IToolPermission[]) => void;
+	setThreadToolPermissions: (threadId: TThreadId, perms: IThreadToolPermission[]) => void;
+
+	// Persisted states — free-form JSON blobs per entity
+	workspaceStates: Record<TFolderId, Record<string, unknown>>;
+	threadStates: Record<TThreadId, Record<string, unknown>>;
+	messageStates: Record<TMessageId, Record<string, unknown>>;
+	setWorkspaceState: (folderId: TFolderId, data: Record<string, unknown>) => void;
+	getCurrentThreadState: (s?: IChatStoreState) => IChatStoreState["tempThreadState"] | undefined;
+	setThreadState: (threadId: TThreadId | null, data: Record<string, unknown>) => void;
+	setMessageState: (messageId: TMessageId, data: Record<string, unknown>) => void;
+	initWorkspaceState: (folderId: TFolderId, data: Record<string, unknown>) => void;
+	initThreadState: (threadId: TThreadId, data: Record<string, unknown>) => void;
+	initMessageStates: (states: Array<{ messageId: TMessageId; data: Record<string, unknown> }>) => void;
+	applyWorkspaceStateUpdated: (folderId: TFolderId, data: Record<string, unknown>) => void;
+	applyThreadStateUpdated: (threadId: TThreadId, data: Record<string, unknown>) => void;
+	applyMessageStateUpdated: (messageId: TMessageId, data: Record<string, unknown>) => void;
 
 	reset: () => void;
 }
@@ -125,23 +158,31 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 	const initialState = {
 		threads: {} as Record<TThreadId, IChatThread>,
 		startingToolsByMessage: {} as Record<TMessageId, string[]>,
-		activeThreadId: null as TThreadId | null,
 		messagesByThread: {} as Record<TThreadId, Record<TMessageId, IChatMessage>>,
 		chunksByMessageId: {},
 		headMessageIdByThread: {} as Record<TThreadId, TMessageId>,
 		toolCallsById: {} as Record<TToolCallId, IToolCall>,
 		isRunningByThread: {} as Record<TThreadId, boolean>,
 		inferenceError: null,
+		embeddingError: null,
+		embeddingStatusByMessage: {} as Record<TMessageId, true>,
 		mcpServers: {} as Record<string, IMcpServerState>,
 		serverPermissions: [] as IServerPermission[],
 		toolPermissions: [] as IToolPermission[],
+		threadToolPermissions: {} as Record<TThreadId, IThreadToolPermission[]>,
 		currentThreadId: null as TThreadId | null,
 		currentSystemPrompt: '',
 		currentInferenceParams: {} as Record<string, unknown>,
 		tempThreadServerId: null,
+		tempAutoEmbed: false,
+		tempThreadState: {} as Record<string, unknown>,
+		selectedWhisperServerId: null,
 		attachAllTools: false,
 		attachedTools: [] as IToolAttachment[],
 		elicitationByThread: {} as Record<TThreadId, IElicitationRequest>,
+		workspaceStates: {} as Record<TFolderId, Record<string, unknown>>,
+		threadStates: {} as Record<TThreadId, Record<string, unknown>>,
+		messageStates: {} as Record<TMessageId, Record<string, unknown>>,
 	};
 
 	return {
@@ -169,9 +210,24 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 		applyThreadDeleted: (threadId: TThreadId) =>
 			set((draft) => {
 				delete draft.threads[threadId];
-				delete draft.messagesByThread[threadId];
 				delete draft.headMessageIdByThread[threadId];
 				delete draft.isRunningByThread[threadId];
+				delete draft.elicitationByThread[threadId];
+				delete draft.threadToolPermissions[threadId];
+				delete draft.threadStates[threadId];
+				// Clear embedding statuses and message states for messages in this thread
+				const msgs = draft.messagesByThread[threadId];
+				if (msgs) {
+					for (const messageId of Object.keys(msgs)) {
+						delete draft.embeddingStatusByMessage[messageId];
+						delete draft.messageStates[messageId];
+					}
+				}
+				delete draft.messagesByThread[threadId];
+				// Clear current thread if it was the deleted one
+				if (draft.currentThreadId === threadId) {
+					draft.currentThreadId = crypto.randomUUID();
+				}
 			}),
 
 		// Message actions
@@ -268,6 +324,7 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 				}
 				
 				delete draft.messagesByThread[threadId]?.[messageId];
+				delete draft.messageStates[messageId];
 			}),
 
 		applyMessageChunk: (messageId: TMessageId, threadId: TThreadId, partId: TMessagePartId, deltaText: string) =>
@@ -395,6 +452,29 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 				draft.inferenceError = { threadId, messageId, error };
 				delete draft.startingToolsByMessage[messageId];
 			}),
+		applyEmbeddingError: (error: string) =>
+			set((draft) => {
+				draft.embeddingError = { error };
+			}),
+		setThreadEmbeddingStatuses: (messageIds: string[]) =>
+			set((draft) => {
+				draft.embeddingStatusByMessage = {};
+				for (const id of messageIds) {
+					draft.embeddingStatusByMessage[id] = true;
+				}
+			}),
+		applyEmbeddingEmbedded: (messageId: string) =>
+			set((draft) => {
+				draft.embeddingStatusByMessage[messageId] = true;
+			}),
+		removeEmbeddingStatus: (messageId: string) =>
+			set((draft) => {
+				delete draft.embeddingStatusByMessage[messageId];
+			}),
+		clearEmbeddingStatuses: () =>
+			set((draft) => {
+				draft.embeddingStatusByMessage = {};
+			}),
 		applyElicitationRequest: (threadId: TThreadId, request: IElicitationRequest) =>
 			set((draft) => {
 				draft.elicitationByThread[threadId] = request;
@@ -438,11 +518,6 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 				draft.threads = threads;
 			}),
 
-setActiveThread: (id: TThreadId | null) =>
-		set((draft) => {
-			draft.activeThreadId = id;
-		}),
-
 		setHeadMessageId: (threadId: TThreadId, messageId: TMessageId) =>
 			set((draft) => {
 				draft.headMessageIdByThread[threadId] = messageId;
@@ -453,6 +528,8 @@ setActiveThread: (id: TThreadId | null) =>
 			set((draft) => {
 				draft.currentThreadId = id;
 				draft.tempThreadServerId = null;
+				draft.tempAutoEmbed = false;
+				draft.tempThreadState = {};
 			}),
 
 		setCurrentSystemPrompt: (prompt: string) =>
@@ -468,6 +545,16 @@ setActiveThread: (id: TThreadId | null) =>
 		setTempThreadServerId: (id: string | null) =>
 			set((draft) => {
 				draft.tempThreadServerId = id;
+			}),
+
+		setTempAutoEmbed: (v: boolean) =>
+			set((draft) => {
+				draft.tempAutoEmbed = v;
+			}),
+
+		setSelectedWhisperServerId: (id: string | null) =>
+			set((draft) => {
+				draft.selectedWhisperServerId = id;
 			}),
 
 		// Attached tools actions
@@ -487,6 +574,62 @@ setActiveThread: (id: TThreadId | null) =>
 			set((draft) => {
 				draft.serverPermissions = serverPerms;
 				draft.toolPermissions = toolPerms;
+			}),
+
+		setThreadToolPermissions: (threadId: TThreadId, perms: IThreadToolPermission[]) =>
+			set((draft) => {
+				draft.threadToolPermissions[threadId] = perms;
+			}),
+
+		// Persisted state actions
+		setWorkspaceState: (folderId: TFolderId, data: Record<string, unknown>) => {
+			set((draft) => {
+				draft.workspaceStates[folderId] = { ...(draft.workspaceStates[folderId] || {}), ...data };
+			});
+		},
+		getCurrentThreadState: (s) => {
+			s = s || _get();
+			const t = s.currentThreadId;
+			const haveThread = !!t && s.threads[t];
+			return haveThread ? s.threadStates[t] : s.tempThreadState;
+		},
+		setThreadState: (threadId: TThreadId | null, data: Record<string, unknown>) => {
+			set((draft) => {
+				const threadInStore = threadId  && draft.threads[threadId];
+				if (threadId && threadInStore) draft.threadStates[threadId] = { ...(draft.threadStates[threadId] || {}), ...data };
+				else draft.tempThreadState = { ...draft.tempThreadState, ...data };
+			});
+		},
+		setMessageState: (messageId: TMessageId, data: Record<string, unknown>) => {
+			set((draft) => {
+				draft.messageStates[messageId] = { ...(draft.messageStates[messageId] || {}), ...data };
+			});
+		},
+		initWorkspaceState: (folderId: TFolderId, data: Record<string, unknown>) =>
+			set((draft) => {
+				draft.workspaceStates[folderId] = data;
+			}),
+		initThreadState: (threadId: TThreadId, data: Record<string, unknown>) =>
+			set((draft) => {
+				draft.threadStates[threadId] = data;
+			}),
+		initMessageStates: (states: Array<{ messageId: TMessageId; data: Record<string, unknown> }>) =>
+			set((draft) => {
+				for (const { messageId, data } of states) {
+					draft.messageStates[messageId] = data;
+				}
+			}),
+		applyWorkspaceStateUpdated: (folderId: TFolderId, data: Record<string, unknown>) =>
+			set((draft) => {
+				draft.workspaceStates[folderId] = { ...(draft.workspaceStates[folderId] || {}), ...data };
+			}),
+		applyThreadStateUpdated: (threadId: TThreadId, data: Record<string, unknown>) =>
+			set((draft) => {
+				draft.threadStates[threadId] = { ...(draft.threadStates[threadId] || {}), ...data };
+			}),
+		applyMessageStateUpdated: (messageId: TMessageId, data: Record<string, unknown>) =>
+			set((draft) => {
+				draft.messageStates[messageId] = { ...(draft.messageStates[messageId] || {}), ...data };
 			}),
 
 		// Reset

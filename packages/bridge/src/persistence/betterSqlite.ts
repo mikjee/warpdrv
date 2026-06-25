@@ -10,6 +10,7 @@ import type { IPersistence } from '../types/interfaces';
 import type {
 	IFolder,
 	IReorderFolderEntry,
+	IWorkspace,
 	IChatThread,
 	IListThreadsOptions,
 	IThreadConfig,
@@ -19,11 +20,16 @@ import type {
 	IToolAttachment,
 	IServerPermission,
 	IToolPermission,
+	IThreadToolPermission,
 	TFolderId,
 	TThreadId,
 	TMessageId,
 	TToolCallId,
+	ISearchOptions,
+	ISearchResult,
+	ISearchThreadResult,
 } from '../types';
+import { folderNameToTopic } from '../util/topic';
 import {
 	EChatRole,
 	EMessagePartType,
@@ -49,7 +55,15 @@ function buildTableNames(prefix: string) {
 		toolCalls: `${prefix}tool_calls`,
 		serverPermissions: `${prefix}mcp_server_permissions`,
 		toolPermissions: `${prefix}mcp_tool_permissions`,
+		threadToolPermissions: `${prefix}thread_tool_permissions`,
 		threadAttachedTools: `${prefix}thread_attached_tools`,
+		embeddingIndex: `${prefix}embedding_index`,
+		workspaces: `${prefix}workspaces`,
+		workspaceStates: `${prefix}workspace_states`,
+		threadStates: `${prefix}thread_states`,
+		messageStates: `${prefix}message_states`,
+		threadFts: `${prefix}threads_fts`,
+		messagePartsFts: `${prefix}message_parts_fts`,
 	};
 }
 
@@ -58,6 +72,7 @@ function buildSchema(t: ReturnType<typeof buildTableNames>): string {
 		CREATE TABLE IF NOT EXISTS ${t.folders} (
 			id TEXT PRIMARY KEY,
 			name TEXT NOT NULL,
+			topic TEXT NOT NULL DEFAULT '' UNIQUE,
 			parentId TEXT,
 			sortOrder INTEGER NOT NULL DEFAULT 0,
 			createdAt INTEGER NOT NULL
@@ -124,11 +139,28 @@ function buildSchema(t: ReturnType<typeof buildTableNames>): string {
 			approvalMode TEXT NOT NULL DEFAULT 'ASK',
 			PRIMARY KEY (serverName, toolName)
 		);
+		CREATE TABLE IF NOT EXISTS ${t.threadToolPermissions} (
+			threadId TEXT NOT NULL,
+			serverName TEXT NOT NULL,
+			toolName TEXT NOT NULL,
+			enabled INTEGER NOT NULL DEFAULT 1,
+			approvalMode TEXT NOT NULL DEFAULT 'ASK',
+			PRIMARY KEY (threadId, serverName, toolName)
+		);
 		CREATE TABLE IF NOT EXISTS ${t.threadAttachedTools} (
 			threadId TEXT PRIMARY KEY,
 			attachAllTools INTEGER NOT NULL DEFAULT 1,
 			tools TEXT NOT NULL DEFAULT '[]'
 		);
+		CREATE TABLE IF NOT EXISTS ${t.embeddingIndex} (
+			messageId TEXT NOT NULL,
+			threadId TEXT NOT NULL,
+			modelId TEXT NOT NULL,
+			topic TEXT NOT NULL,
+			embeddedAt INTEGER NOT NULL,
+			PRIMARY KEY (messageId, modelId, topic)
+		);
+		CREATE INDEX IF NOT EXISTS idx_${t.embeddingIndex}_thread ON ${t.embeddingIndex}(threadId, modelId, topic);
 		CREATE INDEX IF NOT EXISTS idx_${t.threads}_folder ON ${t.threads}(folderId);
 		CREATE INDEX IF NOT EXISTS idx_${t.threads}_updated ON ${t.threads}(updatedAt);
 		CREATE INDEX IF NOT EXISTS idx_${t.messages}_thread ON ${t.messages}(threadId);
@@ -137,6 +169,69 @@ function buildSchema(t: ReturnType<typeof buildTableNames>): string {
 		CREATE INDEX IF NOT EXISTS idx_${t.toolCalls}_message ON ${t.toolCalls}(messageId);
 		CREATE INDEX IF NOT EXISTS idx_${t.toolCalls}_thread ON ${t.toolCalls}(threadId);
 		CREATE INDEX IF NOT EXISTS idx_${t.toolCalls}_status ON ${t.toolCalls}(status);
+		CREATE TABLE IF NOT EXISTS ${t.workspaces} (
+			folderId TEXT PRIMARY KEY REFERENCES folders(id),
+			data TEXT NOT NULL DEFAULT '{}'
+		);
+		CREATE TABLE IF NOT EXISTS ${t.workspaceStates} (
+			folderId TEXT PRIMARY KEY,
+			data TEXT NOT NULL DEFAULT '{}'
+		);
+		CREATE TABLE IF NOT EXISTS ${t.threadStates} (
+			threadId TEXT PRIMARY KEY,
+			data TEXT NOT NULL DEFAULT '{}'
+		);
+		CREATE TABLE IF NOT EXISTS ${t.messageStates} (
+			messageId TEXT PRIMARY KEY,
+			data TEXT NOT NULL DEFAULT '{}'
+		);
+
+		-- FTS5 — full-text search on thread titles and message content
+		-- External-content mode: snippet() reads from backing table, no storage duplication
+		-- NOTE: rowid stability assumed (better-sqlite3 does not auto-vacuum).
+		-- If VACUUM is ever run manually, re-initialize to re-backfill FTS tables.
+		CREATE VIRTUAL TABLE IF NOT EXISTS ${t.threadFts} USING fts5(
+			title,
+			tokenize = 'porter unicode61'
+		);
+		CREATE VIRTUAL TABLE IF NOT EXISTS ${t.messagePartsFts} USING fts5(
+			text,
+			tokenize = 'porter unicode61'
+		);
+
+		-- Triggers: threads_fts
+		CREATE TRIGGER IF NOT EXISTS threads_ai AFTER INSERT ON ${t.threads} BEGIN
+			INSERT INTO ${t.threadFts}(rowid, title) VALUES (new.rowid, new.title);
+		END;
+		CREATE TRIGGER IF NOT EXISTS threads_ad AFTER DELETE ON ${t.threads} BEGIN
+			DELETE FROM ${t.threadFts} WHERE rowid = old.rowid;
+		END;
+		CREATE TRIGGER IF NOT EXISTS threads_au AFTER UPDATE ON ${t.threads} BEGIN
+			DELETE FROM ${t.threadFts} WHERE rowid = old.rowid;
+			INSERT INTO ${t.threadFts}(rowid, title) VALUES (new.rowid, new.title);
+		END;
+
+		-- Triggers: message_parts_fts
+		-- Only index TEXT, REASONING, and ATTACHMENT.extractedText
+		CREATE TRIGGER IF NOT EXISTS mp_ai AFTER INSERT ON ${t.messageParts}
+		WHEN (new.type IN ('text','reasoning') AND new.text IS NOT NULL AND length(new.text) > 0)
+		   OR (new.type = 'attachment' AND new.extractedText IS NOT NULL AND length(new.extractedText) > 0)
+		BEGIN
+			INSERT INTO ${t.messagePartsFts}(rowid, text)
+			VALUES (new.rowid, CASE WHEN new.type = 'attachment' THEN new.extractedText ELSE new.text END);
+		END;
+		CREATE TRIGGER IF NOT EXISTS mp_ad AFTER DELETE ON ${t.messageParts} BEGIN
+			DELETE FROM ${t.messagePartsFts} WHERE rowid = old.rowid;
+		END;
+		CREATE TRIGGER IF NOT EXISTS mp_au AFTER UPDATE ON ${t.messageParts}
+		WHEN (old.type IN ('text','reasoning','attachment') OR new.type IN ('text','reasoning','attachment'))
+		BEGIN
+			DELETE FROM ${t.messagePartsFts} WHERE rowid = old.rowid;
+			INSERT INTO ${t.messagePartsFts}(rowid, text)
+			SELECT new.rowid, CASE WHEN new.type = 'attachment' THEN new.extractedText ELSE new.text END
+			WHERE (new.type IN ('text','reasoning') AND new.text IS NOT NULL AND length(new.text) > 0)
+			   OR (new.type = 'attachment' AND new.extractedText IS NOT NULL AND length(new.extractedText) > 0);
+		END;
 	`;
 }
 
@@ -184,6 +279,61 @@ export class SqlitePersistence implements IPersistence {
 				// Column already exists (SQLite returns error on duplicate ADD COLUMN)
 			}
 		}
+
+		// Add topic column to folders, populate from name
+		try {
+			this.db!.exec(`ALTER TABLE ${this.t.folders} ADD COLUMN topic TEXT NOT NULL DEFAULT ''`);
+			const folders = this.db!.prepare(`SELECT id, name FROM ${this.t.folders}`).all() as Array<{ id: string; name: string }>;
+			for (const f of folders) {
+				this.db!.prepare(`UPDATE ${this.t.folders} SET topic = ? WHERE id = ?`).run(folderNameToTopic(f.name), f.id);
+			}
+			console.log(`[migration] Added topic to ${folders.length} folders`);
+		} catch {
+			// Column already exists
+		}
+
+		// FTS5 — standard mode, populate index via INSERT
+		try {
+			const txn = this.db!.transaction(() => {
+				this.db!.prepare(
+					`INSERT INTO ${this.t.threadFts}(rowid, title) SELECT rowid, title FROM ${this.t.threads}`
+				).run();
+				this.db!.prepare(
+					`INSERT INTO ${this.t.messagePartsFts}(rowid, text)
+					 SELECT rowid, CASE WHEN type IN ('text','reasoning') THEN text ELSE extractedText END
+					 FROM ${this.t.messageParts}
+					 WHERE (type IN ('text','reasoning') AND text IS NOT NULL AND length(text) > 0)
+					    OR (type = 'attachment' AND extractedText IS NOT NULL AND length(extractedText) > 0)`
+				).run();
+			});
+			txn();
+
+			const mpCount = this.db!.prepare(`SELECT count(*) as c FROM ${this.t.messagePartsFts}`).get() as { c: number };
+			const thCount = this.db!.prepare(`SELECT count(*) as c FROM ${this.t.threadFts}`).get() as { c: number };
+			console.log(`[FTS5] Indexed ${mpCount.c} message parts, ${thCount.c} threads`);
+		} catch (err) {
+			console.error('[FTS5] Index build failed:', err);
+		}
+
+		// State tables
+		try {
+			this.db!.exec(`
+				CREATE TABLE IF NOT EXISTS ${this.t.workspaceStates} (
+					folderId TEXT PRIMARY KEY,
+					data TEXT NOT NULL DEFAULT '{}'
+				);
+				CREATE TABLE IF NOT EXISTS ${this.t.threadStates} (
+					threadId TEXT PRIMARY KEY,
+					data TEXT NOT NULL DEFAULT '{}'
+				);
+				CREATE TABLE IF NOT EXISTS ${this.t.messageStates} (
+					messageId TEXT PRIMARY KEY,
+					data TEXT NOT NULL DEFAULT '{}'
+				);
+			`);
+		} catch (err) {
+			console.error('[migration] State tables creation failed:', err);
+		}
 	}
 
 	// ============================================================
@@ -191,8 +341,8 @@ export class SqlitePersistence implements IPersistence {
 	// ============================================================
 	async createFolder(folder: IFolder): Promise<void> {
 		this.db!.prepare(
-			`INSERT INTO ${this.t.folders} (id, name, parentId, sortOrder, createdAt) VALUES (?, ?, ?, ?, ?)`
-		).run(folder.id, folder.name, folder.parentId, folder.sortOrder, folder.createdAt);
+			`INSERT INTO ${this.t.folders} (id, name, topic, parentId, sortOrder, createdAt) VALUES (?, ?, ?, ?, ?, ?)`
+		).run(folder.id, folder.name, folder.topic, folder.parentId, folder.sortOrder, folder.createdAt);
 	}
 
 	async getFolder(id: TFolderId): Promise<IFolder | null> {
@@ -203,10 +353,22 @@ export class SqlitePersistence implements IPersistence {
 		return this.db!.prepare(`SELECT * FROM ${this.t.folders} ORDER BY sortOrder ASC, createdAt ASC`).all() as IFolder[];
 	}
 
+	async getFolderByTopic(topic: string): Promise<IFolder | null> {
+		return this.db!.prepare(`SELECT * FROM ${this.t.folders} WHERE topic = ?`).get(topic) as IFolder | undefined ?? null;
+	}
+
+	async isTopicUnique(topic: string, excludeFolderId?: TFolderId): Promise<boolean> {
+		if (topic === 'global') return false;
+		const existing = await this.getFolderByTopic(topic);
+		if (!existing) return true;
+		return existing.id !== excludeFolderId;
+	}
+
 	async updateFolder(id: TFolderId, updates: Partial<IFolder>): Promise<void> {
 		const sets: string[] = [];
 		const vals: unknown[] = [];
 		if (updates.name !== undefined) { sets.push('name = ?'); vals.push(updates.name); }
+		if (updates.topic !== undefined) { sets.push('topic = ?'); vals.push(updates.topic); }
 		if (updates.parentId !== undefined) { sets.push('parentId = ?'); vals.push(updates.parentId); }
 		if (updates.sortOrder !== undefined) { sets.push('sortOrder = ?'); vals.push(updates.sortOrder); }
 		if (sets.length === 0) return;
@@ -226,6 +388,35 @@ export class SqlitePersistence implements IPersistence {
 			}
 		});
 		txn(entries);
+	}
+
+	// ============================================================
+	// Workspaces
+	// ============================================================
+	async createWorkspace(workspace: IWorkspace): Promise<void> {
+		this.db!.prepare(
+			`INSERT INTO ${this.t.workspaces} (folderId, data) VALUES (?, ?)`
+		).run(workspace.folderId, JSON.stringify(workspace.data));
+	}
+
+	async getWorkspace(folderId: TFolderId): Promise<IWorkspace | null> {
+		const row = this.db!.prepare(`SELECT * FROM ${this.t.workspaces} WHERE folderId = ?`).get(folderId) as { folderId: string; data: string } | undefined;
+		if (!row) return null;
+		return { folderId: row.folderId, data: JSON.parse(row.data) };
+	}
+
+	async updateWorkspace(folderId: TFolderId, data: Record<string, unknown>): Promise<void> {
+		const existing = await this.getWorkspace(folderId);
+		if (existing) {
+			// Additive merge — new fields overlay onto existing data
+			this.db!.prepare(`UPDATE ${this.t.workspaces} SET data = ? WHERE folderId = ?`).run(JSON.stringify({ ...existing.data, ...data }), folderId);
+		} else {
+			await this.createWorkspace({ folderId, data });
+		}
+	}
+
+	async deleteWorkspace(folderId: TFolderId): Promise<void> {
+		this.db!.prepare(`DELETE FROM ${this.t.workspaces} WHERE folderId = ?`).run(folderId);
 	}
 
 	// ============================================================
@@ -277,6 +468,59 @@ export class SqlitePersistence implements IPersistence {
 
 	async deleteThread(id: TThreadId): Promise<void> {
 		this.db!.prepare(`DELETE FROM ${this.t.threads} WHERE id = ?`).run(id);
+	}
+
+	async deleteThreadCascade(id: TThreadId): Promise<Array<{ messageId: string; modelId: string; topic: string }>> {
+		return this.db!.transaction(() => {
+			// 1. Get all embeddings before deleting
+			const embeddings = this.db!.prepare(
+				`SELECT messageId, modelId, topic FROM ${this.t.embeddingIndex} WHERE threadId = ?`
+			).all(id) as Array<{ messageId: string; modelId: string; topic: string }>;
+
+			// 2. Delete embedding index entries
+			this.db!.prepare(`DELETE FROM ${this.t.embeddingIndex} WHERE threadId = ?`).run(id);
+
+			// 3. Get all messageIds
+			const messageIds = this.db!.prepare(
+				`SELECT id FROM ${this.t.messages} WHERE threadId = ?`
+			).all(id) as Array<{ id: string }>;
+			const ids = messageIds.map(m => m.id);
+
+			// 4. Delete message parts
+			if (ids.length) {
+				const placeholders = ids.map(() => '?').join(',');
+				this.db!.prepare(`DELETE FROM ${this.t.messageParts} WHERE messageId IN (${placeholders})`).run(...ids);
+			}
+
+			// 5. Delete tool calls
+			this.db!.prepare(`DELETE FROM ${this.t.toolCalls} WHERE threadId = ?`).run(id);
+
+			// 6. Delete messages
+			this.db!.prepare(`DELETE FROM ${this.t.messages} WHERE threadId = ?`).run(id);
+
+			// 7. Delete thread configs
+			this.db!.prepare(`DELETE FROM ${this.t.threadConfigs} WHERE threadId = ?`).run(id);
+
+			// 8. Delete thread tool permissions
+			this.db!.prepare(`DELETE FROM ${this.t.threadToolPermissions} WHERE threadId = ?`).run(id);
+
+			// 9. Delete thread attached tools
+			this.db!.prepare(`DELETE FROM ${this.t.threadAttachedTools} WHERE threadId = ?`).run(id);
+
+			// 10. Delete thread states
+			this.db!.prepare(`DELETE FROM ${this.t.threadStates} WHERE threadId = ?`).run(id);
+
+			// 11. Delete message states
+			if (ids.length) {
+				const placeholders = ids.map(() => '?').join(',');
+				this.db!.prepare(`DELETE FROM ${this.t.messageStates} WHERE messageId IN (${placeholders})`).run(...ids);
+			}
+
+			// 12. Delete thread
+			this.db!.prepare(`DELETE FROM ${this.t.threads} WHERE id = ?`).run(id);
+
+			return embeddings;
+		})();
 	}
 
 	async incrementThreadTokens(id: TThreadId, promptDelta: number = 0, completionDelta: number = 0): Promise<void> {
@@ -344,6 +588,7 @@ export class SqlitePersistence implements IPersistence {
 		this.db!.transaction((() => {
 			this.db!.prepare(`UPDATE ${this.t.messages} SET parentId = ? WHERE parentId = ?`).run(msg.parentId, id);
 			this.db!.prepare(`DELETE FROM ${this.t.messages} WHERE id = ?`).run(id);
+			this.db!.prepare(`DELETE FROM ${this.t.messageStates} WHERE messageId = ?`).run(id);
 		}) as any)();
 	}
 
@@ -526,6 +771,49 @@ export class SqlitePersistence implements IPersistence {
 	}
 
 	// ============================================================
+	// Permissions — thread-level tool overrides
+	// ============================================================
+	async getThreadToolPermission(threadId: TThreadId, serverName: string, toolName: string): Promise<IThreadToolPermission | null> {
+		const row = this.db!.prepare(
+			`SELECT * FROM ${this.t.threadToolPermissions} WHERE threadId = ? AND serverName = ? AND toolName = ?`
+		).get(threadId, serverName, toolName) as { threadId: string; serverName: string; toolName: string; enabled: number; approvalMode: string } | undefined;
+		if (!row) return null;
+		return {
+			threadId: row.threadId,
+			serverName: row.serverName,
+			toolName: row.toolName,
+			enabled: row.enabled === 1,
+			approvalMode: row.approvalMode as EToolApprovalMode,
+		};
+	}
+
+	async setThreadToolPermission(threadId: TThreadId, serverName: string, toolName: string, enabled: boolean, approvalMode: EToolApprovalMode): Promise<void> {
+		this.db!.prepare(
+			`INSERT INTO ${this.t.threadToolPermissions} (threadId, serverName, toolName, enabled, approvalMode) VALUES (?, ?, ?, ?, ?)
+			 ON CONFLICT(threadId, serverName, toolName) DO UPDATE SET enabled = excluded.enabled, approvalMode = excluded.approvalMode`
+		).run(threadId, serverName, toolName, enabled ? 1 : 0, approvalMode);
+	}
+
+	async deleteThreadToolPermission(threadId: TThreadId, serverName: string, toolName: string): Promise<void> {
+		this.db!.prepare(
+			`DELETE FROM ${this.t.threadToolPermissions} WHERE threadId = ? AND serverName = ? AND toolName = ?`
+		).run(threadId, serverName, toolName);
+	}
+
+	async getAllThreadToolPermissions(threadId: TThreadId): Promise<IThreadToolPermission[]> {
+		const rows = this.db!.prepare(
+			`SELECT * FROM ${this.t.threadToolPermissions} WHERE threadId = ?`
+		).all(threadId) as Array<{ threadId: string; serverName: string; toolName: string; enabled: number; approvalMode: string }>;
+		return rows.map(r => ({
+			threadId: r.threadId,
+			serverName: r.serverName,
+			toolName: r.toolName,
+			enabled: r.enabled === 1,
+			approvalMode: r.approvalMode as EToolApprovalMode,
+		}));
+	}
+
+	// ============================================================
 	// Thread Attached Tools
 	// ============================================================
 	async saveThreadAttachedTools(threadId: TThreadId, attachAllTools: boolean, tools: IToolAttachment[]): Promise<void> {
@@ -544,5 +832,243 @@ export class SqlitePersistence implements IPersistence {
 			attachAllTools: row.attachAllTools === 1,
 			tools: JSON.parse(row.tools) as IToolAttachment[],
 		};
+	}
+
+	// ============================================================
+	// FTS Search
+	// ============================================================
+
+	private preprocessQuery(q: string): string {
+		// Strip FTS5 special chars, split whitespace, append * for prefix matching
+		const stripped = q.replace(/[\"\(\)\:\^\-\*]/g, ' ');
+		return stripped
+			.split(/\s+/)
+			.map(t => t.trim().toLowerCase())
+			.filter(t => t.length > 0)
+			.map(t => t + '*')
+			.join(' ');
+	}
+
+	async searchMessages(q: string, options: ISearchOptions): Promise<ISearchResult[]> {
+		const processed = this.preprocessQuery(q);
+		if (!processed) return [];
+		console.log(`[FTS5] searchMessages: mode=${options.mode}, query="${q}" -> processed="${processed}"`);
+
+		const limit = Math.min(options.limit ?? 50, 200);
+		const offset = options.offset ?? 0;
+
+		if (options.mode === 'thread') {
+			if (!options.threadId) return [];
+			const rows = this.db!.prepare(
+				`SELECT m.id as messageId, m.threadId, thr.title as threadTitle,
+				       snippet(${this.t.messagePartsFts}, 0, '<mark>', '</mark>', '...', 64) as snippet,
+				       m.role, m.createdAt
+				 FROM ${this.t.messagePartsFts}
+				 JOIN ${this.t.messageParts} mp ON mp.rowid = ${this.t.messagePartsFts}.rowid
+				 JOIN ${this.t.messages} m ON m.id = mp.messageId
+				 JOIN ${this.t.threads} thr ON thr.id = m.threadId
+				 WHERE ${this.t.messagePartsFts} MATCH ? AND m.threadId = ?
+				 ORDER BY bm25(${this.t.messagePartsFts}), m.createdAt DESC
+				 LIMIT ? OFFSET ?`
+			).all(processed, options.threadId, limit, offset) as Array<Record<string, unknown>>;
+			console.log(`[FTS5] thread mode: ${rows.length} results`);
+			return rows.map(r => ({
+				type: 'message' as const,
+				threadId: r.threadId as string,
+				threadTitle: r.threadTitle as string,
+				messageId: r.messageId as string,
+				snippet: r.snippet as string,
+				role: r.role as string,
+				createdAt: r.createdAt as number,
+			}));
+		}
+
+		if (options.mode === 'everywhere') {
+			const halfLimit = Math.ceil(limit / 2);
+
+			// Thread branch
+			const threadRows = this.db!.prepare(
+				`SELECT t.id as threadId, t.title as threadTitle, t.updatedAt as createdAt
+				 FROM ${this.t.threadFts}
+				 JOIN ${this.t.threads} t ON t.rowid = ${this.t.threadFts}.rowid
+				 WHERE ${this.t.threadFts} MATCH ?
+				 ORDER BY bm25(${this.t.threadFts}), t.updatedAt DESC
+				 LIMIT ?`
+			).all(processed, halfLimit) as Array<Record<string, unknown>>;
+			console.log(`[FTS5] everywhere: ${threadRows.length} thread results`);
+
+			// Message branch
+			const msgRows = this.db!.prepare(
+				`SELECT m.id as messageId, m.threadId, thr.title as threadTitle,
+				       snippet(${this.t.messagePartsFts}, 0, '<mark>', '</mark>', '...', 64) as snippet,
+				       m.role, m.createdAt
+				 FROM ${this.t.messagePartsFts}
+				 JOIN ${this.t.messageParts} mp ON mp.rowid = ${this.t.messagePartsFts}.rowid
+				 JOIN ${this.t.messages} m ON m.id = mp.messageId
+				 JOIN ${this.t.threads} thr ON thr.id = m.threadId
+				 WHERE ${this.t.messagePartsFts} MATCH ?
+				 ORDER BY bm25(${this.t.messagePartsFts}), m.createdAt DESC
+				 LIMIT ?`
+			).all(processed, halfLimit) as Array<Record<string, unknown>>;
+			console.log(`[FTS5] everywhere: ${msgRows.length} message results`);
+
+			const results: ISearchResult[] = [];
+
+			results.push(...threadRows.map(r => ({
+				type: 'thread' as const,
+				threadId: r.threadId as string,
+				threadTitle: r.threadTitle as string,
+				createdAt: r.createdAt as number,
+			})));
+
+			results.push(...msgRows.map(r => ({
+				type: 'message' as const,
+				threadId: r.threadId as string,
+				threadTitle: r.threadTitle as string,
+				messageId: r.messageId as string,
+				snippet: r.snippet as string,
+				role: r.role as string,
+				createdAt: r.createdAt as number,
+			})));
+
+			return results;
+		}
+
+		// Default: return empty (shouldn't reach here with valid enum)
+		return [];
+	}
+
+	async searchThreads(q: string, options?: { limit?: number; offset?: number }): Promise<ISearchThreadResult[]> {
+		const processed = this.preprocessQuery(q);
+		if (!processed) return [];
+
+		const limit = Math.min(options?.limit ?? 50, 200);
+		const offset = options?.offset ?? 0;
+
+		const rows = this.db!.prepare(
+			`SELECT m.threadId, thr.title as threadTitle, COUNT(DISTINCT m.id) as matchCount, MAX(m.createdAt) as lastMatchAt, 0 as sortPriority
+			 FROM ${this.t.messagePartsFts}
+			 JOIN ${this.t.messageParts} mp ON mp.rowid = ${this.t.messagePartsFts}.rowid
+			 JOIN ${this.t.messages} m ON m.id = mp.messageId
+			 JOIN ${this.t.threads} thr ON thr.id = m.threadId
+			 WHERE ${this.t.messagePartsFts} MATCH ?
+			 GROUP BY m.threadId
+
+			 UNION ALL
+
+			 SELECT t.id, t.title, 0 as matchCount, t.updatedAt as lastMatchAt, 1 as sortPriority
+			 FROM ${this.t.threadFts}
+			 JOIN ${this.t.threads} t ON t.rowid = ${this.t.threadFts}.rowid
+			 WHERE ${this.t.threadFts} MATCH ?
+			   AND NOT EXISTS (
+				 SELECT 1 FROM ${this.t.messagePartsFts}
+				 JOIN ${this.t.messageParts} mp2 ON mp2.rowid = ${this.t.messagePartsFts}.rowid
+				 JOIN ${this.t.messages} m2 ON m2.id = mp2.messageId AND m2.threadId = t.id
+				 WHERE ${this.t.messagePartsFts} MATCH ?
+			 )
+
+			 ORDER BY sortPriority DESC, matchCount DESC, lastMatchAt DESC
+			 LIMIT ? OFFSET ?`
+		).all(processed, processed, processed, limit, offset) as Array<Record<string, unknown>>;
+
+		return rows.map(r => ({
+			threadId: r.threadId as string,
+			threadTitle: r.threadTitle as string,
+			matchCount: Number(r.matchCount),
+			lastMatchAt: r.lastMatchAt as number,
+		}));
+	}
+
+	// ============================================================
+	// Embedding Index
+	// ============================================================
+	async insertEmbeddingStatus(messageId: string, threadId: string, modelId: string, topic: string): Promise<void> {
+		this.db!.prepare(
+			`INSERT OR IGNORE INTO ${this.t.embeddingIndex} (messageId, threadId, modelId, topic, embeddedAt)
+			 VALUES (?, ?, ?, ?, ?)`
+		).run(messageId, threadId, modelId, topic, Date.now());
+	}
+
+	async getThreadEmbeddingStatuses(threadId: TThreadId, modelId: string, topic: string): Promise<Set<string>> {
+		const rows = this.db!.prepare(
+			`SELECT messageId FROM ${this.t.embeddingIndex} WHERE threadId = ? AND modelId = ? AND topic = ?`
+		).all(threadId, modelId, topic) as Array<{ messageId: string }>;
+		return new Set(rows.map(r => r.messageId));
+	}
+
+	async deleteEmbeddingStatus(messageId: string, modelId: string, topic: string): Promise<void> {
+		this.db!.prepare(
+			`DELETE FROM ${this.t.embeddingIndex} WHERE messageId = ? AND modelId = ? AND topic = ?`
+		).run(messageId, modelId, topic);
+	}
+
+	async getMessageIdsByThreadId(threadId: TThreadId): Promise<string[]> {
+		const rows = this.db!.prepare(
+			`SELECT id FROM ${this.t.messages} WHERE threadId = ?`
+		).all(threadId) as Array<{ id: string }>;
+		return rows.map(r => r.id);
+	}
+
+	// ============================================================
+	// Persisted States
+	// ============================================================
+	async getWorkspaceState(folderId: TFolderId): Promise<Record<string, unknown> | null> {
+		const row = this.db!.prepare(`SELECT data FROM ${this.t.workspaceStates} WHERE folderId = ?`).get(folderId) as { data: string } | undefined;
+		if (!row) return null;
+		return JSON.parse(row.data);
+	}
+
+	async updateWorkspaceState(folderId: TFolderId, data: Record<string, unknown>): Promise<void> {
+		const existing = await this.getWorkspaceState(folderId);
+		const merged = { ...(existing || {}), ...data };
+		this.db!.prepare(
+			`INSERT INTO ${this.t.workspaceStates} (folderId, data) VALUES (?, ?)
+			 ON CONFLICT(folderId) DO UPDATE SET data = excluded.data`
+		).run(folderId, JSON.stringify(merged));
+	}
+
+	async getThreadState(threadId: TThreadId): Promise<Record<string, unknown> | null> {
+		const row = this.db!.prepare(`SELECT data FROM ${this.t.threadStates} WHERE threadId = ?`).get(threadId) as { data: string } | undefined;
+		if (!row) return null;
+		return JSON.parse(row.data);
+	}
+
+	async updateThreadState(threadId: TThreadId, data: Record<string, unknown>): Promise<void> {
+		const existing = await this.getThreadState(threadId);
+		const merged = { ...(existing || {}), ...data };
+		this.db!.prepare(
+			`INSERT INTO ${this.t.threadStates} (threadId, data) VALUES (?, ?)
+			 ON CONFLICT(threadId) DO UPDATE SET data = excluded.data`
+		).run(threadId, JSON.stringify(merged));
+	}
+
+	async getMessageState(messageId: TMessageId): Promise<Record<string, unknown> | null> {
+		const row = this.db!.prepare(`SELECT data FROM ${this.t.messageStates} WHERE messageId = ?`).get(messageId) as { data: string } | undefined;
+		if (!row) return null;
+		return JSON.parse(row.data);
+	}
+
+	async updateMessageState(messageId: TMessageId, data: Record<string, unknown>): Promise<void> {
+		const existing = await this.getMessageState(messageId);
+		const merged = { ...(existing || {}), ...data };
+		this.db!.prepare(
+			`INSERT INTO ${this.t.messageStates} (messageId, data) VALUES (?, ?)
+			 ON CONFLICT(messageId) DO UPDATE SET data = excluded.data`
+		).run(messageId, JSON.stringify(merged));
+	}
+
+	async getMessageStatesByThreadId(threadId: TThreadId): Promise<Array<{ messageId: string; data: Record<string, unknown> }>> {
+		const messageIds = this.db!.prepare(
+			`SELECT m.id FROM ${this.t.messages} m WHERE m.threadId = ?`
+		).all(threadId) as Array<{ id: string }>;
+
+		const result: Array<{ messageId: string; data: Record<string, unknown> }> = [];
+		for (const { id } of messageIds) {
+			const row = this.db!.prepare(`SELECT data FROM ${this.t.messageStates} WHERE messageId = ?`).get(id) as { data: string } | undefined;
+			if (row) {
+				result.push({ messageId: id, data: JSON.parse(row.data) });
+			}
+		}
+		return result;
 	}
 }

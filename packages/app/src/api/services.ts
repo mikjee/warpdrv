@@ -1,5 +1,9 @@
 import { api, login, logout, fetchAuthCheck, fetchAuthMe } from './client';
+import { useStore } from '../store';
 import type {
+	IHardwareInfo,
+	IBackendAsset,
+	IKokoroStatus,
 	IRecipe,
 	IRecipeCreatePayload,
 	IRecipeUpdatePayload,
@@ -15,6 +19,7 @@ import type {
 	IBackendGroupCreatePayload,
 	IBackendGroupUpdatePayload,
 	IModel,
+	IWhisperModel,
 	IServer,
 	IServerCreatePayload,
 	IPreset,
@@ -44,6 +49,9 @@ import type {
 	IChatThread,
 	IChatMessage,
 	IFolder as IChatFolder,
+	IWorkspace,
+	ISearchResult,
+	ISearchThreadResult,
 } from '@warpcore/bridge';
 
 // ============================================================
@@ -85,6 +93,31 @@ export async function deleteBackend(id: string) {
 export async function validateBackend(id: string) {
 	return api.post<IBackend>(`/backends/${id}/validate`);
 }
+export async function installBackend(assetKey: string, installRoot?: string) {
+	return api.post<IDownload>('/backends/install', { assetKey, installRoot });
+}
+export async function installWhisperBackend(assetKey: string, installRoot?: string) {
+	return api.post<IDownload>('/whisper-backends/install', { assetKey, installRoot });
+}
+export async function fetchHardware() {
+	return api.get<IHardwareInfo>('/hardware');
+}
+export async function fetchLlamaReleases(targetOs?: string) {
+	const qs = targetOs ? `?os=${encodeURIComponent(targetOs)}` : '';
+	return api.getList<IBackendAsset>(`/releases/llama${qs}`);
+}
+export async function fetchWhisperReleases(targetOs?: string) {
+	const qs = targetOs ? `?os=${encodeURIComponent(targetOs)}` : '';
+	return api.getList<IBackendAsset>(`/releases/whisper${qs}`);
+}
+export async function fetchKokoroStatus() {
+	const res = await api.get<IKokoroStatus>('/kokoro/status');
+	useStore.getState().setKokoroStatus(res.ok ? res.data : null);
+	return res.ok ? res.data : null;
+}
+export async function installKokoro() {
+	return api.post<{ groupKey: string; downloads: IDownload[] }>('/kokoro/install');
+}
 
 // ============================================================
 // Backend Groups
@@ -124,6 +157,10 @@ export async function fetchModels() {
 
 export async function scanModels() {
 	return api.post<IModel[]>('/models/scan');
+}
+
+export async function scanWhisperModels() {
+	return api.post<IWhisperModel[]>('/whisper-models/scan');
 }
 
 export async function fetchScanStatus() {
@@ -298,6 +335,23 @@ export async function deleteFolder(id: string) {
 	return api.del<null>(`/chat/folders/${id}`);
 }
 
+// Workspaces
+export async function createWorkspace(folderId: string, data: Record<string, unknown>) {
+	return api.post<null>(`/chat/workspaces/${folderId}`, { data });
+}
+export async function fetchWorkspace(folderId: string) {
+	return api.get<IWorkspace | null>(`/chat/workspaces/${folderId}`);
+}
+export async function updateWorkspace(folderId: string, data: Record<string, unknown>) {
+	return api.put<null>(`/chat/workspaces/${folderId}`, { data });
+}
+export async function deleteWorkspace(folderId: string) {
+	return api.del<null>(`/chat/workspaces/${folderId}`);
+}
+export async function updateFolderTopic(id: string, topic: string) {
+	return api.put<null>(`/chat/folders/${id}/topic`, { topic });
+}
+
 // Message editing
 export async function replaceMessageParts(messageId: string, parts: any[]) {
 	return api.put<null>(`/chat/messages/${messageId}`, { parts });
@@ -398,4 +452,40 @@ export async function updateCheckpoint(id: TCheckpointId, data: { name?: string;
 }
 export async function deleteCheckpoint(id: TCheckpointId) {
 	return api.del<{ id: TCheckpointId }>(`/checkpoints/${id}`);
+}
+
+// ============================================================
+// FTS Search
+// ============================================================
+export async function searchChatMessages(q: string, mode: string, options?: { threadId?: string; limit?: number; offset?: number }) {
+	const params = new URLSearchParams({ q, mode });
+	if (options?.threadId) params.set('threadId', options.threadId);
+	if (options?.limit) params.set('limit', String(options.limit));
+	if (options?.offset) params.set('offset', String(options.offset));
+	return api.getList<ISearchResult | ISearchThreadResult>(`/chat/search?${params}`);
+}
+
+// ============================================================
+// Persisted States
+// ============================================================
+export async function fetchWorkspaceState(folderId: string) {
+	return api.get<Record<string, unknown> | null>(`/chat/workspaces/${folderId}/state`);
+}
+export async function updateWorkspaceState(folderId: string, data: Record<string, unknown>) {
+	return api.put<null>(`/chat/workspaces/${folderId}/state`, { data });
+}
+export async function fetchThreadState(threadId: string) {
+	return api.get<Record<string, unknown> | null>(`/chat/threads/${threadId}/state`);
+}
+export async function updateThreadState(threadId: string, data: Record<string, unknown>) {
+	return api.put<null>(`/chat/threads/${threadId}/state`, { data });
+}
+export async function fetchMessageState(messageId: string) {
+	return api.get<Record<string, unknown> | null>(`/chat/messages/${messageId}/state`);
+}
+export async function updateMessageState(messageId: string, data: Record<string, unknown>) {
+	return api.put<null>(`/chat/messages/${messageId}/state`, { data });
+}
+export async function fetchMessageStatesByThread(threadId: string) {
+	return api.getList<{ messageId: string; data: Record<string, unknown> }>(`/chat/threads/${threadId}/message-states`);
 }

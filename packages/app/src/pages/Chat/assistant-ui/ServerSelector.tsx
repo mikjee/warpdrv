@@ -40,6 +40,7 @@ export const ThreadServerSelector = React.memo(({
 	}, []);
 	const thread = useStore(s => s.currentThreadId ? s.threads[s.currentThreadId] : undefined);
 	const serversMap = useStore(s => s.servers);
+	const serverSlots = useStore(s => s.serverSlots);
 	const servers = useMemo(() => Object.values(serversMap).sort((a,b) => {
 		const isARunning = a.status === EServerStatus.RUNNING;
 		const isBRunning = b.status === EServerStatus.RUNNING;
@@ -66,6 +67,25 @@ export const ThreadServerSelector = React.memo(({
 		serversMap
 	]);
 
+	const slotStatus = useMemo(() => {
+		if (!displayServer) return null;
+		const slots = serverSlots[displayServer.id];
+		if (!slots?.slots.length) return null;
+		const active = slots.slots.find(s => s.isProcessing && (s.prefillProgress !== null || s.generatedTokens > 0));
+		if (!active) return null;
+		const isPrompt = active.prefillProgress !== null;
+		return {
+			color: isPrompt ? 'var(--wc-accent-yellow)' : 'var(--wc-accent-blue)',
+			bg: isPrompt
+				? 'color-mix(in srgb, var(--wc-accent-yellow) 20%, transparent)'
+				: 'color-mix(in srgb, var(--wc-accent-blue) 20%, transparent)',
+			border: isPrompt
+				? 'color-mix(in srgb, var(--wc-accent-yellow) 30%, transparent)'
+				: 'color-mix(in srgb, var(--wc-accent-blue) 30%, transparent)',
+			progress: isPrompt ? (active.prefillProgress ?? 0) : 0,
+		};
+	}, [displayServer, serverSlots]);
+
 	const handleSelect = useCallback(async (serverId: string) => {
 		setOpen(false);
 		setTempThreadServerId(serverId);
@@ -80,14 +100,16 @@ export const ThreadServerSelector = React.memo(({
 				cursor={'pointer'}
 				borderRadius="lg"
 				borderWidth="1px"
-				borderColor="var(--wc-border-default)"
-				// bg="var(--wc-bg-surface)"
-				_hover={{ bg: 'var(--wc-bg-hover)' }}
+				borderColor={slotStatus ? slotStatus.border : 'var(--wc-border-default)'}
+				bg={slotStatus ? slotStatus.bg : undefined}
+				_hover={slotStatus ? { bg: `color-mix(in srgb, ${slotStatus.color} 20%, transparent)` } : { bg: 'var(--wc-bg-hover)' }}
 				onClick={() => setOpen(!open)}
 				fontSize="12px"
 				color="var(--wc-text-primary)"
-				maxW="180px"
-				// minW="180px"
+				minW="130px"
+				maxW="130px"
+				position="relative"
+				overflow="hidden"
 			>
 				{displayServer ? (
 					<>
@@ -106,6 +128,24 @@ export const ThreadServerSelector = React.memo(({
 						<ChevronDown size={12} style={{ opacity: 0.4 }} />
 					</>
 				)}
+				{slotStatus && slotStatus.progress > 0 && (
+					<Box
+						position="absolute"
+						left="0"
+						right="0"
+						bottom="0"
+						height="2px"
+						bg="var(--wc-bg-interactive)"
+						opacity="0.5"
+					>
+						<Box
+							height="100%"
+							width={`${Math.min(100, Math.max(0, slotStatus.progress * 100))}%`}
+							bg={slotStatus.color}
+							transition="width 0.2s ease-out"
+						/>
+					</Box>
+				)}
 			</HStack>
 			{open && (
 				<Box
@@ -121,8 +161,8 @@ export const ThreadServerSelector = React.memo(({
 					py="1"
 					maxH="200px"
 					overflowY="auto"
-					minW="180px"
-					maxW="180px"
+					minW="150px"
+					maxW="150px"
 				>
 					{servers.map((s) => (
 						<HStack
