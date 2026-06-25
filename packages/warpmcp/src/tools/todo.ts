@@ -28,7 +28,7 @@ export const todoAddDefinition = {
 	inputSchema: {
 		type: 'object',
 		properties: {
-			todo: { type: 'object', properties: { text: { type: 'string' }, status: { type: 'string', enum: ['pending', 'done', 'postpone'] } }, required: ['text'] },
+			todo: { type: 'object', properties: { text: { type: 'string' }, status: { type: 'string', enum: ['pending', 'done'] } }, required: ['text'] },
 			index: { type: 'number', description: 'Position to insert at (defaults to end of list).' },
 		},
 		required: ['todo'],
@@ -66,7 +66,7 @@ export const todoUpdateDefinition = {
 		type: 'object',
 		properties: {
 			index: { type: 'number', description: 'Array index of the todo to update.' },
-			status: { type: 'string', enum: ['pending', 'done', 'postpone'], description: 'New status.' },
+			status: { type: 'string', enum: ['pending', 'done'], description: 'New status.' },
 		},
 		required: ['index', 'status'],
 	},

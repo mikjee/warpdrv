@@ -4,10 +4,10 @@ import { EUISpaceLoc } from '@/store/slices/uiSpaces';
 import type { IAppletAPIFE } from '../lib/types';
 import type { TUiSpaceComponentDef } from '@/store/slices/uiSpaces';
 import { Box, Text, VStack, Flex, Spinner, Badge, AccordionRoot, AccordionItem as AccordionItemComp, AccordionItemTrigger, AccordionItemContent, HStack, Tabs, Switch, Input, Textarea, Button, SegmentGroup } from '@chakra-ui/react';
-import { ChevronDown, CheckCircle, AlertTriangle, XCircle, ChevronRight, Edit2, Trash2 } from 'lucide-react';
+import { ChevronDown, CheckCircle, AlertTriangle, XCircle, ChevronRight, Edit2, Trash2, Check } from 'lucide-react';
 import { FaShieldAlt } from 'react-icons/fa';
-import { TbMessage2Plus } from 'react-icons/tb';
 import { LuListTodo } from 'react-icons/lu';
+import { MdDragHandle } from 'react-icons/md';
 import { useAuiState } from '@assistant-ui/react';
 import { useStore } from '@/store';
 import type { IExtractedSlashCommand } from '@/pages/Chat/assistant-ui/docToString';
@@ -37,80 +37,263 @@ const TodoPanel = React.memo(() => {
 		if (!threadId) return EMPTY_TODOS;
 		return (s.threadStates[threadId]?.todos as ITodoItem[]) || EMPTY_TODOS;
 	});
+	const setThreadState = useStore(s => s.setThreadState);
+	const annotations = useStore(s => s.annotations);
+	const addAnnotation = useStore(s => s.addAnnotation);
+	const removeAnnotation = useStore(s => s.removeAnnotation);
 
-	const statusStyle = (status: string) => {
-		switch (status) {
-			case 'done':
-				return {
-					bg: 'var(--wc-accent-green-bg-8)',
-					borderColor: 'var(--wc-accent-green-border)',
-					color: 'var(--wc-accent-green)',
-				};
-			case 'pending':
-				return {
-					bg: 'var(--wc-accent-yellow-bg-8)',
-					borderColor: 'var(--wc-accent-yellow-border)',
-					color: 'var(--wc-accent-yellow)',
-				};
-			case 'postpone':
-				return {
-					bg: 'var(--wc-bg-subtle)',
-					borderColor: 'var(--wc-border-subtle)',
-					color: 'var(--wc-text-muted)',
-				};
-			default:
-				return {
-					bg: 'var(--wc-bg-subtle)',
-					borderColor: 'var(--wc-border-subtle)',
-					color: 'var(--wc-text-tertiary)',
-				};
+	const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+	const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+	const [editingIndex, setEditingIndex] = useState<number | null>(null);
+	const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+	const [addText, setAddText] = useState('');
+	const [draftText, setDraftText] = useDependantState(editingIndex ? todos[editingIndex]?.text || '' : '');
+	const editRef = useRef<HTMLInputElement>(null);
+
+	const addTodoAnnotation = useCallback((updatedTodos: ITodoItem[]) => {
+		const existing = annotations.find(a => a.selectedText.startsWith('<todos>'));
+		if (existing) removeAnnotation(existing.id);
+		const formatted = updatedTodos.map((t, i) => `${i + 1}. ${t.text} ${t.status === 'done' ? '[DONE]' : '[PENDING]'}`).join('\\n');
+		addAnnotation(`<todos>\\n${formatted}\\n</todos>`, 'Updated Todos');
+	}, [annotations, addAnnotation, removeAnnotation]);
+
+	const toggleDone = useCallback((index: number) => {
+		const updated = todos.map((t, j) =>
+			j === index ? { ...t, status: t.status === 'done' ? 'pending' : 'done' } : t
+		);
+		setThreadState(threadId, { todos: updated });
+		addTodoAnnotation(updated);
+	}, [todos, setThreadState, threadId, addTodoAnnotation]);
+
+	const startEdit = useCallback((index: number) => {
+		setEditingIndex(index);
+		setTimeout(() => editRef.current?.focus(), 0);
+	}, []);
+
+	const saveEdit = useCallback(() => {
+		if (editingIndex === null) return;
+		const trimmed = draftText.trim();
+		if (!trimmed) {
+			setEditingIndex(null);
+			return;
 		}
-	};
+		const updated = todos.map((t, j) =>
+			j === editingIndex ? { ...t, text: trimmed } : t
+		);
+		setThreadState(threadId, { todos: updated });
+		setEditingIndex(null);
+		addTodoAnnotation(updated);
+	}, [editingIndex, draftText, todos, setThreadState, threadId, addTodoAnnotation]);
+
+	const cancelEdit = useCallback(() => {
+		setEditingIndex(null);
+	}, []);
+
+	const deleteTodo = useCallback((index: number) => {
+		const updated = todos.filter((_, j) => j !== index);
+		setThreadState(threadId, { todos: updated });
+		setDeleteConfirm(null);
+		addTodoAnnotation(updated);
+	}, [todos, setThreadState, threadId, addTodoAnnotation]);
+
+	const addTodo = useCallback(() => {
+		const trimmed = addText.trim();
+		if (!trimmed) return;
+		const newTodos = [...todos, { text: trimmed, status: 'pending' }];
+		setThreadState(threadId, { todos: newTodos });
+		setAddText('');
+		addTodoAnnotation(newTodos);
+	}, [addText, todos, setThreadState, threadId, addTodoAnnotation]);
+
+	const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
+		setDraggingIndex(index);
+		e.dataTransfer.setData('index', String(index));
+		e.dataTransfer.effectAllowed = 'move';
+	}, []);
+
+	const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
+		e.preventDefault();
+		e.dataTransfer.dropEffect = 'move';
+		setDragOverIndex(index);
+	}, []);
+
+	const handleDrop = useCallback((e: React.DragEvent) => {
+		e.preventDefault();
+		const fromIndex = parseInt(e.dataTransfer.getData('index'), 10);
+		if (draggingIndex === null || isNaN(fromIndex)) {
+			setDraggingIndex(null);
+			setDragOverIndex(null);
+			return;
+		}
+		const toIndex = dragOverIndex !== null ? dragOverIndex : todos.length;
+		const updated = [...todos];
+		const [item] = updated.splice(fromIndex, 1);
+		updated.splice(toIndex, 0, item);
+		setThreadState(threadId, { todos: updated });
+		setDraggingIndex(null);
+		setDragOverIndex(null);
+		addTodoAnnotation(updated);
+	}, [draggingIndex, dragOverIndex, todos, setThreadState, threadId, addTodoAnnotation]);
+
+	const handleDragEnd = useCallback(() => {
+		setDraggingIndex(null);
+		setDragOverIndex(null);
+	}, []);
 
 	if (!todos.length) {
 		return (
-			<Box p="4">
-				<Text fontSize="xs" color="var(--wc-text-muted)" textAlign="center">
+			<Box p="3">
+				<Text fontSize="xs" color="var(--wc-text-muted)" textAlign="center" mb="2">
 					No todos yet
 				</Text>
+				<Input
+					size="xs"
+					fontSize="xs"
+					value={addText}
+					onChange={(e) => setAddText(e.target.value)}
+					onKeyDown={(e) => { if (e.key === 'Enter') addTodo(); }}
+					placeholder="Add todo..."
+				/>
 			</Box>
 		);
 	}
 
 	return (
-		<VStack gap="2" p="3" align="stretch">
+		<VStack gap="3" p="2" align="stretch">
 			{todos.map((todo, i) => (
 				<Box
 					key={i}
-					borderWidth="1px"
-					borderColor="var(--wc-border-subtle)"
-					borderRadius="md"
-					p="2.5"
-					bg="var(--wc-bg-subtle)"
+					borderWidth="2px"
+					borderColor={dragOverIndex === i ? 'var(--wc-accent-blue-border)' : 'transparent'}
+					// borderRadius="md"
+					// p="2"
+					// py="1"
+					// bg="var(--wc-bg-subtle)"
+					opacity={draggingIndex === i ? 0.6 : 1}
+					draggable
+					onDragStart={(e) => handleDragStart(e, i)}
+					onDragOver={(e) => handleDragOver(e, i)}
+					onDragLeave={() => setDragOverIndex(null)}
+					onDrop={handleDrop}
+					onDragEnd={handleDragEnd}
 				>
-					<Flex gap="2" align="center">
-						<Text fontSize="9px" fontWeight="600" color="var(--wc-text-faint)" minW="1.2em">
-							{i}
-						</Text>
-						<Text fontSize="xs" color="var(--wc-text-primary)" flex="1" textOverflow="ellipsis" overflow="hidden">
-							{todo.text}
-						</Text>
-						<Text
-							fontSize="9px"
-							fontWeight="600"
-							letterSpacing="0.04em"
-							textTransform="uppercase"
-							px="1.5"
-							py="0.5"
-							borderRadius="sm"
+					<Flex gap="1.5" align="center">
+						<Box
+							cursor="pointer"
+							flexShrink={0}
+							display="flex"
+							alignItems="center"
+							justifyContent="center"
+							w="14px"
+							h="14px"
 							borderWidth="1px"
-							{...statusStyle(todo.status)}
+							borderColor={todo.status === 'done' ? 'var(--wc-accent-green)' : 'var(--wc-border-default)'}
+							borderRadius="sm"
+							bg="transparent"
+							mr="1"
+							onClick={() => toggleDone(i)}
 						>
-							{todo.status}
+							{todo.status === 'done' && <Check size={12} strokeWidth={3} color="var(--wc-accent-green)" />}
+						</Box>
+
+						<Text fontSize="xs" fontWeight="600" color="var(--wc-text-faint)" flexShrink={0}>
+							{i}.
 						</Text>
+
+						{editingIndex === i ? (
+							<Flex gap="1" flex="1" minW="0" align="center">
+								<Input
+									ref={editRef}
+									size="xs"
+									fontSize="xs"
+									flex="1"
+									minW="0"
+									value={draftText}
+									onChange={(e) => setDraftText(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === 'Enter') saveEdit();
+										if (e.key === 'Escape') cancelEdit();
+									}}
+									onBlur={saveEdit}
+								/>
+								<Box cursor="pointer" onClick={saveEdit}>
+									<Check size={12} color="var(--wc-text-muted)" />
+								</Box>
+								<Box cursor="pointer" onClick={cancelEdit}>
+									<XCircle size={12} color="var(--wc-text-muted)" />
+								</Box>
+							</Flex>
+						) : (
+							<>
+								<Text
+									fontSize="xs"
+									color={todo.status === 'done' ? 'var(--wc-text-muted)' : 'var(--wc-text-primary)'}
+									textDecoration={todo.status === 'done' ? 'line-through' : 'none'}
+									flex="1"
+									minW="0"
+									overflow="hidden"
+									textOverflow="ellipsis"
+									whiteSpace="nowrap"
+								>
+									{todo.text}
+								</Text>
+								<Box
+									cursor="grab"
+									_hover={{ color: 'var(--wc-text-primary)' }}
+									flexShrink={0}
+									display="flex"
+									alignItems="center"
+									px="0.5"
+								>
+									<MdDragHandle size={15} color="var(--wc-text-muted)" />
+								</Box>
+								<Box
+									w="1px"
+									h="12px"
+									bg="var(--wc-border-subtle)"
+									flexShrink={0}
+									mx="1"
+								/>
+								<Box
+									cursor="pointer"
+									_hover={{ color: 'var(--wc-text-primary)' }}
+									onClick={() => startEdit(i)}
+								>
+									<Edit2 size={12} color="var(--wc-text-muted)" />
+								</Box>
+								<Box
+									cursor="pointer"
+									_hover={{ color: 'var(--wc-accent-red)' }}
+									onClick={() => setDeleteConfirm(i)}
+									ml="2"
+								>
+									<Trash2 size={12} color="var(--wc-accent-red)" />
+								</Box>
+							</>
+						)}
 					</Flex>
 				</Box>
 			))}
+
+			<Input
+				size="xs"
+				fontSize="xs"
+				value={addText}
+				onChange={(e) => setAddText(e.target.value)}
+				onKeyDown={(e) => { if (e.key === 'Enter') addTodo(); }}
+				placeholder="Add todo..."
+			/>
+
+			{deleteConfirm !== null && (
+				<ConfirmDialog
+					title="Delete Todo"
+					message={`Are you sure you want to delete "${todos[deleteConfirm]?.text}"?`}
+					isOpen={true}
+					onConfirm={() => deleteTodo(deleteConfirm)}
+					onCancel={() => setDeleteConfirm(null)}
+					confirmLabel="Delete"
+				/>
+			)}
 		</VStack>
 	);
 });
@@ -420,25 +603,11 @@ const GuardrailResults = React.memo(({ def, children }: { def: TUiSpaceComponent
 	const totalWarnings = doneEntries.reduce((acc, [, items]) => acc + (items as IGuardrailIssue[]).filter(i => i.type === EGuardrailIssueType.WARNING).length, 0);
 	const allClear = doneEntries.length === entries.length && totalViolations === 0 && totalWarnings === 0;
 
-	// Collect all issues with guardrail name, violations first then warnings, sorted by name within each group
-	const allIssues: Array<{ guardrailName: string; issue: IGuardrailIssue }> = [];
-	for (const [name, result] of doneEntries) {
-		for (const item of result as IGuardrailIssue[]) {
-			allIssues.push({ guardrailName: name, issue: item });
-		}
-	}
-	const violations = allIssues.filter(i => i.issue.type === EGuardrailIssueType.VIOLATION).sort((a, b) => a.guardrailName.localeCompare(b.guardrailName));
-	const warnings = allIssues.filter(i => i.issue.type === EGuardrailIssueType.WARNING).sort((a, b) => a.guardrailName.localeCompare(b.guardrailName));
-	const sortedIssues = [...violations, ...warnings];
-
-	// Processing entries
-	const processingEntries = entries.filter(([, v]) => v === false);
-
 	return (
 		<>
 			{children}
 			<Box mt="2">
-				<AccordionRoot collapsible defaultValue={totalViolations > 0 ? ['guardrails'] : []}>
+				<AccordionRoot collapsible defaultValue={['guardrails']}>
 					<AccordionItemComp value="guardrails" borderRadius="6px" borderWidth="1px" borderColor="var(--wc-border-subtle)">
 						<AccordionItemTrigger
 							style={{
@@ -456,42 +625,68 @@ const GuardrailResults = React.memo(({ def, children }: { def: TUiSpaceComponent
 							css={{ '&[data-state=open] .chevron': { transform: 'rotate(180deg)' } }}
 						>
 							<HStack gap="2">
-								<FaShieldAlt size={16} color="var(--wc-text-muted)" />
-								<Text fontSize="sm" fontWeight="500" color="var(--wc-text-secondary)" pl="0.5">
+								{processingCount > 0 && <Spinner size="xs" color="var(--wc-text-muted)" />}
+								{totalViolations > 0 && <XCircle size={14} color="var(--wc-accent-red)" />}
+								{totalWarnings > 0 && <AlertTriangle size={14} color="var(--wc-accent-yellow)" />}
+								{allClear && <CheckCircle size={14} color="var(--wc-accent-green)" />}
+								<Text fontSize="xs" fontWeight="500" color="var(--wc-text-primary)">
 									Guardrails
 								</Text>
 								{totalViolations > 0 && (
-									<Badge color="var(--wc-accent-red)" bg="var(--wc-accent-red-bg-8)" px="1.5" py="0.5" fontSize="11px">{totalViolations} Violations</Badge>
+									<Badge color="var(--wc-accent-red)" bg="var(--wc-accent-red-bg-8)" px="1.5" py="0.5" fontSize="9px">{totalViolations}V</Badge>
 								)}
 								{totalWarnings > 0 && (
-									<Badge color="var(--wc-accent-yellow)" bg="var(--wc-accent-yellow-bg-8)" px="1.5" py="0.5" fontSize="11px">{totalWarnings} Warnings</Badge>
+									<Badge color="var(--wc-accent-yellow)" bg="var(--wc-accent-yellow-bg-8)" px="1.5" py="0.5" fontSize="9px">{totalWarnings}W</Badge>
 								)}
 								{processingCount > 0 && (
-									<Badge color="var(--wc-text-muted)" bg="var(--wc-bg-subtle)" px="1.5" py="0.5" fontSize="11px">{processingCount}...</Badge>
+									<Badge color="var(--wc-text-muted)" bg="var(--wc-bg-subtle)" px="1.5" py="0.5" fontSize="9px">{processingCount}...</Badge>
 								)}
-								{allClear && <CheckCircle size={16} color="var(--wc-accent-green)" />}
 							</HStack>
-							<HStack gap="2" align="center">
-								<ChevronDown size={16} color="var(--wc-text-muted)" className="chevron" css={{ transition: 'transform 0.15s ease' }} />
-							</HStack>
+							<ChevronDown size={14} color="var(--wc-text-muted)" className="chevron" css={{ transition: 'transform 0.15s ease' }} />
 						</AccordionItemTrigger>
 						<AccordionItemContent>
-							<Box p="2.5">
-								{allClear
-									? <Text fontSize="sm" color="var(--wc-accent-green)">All clear</Text>
-									: <VStack gap="2" align="stretch">
-										{processingEntries.map(([name]) => (
-											<HStack key={name} gap="2">
-												<Spinner size="sm" />
-												<Text fontSize="sm" color="var(--wc-text-muted)">Processing {name}...</Text>
-											</HStack>
+							{entries.length > 1 ? (
+								<Tabs.Root defaultValue={entries[0]?.[0] || ''}>
+									<Tabs.List gap="0" borderBottomWidth="1px" borderColor="var(--wc-border-subtle)">
+										{entries.map(([name]) => (
+											<Tabs.Trigger key={name} value={name} fontSize="xs" fontWeight="500" px="3" py="2" color="var(--wc-text-muted)">
+												{name}
+											</Tabs.Trigger>
 										))}
-										{sortedIssues.map(({ guardrailName, issue }, i) => (
-											<GuardrailIssueItem key={i} guardrailName={guardrailName} item={issue} />
-										))}
-									</VStack>
-								}
-							</Box>
+										<Tabs.Indicator />
+									</Tabs.List>
+									{entries.map(([name, result]) => (
+										<Tabs.Content key={name} value={name} p="2.5">
+											{result === false
+												? <HStack gap="2"><Spinner size="xs" /><Text fontSize="xs" color="var(--wc-text-muted)">Processing...</Text></HStack>
+												: (result as IGuardrailIssue[]).length === 0
+													? <Text fontSize="xs" color="var(--wc-accent-green)">All clear</Text>
+													: <VStack gap="2" align="stretch">
+														{(result as IGuardrailIssue[]).map((item, i) => (
+															<GuardrailIssueItem key={i} item={item} />
+														))}
+													</VStack>
+											}
+										</Tabs.Content>
+									))}
+								</Tabs.Root>
+							) : (
+								<Box p="2.5">
+									{(() => {
+										const [name, result] = entries[0];
+										if (result === false) return <HStack gap="2"><Spinner size="xs" /><Text fontSize="xs" color="var(--wc-text-muted)">Processing {name}...</Text></HStack>;
+										const items = result as IGuardrailIssue[];
+										if (items.length === 0) return <Text fontSize="xs" color="var(--wc-accent-green)">{name} — All clear</Text>;
+										return (
+											<VStack gap="2" align="stretch">
+												{items.map((item, i) => (
+													<GuardrailIssueItem key={i} item={item} />
+												))}
+											</VStack>
+										);
+									})()}
+								</Box>
+							)}
 						</AccordionItemContent>
 					</AccordionItemComp>
 				</AccordionRoot>
@@ -500,46 +695,21 @@ const GuardrailResults = React.memo(({ def, children }: { def: TUiSpaceComponent
 	);
 });
 
-const GuardrailIssueItem = React.memo(({ guardrailName, item }: { guardrailName: string; item: IGuardrailIssue }) => {
-	const addAnnotation = useStore(s => s.addAnnotation);
-	const isViolation = item.type === EGuardrailIssueType.VIOLATION;
-
-	return (
-		<Box p="2" borderRadius="md" bg="var(--wc-bg-subtle)" borderWidth="1px"
-			borderColor={isViolation ? 'var(--wc-accent-red-border)' : 'var(--wc-accent-yellow-border)'}>
-			<Flex justifyContent="space-between" align="flex-start" mb={"0.5"}>
-				<HStack gap="2" flex="1" minW="0" align={"flex-start"}>
-					{isViolation
-						? <XCircle size={18} color="var(--wc-accent-red)" style={{ marginTop: "3px" }}/>
-						: <AlertTriangle size={18} color="var(--wc-accent-yellow)" style={{ marginTop: "3px" }} />}
-					<Badge px="1.5" py="0.5" mt="0.5" fontSize="10px" color="var(--wc-text-secondary)" bg="var(--wc-bg-active)">
-						{guardrailName}
-					</Badge>
-					<Text fontSize="sm" color="var(--wc-text-primary)" noWrap textOverflow="ellipsis">{item.issue}</Text>
-				</HStack>
-				<Box
-					as="button"
-					onClick={() => addAnnotation(item.quote, item.issue)}
-					title="Add to annotations"
-					flexShrink={0}
-					ml="2"
-					p="1"
-					borderRadius="4px"
-					border="none"
-					bg="transparent"
-					cursor="pointer"
-					color="var(--wc-text-muted)"
-					_hover={{ bg: 'var(--wc-bg-subtle)', color: 'var(--wc-text-primary)' }}
-				>
-					<TbMessage2Plus size={18} />
-				</Box>
-			</Flex>
-			<Text fontSize="12px" color="var(--wc-text-muted)" fontFamily="mono" fontStyle="italic" textOverflow="ellipsis" overflow="hidden" pl="6">
-				{item.quote}
+const GuardrailIssueItem = React.memo(({ item }: { item: IGuardrailIssue }) => (
+	<Box p="2" borderRadius="md" bg="var(--wc-bg-subtle)" borderWidth="1px"
+		borderColor={item.type === EGuardrailIssueType.VIOLATION ? 'var(--wc-accent-red-border)' : 'var(--wc-accent-yellow-border)'}>
+		<Flex justifyContent="space-between" mb="1">
+			<Text fontSize="9px" fontWeight="600" textTransform="uppercase" letterSpacing="0.04em"
+				color={item.type === EGuardrailIssueType.VIOLATION ? 'var(--wc-accent-red)' : 'var(--wc-accent-yellow)'}>
+				{item.type}
 			</Text>
-		</Box>
-	);
-});
+			<Text fontSize="xs" color="var(--wc-text-primary)">{item.issue}</Text>
+		</Flex>
+		<Text fontSize="9px" color="var(--wc-text-tertiary)" fontStyle="italic" textOverflow="ellipsis" overflow="hidden">
+			{item.quote}
+		</Text>
+	</Box>
+));
 
 const registerGuardrailChip = (api: IAppletAPIFE, name: string) => {
 	api.registerComposerChip({
@@ -577,16 +747,6 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 		console.log("[FEApplet] OnReady!");
 
 		api.registerSlashCommand({
-			name: 'test',
-			description: 'Test command with target and count params',
-			params: {
-				target: { type: 'string', description: 'Target name', index: 0 },
-				count: { type: 'number', description: 'Count value', index: 1 },
-			},
-			execute: async (api, params) => { console.log('[FEApplet] /testfe executed', params); },
-		});
-
-		api.registerSlashCommand({
 			name: 'compact',
 			description: 'Compact the conversation thread. Add a message in chat for custom instructions.',
 			params: {},
@@ -594,7 +754,7 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 		});
 
 		api.registerSlashCommand({
-			name: 'create_guardrail',
+			name: 'guardrail',
 			description: 'Create a custom guardrail',
 			params: {
 				name: { type: 'string', description: 'Guardrail name', index: 0 },
@@ -617,14 +777,14 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 		});
 
 		api.registerSlashCommand({
-			name: 'guardrail',
+			name: 'toggle_guardrail',
 			description: 'Activate or deactivate a guardrail',
 			params: {
-				action: { type: 'dropdown', description: 'on/off', index: 0, props: {
-					items: [{ label: 'on', value: 'on' }, { label: 'off', value: 'off' }],
-				}},
-				name: { type: 'dropdown', description: 'Guardrail name', index: 1, props: {
+				name: { type: 'dropdown', description: 'Guardrail name', index: 0, props: {
 					items: useGuardrailItems,
+				}},
+				action: { type: 'dropdown', description: 'on/off', index: 1, props: {
+					items: [{ label: 'on', value: 'on' }, { label: 'off', value: 'off' }],
 				}},
 			},
 			execute: async (_api, params) => {
@@ -638,22 +798,17 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 		});
 
 		api.registerSlashCommand({
-			name: 'delete_guardrail',
-			description: 'Delete a custom guardrail',
-			params: {
-				name: { type: 'dropdown', description: 'Guardrail name', index: 0, props: {
-					items: useGuardrailItems,
-				}},
-			},
-			execute: async (_api, params) => {
+			name: 'todo',
+			description: 'Add a new todo item',
+			params: {},
+			execute: async (_api, _params, extraParams) => {
+				const text = extraParams?.prompt;
+				if (!text) return;
 				const state = api.useStore.getState();
 				const threadId = state.currentThreadId;
 				const ts = state.getCurrentThreadState(state);
-				const guardrails = (ts?.guardrails || EMPTY_GUARDRAILS) as Record<string, IGuardrail>;
-				if (!guardrails[params.name!]) return;
-				const { [params.name!]: _, ...rest } = guardrails;
-				state.setThreadState(threadId, { guardrails: rest });
-				state.unregisterUiSpaceComponent('FEApplet', `guardrail-${params.name}`);
+				const todos = (ts?.todos || EMPTY_TODOS) as ITodoItem[];
+				state.setThreadState(threadId, { todos: [...todos, { text, status: 'pending' }] });
 			},
 		});
 		
@@ -681,10 +836,10 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 
 		api.eventNode.hook('..', 'bridge.preCompletion', async (eventApi) => {
 			const payload = eventApi.payload as { slashCommands: Array<{ name: string }> };
-			const guardrailCommands = ['create_guardrail', 'guardrail', 'delete_guardrail'];
+			const skipCmds = ['create_guardrail', 'guardrail', 'delete_guardrail', 'todo'];
 			for (const cmd of payload.slashCommands) {
-				if (guardrailCommands.includes(cmd.name)) {
-					console.log("Aborting send...");
+				if (skipCmds.includes(cmd.name)) {
+					console.log("Skip cmd hook - aborting send!");
 					return false;
 				}
 			}

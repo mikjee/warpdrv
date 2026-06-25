@@ -606,5 +606,5 @@ export interface IKokoroStatus {
 // ============================================================
 export interface ITodoItem {
 	text: string;
-	status: 'pending' | 'done' | 'postpone';
+	status: 'pending' | 'done';
 }
