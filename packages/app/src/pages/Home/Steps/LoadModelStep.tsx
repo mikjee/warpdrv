@@ -32,6 +32,9 @@ export const LoadModelStep = React.memo(({ done, isOpenDefault, isHighlighted }:
 				4. Click on a model from the results list on the left panel. Choose a model that's been released in the last 6 months for best capabilities.
 				<br />
 				<br />
+				Note: Llama Models are different from Whisper Models. For whisper, search for "ggml" .bin models.
+				<br />
+				<br />
 				5. On the right panel, open the dropdown for model files, and choose a quantized GGUF file that can fit into your VRAM with some space left over.
 				<br />
 				<br />

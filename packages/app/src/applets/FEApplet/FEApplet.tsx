@@ -656,9 +656,7 @@ const GuardrailResults = React.memo(({ def, children }: { def: TUiSpaceComponent
 								{totalWarnings > 0 && (
 									<Badge color="var(--wc-accent-yellow)" bg="var(--wc-accent-yellow-bg-8)" px="1.5" py="0.5" fontSize="11px">{totalWarnings} Warnings</Badge>
 								)}
-								{processingCount > 0 && (
-									<Badge color="var(--wc-text-muted)" bg="var(--wc-bg-subtle)" px="1.5" py="0.5" fontSize="11px">Running..</Badge>
-								)}
+								{processingCount > 0 && <Spinner size="xs" color="var(--wc-text-muted)" />}
 								{allClear && <CheckCircle size={16} color="var(--wc-accent-green)" />}
 							</HStack>
 							<HStack gap="2" align="center">
