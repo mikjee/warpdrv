@@ -852,7 +852,16 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 
 		api.onTerminate(() => { unsubscribe(); });
 
-		const blockingSlashCommands = ['create_guardrail', 'guardrail', 'delete_guardrail', 'todo'];
+		const blockingSlashCommands = ['guardrail', 'toggle_guardrail', 'todo'];
+
+		api.eventNode.hook('..', 'bridge.preCompletion', async (eventApi) => {
+			const payload = eventApi.payload as { slashCommands: Array<{ name: string }>; body: { userMessage: { content: string } } };
+			const hasCompact = payload.slashCommands.some(cmd => cmd.name === 'compact');
+			if (hasCompact && !payload.body.userMessage.content.trim()) {
+				payload.body.userMessage.content = 'Continue';
+			}
+			return eventApi.result;
+		});
 
 		api.eventNode.hook('..', 'bridge.preCompletion', async (eventApi) => {
 			const payload = eventApi.payload as { slashCommands: Array<{ name: string }>; body: { userMessage: { content: string } } };
