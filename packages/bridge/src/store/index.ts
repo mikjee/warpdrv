@@ -621,15 +621,15 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 			}),
 		applyWorkspaceStateUpdated: (folderId: TFolderId, data: Record<string, unknown>) =>
 			set((draft) => {
-				draft.workspaceStates[folderId] = data;
+				draft.workspaceStates[folderId] = { ...(draft.workspaceStates[folderId] || {}), ...data };
 			}),
 		applyThreadStateUpdated: (threadId: TThreadId, data: Record<string, unknown>) =>
 			set((draft) => {
-				draft.threadStates[threadId] = data;
+				draft.threadStates[threadId] = { ...(draft.threadStates[threadId] || {}), ...data };
 			}),
 		applyMessageStateUpdated: (messageId: TMessageId, data: Record<string, unknown>) =>
 			set((draft) => {
-				draft.messageStates[messageId] = data;
+				draft.messageStates[messageId] = { ...(draft.messageStates[messageId] || {}), ...data };
 			}),
 
 		// Reset

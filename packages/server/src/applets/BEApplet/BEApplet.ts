@@ -6,6 +6,11 @@ import { COMPACTION_PROMPT, GUARDRAIL_PROMPT, GUARDRAIL_RULESET_GENERIC_PROMPT }
 import { store } from '../../util/store';
 import { IChatMessage, TOpenAIMessage } from '@warpcore/bridge';
 
+const GUARDRAILS_DEFAULT_INFERENCE_PARAMS = {
+    enableThinking: false,
+    reasoningEffort: "none",
+};
+
 const fn: IAppletFn<IAppletAPIBE> = async (api) => {
     console.log('[BEApplet] Started');
 
@@ -190,11 +195,16 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
                     const result = await api.eventNode.invoke('/warpcore', 'bridge.handlePureCompletion', {
                         inferenceRequestId: guardrail.name + '-' + messageId,
                         inferenceUrl: grInferenceUrl,
+                        
                         messages: [{
                             role: 'user',
                             content: prompt,
                         }],
-                        inferenceParams: guardrail.inferenceParams,
+
+                        inferenceParams: {
+                            ...GUARDRAILS_DEFAULT_INFERENCE_PARAMS,
+                            ...guardrail.inferenceParams,
+                        }
                     });
 
                     const text = result.content?.filter((c: any) => c.type === "text")?.[0]?.text || 'Error';

@@ -211,13 +211,14 @@ export const VoiceInput = React.memo(({ threadId, onTranscript, aui, onStreamCha
 							console.log('[VAD Chat] annotator visible, sending to popover');
 							sendTextToPopover(text);
 						} else {
-							const annotations = useStore.getState().annotations;
+							// Annotation injection moved to FEApplet bridge.preCompletion hook
+							// const annotations = useStore.getState().annotations;
 							let fullText = text;
-							if (annotations.length > 0) {
-								const lines = annotations.map((a, i) => `${i + 1}. "${a.selectedText}"\n   ${a.comment}`);
-								fullText = lines.join('\n\n') + '\n\n' + text;
-								useStore.getState().clearAnnotations();
-							}
+							// if (annotations.length > 0) {
+							// 	const lines = annotations.map((a, i) => `${i + 1}. "${a.selectedText}"\n   ${a.comment}`);
+							// 	fullText = lines.join('\n\n') + '\n\n' + text;
+							// 	useStore.getState().clearAnnotations();
+							// }
 							console.log('[VAD Chat] sending message via composer');
 							aui.composer().setText(fullText);
 							aui.composer().send({ startRun: true });

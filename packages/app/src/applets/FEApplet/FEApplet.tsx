@@ -19,6 +19,7 @@ import React from 'react';
 import { useDependantState } from '@/hooks/useDependantState';
 import { ConfirmDialog } from '@/components/dialogs/ConfirmDialog';
 import { ServerPicker } from '@/components/ServerPicker';
+import { TbMessage2Plus } from 'react-icons/tb';
 
 const EMPTY_TODOS: ITodoItem[] = [];
 const EMPTY_GUARDRAILS: Record<string, IGuardrail> = {};
@@ -47,8 +48,14 @@ const TodoPanel = React.memo(() => {
 	const [editingIndex, setEditingIndex] = useState<number | null>(null);
 	const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 	const [addText, setAddText] = useState('');
-	const [draftText, setDraftText] = useDependantState(editingIndex ? todos[editingIndex]?.text || '' : '');
+	const [draftText, setDraftText] = useState('');
 	const editRef = useRef<HTMLInputElement>(null);
+
+	useEffect(() => {
+		if (editingIndex !== null) {
+			setDraftText(todos[editingIndex]?.text || '');
+		}
+	}, [editingIndex, todos]);
 
 	const addTodoAnnotation = useCallback((updatedTodos: ITodoItem[]) => {
 		const existing = annotations.find(a => a.selectedText.startsWith('<todos>'));
@@ -603,11 +610,25 @@ const GuardrailResults = React.memo(({ def, children }: { def: TUiSpaceComponent
 	const totalWarnings = doneEntries.reduce((acc, [, items]) => acc + (items as IGuardrailIssue[]).filter(i => i.type === EGuardrailIssueType.WARNING).length, 0);
 	const allClear = doneEntries.length === entries.length && totalViolations === 0 && totalWarnings === 0;
 
+	// Collect all issues with guardrail name, violations first then warnings, sorted by name within each group
+	const allIssues: Array<{ guardrailName: string; issue: IGuardrailIssue }> = [];
+	for (const [name, result] of doneEntries) {
+		for (const item of result as IGuardrailIssue[]) {
+			allIssues.push({ guardrailName: name, issue: item });
+		}
+	}
+	const violations = allIssues.filter(i => i.issue.type === EGuardrailIssueType.VIOLATION).sort((a, b) => a.guardrailName.localeCompare(b.guardrailName));
+	const warnings = allIssues.filter(i => i.issue.type === EGuardrailIssueType.WARNING).sort((a, b) => a.guardrailName.localeCompare(b.guardrailName));
+	const sortedIssues = [...violations, ...warnings];
+
+	// Processing entries
+	const processingEntries = entries.filter(([, v]) => v === false);
+
 	return (
 		<>
 			{children}
 			<Box mt="2">
-				<AccordionRoot collapsible defaultValue={['guardrails']}>
+				<AccordionRoot collapsible defaultValue={totalViolations > 0 ? ['guardrails'] : []}>
 					<AccordionItemComp value="guardrails" borderRadius="6px" borderWidth="1px" borderColor="var(--wc-border-subtle)">
 						<AccordionItemTrigger
 							style={{
@@ -625,6 +646,7 @@ const GuardrailResults = React.memo(({ def, children }: { def: TUiSpaceComponent
 							css={{ '&[data-state=open] .chevron': { transform: 'rotate(180deg)' } }}
 						>
 							<HStack gap="2">
+								<FaShieldAlt size={16} color="var(--wc-text-muted)" />
 								{processingCount > 0 && <Spinner size="xs" color="var(--wc-text-muted)" />}
 								{totalViolations > 0 && <XCircle size={14} color="var(--wc-accent-red)" />}
 								{totalWarnings > 0 && <AlertTriangle size={14} color="var(--wc-accent-yellow)" />}
@@ -633,60 +655,37 @@ const GuardrailResults = React.memo(({ def, children }: { def: TUiSpaceComponent
 									Guardrails
 								</Text>
 								{totalViolations > 0 && (
-									<Badge color="var(--wc-accent-red)" bg="var(--wc-accent-red-bg-8)" px="1.5" py="0.5" fontSize="9px">{totalViolations}V</Badge>
+									<Badge color="var(--wc-accent-red)" bg="var(--wc-accent-red-bg-8)" px="1.5" py="0.5" fontSize="11px">{totalViolations} Violations</Badge>
 								)}
 								{totalWarnings > 0 && (
-									<Badge color="var(--wc-accent-yellow)" bg="var(--wc-accent-yellow-bg-8)" px="1.5" py="0.5" fontSize="9px">{totalWarnings}W</Badge>
+									<Badge color="var(--wc-accent-yellow)" bg="var(--wc-accent-yellow-bg-8)" px="1.5" py="0.5" fontSize="11px">{totalWarnings} Warnings</Badge>
 								)}
 								{processingCount > 0 && (
-									<Badge color="var(--wc-text-muted)" bg="var(--wc-bg-subtle)" px="1.5" py="0.5" fontSize="9px">{processingCount}...</Badge>
+									<Badge color="var(--wc-text-muted)" bg="var(--wc-bg-subtle)" px="1.5" py="0.5" fontSize="11px">{processingCount}...</Badge>
 								)}
+								{allClear && <CheckCircle size={16} color="var(--wc-accent-green)" />}
 							</HStack>
-							<ChevronDown size={14} color="var(--wc-text-muted)" className="chevron" css={{ transition: 'transform 0.15s ease' }} />
+							<HStack gap="2" align="center">
+								<ChevronDown size={16} color="var(--wc-text-muted)" className="chevron" css={{ transition: 'transform 0.15s ease' }} />
+							</HStack>
 						</AccordionItemTrigger>
 						<AccordionItemContent>
-							{entries.length > 1 ? (
-								<Tabs.Root defaultValue={entries[0]?.[0] || ''}>
-									<Tabs.List gap="0" borderBottomWidth="1px" borderColor="var(--wc-border-subtle)">
-										{entries.map(([name]) => (
-											<Tabs.Trigger key={name} value={name} fontSize="xs" fontWeight="500" px="3" py="2" color="var(--wc-text-muted)">
-												{name}
-											</Tabs.Trigger>
+							<Box p="2.5">
+								{allClear
+									? <Text fontSize="sm" color="var(--wc-accent-green)">All clear</Text>
+									: <VStack gap="2" align="stretch">
+										{processingEntries.map(([name]) => (
+											<HStack key={name} gap="2">
+												<Spinner size="sm" />
+												<Text fontSize="sm" color="var(--wc-text-muted)">Processing {name}...</Text>
+											</HStack>
 										))}
-										<Tabs.Indicator />
-									</Tabs.List>
-									{entries.map(([name, result]) => (
-										<Tabs.Content key={name} value={name} p="2.5">
-											{result === false
-												? <HStack gap="2"><Spinner size="xs" /><Text fontSize="xs" color="var(--wc-text-muted)">Processing...</Text></HStack>
-												: (result as IGuardrailIssue[]).length === 0
-													? <Text fontSize="xs" color="var(--wc-accent-green)">All clear</Text>
-													: <VStack gap="2" align="stretch">
-														{(result as IGuardrailIssue[]).map((item, i) => (
-															<GuardrailIssueItem key={i} item={item} />
-														))}
-													</VStack>
-											}
-										</Tabs.Content>
-									))}
-								</Tabs.Root>
-							) : (
-								<Box p="2.5">
-									{(() => {
-										const [name, result] = entries[0];
-										if (result === false) return <HStack gap="2"><Spinner size="xs" /><Text fontSize="xs" color="var(--wc-text-muted)">Processing {name}...</Text></HStack>;
-										const items = result as IGuardrailIssue[];
-										if (items.length === 0) return <Text fontSize="xs" color="var(--wc-accent-green)">{name} — All clear</Text>;
-										return (
-											<VStack gap="2" align="stretch">
-												{items.map((item, i) => (
-													<GuardrailIssueItem key={i} item={item} />
-												))}
-											</VStack>
-										);
-									})()}
-								</Box>
-							)}
+										{sortedIssues.map(({ guardrailName, issue }, i) => (
+											<GuardrailIssueItem key={i} guardrailName={guardrailName} item={issue} />
+										))}
+									</VStack>
+								}
+							</Box>
 						</AccordionItemContent>
 					</AccordionItemComp>
 				</AccordionRoot>
@@ -695,21 +694,46 @@ const GuardrailResults = React.memo(({ def, children }: { def: TUiSpaceComponent
 	);
 });
 
-const GuardrailIssueItem = React.memo(({ item }: { item: IGuardrailIssue }) => (
-	<Box p="2" borderRadius="md" bg="var(--wc-bg-subtle)" borderWidth="1px"
-		borderColor={item.type === EGuardrailIssueType.VIOLATION ? 'var(--wc-accent-red-border)' : 'var(--wc-accent-yellow-border)'}>
-		<Flex justifyContent="space-between" mb="1">
-			<Text fontSize="9px" fontWeight="600" textTransform="uppercase" letterSpacing="0.04em"
-				color={item.type === EGuardrailIssueType.VIOLATION ? 'var(--wc-accent-red)' : 'var(--wc-accent-yellow)'}>
-				{item.type}
+const GuardrailIssueItem = React.memo(({ guardrailName, item }: { guardrailName: string; item: IGuardrailIssue }) => {
+	const addAnnotation = useStore(s => s.addAnnotation);
+	const isViolation = item.type === EGuardrailIssueType.VIOLATION;
+
+	return (
+		<Box p="2" borderRadius="md" bg="var(--wc-bg-subtle)" borderWidth="1px"
+			borderColor={isViolation ? 'var(--wc-accent-red-border)' : 'var(--wc-accent-yellow-border)'}>
+			<Flex justifyContent="space-between" align="flex-start" mb={"0.5"}>
+				<HStack gap="2" flex="1" minW="0" align={"flex-start"}>
+					{isViolation
+						? <XCircle size={18} color="var(--wc-accent-red)" style={{ marginTop: "3px" }}/>
+						: <AlertTriangle size={18} color="var(--wc-accent-yellow)" style={{ marginTop: "3px" }} />}
+					<Badge px="1.5" py="0.5" mt="0.5" fontSize="10px" color="var(--wc-text-secondary)" bg="var(--wc-bg-active)">
+						{guardrailName}
+					</Badge>
+					<Text fontSize="sm" color="var(--wc-text-primary)" textOverflow="ellipsis">{item.issue}</Text>
+				</HStack>
+				<Box
+					as="button"
+					onClick={() => addAnnotation(item.quote, item.issue)}
+					title="Add to annotations"
+					flexShrink={0}
+					ml="2"
+					p="1"
+					borderRadius="4px"
+					border="none"
+					bg="transparent"
+					cursor="pointer"
+					color="var(--wc-text-muted)"
+					_hover={{ bg: 'var(--wc-bg-subtle)', color: 'var(--wc-text-primary)' }}
+				>
+					<TbMessage2Plus size={18} />
+				</Box>
+			</Flex>
+			<Text fontSize="12px" color="var(--wc-text-muted)" fontFamily="mono" fontStyle="italic" textOverflow="ellipsis" overflow="hidden" pl="6">
+				{item.quote}
 			</Text>
-			<Text fontSize="xs" color="var(--wc-text-primary)">{item.issue}</Text>
-		</Flex>
-		<Text fontSize="9px" color="var(--wc-text-tertiary)" fontStyle="italic" textOverflow="ellipsis" overflow="hidden">
-			{item.quote}
-		</Text>
-	</Box>
-));
+		</Box>
+	);
+});
 
 const registerGuardrailChip = (api: IAppletAPIFE, name: string) => {
 	api.registerComposerChip({
@@ -834,11 +858,28 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 
 		api.onTerminate(() => { unsubscribe(); });
 
+		const blockingSlashCommands = ['create_guardrail', 'guardrail', 'delete_guardrail', 'todo'];
+
+		api.eventNode.hook('..', 'bridge.preCompletion', async (eventApi) => {
+			const payload = eventApi.payload as { slashCommands: Array<{ name: string }>; body: { userMessage: { content: string } } };
+			const hasBlocking = payload.slashCommands.some(cmd => blockingSlashCommands.includes(cmd.name));
+			if (!hasBlocking) {
+				const state = useStore.getState();
+				const annotations = state.annotations;
+				if (annotations.length > 0) {
+					const lines = annotations.map((a, i) => `${i + 1}. "${a.selectedText}"\n   ${a.comment}`);
+					const fullText = (lines.join('\n\n') + (payload.body.userMessage.content.trim() ? '\n\n' + payload.body.userMessage.content : '')).trim();
+					payload.body.userMessage.content = fullText;
+					state.clearAnnotations();
+				}
+			}
+			return eventApi.result;
+		});
+
 		api.eventNode.hook('..', 'bridge.preCompletion', async (eventApi) => {
 			const payload = eventApi.payload as { slashCommands: Array<{ name: string }> };
-			const skipCmds = ['create_guardrail', 'guardrail', 'delete_guardrail', 'todo'];
 			for (const cmd of payload.slashCommands) {
-				if (skipCmds.includes(cmd.name)) {
+				if (blockingSlashCommands.includes(cmd.name)) {
 					console.log("Skip cmd hook - aborting send!");
 					return false;
 				}

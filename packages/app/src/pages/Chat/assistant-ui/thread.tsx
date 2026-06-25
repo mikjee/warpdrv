@@ -341,13 +341,14 @@ const Composer: FC = () => {
 	}, [aui]);
 
 	const handleEnter = useCallback(() => {
-		if (annotations.length > 0) {
-			const lines = annotations.map((a, i) => `${i + 1}. "${a.selectedText}"\n   ${a.comment}`);
-			const fullText = (lines.join('\n\n') + (composerText.trim() ? '\n\n' + composerText : '')).trim();
-			aui.composer().setText(fullText);
-			clearAnnotations();
-		}
-		if (!composerText.trim() && pendingSlashCommands.length > 0) {
+		// Annotation injection moved to FEApplet bridge.preCompletion hook
+		// if (annotations.length > 0) {
+		// 	const lines = annotations.map((a, i) => `${i + 1}. "${a.selectedText}"\n   ${a.comment}`);
+		// 	const fullText = (lines.join('\n\n') + (composerText.trim() ? '\n\n' + composerText : '')).trim();
+		// 	aui.composer().setText(fullText);
+		// 	clearAnnotations();
+		// }
+		if (!composerText.trim() && (pendingSlashCommands.length > 0 || annotations.length > 0)) {
 			aui.composer().setText("<continue>");
 		}
 		aui.composer().send({ startRun: true });
@@ -379,16 +380,21 @@ const Composer: FC = () => {
 	}, [annotatorVisible, subscribeTranscript, aui]);
 
 	const handleSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
 		if (!isValidServer) {
-			e.preventDefault();
 			document.dispatchEvent(new CustomEvent('server-selector-shake'));
 			return;
 		}
-		if (annotations.length === 0) return;
-		const lines = annotations.map((a, i) => `${i + 1}. "${a.selectedText}"\n   ${a.comment}`);
-		const fullText = (lines.join('\n\n') + (composerText.trim() ? '\n\n' + composerText : '')).trim();
-		aui.composer().setText(fullText);
-		clearAnnotations();
+		// Annotation injection moved to FEApplet bridge.preCompletion hook
+		// if (annotations.length === 0) return;
+		// const lines = annotations.map((a, i) => `${i + 1}. "${a.selectedText}"\n   ${a.comment}`);
+		// const fullText = (lines.join('\n\n') + (composerText.trim() ? '\n\n' + composerText : '')).trim();
+		// aui.composer().setText(fullText);
+		// clearAnnotations();
+		if (!composerText.trim() && (pendingSlashCommands.length > 0 || annotations.length > 0)) {
+			aui.composer().setText("<continue>");
+		}
+		aui.composer().send({ startRun: true });
 	};
 
 	return (
@@ -627,17 +633,17 @@ const ComposerAction: FC<{ onStreamChange?: (stream: MediaStream | null) => void
 
 	const handleSend = useCallback(() => {
 		if (isSendDisabled) return;
-		if (annotations.length > 0) {
-			const lines = annotations.map((a, i) => `${i + 1}. "${a.selectedText}"\n   ${a.comment}`);
-			const fullText = (lines.join('\n\n') + (composerText.trim() ? '\n\n' + composerText : '')).trim();
-			aui.composer().setText(fullText);
-			clearAnnotations();
-		}
-		if (!composerText.trim() && pendingSlashCommands.length > 0) {
+		// Annotation injection moved to FEApplet bridge.preCompletion hook
+		// if (annotations.length > 0) {
+		// 	const lines = annotations.map((a, i) => `${i + 1}. "${a.selectedText}"\n   ${a.comment}`);
+		// 	const fullText = (lines.join('\n\n') + (composerText.trim() ? '\n\n' + composerText : '')).trim();
+		// 	aui.composer().setText(fullText);
+		// 	clearAnnotations();
+		// }
+		if (!composerText.trim() && (pendingSlashCommands.length > 0 || annotations.length > 0)) {
 			aui.composer().setText("<continue>");
 		}
-		const send = aui.composer().send;
-		send({ startRun: true });
+		aui.composer().send({ startRun: true });
 		clearComposerEditor();
 	}, [isSendDisabled, annotations, composerText, clearAnnotations, pendingSlashCommands.length]);
 

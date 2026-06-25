@@ -462,7 +462,7 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 		);
 
 		// If text is empty (slash commands only), skip inference
-		if (!text.trim()) return;
+		if (!body.userMessage.content.trim()) return;
 		if (!pipeResult) return;
 
 		if (isNewThread) setCurrentThreadId(threadId);
