@@ -71,17 +71,35 @@ export const SlashCmdServerSelector: React.FC<SlashCmdServerSelectorProps> = ({
 		[value, serversMap],
 	);
 
-	const toggleOpen = () => {
-		const next = !isOpen;
-		setIsOpen(next);
-		if (next) onFocus();
-		else onBlur({} as React.FocusEvent);
-	};
-
 	const handleSelect = (serverId: string) => {
 		onChange(serverId);
 		setIsOpen(false);
 		onBlur({} as React.FocusEvent);
+	};
+
+	const handleTriggerMouseDown = (e: React.MouseEvent) => {
+		if (isOpen) {
+			e.preventDefault();
+			return;
+		}
+	};
+
+	const handleTriggerFocus = () => {
+		if (!isOpen) {
+			setIsOpen(true);
+			onFocus();
+		}
+	};
+
+	const handleTriggerBlur = (e: React.FocusEvent) => {
+		const relatedTarget = e.relatedTarget as Node | null;
+		if (dropdownRef.current && relatedTarget && dropdownRef.current.contains(relatedTarget)) {
+			return;
+		}
+		if (isOpen) {
+			setIsOpen(false);
+		}
+		onBlur(e);
 	};
 
 	useEffect(() => {
@@ -128,20 +146,22 @@ export const SlashCmdServerSelector: React.FC<SlashCmdServerSelectorProps> = ({
 
 	return (
 		<>
-			<span
-				ref={triggerRef}
-				contentEditable={false}
-				tabIndex={0}
-				onClick={toggleOpen}
-				onFocus={() => {
-					if (!isOpen) {
-						setIsOpen(true);
-						onFocus();
-					}
-				}}
-				onKeyDown={(e) => {
-					onKeyDown(e);
-				}}
+	<span
+			ref={triggerRef}
+			contentEditable={false}
+			tabIndex={0}
+			onMouseDown={handleTriggerMouseDown}
+			onClick={() => {
+				if (!isOpen) {
+					setIsOpen(true);
+					onFocus();
+				}
+			}}
+			onFocus={handleTriggerFocus}
+			onBlur={handleTriggerBlur}
+			onKeyDown={(e) => {
+				onKeyDown(e);
+			}}
 				style={{
 					display: "inline-flex",
 					alignItems: "center",
@@ -211,6 +231,7 @@ export const SlashCmdServerSelector: React.FC<SlashCmdServerSelectorProps> = ({
 						{servers.map((server) => (
 							<div
 								key={server.id}
+								onMouseDown={(e) => e.stopPropagation()}
 								onClick={() => handleSelect(server.id)}
 								style={{
 									display: "flex",

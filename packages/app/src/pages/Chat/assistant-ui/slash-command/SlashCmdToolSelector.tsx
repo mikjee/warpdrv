@@ -27,6 +27,7 @@ export const SlashCmdToolSelector: React.FC<SlashCmdToolSelectorProps> = ({
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set());
   const triggerRef = useRef<HTMLSpanElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const ignoreNextBlurRef = useRef(false);
 
   useEffect(() => {
     inputRef(triggerRef.current);
@@ -50,13 +51,6 @@ export const SlashCmdToolSelector: React.FC<SlashCmdToolSelectorProps> = ({
     () => connectedServers.reduce((sum, [, s]) => sum + s.tools.length, 0),
     [connectedServers]
   );
-
-  const toggleOpen = () => {
-    const next = !isOpen;
-    setIsOpen(next);
-    if (next) onFocus();
-    else onBlur({} as React.FocusEvent);
-  };
 
   const handleSelectAllMessages = () => {
     onChange("");
@@ -84,6 +78,44 @@ export const SlashCmdToolSelector: React.FC<SlashCmdToolSelectorProps> = ({
       }
       return next;
     });
+  };
+
+  // Open dropdown: prevent trigger from losing focus to dropdown content
+  const handleTriggerMouseDown = (e: React.MouseEvent) => {
+    if (isOpen) {
+      // Dropdown is open - prevent focus loss when clicking anywhere
+      e.preventDefault();
+      return;
+    }
+    // Closed - toggle on click (handled by onClick)
+  };
+
+  // Handle focus: open dropdown on keyboard focus
+  const handleTriggerFocus = () => {
+    if (!isOpen) {
+      setIsOpen(true);
+      onFocus();
+    }
+  };
+
+  // Handle blur: only propagate if focus didn't go to the dropdown
+  const handleTriggerBlur = (e: React.FocusEvent) => {
+    if (ignoreNextBlurRef.current) {
+      ignoreNextBlurRef.current = false;
+      return;
+    }
+
+    const relatedTarget = e.relatedTarget as Node | null;
+    if (dropdownRef.current && relatedTarget && dropdownRef.current.contains(relatedTarget)) {
+      // Focus moved into dropdown - don't close
+      return;
+    }
+
+    // Focus moved outside - close dropdown
+    if (isOpen) {
+      setIsOpen(false);
+    }
+    onBlur(e);
   };
 
   useEffect(() => {
@@ -138,18 +170,22 @@ export const SlashCmdToolSelector: React.FC<SlashCmdToolSelectorProps> = ({
         ref={triggerRef}
         contentEditable={false}
         tabIndex={0}
-        onClick={toggleOpen}
-        onFocus={() => {
+        onMouseDown={handleTriggerMouseDown}
+        onClick={() => {
           if (!isOpen) {
             setIsOpen(true);
             onFocus();
           }
         }}
+        onFocus={handleTriggerFocus}
+        onBlur={handleTriggerBlur}
         onKeyDown={(e) => {
           if (e.key === "ArrowDown" || e.key === "Enter") {
             e.preventDefault();
-            setIsOpen(true);
-            onFocus();
+            if (!isOpen) {
+              setIsOpen(true);
+              onFocus();
+            }
           }
         }}
         style={{
@@ -202,6 +238,7 @@ export const SlashCmdToolSelector: React.FC<SlashCmdToolSelectorProps> = ({
           >
             {/* "All messages" option */}
             <div
+              onMouseDown={(e) => e.stopPropagation()}
               onClick={handleSelectAllMessages}
               style={{
                 display: "flex",
@@ -265,6 +302,7 @@ export const SlashCmdToolSelector: React.FC<SlashCmdToolSelectorProps> = ({
                   <div key={serverName}>
                     {/* Server header */}
                     <div
+                      onMouseDown={(e) => e.stopPropagation()}
                       onClick={() => toggleServer(serverName)}
                       style={{
                         display: "flex",
@@ -310,6 +348,7 @@ export const SlashCmdToolSelector: React.FC<SlashCmdToolSelectorProps> = ({
                           return (
                             <div
                               key={tool.name}
+                              onMouseDown={(e) => e.stopPropagation()}
                               onClick={() => handleToolToggle(tool.name)}
                               style={{
                                 display: "flex",
