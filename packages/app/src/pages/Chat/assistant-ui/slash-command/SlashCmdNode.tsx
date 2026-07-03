@@ -9,6 +9,7 @@ import { commandSuggestion } from "./CmdSuggestion";
 import { SlashCmdServerSelector } from "./SlashCmdServerSelector";
 import { SlashCmdDropdown } from "./SlashCmdDropdown";
 import { SlashCmdDefaultInput } from "./SlashCmdDefaultInput";
+import { SlashCmdToolSelector } from "./SlashCmdToolSelector";
 
 // paramType -> slot renderer; "default", "server", and "dropdown" wired, additional types added as needed
 type TSlotRendererProps = {
@@ -25,6 +26,7 @@ const SLOT_RENDERERS: Record<string, TSlotRenderer> = {
 	default: SlashCmdDefaultInput,
 	server: SlashCmdServerSelector,
 	dropdown: SlashCmdDropdown,
+	tool: SlashCmdToolSelector,
 };
 
 const parseArgs = (raw: string): Record<string, string> => {

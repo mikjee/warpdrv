@@ -776,8 +776,8 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 			description: 'Create a custom guardrail',
 			params: {
 				name: { type: 'string', description: 'Guardrail name', index: 0 },
-				tools: { type: 'string', description: 'Comma-separated tool names (empty = all)', index: 1 },
-				server: { type: 'server', description: 'Server ID', index: 2 },
+				tools: { type: 'tool', description: 'Trigger only on specific tool calls (empty = all messages)', index: 1 },
+				server: { type: 'server', description: 'Server used for processing (empty = same as chat server)', index: 2 },
 			},
 			execute: async (_api, params, extraParams) => {
 				const state = api.useStore.getState();
