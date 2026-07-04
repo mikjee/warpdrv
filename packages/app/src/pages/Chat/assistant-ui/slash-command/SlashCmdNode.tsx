@@ -71,29 +71,28 @@ const CommandCard: React.FC<ICommandCardProps> = (p) => createPortal(
 		) : null}
 {p.params.length > 0 ? (
 			<div style={{ marginTop: "8px", border: "1px solid var(--wc-border-subtle, rgba(255,255,255,0.08))", borderRadius: "6px" }}>
-				<table style={{ width: "100%", borderCollapse: "collapse" }}>
-					<tbody>
-					{p.params.map(([key, param]) => {
+				{p.params
+					.filter(([key, _]) => key === p.focusedKey)
+					.map(([key, param]) => {
 						const active = key === p.focusedKey;
 						return (
-							<tr
+							<div
 								key={key}
 								style={{
 									background: active ? "var(--wc-bg-hover, rgba(255,255,255,0.06))" : "transparent",
 								}}
 							>
-								<td style={{ padding: "4px 8px", verticalAlign: "top", whiteSpace: "nowrap", borderTop: "1px solid var(--wc-border-subtle, rgba(255,255,255,0.08))", borderRight: "1px solid var(--wc-border-subtle, rgba(255,255,255,0.08))" }}>
-									<div style={{ fontWeight: 600 }}>{key}</div>
-									<div style={{ color: "var(--wc-text-tertiary)", fontStyle: "italic", fontSize: "0.75rem", fontFamily: "var(--wc-font-mono, monospace)" }}>{param.type}</div>
-								</td>
-								<td style={{ padding: "4px 8px", verticalAlign: "top", color: "var(--wc-text-secondary)", borderTop: "1px solid var(--wc-border-subtle, rgba(255,255,255,0.08))" }}>
+								<div style={{ display: "flex", flexDirection: "row", padding: "4px 8px", verticalAlign: "top", whiteSpace: "nowrap"}}>
+									<div style={{ fontWeight: 600, marginRight: "10px" }}>{key}</div>
+									<div style={{ color: "var(--wc-text-tertiary)", fontStyle: "italic", fontSize: "0.75rem", fontFamily: "var(--wc-font-mono, monospace)" }}>({param.type})</div>
+								</div>
+								
+								<div style={{ padding: "4px 8px", verticalAlign: "top", color: "var(--wc-text-secondary)"}}>
 									{param.description ?? ""}
-								</td>
-							</tr>
+								</div>
+							</div>
 						);
 					})}
-				</tbody>
-				</table>
 			</div>
 		) : null}
 	</div>,
@@ -185,7 +184,7 @@ const SlashPill: React.FC<NodeViewProps> = (props) => {
 						<span key={key} style={{ display: "inline-flex", alignItems: "center" }}>
 							<Renderer
 								value={args[key] ?? ""}
-								placeholder={param.type}
+								placeholder={key}
 								inputRef={(el) => { slotRefs.current[i] = el; }}
 								onChange={(next) => setArg(key, next)}
 								onKeyDown={(e) => onSlotKeyDown(i, e)}

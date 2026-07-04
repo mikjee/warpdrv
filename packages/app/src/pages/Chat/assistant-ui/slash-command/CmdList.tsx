@@ -39,7 +39,7 @@ export const CommandList = React.memo(forwardRef<ICommandListRef, SuggestionProp
 		<div
 			className="aui-slash-menu"
 			style={{
-				width: "240px",
+				width: "320px",
 				borderRadius: "8px",
 				border: "1px solid var(--wc-border-default)",
 				background: "var(--wc-bg-elevated)",
@@ -68,16 +68,14 @@ export const CommandList = React.memo(forwardRef<ICommandListRef, SuggestionProp
 					<div style={{ fontSize: "0.8125rem" }}>
 						/{item.name}
 					</div>
-					{index === selected && (
-						<div style={{
-							fontSize: '0.75rem',
-							color: 'var(--wc-text-muted)',
-							marginTop: '2px',
-							lineHeight: '1.3',
-						}}>
-							{item.description}
-						</div>
-					)}
+					<div style={{
+						fontSize: '0.75rem',
+						color: 'var(--wc-text-muted)',
+						marginTop: '2px',
+						lineHeight: '1.3',
+					}}>
+						{item.description}
+					</div>
 				</button>
 			))}
 		</div>
