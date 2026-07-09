@@ -24,6 +24,7 @@ export enum EUISpaceLoc {
     RIGHT_PANEL = "right_panel",
     MESSAGE = "message",
     GUARDRAILS_PANEL = "guardrails_panel",
+    TODOS_PANEL = "todos_panel",
 };
 
 interface UiSpacesSlice {

@@ -324,12 +324,12 @@ export const Shell = React.memo(() => {
 			<Flex flex="1" overflow="hidden">
 				{/* Sidebar */}
 				<Flex
-					bg={sseConnected ? '#030303' : '#7f1d1d'}
+					bg={sseConnected ? 'var(--wc-bg-page)' : '#7f1d1d'}
 					direction="column"
 					w={isCollapsed ? '60px' : '220px'}
 					minW={isCollapsed ? '60px' : '220px'}
 					borderRightWidth="1px"
-					borderColor="rgba(255, 255, 255, 0.1)"
+					borderColor="var(--wc-border-subtle)"
 					px={isCollapsed ? '2' : '4'}
 					pt={'2'}
 					pb={("0")}
