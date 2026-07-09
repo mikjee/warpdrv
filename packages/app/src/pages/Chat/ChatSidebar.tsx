@@ -10,10 +10,12 @@ import type { IChatInferenceParams, IChatPreset } from '@warpcore/shared';
 import { LuPlug, LuSlidersHorizontal } from 'react-icons/lu';
 import { VscTools } from 'react-icons/vsc';
 import { TbApps } from 'react-icons/tb';
+import { FaShieldAlt } from 'react-icons/fa';
 import { useStore } from '@/store';
 import { useShallow } from 'zustand/react/shallow';
 import { EChatSidebarTab } from '@/store/slices/chatSidebar';
 import { EUISpaceLoc } from '@/store/slices/uiSpaces';
+import { ChatGuardrailsContentPanel } from './ChatGuardrailsPanel';
 
 interface IChatSidebarProps {
 	configParams: IChatInferenceParams;
@@ -85,6 +87,7 @@ export const ChatSidebar = React.memo(({
 						if (chatSidebarTab === EChatSidebarTab.TOOLS) return <ChatToolsContentPanel threadId={currentThreadId} />;
 						if (chatSidebarTab === EChatSidebarTab.SEARCH) return <ThreadSearchPanel threadId={currentThreadId} />;
 						if (chatSidebarTab === EChatSidebarTab.RIGHT_PANEL) return <UiSpacePanel location={EUISpaceLoc.RIGHT_PANEL} />;
+						if (chatSidebarTab === EChatSidebarTab.GUARDRAILS_PANEL) return <ChatGuardrailsContentPanel />;
 						return null;
 					})()}
 				</Box>
@@ -130,6 +133,23 @@ export const ChatSidebar = React.memo(({
 					_hover={{ bg: 'var(--wc-bg-card)', color: 'var(--wc-text-primary)' }}
 				>
 					<TbApps size={18} color={chatSidebarTab === EChatSidebarTab.RIGHT_PANEL && chatSidebarOpen ? 'var(--wc-text-primary)' : 'var(--wc-text-muted)'} />
+				</Flex>
+
+				{/* Guardrails tab */}
+				<Flex
+					mt="1"
+					onClick={() => toggleTab(EChatSidebarTab.GUARDRAILS_PANEL)}
+					px="3"
+					py="2.5"
+					borderRadius="lg"
+					cursor="pointer"
+					transition="all 0.15s"
+					bg={chatSidebarTab === EChatSidebarTab.GUARDRAILS_PANEL && chatSidebarOpen ? 'var(--wc-bg-card)' : 'transparent'}
+					borderWidth="1px"
+					borderColor={chatSidebarTab === EChatSidebarTab.GUARDRAILS_PANEL && chatSidebarOpen ? 'var(--wc-border-default)' : 'transparent'}
+					_hover={{ bg: 'var(--wc-bg-card)', color: 'var(--wc-text-primary)' }}
+				>
+					<FaShieldAlt size={18} color={chatSidebarTab === EChatSidebarTab.GUARDRAILS_PANEL && chatSidebarOpen ? 'var(--wc-text-primary)' : 'var(--wc-text-muted)'} />
 				</Flex>
 
 				{/* MCP tab */}

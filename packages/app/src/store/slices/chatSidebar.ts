@@ -6,6 +6,7 @@ export enum EChatSidebarTab {
     TOOLS = 'tools',
     SEARCH = 'search',
     RIGHT_PANEL = 'right-panel',
+    GUARDRAILS_PANEL = 'guardrails_panel',
 }
 
 export function chatSidebarSlice(set: ImmerSet<AppState>, get: ImmerGet<AppState>) {

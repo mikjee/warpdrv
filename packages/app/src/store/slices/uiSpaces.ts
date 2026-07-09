@@ -23,6 +23,7 @@ export enum EUISpaceLoc {
     COMPOSER = "composer",
     RIGHT_PANEL = "right_panel",
     MESSAGE = "message",
+    GUARDRAILS_PANEL = "guardrails_panel",
 };
 
 interface UiSpacesSlice {

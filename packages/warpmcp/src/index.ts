@@ -30,7 +30,7 @@ function buildMcpServer(deps: IWarpmcpDeps): McpServer {
 		{ def: shellExecDefinition, handler: (a: any) => shellExecHandler(a) },
 		{ def: fetchDefinition, handler: (a: any) => fetchHandler(a) },
 		{ def: embeddingSearchDefinition, handler: (a: any) => embeddingSearchHandler(deps, a) },
-		{ def: todoReadDefinition, handler: (a: any) => todoReadHandler(deps, a) },
+		// { def: todoReadDefinition, handler: (a: any) => todoReadHandler(deps, a) },
 		// { def: todoAddDefinition, handler: (a: any) => todoAddHandler(deps, a) },
 		// { def: todoRemoveDefinition, handler: (a: any) => todoRemoveHandler(deps, a) },
 		// { def: todoUpdateDefinition, handler: (a: any) => todoUpdateHandler(deps, a) },
