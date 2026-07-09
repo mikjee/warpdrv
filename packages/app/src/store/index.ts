@@ -34,6 +34,7 @@ import { FetchRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/Fetc
 import { ListRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/ListRenderer';
 import { ReadFileRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/ReadFileRenderer';
 import { SearchRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/SearchRenderer';
+import { TodoItemRendererMeta, TodoListRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/TodoRenderer';
 
 export const useStore = create<AppState>()(
 	subscribeWithSelector(
@@ -145,6 +146,8 @@ export const useStore = create<AppState>()(
 						ListRenderer: ListRendererMeta,
 						ReadFileRenderer: ReadFileRendererMeta,
 						SearchRenderer: SearchRendererMeta,
+						TodoItemRenderer: TodoItemRendererMeta,
+						TodoListRenderer: TodoListRendererMeta,
 					},
 					registerToolCallRenderer: (name, component) => set((state) => {
 						state.toolCallRenderers[name] = component;

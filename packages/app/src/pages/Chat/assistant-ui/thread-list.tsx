@@ -416,7 +416,7 @@ function FolderSection({
 				transition="background 0.15s"
 				border="1px solid var(--wc-border-default)"
 			>
-		<HStack
+			<HStack
 					gap="1" px="2" py="1.5" cursor="grab"
 					borderRadius="md"
 					_hover={{ bg: 'var(--wc-bg-card)' }}
@@ -429,12 +429,12 @@ function FolderSection({
 					data-foldertype="folder"
 				>
 				{open
-					? <ChevronDownIcon size={12} style={{ opacity: 0.4, flexShrink: 0 }} />
-					: <ChevronRightIcon size={12} style={{ opacity: 0.4, flexShrink: 0 }} />
+					? <ChevronDownIcon size={12} style={{ flexShrink: 0, color: "var(--wc-text-muted)" }} />
+					: <ChevronRightIcon size={12} style={{ flexShrink: 0, color: "var(--wc-text-muted)" }} />
 				}
 				{open
-					? <FolderOpenIcon size={14} style={{ opacity: 0.5, flexShrink: 0 }} />
-					: <FolderIcon size={14} style={{ opacity: 0.5, flexShrink: 0 }} />
+					? <FolderOpenIcon size={14} style={{ flexShrink: 0, color: "var(--wc-text-muted)" }} />
+					: <FolderIcon size={14} style={{ flexShrink: 0, color: "var(--wc-text-muted)" }} />
 				}
 				{renaming ? (
 					<RenamePopover

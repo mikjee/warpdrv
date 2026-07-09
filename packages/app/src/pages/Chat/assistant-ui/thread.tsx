@@ -408,6 +408,7 @@ const Composer: FC = () => {
 						background: "var(--wc-bg-elevated)",
 						boxShadow: "0px 10px 10px 10px rgba(0,0,0,0.15)",
 						borderColor: "var(--wc-border-default)",
+						color: "var(--wc-text-primary)",
 					}}
 				>
 					<ComposerAttachments />

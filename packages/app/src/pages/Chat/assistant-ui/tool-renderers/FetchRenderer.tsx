@@ -15,12 +15,9 @@ export const FetchRenderer = React.memo((props: {
 			<HStack gap="2" align="center">
 				<Globe size={13} color="var(--wc-text-secondary)" />
 				<Text fontSize="12px" fontFamily="mono" color="var(--wc-text-primary)" wordBreak="break-all">
-					{url ?? '(no url)'}
+					<Text as="span" color="var(--wc-text-muted)">{(method as string) || "GET"}</Text> {url ?? '(no url)'}
 				</Text>
 			</HStack>
-			<Text fontSize="10px" color="var(--wc-text-faint)" pt="1.5" pl="5">
-				Method: <Text as="span" color="var(--wc-text-muted)">{(method as string)}</Text>
-			</Text>
 			{/* {extras.length > 0 && (
 				<HStack gap="3" mt="1" pl="5" flexWrap="wrap">
 					{extras.map(([k, v]) => (
