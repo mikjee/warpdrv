@@ -830,6 +830,20 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 				state.setThreadState(threadId, { todos: [...todos, { text, status: 'pending' }], todoEtag: nanoid(6) });
 			},
 		});
+
+		api.registerSlashCommand({
+			name: 'set_project_root',
+			description: 'Set the project root directory for this thread',
+			params: {
+				path: { type: 'directory', description: 'Path to project root directory', index: 0 },
+			},
+			execute: async (_api, params) => {
+				const state = api.useStore.getState();
+				const threadId = state.currentThreadId;
+				if (!threadId) return;
+				state.setThreadState(threadId, { projectRoot: params.path });
+			},
+		});
 		
 		api.registerUiSpaceComponent(EUISpaceLoc.TODOS_PANEL, TodoPanel, { label: 'To-Do', icon: LuListTodo });
 		api.registerUiSpaceComponent(EUISpaceLoc.GUARDRAILS_PANEL, GuardrailsPanel, { label: 'Guardrails', icon: FaShieldAlt });

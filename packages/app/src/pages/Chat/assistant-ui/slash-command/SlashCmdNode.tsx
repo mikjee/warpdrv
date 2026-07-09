@@ -10,8 +10,9 @@ import { SlashCmdServerSelector } from "./SlashCmdServerSelector";
 import { SlashCmdDropdown } from "./SlashCmdDropdown";
 import { SlashCmdDefaultInput } from "./SlashCmdDefaultInput";
 import { SlashCmdToolSelector } from "./SlashCmdToolSelector";
+import { SlashCmdDirectoryPicker } from "./SlashCmdDirectoryPicker";
 
-// paramType -> slot renderer; "default", "server", and "dropdown" wired, additional types added as needed
+// paramType -> slot renderer; "default", "server", "dropdown", "directory" wired, additional types added as needed
 type TSlotRendererProps = {
 	value: string;
 	placeholder: string;
@@ -27,6 +28,7 @@ const SLOT_RENDERERS: Record<string, TSlotRenderer> = {
 	server: SlashCmdServerSelector,
 	dropdown: SlashCmdDropdown,
 	tool: SlashCmdToolSelector,
+	directory: SlashCmdDirectoryPicker,
 };
 
 const parseArgs = (raw: string): Record<string, string> => {

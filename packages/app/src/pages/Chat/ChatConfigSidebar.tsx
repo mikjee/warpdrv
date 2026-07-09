@@ -16,6 +16,7 @@ import { useJsonValidator } from '@/hooks/useJsonValidator';
 import { useStore } from '@/store';
 import { useQuery, useListQuery } from '@/hooks/useQuery';
 import { useDependantState } from "@/hooks/useDependantState";
+import { ProjectRootPicker } from './ProjectRootPicker';
 
 // ============================================================
 // Default params — must match the one in ChatPage
@@ -370,6 +371,12 @@ export function ChatConfigContentPanel({
 					resize="vertical"
 					p="2"
 				/>
+			</Box>
+
+			{/* Project Root */}
+			<Box>
+				<SectionHeader title="Project Root" />
+				<ProjectRootPicker />
 			</Box>
 
 			{/* Inference Params View Mode */}
