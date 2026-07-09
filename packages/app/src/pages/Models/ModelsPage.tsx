@@ -419,7 +419,7 @@ const [search, setSearch] = useState('');
 					{filtered.map(model => {
 						const meta = model.primaryFile?.metadata;
 						const quantType = meta?.quantType ?? '-';
-						const quantColor = QUANT_COLORS[quantType] ?? 'rgba(255, 255, 255, 0.4)';
+						const quantColor = QUANT_COLORS[quantType] ?? 'var(--wc-text-tertiary)';
 
 						return (
 							<Flex

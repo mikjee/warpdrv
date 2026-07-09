@@ -62,6 +62,7 @@ export const RecommendedParamsCard = React.memo(({
 					<Box position="relative">
 						<Textarea value={draftText} variant="subtle"
 							bg={isEditing ? "var(--wc-bg-subtle)" : "transparent"} outline="none"
+							color="var(--wc-text-primary)"
 							onChange={(e) => setDraftText(e.target.value)}
 							readOnly={!isEditing} opacity={isEditing ? 1 : 0.5}
 							fontFamily="monospace" fontSize="12px"

@@ -1,5 +1,11 @@
+import { nanoid } from 'nanoid';
 import type { SqlitePersistence } from '@warpcore/bridge/server';
 import type { ITodoItem } from '@warpcore/shared';
+
+export interface ITodoResult {
+	todos: ITodoItem[];
+	etag: string | null;
+}
 
 export class TodoManager {
 	private persistence: SqlitePersistence;
@@ -17,8 +23,12 @@ export class TodoManager {
 		await this.persistence.updateThreadState(threadId, { todos });
 	}
 
-	async read(threadId: string): Promise<ITodoItem[]> {
-		return this.getTodos(threadId);
+	async read(threadId: string): Promise<ITodoResult> {
+		const state = await this.persistence.getThreadState(threadId);
+		return {
+			todos: (state?.todos as ITodoItem[]) || [],
+			etag: (state?.todoEtag as string) || null,
+		};
 	}
 
 	async add(threadId: string, todo: ITodoItem, index?: number): Promise<ITodoItem[]> {
@@ -52,5 +62,23 @@ export class TodoManager {
 	async clear(threadId: string): Promise<ITodoItem[]> {
 		await this.setTodos(threadId, []);
 		return [];
+	}
+
+	async write(threadId: string, todos: ITodoItem[], etag?: string): Promise<ITodoResult> {
+		const state = await this.persistence.getThreadState(threadId);
+		const currentTodos = (state?.todos as ITodoItem[]) || [];
+		const currentEtag = (state?.todoEtag as string) || null;
+
+		if (etag === undefined || etag === '') {
+			if (currentTodos.length !== 0) {
+				throw new Error('Cannot write: todo list is not empty. Provide the current etag to overwrite.');
+			}
+		} else if (etag !== currentEtag) {
+			throw new Error('Cannot write: etag mismatch. Re-read the todo list to get the current etag.');
+		}
+
+		const newEtag = nanoid(6);
+		await this.persistence.updateThreadState(threadId, { todos, todoEtag: newEtag });
+		return { todos, etag: newEtag };
 	}
 }

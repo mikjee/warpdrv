@@ -29,6 +29,7 @@ export async function bootWarpmcp(): Promise<void> {
 		todoRemove: (tid, index) => todoManager.remove(tid, index),
 		todoUpdate: (tid, index, status) => todoManager.update(tid, index, status),
 		todoClear: (tid) => todoManager.clear(tid),
+		todoWrite: (tid, todos, etag) => todoManager.write(tid, todos, etag),
 	});
 	await mcpClient.connect(WARPMCP_NAME, {
 		url: `http://127.0.0.1:${port}/mcp`,
@@ -39,6 +40,7 @@ export async function bootWarpmcp(): Promise<void> {
 			"todo_remove": { "threadId": "{{ws.threadId}}" },
 			"todo_update": { "threadId": "{{ws.threadId}}" },
 			"todo_clear": { "threadId": "{{ws.threadId}}" },
+			"todo_write": { "threadId": "{{ws.threadId}}" },
 		} },
 	});
 }
@@ -60,6 +62,7 @@ export async function restartWarpmcpIfChanged(prev: ISettings, next: ISettings):
 		todoRemove: (tid, index) => todoManager.remove(tid, index),
 		todoUpdate: (tid, index, status) => todoManager.update(tid, index, status),
 		todoClear: (tid) => todoManager.clear(tid),
+		todoWrite: (tid, todos, etag) => todoManager.write(tid, todos, etag),
 	});
 	await mcpClient.connect(WARPMCP_NAME, {
 		url: `http://127.0.0.1:${port}/mcp`,
@@ -70,6 +73,7 @@ export async function restartWarpmcpIfChanged(prev: ISettings, next: ISettings):
 			"todo_remove": { "threadId": "{{ws.threadId}}" },
 			"todo_update": { "threadId": "{{ws.threadId}}" },
 			"todo_clear": { "threadId": "{{ws.threadId}}" },
+			"todo_write": { "threadId": "{{ws.threadId}}" },
 		} },
 	});
 }

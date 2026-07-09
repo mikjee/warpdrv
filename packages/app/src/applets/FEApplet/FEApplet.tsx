@@ -8,6 +8,7 @@ import { ChevronDown, CheckCircle, AlertTriangle, XCircle, ChevronRight, Edit2, 
 import { FaShieldAlt } from 'react-icons/fa';
 import { LuListTodo } from 'react-icons/lu';
 import { MdDragHandle } from 'react-icons/md';
+import { nanoid } from 'nanoid';
 import { useAuiState } from '@assistant-ui/react';
 import { useStore } from '@/store';
 import type { IExtractedSlashCommand } from '@/pages/Chat/assistant-ui/docToString';
@@ -58,17 +59,17 @@ const TodoPanel = React.memo(() => {
 	}, [editingIndex, todos]);
 
 	const addTodoAnnotation = useCallback((updatedTodos: ITodoItem[]) => {
-		const existing = annotations.find(a => a.selectedText.startsWith('<todos>'));
-		if (existing) removeAnnotation(existing.id);
-		const formatted = updatedTodos.map((t, i) => `${i + 1}. ${t.text} ${t.status === 'done' ? '[DONE]' : '[PENDING]'}`).join('\\n');
-		addAnnotation(`<todos>\\n${formatted}\\n</todos>`, 'Updated Todos');
+		// const existing = annotations.find(a => a.selectedText.startsWith('<todos>'));
+		// if (existing) removeAnnotation(existing.id);
+		// const formatted = updatedTodos.map((t, i) => `${i + 1}. ${t.text} ${t.status === 'done' ? '[DONE]' : '[PENDING]'}`).join('\\n');
+		// addAnnotation(`<todos>\\n${formatted}\\n</todos>`, 'Updated Todos');
 	}, [annotations, addAnnotation, removeAnnotation]);
 
 	const toggleDone = useCallback((index: number) => {
 		const updated = todos.map((t, j) =>
 			j === index ? { ...t, status: t.status === 'done' ? 'pending' : 'done' } : t
 		);
-		setThreadState(threadId, { todos: updated });
+		setThreadState(threadId, { todos: updated, todoEtag: nanoid(6) });
 		addTodoAnnotation(updated);
 	}, [todos, setThreadState, threadId, addTodoAnnotation]);
 
@@ -87,7 +88,7 @@ const TodoPanel = React.memo(() => {
 		const updated = todos.map((t, j) =>
 			j === editingIndex ? { ...t, text: trimmed } : t
 		);
-		setThreadState(threadId, { todos: updated });
+		setThreadState(threadId, { todos: updated, todoEtag: nanoid(6) });
 		setEditingIndex(null);
 		addTodoAnnotation(updated);
 	}, [editingIndex, draftText, todos, setThreadState, threadId, addTodoAnnotation]);
@@ -98,7 +99,7 @@ const TodoPanel = React.memo(() => {
 
 	const deleteTodo = useCallback((index: number) => {
 		const updated = todos.filter((_, j) => j !== index);
-		setThreadState(threadId, { todos: updated });
+		setThreadState(threadId, { todos: updated, todoEtag: nanoid(6) });
 		setDeleteConfirm(null);
 		addTodoAnnotation(updated);
 	}, [todos, setThreadState, threadId, addTodoAnnotation]);
@@ -107,7 +108,7 @@ const TodoPanel = React.memo(() => {
 		const trimmed = addText.trim();
 		if (!trimmed) return;
 		const newTodos = [...todos, { text: trimmed, status: 'pending' }];
-		setThreadState(threadId, { todos: newTodos });
+		setThreadState(threadId, { todos: newTodos, todoEtag: nanoid(6) });
 		setAddText('');
 		addTodoAnnotation(newTodos);
 	}, [addText, todos, setThreadState, threadId, addTodoAnnotation]);
@@ -136,7 +137,7 @@ const TodoPanel = React.memo(() => {
 		const updated = [...todos];
 		const [item] = updated.splice(fromIndex, 1);
 		updated.splice(toIndex, 0, item);
-		setThreadState(threadId, { todos: updated });
+		setThreadState(threadId, { todos: updated, todoEtag: nanoid(6) });
 		setDraggingIndex(null);
 		setDragOverIndex(null);
 		addTodoAnnotation(updated);
@@ -826,7 +827,7 @@ const fn: IAppletFn<IAppletAPIFE> = async (api) => {
 				const threadId = state.currentThreadId;
 				const ts = state.getCurrentThreadState(state);
 				const todos = (ts?.todos || EMPTY_TODOS) as ITodoItem[];
-				state.setThreadState(threadId, { todos: [...todos, { text, status: 'pending' }] });
+				state.setThreadState(threadId, { todos: [...todos, { text, status: 'pending' }], todoEtag: nanoid(6) });
 			},
 		});
 		

@@ -1,5 +1,5 @@
 import type { ITodoItem } from '@warpcore/shared';
-import type { IWarpmcpDeps } from '../types';
+import type { IWarpmcpDeps, ITodoResult } from '../types';
 
 function guard(deps: IWarpmcpDeps, fn: keyof IWarpmcpDeps) {
 	if (!deps[fn]) throw new Error(`${String(fn)} not available`);
@@ -15,10 +15,9 @@ export const todoReadDefinition = {
 		required: [],
 	},
 };
-export async function todoReadHandler(deps: IWarpmcpDeps, args: { threadId: string }): Promise<{ todos: ITodoItem[] }> {
+export async function todoReadHandler(deps: IWarpmcpDeps, args: { threadId: string }): Promise<ITodoResult> {
 	guard(deps, 'todoRead');
-	const todos = await deps.todoRead!(args.threadId);
-	return { todos };
+	return await deps.todoRead!(args.threadId);
 }
 
 // todo_add
@@ -91,4 +90,22 @@ export async function todoClearHandler(deps: IWarpmcpDeps, args: { threadId: str
 	guard(deps, 'todoClear');
 	const todos = await deps.todoClear!(args.threadId);
 	return { todos };
+}
+
+// todo_write
+export const todoWriteDefinition = {
+	name: 'todo_write',
+	description: 'Replace the entire todo list with a new array of items.',
+	inputSchema: {
+		type: 'object',
+		properties: {
+			todos: { type: 'array', items: { type: 'object', properties: { text: { type: 'string' }, status: { type: 'string', enum: ['pending', 'done'] } }, required: ['text'] } },
+			etag: { type: 'string', description: 'Current etag for optimistic concurrency. Leave blank if list is empty, or provide the etag from a previous read.' },
+		},
+		required: ['todos'],
+	},
+};
+export async function todoWriteHandler(deps: IWarpmcpDeps, args: { threadId: string; todos: ITodoItem[]; etag?: string }): Promise<ITodoResult> {
+	guard(deps, 'todoWrite');
+	return await deps.todoWrite!(args.threadId, args.todos, args.etag);
 }

@@ -116,7 +116,7 @@ const FileRow = React.memo(({ file, modelRoots, author, modelName, allFiles, exi
 	const { toast } = useToast();
 	const [showDirPicker, setShowDirPicker] = useState(false);
 	const [downloading, setDownloading] = useState(false);
-	const quantColor = QUANT_COLORS[file.quantType] ?? 'rgba(255, 255, 255, 0.4)';
+	const quantColor = QUANT_COLORS[file.quantType] ?? 'var(--wc-text-tertiary)';
 
 	// Get all file parts for multi-part downloads
 	const fileParts = getFilePartsForModel(allFiles, file);

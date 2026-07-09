@@ -17,6 +17,7 @@ import { todoAddDefinition, todoAddHandler } from './tools/todo';
 import { todoRemoveDefinition, todoRemoveHandler } from './tools/todo';
 import { todoUpdateDefinition, todoUpdateHandler } from './tools/todo';
 import { todoClearDefinition, todoClearHandler } from './tools/todo';
+import { todoWriteDefinition, todoWriteHandler } from './tools/todo';
 const SERVER_NAME = 'warpmcp';
 let httpServer: Server | null = null;
 let currentPort: number | null = null;
@@ -30,10 +31,11 @@ function buildMcpServer(deps: IWarpmcpDeps): McpServer {
 		{ def: fetchDefinition, handler: (a: any) => fetchHandler(a) },
 		{ def: embeddingSearchDefinition, handler: (a: any) => embeddingSearchHandler(deps, a) },
 		{ def: todoReadDefinition, handler: (a: any) => todoReadHandler(deps, a) },
-		{ def: todoAddDefinition, handler: (a: any) => todoAddHandler(deps, a) },
-		{ def: todoRemoveDefinition, handler: (a: any) => todoRemoveHandler(deps, a) },
-		{ def: todoUpdateDefinition, handler: (a: any) => todoUpdateHandler(deps, a) },
-		{ def: todoClearDefinition, handler: (a: any) => todoClearHandler(deps, a) },
+		// { def: todoAddDefinition, handler: (a: any) => todoAddHandler(deps, a) },
+		// { def: todoRemoveDefinition, handler: (a: any) => todoRemoveHandler(deps, a) },
+		// { def: todoUpdateDefinition, handler: (a: any) => todoUpdateHandler(deps, a) },
+		// { def: todoClearDefinition, handler: (a: any) => todoClearHandler(deps, a) },
+		{ def: todoWriteDefinition, handler: (a: any) => todoWriteHandler(deps, a) },
 	];
 	const server = new McpServer({ name: SERVER_NAME, version: '0.1.0' }, { capabilities: { tools: {} } });
 	server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: tools.map(t => t.def) }));
@@ -49,7 +51,7 @@ function buildMcpServer(deps: IWarpmcpDeps): McpServer {
 }
 export async function startServer(args: IStartArgs): Promise<IStartResult> {
 	const { port, exposeExternal } = args;
-	const deps: IWarpmcpDeps = { isRemote: args.isRemote, validateBearerToken: args.validateBearerToken, getFsAllowedRoots: args.getFsAllowedRoots, embeddingSearch: args.embeddingSearch, todoRead: args.todoRead, todoAdd: args.todoAdd, todoRemove: args.todoRemove, todoUpdate: args.todoUpdate, todoClear: args.todoClear };
+	const deps: IWarpmcpDeps = { isRemote: args.isRemote, validateBearerToken: args.validateBearerToken, getFsAllowedRoots: args.getFsAllowedRoots, embeddingSearch: args.embeddingSearch, todoRead: args.todoRead, todoAdd: args.todoAdd, todoRemove: args.todoRemove, todoUpdate: args.todoUpdate, todoClear: args.todoClear, todoWrite: args.todoWrite };
 	//console.log('[warpmcp] startServer deps.embeddingSearch:', typeof args.embeddingSearch);
 	const bindHost = exposeExternal ? '0.0.0.0' : '127.0.0.1';
 	const app = express();

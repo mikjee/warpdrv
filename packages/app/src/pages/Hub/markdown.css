@@ -1,31 +1,31 @@
 .markdown-container {
 	padding: 20px;
 	border-radius: 12px;
-	background: rgba(255, 255, 255, 0.02);
-	border: 1px solid rgba(255, 255, 255, 0.06);
+	background: var(--wc-bg-card);
+	border: 1px solid var(--wc-border-subtle);
 	font-size: 13px;
 	line-height: 1.7;
-	color: rgba(255, 255, 255, 0.6);
+	color: var(--wc-text-primary);
 }
 
 .markdown-container h1 {
 	font-size: 18px;
 	font-weight: 700;
-	color: #e4e4e7;
+	color: var(--wc-text-heading);
 	margin: 16px 0 8px;
 }
 
 .markdown-container h2 {
 	font-size: 16px;
 	font-weight: 600;
-	color: #e4e4e7;
+	color: var(--wc-text-heading);
 	margin: 14px 0 6px;
 }
 
 .markdown-container h3 {
 	font-size: 14px;
 	font-weight: 600;
-	color: #e4e4e7;
+	color: var(--wc-text-heading);
 	margin: 12px 0 4px;
 }
 
@@ -36,7 +36,7 @@
 .markdown-container code {
 	font-family: "Geist Mono", monospace;
 	font-size: 12px;
-	background: rgba(255, 255, 255, 0.06);
+	background: var(--wc-special-code-bg);
 	padding: 1px 5px;
 	border-radius: 4px;
 }
@@ -44,7 +44,7 @@
 .markdown-container pre {
 	font-family: "Geist Mono", monospace;
 	font-size: 12px;
-	background: rgba(255, 255, 255, 0.04);
+	background: var(--wc-bg-subtle);
 	padding: 12px;
 	border-radius: 8px;
 	overflow-x: auto;
@@ -83,19 +83,19 @@
 
 .markdown-container th,
 .markdown-container td {
-	border: 1px solid rgba(255, 255, 255, 0.08);
+	border: 1px solid var(--wc-border-subtle);
 	padding: 6px 10px;
 	font-size: 12px;
 }
 
 .markdown-container th {
-	background: rgba(255, 255, 255, 0.04);
+	background: var(--wc-bg-subtle);
 	font-weight: 600;
 }
 
 .markdown-container hr {
 	border: none;
-	border-top: 1px solid rgba(255, 255, 255, 0.06);
+	border-top: 1px solid var(--wc-border-subtle);
 	margin: 12px 0;
 }
 
@@ -107,6 +107,6 @@
 .markdown-container blockquote {
 	border-left: 3px solid rgba(51, 129, 255, 0.3);
 	padding-left: 12px;
-	color: rgba(255, 255, 255, 0.5);
+	color: var(--wc-text-tertiary);
 	margin: 8px 0;
 }

@@ -37,7 +37,7 @@ function SlotPill({ slot, metadata }: ISlotPillProps) {
 	let progress: number;
 
 	if (isPrompt) {
-		color = 'var(--wc-accent-yellow)';
+		color = 'var(--wc-accent-yellow-strong)';
 		const pct = Math.round((slot.prefillProgress ?? 0) * 100);
 		label = pct >= 100 ? 'pp' : `pp ${pct}%`;
 		progress = slot.prefillProgress ?? 0;
