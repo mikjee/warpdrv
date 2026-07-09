@@ -64,21 +64,22 @@ export class TodoManager {
 		return [];
 	}
 
-	async write(threadId: string, todos: ITodoItem[], etag?: string): Promise<ITodoResult> {
+	async write(threadId: string, todos: ITodoItem[], etag?: string): Promise<any> {
 		const state = await this.persistence.getThreadState(threadId);
 		const currentTodos = (state?.todos as ITodoItem[]) || [];
 		const currentEtag = (state?.todoEtag as string) || null;
 
-		if (etag === undefined || etag === '') {
+		if (!etag) {
 			if (currentTodos.length !== 0) {
 				throw new Error('Cannot write: todo list is not empty. Provide the current etag to overwrite.');
 			}
 		} else if (etag !== currentEtag) {
-			throw new Error('Cannot write: etag mismatch. Re-read the todo list to get the current etag.');
+			console.error("To-do etag mismatch.", etag, currentEtag);
+			throw new Error('Cannot write: etag mismatch. Provide the latest etag - either from system-reminder or fresh read.');
 		}
 
 		const newEtag = nanoid(6);
 		await this.persistence.updateThreadState(threadId, { todos, todoEtag: newEtag });
-		return { todos, etag: newEtag };
+		return { status: "success", newEtag };
 	}
 }

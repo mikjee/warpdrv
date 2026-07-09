@@ -69,7 +69,8 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
                 'bridge.getThreadState',
                 payload.request.threadId,
             ) as Record<string, unknown> | null;
-            let content = TRAILING_SYSTEM_PROMPT;
+            
+            let content = '';
 
             // ---
 
@@ -79,8 +80,8 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
             let isTodosIncluded = false;
 
             if (todos && todos.length > 0) {
-                const lines = todos.map((t, i) => `${i + 1}. [${t.status}] ${t.text}`);
-                content += `\n\n<todos>\nEtag: ${todoEtag || 'none'}\n${lines.join('\n')}\n</todos>`;
+                const lines = todos.map((t, i) => `${i}. [${t.status}] ${t.text}`);
+                content += `\nTodos\nCurrent Etag: ${todoEtag || 'none'}\n${lines.join('\n')}\n`;
                 isTodosIncluded = true;
             }
 
@@ -89,12 +90,43 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
             if (
                 isTodosIncluded
             ) {
-                (eventApi.result as any[]).push({
-                    role: 'system',
-                    content,
-                });
+                const messages = eventApi.result as Array<{
+                    role: string;
+                    content: string | Array<{ type: string; text?: string }>;
+                }>;
 
-                return [...(eventApi.result as any[])];
+                const lastIndex = messages.length - 1;
+
+                if (lastIndex < 0) {
+                    console.warn("No message found to inject trailing message! Strange..");
+                    return;
+                }
+
+                const trailingContent = "\n<system-reminder>\n" + TRAILING_SYSTEM_PROMPT
+                    + "\n" + content
+                    + "\n</system-reminder>";
+                const lastMsg = messages[lastIndex]!;
+
+                let newLastMsg: typeof lastMsg;
+                if (typeof lastMsg.content === "string") {
+                    newLastMsg = { ...lastMsg, content: lastMsg.content + trailingContent };
+                }
+                else {
+                    const partIndex = lastMsg.content.findIndex(p => p.type === "text");
+                    if (partIndex >= 0) {
+                        const newContent = lastMsg.content.map((p, i) =>
+                            i === partIndex ? { ...p, text: (p.text ?? "") + trailingContent } : p
+                        );
+                        newLastMsg = { ...lastMsg, content: newContent };
+                    }
+                    else {
+                        const newContent = [...lastMsg.content, { type: "text", text: trailingContent }];
+                        newLastMsg = { ...lastMsg, content: newContent };
+                    }
+                }
+                const newMessages = messages.map((m, i) => i === lastIndex ? newLastMsg : m);
+                return newMessages;
+
             }
 
         });

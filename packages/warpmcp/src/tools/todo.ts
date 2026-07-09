@@ -100,7 +100,7 @@ export const todoWriteDefinition = {
 		type: 'object',
 		properties: {
 			todos: { type: 'array', items: { type: 'object', properties: { text: { type: 'string' }, status: { type: 'string', enum: ['pending', 'done'] } }, required: ['text'] } },
-			etag: { type: 'string', description: 'Current etag for optimistic concurrency. Leave blank if list is empty, or provide the etag from a previous read.' },
+			etag: { type: 'string', description: 'Current etag. Leave blank if list is currently empty, MUST provide the latest etag if todos is not currently empty - to prevent accidental overwrite.' },
 		},
 		required: ['todos'],
 	},

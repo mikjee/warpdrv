@@ -547,7 +547,7 @@ export class Orchestrator {
 			'.',
 			finalMessages,
 		) as Array<TOpenAIMessage>;
-
+		
 		const body: Record<string, unknown> = {
 			model: 'model',
 			messages: finalMessages,
@@ -994,7 +994,7 @@ export class Orchestrator {
 				const args = JSON.parse(tc.arguments);
 				const wsVars = await this.resolveWsVars(tc.threadId);
 				const finalArgs = this.mcpClient.prepareToolArgs(tc.serverName, tc.toolName, args, wsVars);
-				console.log('[orchestrator] resume tool call:', tc.serverName, tc.toolName, 'wsVars:', wsVars, 'finalArgs:', JSON.stringify(finalArgs));
+				//console.log('[orchestrator] resume tool call:', tc.serverName, tc.toolName, 'wsVars:', wsVars, 'finalArgs:', JSON.stringify(finalArgs));
 				const mcpResult = await this.mcpClient.executeToolCall(tc.serverName, tc.toolName, finalArgs, tc.threadId);
 				const resultStr = JSON.stringify(mcpResult.content);
 				const finalStatus = mcpResult.isError ? EToolCallStatus.ERROR : EToolCallStatus.COMPLETED;
@@ -1056,17 +1056,17 @@ export class Orchestrator {
 		if (stillBlocking) return;
 
 		// Convert resolved tool calls to OpenAI format and append to messages
-		const toolOpenAIMessages = allInChain
-			.filter((tc): tc is IToolCall => tc !== null)
-			.map(tc => ({
-				role: 'tool' as const,
-				content: tc.result ?? JSON.stringify({ error: tc.error }),
-				tool_call_id: tc.id,
-			}));
+		// const toolOpenAIMessages = allInChain
+		// 	.filter((tc): tc is IToolCall => tc !== null)
+		// 	.map(tc => ({
+		// 		role: 'tool' as const,
+		// 		content: tc.result ?? JSON.stringify({ error: tc.error }),
+		// 		tool_call_id: tc.id,
+		// 	}));
 
 		// All tool calls resolved — trigger next inference pass
 		const enabledTools = await this.resolveEnabledTools(request);
-		const baseMessages = await this.buildMessageChain(request, tc.messageId, toolOpenAIMessages);
+		const baseMessages = await this.buildMessageChain(request, tc.messageId);
 
 		await this.executePass(
 			inferenceUrl,

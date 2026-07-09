@@ -27,7 +27,12 @@ export function mergeConsecutiveMessages(messages: IChatMessage[]): IChatMessage
 		const msg = messages[i]!
 		const last = result[result.length - 1]
 		
-		if (last && last.role === msg.role && msg.role !== EChatRole.TOOL) {
+		const hasToolCall = msg.content.some(p => p.type === EMessagePartType.TOOL_CALL);
+		const lastHasToolCall = last ? last.content.some(p => p.type === EMessagePartType.TOOL_CALL) : false;
+		
+		if (
+			last && last.role === msg.role && msg.role !== EChatRole.TOOL && !hasToolCall && !lastHasToolCall
+		) {
 			last.content = [...last.content, ...msg.content]
 		} else {
 			result.push({ ...msg, content: [...msg.content] })
@@ -116,10 +121,10 @@ export function convertMessagesToOpenAIFormat(
 					const toolCallId = (part as any).toolCallId;
 					const tc = toolCallId ? toolCallsById[toolCallId] : undefined;
 
-					if (tc && tc.result !== null) {
+					if (tc) {
 						result.push({
 							role: 'tool',
-							content: tc.result,
+							content: tc.result ?? `Error: ${ tc.error ?? "No results!" }`,
 							tool_call_id: tc.id,
 						});
 					}
