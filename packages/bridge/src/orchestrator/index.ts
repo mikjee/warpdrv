@@ -540,9 +540,17 @@ export class Orchestrator {
 		}));
 		const hasTools = openAiTools.length > 0;
 
+		let finalMessages = [...messages];
+		finalMessages = await this.eventNode.pipe(
+			'bridge.preInference',
+			{ request, messages: finalMessages },
+			'.',
+			finalMessages,
+		) as Array<TOpenAIMessage>;
+
 		const body: Record<string, unknown> = {
 			model: 'model',
-			messages: messages,
+			messages: finalMessages,
 			stream: true,
 			...(hasTools ? { tools: openAiTools } : {}),
 			...this.buildInferenceParams(request.inferenceParams),

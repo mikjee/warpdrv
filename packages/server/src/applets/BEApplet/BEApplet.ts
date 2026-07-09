@@ -1,8 +1,8 @@
 import type { TAppletDefinition, IAppletFn } from '@warpcore/realmcore';
 import { EAppletHostType, EAppletScope } from '@warpcore/realmcore';
 import type { IAppletAPIBE } from '../lib/types';
-import type { IGuardrail, IGuardrailIssue, IServer } from '@warpcore/shared';
-import { COMPACTION_PROMPT, GUARDRAIL_PROMPT, GUARDRAIL_RULESET_GENERIC_PROMPT } from './prompts';
+import type { IGuardrail, IGuardrailIssue, IServer, ITodoItem } from '@warpcore/shared';
+import { COMPACTION_PROMPT, GUARDRAIL_PROMPT, GUARDRAIL_RULESET_GENERIC_PROMPT, TRAILING_SYSTEM_PROMPT } from './prompts';
 import { store } from '../../util/store';
 import { IChatMessage, TOpenAIMessage } from '@warpcore/bridge';
 
@@ -28,9 +28,7 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
                 payload.request.threadId,
             ) as Record<string, unknown> | null;
 
-            if (threadState?.ignoreCompactionBase === true) {
-                return eventApi.result;
-            }
+            if (threadState?.ignoreCompactionBase === true) return;
 
             const messageStates = await api.eventNode.invoke(
                 '/warpcore',
@@ -54,8 +52,51 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
                 }
             }
 
-            if (compactionBaseIndex === -1) return eventApi.result;
+            if (compactionBaseIndex === -1) return;
             return (eventApi.result as any[]).slice(compactionBaseIndex);
+        });
+
+        api.eventNode.hook('/warpcore', 'bridge.preInference', async (eventApi) => {
+            const payload = eventApi.payload as {
+                request: { messageState?: Record<string, unknown>; threadId: string };
+            };
+
+            const commands = payload.request.messageState?.slashCommands as Array<{ name: string }> | undefined;
+            if (commands?.some(c => c.name === 'compact')) return;
+
+            const threadState = await api.eventNode.invoke(
+                '/warpcore',
+                'bridge.getThreadState',
+                payload.request.threadId,
+            ) as Record<string, unknown> | null;
+            let content = TRAILING_SYSTEM_PROMPT;
+
+            // ---
+
+            const todos = threadState?.todos as ITodoItem[] | undefined;
+            const todoEtag = threadState?.todoEtag as string | undefined;
+
+            let isTodosIncluded = false;
+
+            if (todos && todos.length > 0) {
+                const lines = todos.map((t, i) => `${i + 1}. [${t.status}] ${t.text}`);
+                content += `\n\n<todos>\nEtag: ${todoEtag || 'none'}\n${lines.join('\n')}\n</todos>`;
+                isTodosIncluded = true;
+            }
+
+            // ---
+
+            if (
+                isTodosIncluded
+            ) {
+                (eventApi.result as any[]).push({
+                    role: 'system',
+                    content,
+                });
+
+                return [...(eventApi.result as any[])];
+            }
+
         });
 
         api.eventNode.hook('/warpcore', 'bridge.preConvertNewMsg', async (eventApi) => {
@@ -64,9 +105,8 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
             };
 
             const commands = payload.request.messageState?.slashCommands as Array<{ name: string }> | undefined;
-            if (!commands?.some(c => c.name === 'compact')) {
-                return eventApi.result;
-            }
+            if (!commands?.some(c => c.name === 'compact')) return;
+            
 
             const userMsg = eventApi.result as { content: Array<{ type: string; text?: string }> };
             for (const part of userMsg.content) {
@@ -76,7 +116,7 @@ const fn: IAppletFn<IAppletAPIBE> = async (api) => {
                 }
             }
 
-            return eventApi.result;
+            return { ...(eventApi.result as any) };
         });
 
         api.eventNode.on('/warpcore', 'bridge.inference.finish', async (eventApi) => {
