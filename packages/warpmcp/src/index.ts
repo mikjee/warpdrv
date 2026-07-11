@@ -12,6 +12,10 @@ import { dirListDefinition, dirListHandler } from './tools/dir_list';
 import { shellExecDefinition, shellExecHandler } from './tools/shell_exec';
 import { fetchDefinition, fetchHandler } from './tools/fetch';
 import { embeddingSearchDefinition, embeddingSearchHandler } from './tools/embedding_search';
+// import { webSearchDefinition, webSearchHandler } from './tools/web_search';
+// import { webSearchNewsDefinition, webSearchNewsHandler } from './tools/web_search_news';
+// import { webSearchImagesDefinition, webSearchImagesHandler } from './tools/web_search_images';
+// import { webSearchVideosDefinition, webSearchVideosHandler } from './tools/web_search_videos';
 import { todoReadDefinition, todoReadHandler } from './tools/todo';
 import { todoAddDefinition, todoAddHandler } from './tools/todo';
 import { todoRemoveDefinition, todoRemoveHandler } from './tools/todo';
@@ -29,6 +33,10 @@ function buildMcpServer(deps: IWarpmcpDeps): McpServer {
 		{ def: dirListDefinition, handler: (a: any) => dirListHandler(deps, a) },
 		{ def: shellExecDefinition, handler: (a: any) => shellExecHandler(a) },
 		{ def: fetchDefinition, handler: (a: any) => fetchHandler(a) },
+		// { def: webSearchDefinition, handler: (a: any) => webSearchHandler(a) },
+		// { def: webSearchNewsDefinition, handler: (a: any) => webSearchNewsHandler(a) },
+		// { def: webSearchImagesDefinition, handler: (a: any) => webSearchImagesHandler(a) },
+		// { def: webSearchVideosDefinition, handler: (a: any) => webSearchVideosHandler(a) },
 		{ def: embeddingSearchDefinition, handler: (a: any) => embeddingSearchHandler(deps, a) },
 		// { def: todoReadDefinition, handler: (a: any) => todoReadHandler(deps, a) },
 		// { def: todoAddDefinition, handler: (a: any) => todoAddHandler(deps, a) },
