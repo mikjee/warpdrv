@@ -19,6 +19,7 @@ export interface IWarpmcpDeps {
 	todoUpdate?: (threadId: string, index: number, status: ITodoItem['status']) => Promise<ITodoItem[]>;
 	todoClear?: (threadId: string) => Promise<ITodoItem[]>;
 	todoWrite?: (threadId: string, todos: ITodoItem[], etag?: string) => Promise<ITodoResult>;
+	getProjectRoot?: (threadId: string) => Promise<string | null>;
 }
 export interface IStartArgs extends IWarpmcpDeps {
 	port: number;

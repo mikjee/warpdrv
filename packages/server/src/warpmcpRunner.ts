@@ -4,7 +4,7 @@ import { validateBearerToken } from './routes/tokens';
 import { store } from './util/store';
 import type { ISettings } from '@warpcore/shared';
 import { DEFAULT_SETTINGS } from '@warpcore/shared';
-import { mcpClient, todoManager } from './index';
+import { mcpClient, todoManager, getProjectRoot } from './index';
 import { embeddingManager } from './services/embeddingManager';
 const SETTINGS_KEY = 'settings:general';
 async function getSettings(): Promise<ISettings> {
@@ -24,6 +24,7 @@ export async function bootWarpmcp(): Promise<void> {
 		validateBearerToken,
 		getFsAllowedRoots: () => (currentSettings.fsAllowedRoots ?? []),
 		embeddingSearch: (query: string, topK: number, topic: string) => embeddingManager.search(query, topK, topic),
+		getProjectRoot: (tid) => getProjectRoot(tid),
 		// todoRead: (tid) => todoManager.read(tid),
 		// todoAdd: (tid, todo, index) => todoManager.add(tid, todo, index),
 		// todoRemove: (tid, index) => todoManager.remove(tid, index),
@@ -41,6 +42,8 @@ export async function bootWarpmcp(): Promise<void> {
 			// "todo_update": { "threadId": "{{ws.threadId}}" },
 			// "todo_clear": { "threadId": "{{ws.threadId}}" },
 			"todo_write": { "threadId": "{{ws.threadId}}" },
+			"rg": { "path": "{{ts.projectRoot}}" },
+			"get_project_root": { "threadId": "{{ws.threadId}}" },
 		} },
 	});
 }
@@ -57,6 +60,7 @@ export async function restartWarpmcpIfChanged(prev: ISettings, next: ISettings):
 		validateBearerToken,
 		getFsAllowedRoots: () => (currentSettings.fsAllowedRoots ?? []),
 		embeddingSearch: (query: string, topK: number, topic: string) => embeddingManager.search(query, topK, topic),
+		getProjectRoot: (tid) => getProjectRoot(tid),
 		// todoRead: (tid) => todoManager.read(tid),
 		// todoAdd: (tid, todo, index) => todoManager.add(tid, todo, index),
 		// todoRemove: (tid, index) => todoManager.remove(tid, index),
@@ -74,6 +78,8 @@ export async function restartWarpmcpIfChanged(prev: ISettings, next: ISettings):
 			// "todo_update": { "threadId": "{{ws.threadId}}" },
 			// "todo_clear": { "threadId": "{{ws.threadId}}" },
 			"todo_write": { "threadId": "{{ws.threadId}}" },
+			"rg": { "path": "{{ts.projectRoot}}" },
+			"get_project_root": { "threadId": "{{ws.threadId}}" },
 		} },
 	});
 }

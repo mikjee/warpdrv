@@ -7,6 +7,7 @@
 	"types": "./src/index.ts",
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.29.0",
+		"@vscode/ripgrep": "^1.18.0",
 		"express": "^5.1.0"
 	},
 	"devDependencies": {

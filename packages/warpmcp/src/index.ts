@@ -18,6 +18,8 @@ import { todoRemoveDefinition, todoRemoveHandler } from './tools/todo';
 import { todoUpdateDefinition, todoUpdateHandler } from './tools/todo';
 import { todoClearDefinition, todoClearHandler } from './tools/todo';
 import { todoWriteDefinition, todoWriteHandler } from './tools/todo';
+import { rgDefinition, rgHandler } from './tools/rg';
+import { getProjectRootDefinition, getProjectRootHandler } from './tools/get_project_root';
 const SERVER_NAME = 'warpmcp';
 let httpServer: Server | null = null;
 let currentPort: number | null = null;
@@ -36,6 +38,8 @@ function buildMcpServer(deps: IWarpmcpDeps): McpServer {
 		// { def: todoUpdateDefinition, handler: (a: any) => todoUpdateHandler(deps, a) },
 		// { def: todoClearDefinition, handler: (a: any) => todoClearHandler(deps, a) },
 		{ def: todoWriteDefinition, handler: (a: any) => todoWriteHandler(deps, a) },
+		{ def: rgDefinition, handler: (a: any) => rgHandler(deps, a) },
+		{ def: getProjectRootDefinition, handler: (a: any) => getProjectRootHandler(deps, a) },
 	];
 	const server = new McpServer({ name: SERVER_NAME, version: '0.1.0' }, { capabilities: { tools: {} } });
 	server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: tools.map(t => t.def) }));

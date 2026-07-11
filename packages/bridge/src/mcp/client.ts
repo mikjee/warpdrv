@@ -277,6 +277,7 @@ export class McpClientManager implements IMcpClient {
 		toolName: string,
 		args: Record<string, unknown>,
 		wsVars: Record<string, unknown> | null,
+		tsVars: Record<string, unknown> | null = null,
 	): Record<string, unknown> {
 		const entry = this.clients[serverName];
 		if (!entry) return args;
@@ -285,21 +286,24 @@ export class McpClientManager implements IMcpClient {
 		const defaults = entry.config.warpdrv?.argDefaults?.[toolName];
 		const merged = { ...defaults, ...args };
 
-		// Interpolate {{ws.<key>}} in all string values
-		if (!wsVars) return merged;
-		return this.interpolateArgs(merged, wsVars);
+		// Interpolate {{ws.<key>}} and {{ts.<key>}} in all string values
+		let result = merged;
+		if (wsVars) result = this.interpolateArgs(result, wsVars, 'ws');
+		if (tsVars) result = this.interpolateArgs(result, tsVars, 'ts');
+		return result;
 	}
 
-	private interpolateArgs(args: Record<string, unknown>, wsVars: Record<string, unknown>): Record<string, unknown> {
+	private interpolateArgs(args: Record<string, unknown>, vars: Record<string, unknown>, prefix: string): Record<string, unknown> {
 		const result: Record<string, unknown> = {};
+		const pattern = new RegExp(`\\{\\{${prefix}\\\\.(\\w+)\\}\\}`, 'g');
 		for (const [key, value] of Object.entries(args)) {
 			if (typeof value === 'string') {
-				result[key] = value.replace(/\{\{ws\.(\w+)\}\}/g, (_match, wsKey) => {
-					const resolved = wsVars[wsKey];
-					return resolved !== undefined ? String(resolved) : `{{ws.${wsKey}}}`;
+				result[key] = value.replace(pattern, (_match, varKey) => {
+					const resolved = vars[varKey];
+					return resolved !== undefined ? String(resolved) : `{{${prefix}.${varKey}}}`;
 				});
 			} else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-				result[key] = this.interpolateArgs(value as Record<string, unknown>, wsVars);
+				result[key] = this.interpolateArgs(value as Record<string, unknown>, vars, prefix);
 			} else {
 				result[key] = value;
 			}

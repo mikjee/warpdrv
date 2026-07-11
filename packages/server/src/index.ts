@@ -43,6 +43,7 @@ import { SqlitePersistence, SqlitePersistenceWithBroadcast, McpClientManager, Mc
 import { EventNode } from '@warpcore/realmcore';
 import { bootWarpmcp } from './warpmcpRunner';
 import { TodoManager } from './services/todoManager';
+import { getProjectRoot } from './services/projectRoot';
 import { embeddingManager } from './services/embeddingManager';
 import { getDataDir } from './util/mcpConfig';
 import { serveStaticApp } from './middleware/serveStatic';
@@ -59,6 +60,7 @@ export let orchestrator: Orchestrator;
 export let mcpConfig: McpConfig;
 export let broadcaster: SseBroadcaster;
 export let todoManager: TodoManager;
+export { getProjectRoot } from './services/projectRoot';
 
 import { execSync } from 'child_process';
 import { launchAutoStartServers, reconcileServers } from './services/processManager';

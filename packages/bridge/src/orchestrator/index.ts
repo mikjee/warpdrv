@@ -250,6 +250,12 @@ export class Orchestrator {
 		return { threadId, folderId: null, topic: 'global', name: 'global' };
 	}
 
+	private async resolveThreadVars(threadId: TThreadId): Promise<Record<string, unknown> | null> {
+		const threadState = await this.persistence.getThreadState(threadId);
+		if (!threadState || Object.keys(threadState).length === 0) return null;
+		return threadState;
+	}
+
 	// V2: builds message chain from persistence instead of receiving it from frontend
 	async handleCompletionV2(
 		inferenceUrl: string,
@@ -888,8 +894,9 @@ export class Orchestrator {
 
 			try {
 				const wsVars = await this.resolveWsVars(request.threadId);
-				const finalArgs = this.mcpClient.prepareToolArgs(serverName!, tc.name, args, wsVars);
-				console.log('[orchestrator] tool call:', serverName, tc.name, 'wsVars:', wsVars, 'finalArgs:', JSON.stringify(finalArgs));
+				const tsVars = await this.resolveThreadVars(request.threadId);
+				const finalArgs = this.mcpClient.prepareToolArgs(serverName!, tc.name, args, wsVars, tsVars);
+				console.log('[orchestrator] tool call:', serverName, tc.name, 'wsVars:', wsVars, 'tsVars:', tsVars, 'finalArgs:', JSON.stringify(finalArgs));
 				const mcpResult = await this.mcpClient.executeToolCall(serverName!, tc.name, finalArgs, request.threadId);
 				const resultStr = JSON.stringify(mcpResult.content);
 				const finalStatus = mcpResult.isError ? EToolCallStatus.ERROR : EToolCallStatus.COMPLETED;
@@ -993,8 +1000,9 @@ export class Orchestrator {
 			try {
 				const args = JSON.parse(tc.arguments);
 				const wsVars = await this.resolveWsVars(tc.threadId);
-				const finalArgs = this.mcpClient.prepareToolArgs(tc.serverName, tc.toolName, args, wsVars);
-				//console.log('[orchestrator] resume tool call:', tc.serverName, tc.toolName, 'wsVars:', wsVars, 'finalArgs:', JSON.stringify(finalArgs));
+				const tsVars = await this.resolveThreadVars(tc.threadId);
+				const finalArgs = this.mcpClient.prepareToolArgs(tc.serverName, tc.toolName, args, wsVars, tsVars);
+				//console.log('[orchestrator] resume tool call:', tc.serverName, tc.toolName, 'wsVars:', wsVars, 'tsVars:', tsVars, 'finalArgs:', JSON.stringify(finalArgs));
 				const mcpResult = await this.mcpClient.executeToolCall(tc.serverName, tc.toolName, finalArgs, tc.threadId);
 				const resultStr = JSON.stringify(mcpResult.content);
 				const finalStatus = mcpResult.isError ? EToolCallStatus.ERROR : EToolCallStatus.COMPLETED;
