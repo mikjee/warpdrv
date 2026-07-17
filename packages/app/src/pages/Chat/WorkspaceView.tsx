@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { Box, Text, HStack, VStack, Input, Textarea } from '@chakra-ui/react';
-import { PencilIcon, CheckIcon, XIcon } from 'lucide-react';
+import { Box, Text, HStack, VStack, Input, Textarea, Button } from '@chakra-ui/react';
+import { PencilIcon, CheckIcon, XIcon, FolderInput } from 'lucide-react';
 import type { IFolder as IChatFolder, IChatThread as IBridgeChatThread } from '@warpcore/bridge';
 import { useStore } from '@/store';
 import { updateFolder, updateWorkspace, fetchWorkspace, updateFolderTopic } from '@/api/services';
@@ -94,6 +94,8 @@ export const WorkspaceView: React.FC<{ folderId: string }> = ({ folderId }) => {
 	const folders = useStore(s => s.folders);
 	const folder = folders.find(f => f.id === folderId);
 	const setWorkspace = useStore(s => s.setWorkspace);
+	const setWorkspaceState = useStore(s => s.setWorkspaceState);
+	const workspaceProjectRoot = useStore(s => s.workspaceStates[folderId]?.projectRoot as string | undefined);
 	const threads = useStore(useShallow(s => {
 		const threadsArray = Object.values(s.threads) as IChatThread[];
 		return threadsArray;
@@ -105,6 +107,8 @@ export const WorkspaceView: React.FC<{ folderId: string }> = ({ folderId }) => {
 	const [topic, setTopic] = useDependantState(folder?.topic ?? '');
 	const [topicError, setTopicError] = useState<string | null>(null);
 	const [description, setDescription] = useState('');
+	const [prValue, setPrValue] = useDependantState(workspaceProjectRoot ?? '');
+	const prTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	// Fetch workspace data on mount
@@ -156,6 +160,39 @@ export const WorkspaceView: React.FC<{ folderId: string }> = ({ folderId }) => {
 		saveTimerRef.current = setTimeout(() => {
 			updateWorkspace(folderId, { description: val });
 		}, 500);
+	};
+
+	useEffect(() => {
+		setPrValue(workspaceProjectRoot ?? '');
+	}, [workspaceProjectRoot, setPrValue]);
+
+	const handleProjectRootChange = (val: string) => {
+		setPrValue(val);
+		if (prTimerRef.current) clearTimeout(prTimerRef.current);
+		prTimerRef.current = setTimeout(() => {
+			if (val.trim()) {
+				setWorkspaceState(folderId, { projectRoot: val.trim() });
+			}
+		}, 400);
+	};
+
+	const handleBrowseProjectRoot = async () => {
+		const selectPath = async (): Promise<string | null> => {
+			if (typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__) {
+				const mod = await import('@tauri-apps/plugin-dialog');
+				return mod.open({ directory: true, multiple: false }) as Promise<string | null>;
+			}
+			if (typeof window !== 'undefined' && 'showDirectoryPicker' in window) {
+				const handle = await (window as any).showDirectoryPicker();
+				return handle.name;
+			}
+			return null;
+		};
+		const path = await selectPath();
+		if (path && typeof path === 'string') {
+			setPrValue(path);
+			setWorkspaceState(folderId, { projectRoot: path });
+		}
 	};
 
 	const handleThreadSelect = (threadId: string) => {
@@ -243,6 +280,46 @@ export const WorkspaceView: React.FC<{ folderId: string }> = ({ folderId }) => {
 						resize="none"
 						_focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }}
 					/>
+				</Box>
+
+				{/* Workspace project root */}
+				<Box w="full">
+					<Text fontSize="12px" fontWeight="600" color="var(--wc-text-muted)" textTransform="uppercase" letterSpacing="0.05em" mb="1">
+						Project Root
+					</Text>
+					<HStack gap="2">
+						<Input
+							size="xs"
+							fontSize="12px"
+							value={prValue}
+							onChange={(e) => handleProjectRootChange(e.target.value)}
+							onBlur={() => {
+								if (prTimerRef.current) clearTimeout(prTimerRef.current);
+								if (prValue.trim()) {
+									setWorkspaceState(folderId, { projectRoot: prValue.trim() });
+								}
+							}}
+							placeholder="No project root set"
+							fontFamily='"Geist Mono", monospace'
+							bg="var(--wc-bg-card)"
+							borderColor="var(--wc-border-default)"
+							color="var(--wc-text-primary)"
+							_focus={{ borderColor: 'var(--wc-accent-blue-focus)', outline: 'none' }}
+						/>
+						<Button
+							size="xs"
+							variant="ghost"
+							color="var(--wc-text-secondary)"
+							_hover={{ color: 'var(--wc-accent-purple)', bg: 'var(--wc-accent-purple-hover-bg)' }}
+							borderRadius="lg"
+							minW="8"
+							px="0"
+							onClick={handleBrowseProjectRoot}
+							title="Browse directory"
+						>
+							<FolderInput size={14} />
+						</Button>
+					</HStack>
 				</Box>
 
 				{/* Thread list */}

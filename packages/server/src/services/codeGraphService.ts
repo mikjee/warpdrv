@@ -1,7 +1,22 @@
 import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
-import Parser from 'tree-sitter';
+import { createRequire } from 'node:module';
+import type Parser from 'tree-sitter';
+declare const __filename: string | undefined;
+let tsRequireCache: NodeRequire | null = null;
+function tsRequire(id: string): any {
+	if (!tsRequireCache) {
+		const base = (process as any).pkg && process.env.WARPCORE_RESOURCE_DIR
+			? path.join(process.env.WARPCORE_RESOURCE_DIR, 'binaries', 'index.js')
+			: (process as any).pkg
+				? path.join(path.dirname(process.execPath), 'binaries', 'index.js')
+				: (typeof __filename !== 'undefined' ? __filename : import.meta.url);
+		tsRequireCache = createRequire(base);
+	}
+	return tsRequireCache(id);
+}
+let ParserCtor: typeof Parser | null = null;
 import { xxh64 } from '@node-rs/xxhash';
 import ignore from 'ignore';
 import type { IPersistence } from '@warpcore/bridge';
@@ -57,7 +72,7 @@ export class CodeGraphService {
 		if (this.grammarCache.has(language)) return this.grammarCache.get(language);
 		const pkgName = GRAMMAR_PACKAGES[language];
 		if (!pkgName) throw new Error(`No grammar package for language: ${language}`);
-		const pkg = await import(pkgName);
+		const pkg = tsRequire(pkgName);
 		let grammar;
 		if (language === 'tsx' || language === 'typescript') {
 			grammar = pkg.default?.[language] ?? pkg[language];
@@ -71,7 +86,8 @@ export class CodeGraphService {
 
 	private async createParser(language: string): Promise<Parser> {
 		const grammar = await this.loadGrammar(language);
-		const parser = new Parser();
+		if (!ParserCtor) ParserCtor = tsRequire('tree-sitter');
+		const parser = new ParserCtor!();
 		parser.setLanguage(grammar);
 		return parser;
 	}

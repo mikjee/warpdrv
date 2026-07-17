@@ -1,14 +1,16 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Input, Button, HStack } from '@chakra-ui/react';
+import { Input, Button, HStack, Text } from '@chakra-ui/react';
 import { FolderInput } from 'lucide-react';
 import { useStore } from '@/store';
 import { useDependantState } from '@/hooks/useDependantState';
 
 export const ProjectRootPicker = () => {
 	const currentThreadId = useStore(s => s.currentThreadId);
+	const activeWorkspaceId = useStore(s => s.activeWorkspaceId);
 	const projectRoot = useStore(s =>
 		currentThreadId ? s.threadStates[currentThreadId]?.projectRoot : s.tempThreadState?.projectRoot
 	);
+	const workspaceProjectRoot = useStore(s => activeWorkspaceId ? s.workspaceStates[activeWorkspaceId]?.projectRoot : undefined);
 	const setThreadState = useStore(s => s.setThreadState);
 
 	const [value, setValue] = useDependantState(projectRoot as string || '');
@@ -29,7 +31,13 @@ export const ProjectRootPicker = () => {
 	}, [flush]);
 
 	return (
-		<HStack gap="2">
+		<>
+			{workspaceProjectRoot && (
+				<Text fontSize="10px" color="var(--wc-text-faint)" mb="1" fontFamily="monospace">
+					Workspace root: {workspaceProjectRoot}
+				</Text>
+			)}
+			<HStack gap="2">
 			<Input
 				size="xs"
 				fontSize="12px"
@@ -50,6 +58,7 @@ export const ProjectRootPicker = () => {
 			/>
 			<BrowseButton />
 		</HStack>
+		</>
 	);
 };
 

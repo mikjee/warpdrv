@@ -1,7 +1,22 @@
 import { spawn } from 'child_process';
-import { rgPath } from '@vscode/ripgrep';
+import path from 'path';
+import { createRequire } from 'node:module';
 import { assertPathAllowed } from '../util/sandbox';
 import type { IWarpmcpDeps } from '../types';
+declare const __filename: string | undefined;
+function resolveRgPath(): string {
+	const binName = process.platform === 'win32' ? 'rg.exe' : 'rg';
+	const arch = process.arch;
+	if ((process as any).pkg) {
+		const base = process.env.WARPCORE_RESOURCE_DIR
+			? path.join(process.env.WARPCORE_RESOURCE_DIR, 'binaries', 'node_modules')
+			: path.join(path.dirname(process.execPath), 'binaries', 'node_modules');
+		return path.join(base, `@vscode/ripgrep-${process.platform}-${arch}`, 'bin', binName);
+	}
+	const req = createRequire(typeof __filename !== 'undefined' ? __filename : import.meta.url);
+	return req('@vscode/ripgrep').rgPath;
+}
+const rgPath = resolveRgPath();
 
 export interface IRgMatch {
 	file: string;

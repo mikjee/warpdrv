@@ -199,7 +199,7 @@ console.log('Runtime deps copied. Total packages:', visited.size);
 "
 
 # Copy tree-sitter grammar packages (prebuilt .node in prebuilds/)
-for pkg in tree-sitter tree-sitter-typescript tree-sitter-javascript \
+for pkg in tree-sitter-typescript tree-sitter-javascript \
   tree-sitter-python tree-sitter-rust tree-sitter-go \
   tree-sitter-cpp tree-sitter-java tree-sitter-php \
   ignore; do
@@ -211,10 +211,26 @@ for pkg in tree-sitter tree-sitter-typescript tree-sitter-javascript \
   fi
 done
 
+# tree-sitter core is installed nested under packages/server, not repo root
+ts_core_src="$SERVER_DIR/node_modules/tree-sitter"
+ts_core_dst="$SERVER_DIR/dist/node_modules/tree-sitter"
+if [ -d "$ts_core_src" ]; then
+  mkdir -p "$ts_core_dst"
+  cp -r "$ts_core_src"/. "$ts_core_dst/"
+fi
+
 # Copy all @node-rs packages (loader + platform-specific .node)
 for src in "$REPO_ROOT"/node_modules/@node-rs/*; do
   [ -d "$src" ] || continue
   dst="$SERVER_DIR/dist/node_modules/@node-rs/$(basename "$src")"
+  mkdir -p "$dst"
+  cp -r "$src"/. "$dst/"
+done
+
+# Copy all @vscode packages (ripgrep loader + platform-specific binary)
+for src in "$REPO_ROOT"/node_modules/@vscode/*; do
+  [ -d "$src" ] || continue
+  dst="$SERVER_DIR/dist/node_modules/@vscode/$(basename "$src")"
   mkdir -p "$dst"
   cp -r "$src"/. "$dst/"
 done

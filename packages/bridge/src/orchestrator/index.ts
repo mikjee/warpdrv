@@ -252,8 +252,17 @@ export class Orchestrator {
 
 	private async resolveThreadVars(threadId: TThreadId): Promise<Record<string, unknown> | null> {
 		const threadState = await this.persistence.getThreadState(threadId);
-		if (!threadState || Object.keys(threadState).length === 0) return null;
-		return threadState;
+		let result = threadState || {};
+		if (!result.projectRoot) {
+			const thread = await this.persistence.getThread(threadId);
+			if (thread?.folderId) {
+				const wsState = await this.persistence.getWorkspaceState(thread.folderId);
+				if (wsState?.projectRoot) {
+					result = { ...result, projectRoot: wsState.projectRoot };
+				}
+			}
+		}
+		return Object.keys(result).length > 0 ? result : null;
 	}
 
 	// V2: builds message chain from persistence instead of receiving it from frontend
