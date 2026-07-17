@@ -9,14 +9,13 @@ export interface ICodeGraphNode {
 	startCol: number;
 	endCol: number;
 	signature?: string;
-	sourceSnippet?: string;
-	parentId?: string;
 	isExported: boolean;
 }
 
 export interface ICodeGraphEdge {
 	sourceId: string;
-	targetId: string;
+	filePath: string;
+	targetSymbol: string;
 	edgeType: string;
 }
 
@@ -26,6 +25,7 @@ export interface ICodeGraphFile {
 	filePath: string;
 	language: string;
 	mtime: number;
+	contentHash: string;
 	indexedAt: number;
 }
 

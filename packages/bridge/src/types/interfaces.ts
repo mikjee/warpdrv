@@ -35,6 +35,12 @@ import type {
 	ISearchResult,
 	ISearchThreadResult,
 } from './index';
+import type {
+	ICodeGraphNode,
+	ICodeGraphEdge,
+	ICodeGraphFile,
+	ICodeGraphSearchOptions,
+} from '@warpcore/shared';
 
 // ============================================================
 // Persistence — storage for folders, threads, messages, tool calls, permissions
@@ -122,6 +128,22 @@ export interface IPersistence {
 	getMessageState(messageId: TMessageId): Promise<Record<string, unknown> | null>;
 	updateMessageState(messageId: TMessageId, data: Record<string, unknown>): Promise<void>;
 	getMessageStatesByThreadId(threadId: TThreadId): Promise<Array<{ messageId: string; data: Record<string, unknown> }>>;
+
+	// Code graph
+	codeGraphFindProjectRoot(filePath: string): Promise<string | null>;
+	codeGraphGetFile(projectId: string, filePath: string): Promise<ICodeGraphFile | null>;
+	codeGraphListFiles(projectId: string): Promise<ICodeGraphFile[]>;
+	codeGraphUpsertFile(file: ICodeGraphFile): Promise<void>;
+	codeGraphDeleteByFile(projectId: string, filePath: string): Promise<void>;
+	codeGraphUpsertNodes(projectId: string, filePath: string, nodes: ICodeGraphNode[]): Promise<void>;
+	codeGraphUpsertEdges(projectId: string, filePath: string, edges: ICodeGraphEdge[]): Promise<void>;
+	codeGraphSearchNodes(projectId: string, query: string, options?: ICodeGraphSearchOptions): Promise<ICodeGraphNode[]>;
+	codeGraphGetNode(projectId: string, nodeId: string): Promise<ICodeGraphNode | null>;
+	codeGraphGetNodesByFile(projectId: string, filePath: string): Promise<ICodeGraphNode[]>;
+	codeGraphGetAllNodes(projectId: string): Promise<ICodeGraphNode[]>;
+	codeGraphGetCallers(projectId: string, symbolName: string, depth?: number): Promise<ICodeGraphNode[]>;
+	codeGraphGetCallees(projectId: string, nodeId: string, depth?: number): Promise<ICodeGraphNode[]>;
+	codeGraphClearProject(projectId: string): Promise<void>;
 }
 
 // ============================================================

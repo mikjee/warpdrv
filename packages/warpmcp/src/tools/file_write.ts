@@ -20,6 +20,7 @@ export async function fileWriteHandler(deps: IWarpmcpDeps, args: { path: string;
 	const encoding = (args.encoding ?? 'utf8') as BufferEncoding;
 	await fs.mkdir(path.dirname(safePath), { recursive: true });
 	await fs.writeFile(safePath, args.content, { encoding });
+	await deps.onFileWritten?.(safePath);
 	const stat = await fs.stat(safePath);
 	return { bytesWritten: stat.size };
 }

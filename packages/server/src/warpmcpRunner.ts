@@ -4,7 +4,7 @@ import { validateBearerToken } from './routes/tokens';
 import { store } from './util/store';
 import type { ISettings } from '@warpcore/shared';
 import { DEFAULT_SETTINGS } from '@warpcore/shared';
-import { mcpClient, todoManager, getProjectRoot } from './index';
+import { mcpClient, todoManager, getProjectRoot, codeGraphService } from './index';
 import { embeddingManager } from './services/embeddingManager';
 const SETTINGS_KEY = 'settings:general';
 async function getSettings(): Promise<ISettings> {
@@ -31,6 +31,14 @@ export async function bootWarpmcp(): Promise<void> {
 		// todoUpdate: (tid, index, status) => todoManager.update(tid, index, status),
 		// todoClear: (tid) => todoManager.clear(tid),
 		todoWrite: (tid, todos, etag) => todoManager.write(tid, todos, etag),
+		onFileWritten: (filePath) => codeGraphService.onFileWritten(filePath),
+		codeGraphIngest: (projectRoot, force) => codeGraphService.ingest(projectRoot, force),
+		codeGraphSearch: (projectRoot, query, options) => codeGraphService.search(projectRoot, query, options),
+		codeGraphGetSymbol: (projectRoot, symbolId) => codeGraphService.getSymbol(projectRoot, symbolId),
+		codeGraphGetCallers: (projectRoot, symbolId, depth) => codeGraphService.getCallers(projectRoot, symbolId, depth),
+		codeGraphGetCallees: (projectRoot, symbolId, depth) => codeGraphService.getCallees(projectRoot, symbolId, depth),
+		codeGraphListFile: (projectRoot, filePath) => codeGraphService.listFile(projectRoot, filePath),
+		codeGraphClear: (projectRoot) => codeGraphService.clear(projectRoot),
 	});
 	await mcpClient.connect(WARPMCP_NAME, {
 		url: `http://127.0.0.1:${port}/mcp`,
@@ -44,6 +52,13 @@ export async function bootWarpmcp(): Promise<void> {
 			"todo_write": { "threadId": "{{ws.threadId}}" },
 			"rg": { "path": "{{ts.projectRoot}}" },
 			"get_project_root": { "threadId": "{{ws.threadId}}" },
+			"code_graph_ingest": { "project_root": "{{ts.projectRoot}}" },
+			"code_graph_search": { "project_root": "{{ts.projectRoot}}" },
+			"code_graph_symbol": { "project_root": "{{ts.projectRoot}}" },
+			"code_graph_callers": { "project_root": "{{ts.projectRoot}}" },
+			"code_graph_callees": { "project_root": "{{ts.projectRoot}}" },
+			"code_graph_list": { "project_root": "{{ts.projectRoot}}" },
+			"code_graph_clear": { "project_root": "{{ts.projectRoot}}" },
 		} },
 	});
 }
@@ -67,6 +82,14 @@ export async function restartWarpmcpIfChanged(prev: ISettings, next: ISettings):
 		// todoUpdate: (tid, index, status) => todoManager.update(tid, index, status),
 		// todoClear: (tid) => todoManager.clear(tid),
 		todoWrite: (tid, todos, etag) => todoManager.write(tid, todos, etag),
+		onFileWritten: (filePath) => codeGraphService.onFileWritten(filePath),
+		codeGraphIngest: (projectRoot, force) => codeGraphService.ingest(projectRoot, force),
+		codeGraphSearch: (projectRoot, query, options) => codeGraphService.search(projectRoot, query, options),
+		codeGraphGetSymbol: (projectRoot, symbolId) => codeGraphService.getSymbol(projectRoot, symbolId),
+		codeGraphGetCallers: (projectRoot, symbolId, depth) => codeGraphService.getCallers(projectRoot, symbolId, depth),
+		codeGraphGetCallees: (projectRoot, symbolId, depth) => codeGraphService.getCallees(projectRoot, symbolId, depth),
+		codeGraphListFile: (projectRoot, filePath) => codeGraphService.listFile(projectRoot, filePath),
+		codeGraphClear: (projectRoot) => codeGraphService.clear(projectRoot),
 	});
 	await mcpClient.connect(WARPMCP_NAME, {
 		url: `http://127.0.0.1:${port}/mcp`,
@@ -80,6 +103,13 @@ export async function restartWarpmcpIfChanged(prev: ISettings, next: ISettings):
 			"todo_write": { "threadId": "{{ws.threadId}}" },
 			"rg": { "path": "{{ts.projectRoot}}" },
 			"get_project_root": { "threadId": "{{ws.threadId}}" },
+			"code_graph_ingest": { "project_root": "{{ts.projectRoot}}" },
+			"code_graph_search": { "project_root": "{{ts.projectRoot}}" },
+			"code_graph_symbol": { "project_root": "{{ts.projectRoot}}" },
+			"code_graph_callers": { "project_root": "{{ts.projectRoot}}" },
+			"code_graph_callees": { "project_root": "{{ts.projectRoot}}" },
+			"code_graph_list": { "project_root": "{{ts.projectRoot}}" },
+			"code_graph_clear": { "project_root": "{{ts.projectRoot}}" },
 		} },
 	});
 }

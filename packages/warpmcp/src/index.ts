@@ -20,6 +20,13 @@ import { todoClearDefinition, todoClearHandler } from './tools/todo';
 import { todoWriteDefinition, todoWriteHandler } from './tools/todo';
 import { rgDefinition, rgHandler } from './tools/rg';
 import { getProjectRootDefinition, getProjectRootHandler } from './tools/get_project_root';
+import { codeGraphIngestDefinition, codeGraphIngestHandler } from './tools/code_graph_ingest';
+import { codeGraphSearchDefinition, codeGraphSearchHandler } from './tools/code_graph_search';
+import { codeGraphSymbolDefinition, codeGraphSymbolHandler } from './tools/code_graph_symbol';
+import { codeGraphCallersDefinition, codeGraphCallersHandler } from './tools/code_graph_callers';
+import { codeGraphCalleesDefinition, codeGraphCalleesHandler } from './tools/code_graph_callees';
+import { codeGraphListDefinition, codeGraphListHandler } from './tools/code_graph_list';
+import { codeGraphClearDefinition, codeGraphClearHandler } from './tools/code_graph_clear';
 const SERVER_NAME = 'warpmcp';
 let httpServer: Server | null = null;
 let currentPort: number | null = null;
@@ -40,6 +47,13 @@ function buildMcpServer(deps: IWarpmcpDeps): McpServer {
 		{ def: todoWriteDefinition, handler: (a: any) => todoWriteHandler(deps, a) },
 		{ def: rgDefinition, handler: (a: any) => rgHandler(deps, a) },
 		{ def: getProjectRootDefinition, handler: (a: any) => getProjectRootHandler(deps, a) },
+		{ def: codeGraphIngestDefinition, handler: (a: any) => codeGraphIngestHandler(deps, a) },
+		{ def: codeGraphSearchDefinition, handler: (a: any) => codeGraphSearchHandler(deps, a) },
+		{ def: codeGraphSymbolDefinition, handler: (a: any) => codeGraphSymbolHandler(deps, a) },
+		{ def: codeGraphCallersDefinition, handler: (a: any) => codeGraphCallersHandler(deps, a) },
+		{ def: codeGraphCalleesDefinition, handler: (a: any) => codeGraphCalleesHandler(deps, a) },
+		{ def: codeGraphListDefinition, handler: (a: any) => codeGraphListHandler(deps, a) },
+		{ def: codeGraphClearDefinition, handler: (a: any) => codeGraphClearHandler(deps, a) },
 	];
 	const server = new McpServer({ name: SERVER_NAME, version: '0.1.0' }, { capabilities: { tools: {} } });
 	server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: tools.map(t => t.def) }));
@@ -55,7 +69,7 @@ function buildMcpServer(deps: IWarpmcpDeps): McpServer {
 }
 export async function startServer(args: IStartArgs): Promise<IStartResult> {
 	const { port, exposeExternal } = args;
-	const deps: IWarpmcpDeps = { isRemote: args.isRemote, validateBearerToken: args.validateBearerToken, getFsAllowedRoots: args.getFsAllowedRoots, embeddingSearch: args.embeddingSearch, todoRead: args.todoRead, todoAdd: args.todoAdd, todoRemove: args.todoRemove, todoUpdate: args.todoUpdate, todoClear: args.todoClear, todoWrite: args.todoWrite };
+	const deps: IWarpmcpDeps = { isRemote: args.isRemote, validateBearerToken: args.validateBearerToken, getFsAllowedRoots: args.getFsAllowedRoots, embeddingSearch: args.embeddingSearch, todoRead: args.todoRead, todoAdd: args.todoAdd, todoRemove: args.todoRemove, todoUpdate: args.todoUpdate, todoClear: args.todoClear, todoWrite: args.todoWrite, getProjectRoot: args.getProjectRoot, onFileWritten: args.onFileWritten, codeGraphIngest: args.codeGraphIngest, codeGraphSearch: args.codeGraphSearch, codeGraphGetSymbol: args.codeGraphGetSymbol, codeGraphGetCallers: args.codeGraphGetCallers, codeGraphGetCallees: args.codeGraphGetCallees, codeGraphListFile: args.codeGraphListFile, codeGraphClear: args.codeGraphClear };
 	//console.log('[warpmcp] startServer deps.embeddingSearch:', typeof args.embeddingSearch);
 	const bindHost = exposeExternal ? '0.0.0.0' : '127.0.0.1';
 	const app = express();

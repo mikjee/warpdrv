@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) export CXXFLAGS="/std:c++20" ;;
+  *)                    export CXXFLAGS="-std=c++20" ;;
+esac
+
 # Bundle format selection.
 # Pass bundle formats as arguments: ./release.sh deb appimage
 # Defaults to 'deb' only if no arguments given.
@@ -91,6 +96,12 @@ for (const [path, transform] of files) {
 "
 
 echo ""
+echo "=== Installing dependencies ==="
+cd "$REPO_ROOT"
+npm install
+echo "Dependencies installed"
+
+echo ""
 echo "=== Step 1/4: Building frontend ==="
 cd "$APP_DIR"
 npx vite build
@@ -110,7 +121,18 @@ npx esbuild src/index.ts \
 	--minify=false \
 	--external:kokoro-js \
 	--external:@huggingface/transformers \
-	--external:onnxruntime-node
+	--external:onnxruntime-node \
+	--external:tree-sitter \
+	--external:tree-sitter-typescript \
+	--external:tree-sitter-javascript \
+	--external:tree-sitter-python \
+	--external:tree-sitter-rust \
+	--external:tree-sitter-go \
+	--external:tree-sitter-cpp \
+	--external:tree-sitter-java \
+	--external:tree-sitter-php \
+	--external:@node-rs/xxhash \
+	--external:ignore
 # Compile to standalone binary with pkg
 cp "$REPO_ROOT/node_modules/better-sqlite3/build/Release/better_sqlite3.node" "$SERVER_DIR/dist/better_sqlite3.node"
 npx @yao-pkg/pkg dist/server.cjs \
@@ -175,6 +197,28 @@ for (const top of ['kokoro-js', '@huggingface/transformers', 'onnxruntime-node',
 }
 console.log('Runtime deps copied. Total packages:', visited.size);
 "
+
+# Copy tree-sitter grammar packages (prebuilt .node in prebuilds/)
+for pkg in tree-sitter tree-sitter-typescript tree-sitter-javascript \
+  tree-sitter-python tree-sitter-rust tree-sitter-go \
+  tree-sitter-cpp tree-sitter-java tree-sitter-php \
+  ignore; do
+  src="$REPO_ROOT/node_modules/$pkg"
+  dst="$SERVER_DIR/dist/node_modules/$pkg"
+  if [ -d "$src" ]; then
+    mkdir -p "$dst"
+    cp -r "$src"/. "$dst/"
+  fi
+done
+
+# Copy all @node-rs packages (loader + platform-specific .node)
+for src in "$REPO_ROOT"/node_modules/@node-rs/*; do
+  [ -d "$src" ] || continue
+  dst="$SERVER_DIR/dist/node_modules/@node-rs/$(basename "$src")"
+  mkdir -p "$dst"
+  cp -r "$src"/. "$dst/"
+done
+
 case "$PLATFORM" in
 	windows) ORT_OS="win32"; ORT_ARCH="x64" ;;
 	linux)   ORT_OS="linux"; ORT_ARCH="x64" ;;

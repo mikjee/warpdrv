@@ -43,6 +43,7 @@ import { SqlitePersistence, SqlitePersistenceWithBroadcast, McpClientManager, Mc
 import { EventNode } from '@warpcore/realmcore';
 import { bootWarpmcp } from './warpmcpRunner';
 import { TodoManager } from './services/todoManager';
+import { CodeGraphService } from './services/codeGraphService';
 import { getProjectRoot } from './services/projectRoot';
 import { embeddingManager } from './services/embeddingManager';
 import { getDataDir } from './util/mcpConfig';
@@ -61,6 +62,7 @@ export let mcpConfig: McpConfig;
 export let broadcaster: SseBroadcaster;
 export let todoManager: TodoManager;
 export { getProjectRoot } from './services/projectRoot';
+export let codeGraphService: CodeGraphService;
 
 import { execSync } from 'child_process';
 import { launchAutoStartServers, reconcileServers } from './services/processManager';
@@ -109,6 +111,7 @@ async function main() {
 	persistence = new SqlitePersistenceWithBroadcast(path.join(dataDir, 'chat.db'), {}, broadcaster);
 	await persistence.init();
 	todoManager = new TodoManager(persistence);
+	codeGraphService = new CodeGraphService(persistence);
 
 	// Initialize MCP
 	mcpConfig = new McpConfig(path.join(dataDir, 'mcp.json'));

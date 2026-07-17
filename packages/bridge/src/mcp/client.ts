@@ -295,7 +295,7 @@ export class McpClientManager implements IMcpClient {
 
 	private interpolateArgs(args: Record<string, unknown>, vars: Record<string, unknown>, prefix: string): Record<string, unknown> {
 		const result: Record<string, unknown> = {};
-		const pattern = new RegExp(`\\{\\{${prefix}\\\\.(\\w+)\\}\\}`, 'g');
+		const pattern = new RegExp(`\\{\\{${prefix}\\.(\\w+)\\}\\}`, 'g');
 		for (const [key, value] of Object.entries(args)) {
 			if (typeof value === 'string') {
 				result[key] = value.replace(pattern, (_match, varKey) => {
