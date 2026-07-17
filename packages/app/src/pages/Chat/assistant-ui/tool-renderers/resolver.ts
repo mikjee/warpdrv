@@ -41,6 +41,16 @@ export function autoResolveRenderer(
 	args: Record<string, unknown>,
 	registry: Record<string, IToolCallRenderer>,
 ): IResolvedRenderer | null {
+	// Priority 1: keyword exactly equals toolName
+	for (const [name, entry] of Object.entries(registry)) {
+		if (entry.keywords.includes(toolName)) {
+			const result = entry.canRender(args);
+			if (result !== false) {
+				return { component: entry.component, props: result };
+			}
+		}
+	}
+	// Priority 2: tokenized keyword match
 	const candidates = findCandidates(toolName, registry);
 	for (const name of candidates) {
 		const entry = registry[name];

@@ -35,6 +35,15 @@ import { ListRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/ListR
 import { ReadFileRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/ReadFileRenderer';
 import { SearchRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/SearchRenderer';
 import { TodoItemRendererMeta, TodoListRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/TodoRenderer';
+import { CodeGraphIngestRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/CodeGraphIngestRenderer';
+import { CodeGraphSearchRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/CodeGraphSearchRenderer';
+import { CodeGraphSymbolRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/CodeGraphSymbolRenderer';
+import { CodeGraphCallersRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/CodeGraphCallersRenderer';
+import { CodeGraphCalleesRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/CodeGraphCalleesRenderer';
+import { CodeGraphListRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/CodeGraphListRenderer';
+import { CodeGraphClearRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/CodeGraphClearRenderer';
+import { RgRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/RgRenderer';
+import { EmbeddingSearchRendererMeta } from '@/pages/Chat/assistant-ui/tool-renderers/EmbeddingSearchRenderer';
 
 export const useStore = create<AppState>()(
 	subscribeWithSelector(
@@ -145,9 +154,18 @@ export const useStore = create<AppState>()(
 						FetchRenderer: FetchRendererMeta,
 						ListRenderer: ListRendererMeta,
 						ReadFileRenderer: ReadFileRendererMeta,
+						CodeGraphSearchRenderer: CodeGraphSearchRendererMeta,
 						SearchRenderer: SearchRendererMeta,
 						TodoItemRenderer: TodoItemRendererMeta,
 						TodoListRenderer: TodoListRendererMeta,
+						CodeGraphIngestRenderer: CodeGraphIngestRendererMeta,
+						CodeGraphSymbolRenderer: CodeGraphSymbolRendererMeta,
+						CodeGraphCallersRenderer: CodeGraphCallersRendererMeta,
+						CodeGraphCalleesRenderer: CodeGraphCalleesRendererMeta,
+						CodeGraphListRenderer: CodeGraphListRendererMeta,
+						CodeGraphClearRenderer: CodeGraphClearRendererMeta,
+						RgRenderer: RgRendererMeta,
+						EmbeddingSearchRenderer: EmbeddingSearchRendererMeta,
 					},
 					registerToolCallRenderer: (name, component) => set((state) => {
 						state.toolCallRenderers[name] = component;
