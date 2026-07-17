@@ -10,6 +10,7 @@ export interface ICodeGraphNode {
 	endCol: number;
 	signature?: string;
 	isExported: boolean;
+	resolved?: boolean;
 }
 
 export interface ICodeGraphEdge {

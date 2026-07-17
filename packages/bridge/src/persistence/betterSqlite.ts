@@ -1325,6 +1325,16 @@ export class SqlitePersistence implements IPersistence {
 		return rows;
 	}
 
+	async codeGraphGetAmbiguousSymbols(projectId: string): Promise<Set<string>> {
+		const rows = this.db!.prepare(`
+			SELECT symbol FROM ${this.t.codeGraphNodes}
+			WHERE projectId = ?
+			GROUP BY symbol
+			HAVING COUNT(*) > 1
+		`).all(projectId) as Array<{ symbol: string }>;
+		return new Set(rows.map(r => r.symbol));
+	}
+
 	async codeGraphClearProject(projectId: string): Promise<void> {
 		const files = this.db!.prepare(
 			`SELECT filePath FROM ${this.t.codeGraphFiles} WHERE projectId = ?`

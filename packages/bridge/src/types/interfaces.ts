@@ -143,6 +143,7 @@ export interface IPersistence {
 	codeGraphGetAllNodes(projectId: string): Promise<ICodeGraphNode[]>;
 	codeGraphGetCallers(projectId: string, symbolName: string, depth?: number): Promise<ICodeGraphNode[]>;
 	codeGraphGetCallees(projectId: string, nodeId: string, depth?: number): Promise<ICodeGraphNode[]>;
+	codeGraphGetAmbiguousSymbols(projectId: string): Promise<Set<string>>;
 	codeGraphClearProject(projectId: string): Promise<void>;
 }
 

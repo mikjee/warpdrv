@@ -612,11 +612,15 @@ export class CodeGraphService {
 	}
 
 	async getCallers(projectRoot: string, symbolName: string, depth?: number): Promise<ICodeGraphNode[]> {
-		return await this.persistence.codeGraphGetCallers(projectRoot, symbolName, depth);
+		const nodes = await this.persistence.codeGraphGetCallers(projectRoot, symbolName, depth);
+		const ambiguous = await this.persistence.codeGraphGetAmbiguousSymbols(projectRoot);
+		return nodes.map(n => ({ ...n, resolved: !ambiguous.has(n.symbol) }));
 	}
 
 	async getCallees(projectRoot: string, symbolId: string, depth?: number): Promise<ICodeGraphNode[]> {
-		return await this.persistence.codeGraphGetCallees(projectRoot, symbolId, depth);
+		const nodes = await this.persistence.codeGraphGetCallees(projectRoot, symbolId, depth);
+		const ambiguous = await this.persistence.codeGraphGetAmbiguousSymbols(projectRoot);
+		return nodes.map(n => ({ ...n, resolved: !ambiguous.has(n.symbol) }));
 	}
 
 	async listFile(projectRoot: string, filePath: string): Promise<ICodeGraphNode[]> {
