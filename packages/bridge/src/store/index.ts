@@ -44,7 +44,7 @@ export interface IChatStoreState {
 	chunksByMessageId: Record<string, {
 		partId: string,
 		chunk: string,
-		lastUpdate: Date,
+		lastUpdate: number,
 	}>;
 
 	// In-memory head tracking (NOT persisted to DB)
@@ -290,16 +290,16 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 			set((draft) => {
 				const msg = draft.messagesByThread[threadId]?.[messageId];
 				if (!msg) return;
-				
+
 				// Handle head shift if deleted message is the head
 				if (draft.headMessageIdByThread[threadId] === messageId) {
 					const threadMessages = draft.messagesByThread[threadId] ?? {};
 					const parentId = msg.parentId;
-					
+
 					// Find most recent sibling
 					let newHead: TMessageId | null = null;
 					let newestCreatedAt = -1;
-					
+
 					for (const sibling of Object.values(threadMessages)) {
 						if (sibling.id !== messageId && sibling.parentId === parentId) {
 							if (sibling.createdAt > newestCreatedAt) {
@@ -308,21 +308,21 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 							}
 						}
 					}
-					
+
 					// Fallback to parent if no siblings
 					// root msgs cannot beleted so it will always have a parent ID or not get deleted.
-					if (newHead === null) newHead = parentId!;					
+					if (newHead === null) newHead = parentId!;
 					draft.headMessageIdByThread[threadId] = newHead;
 				}
-				
+
 				const grandParentId = msg.parentId;
-				
+
 				for (const child of Object.values(draft.messagesByThread[threadId] ?? {})) {
 					if (child.parentId === messageId) {
 						child.parentId = grandParentId as TMessageId | null;
 					}
 				}
-				
+
 				delete draft.messagesByThread[threadId]?.[messageId];
 				delete draft.messageStates[messageId];
 			}),
@@ -376,7 +376,7 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 					draft.chunksByMessageId[messageId] = {
 						partId,
 						chunk: '',
-						lastUpdate: new Date(now),
+						lastUpdate: now,
 					};
 					return;
 				}
@@ -391,17 +391,15 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 					draft.chunksByMessageId[messageId] = {
 						partId,
 						chunk: '',
-						lastUpdate: new Date(now),
+						lastUpdate: now,
 					};
 					return;
 				}
 
 				// Same partId - check time delta
-				const timeDelta = now - buffer.lastUpdate.getTime();
-				if (timeDelta <= 100) {
-					// Within 100ms - append to buffer
-					buffer.chunk += deltaText;
-				} else {
+				const timeDelta = now - buffer.lastUpdate;
+				buffer.chunk += deltaText;
+				if (timeDelta > 150) {
 					// Over 100ms - flush buffer and append new delta
 					flushBuffer(buffer);
 					// Append new delta directly to part
@@ -410,7 +408,7 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 					}
 					// Reset buffer
 					buffer.chunk = '';
-					buffer.lastUpdate = new Date(now);
+					buffer.lastUpdate = now;
 				}
 			}),
 

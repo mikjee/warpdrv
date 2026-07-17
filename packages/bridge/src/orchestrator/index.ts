@@ -553,7 +553,7 @@ export class Orchestrator {
 			'.',
 			finalMessages,
 		) as Array<TOpenAIMessage>;
-		
+
 		const body: Record<string, unknown> = {
 			model: 'model',
 			messages: finalMessages,
@@ -706,9 +706,6 @@ export class Orchestrator {
 			await this.flushTextPart(turn);
 			//console.log(new Date(), '[Orch] parts flushed');
 		}
-
-		await this.flushReasoningPart(turn);
-		await this.flushTextPart(turn);
 
 		if (streamError) {
 			this.broadcaster.emit({
