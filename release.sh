@@ -202,7 +202,7 @@ console.log('Runtime deps copied. Total packages:', visited.size);
 for pkg in tree-sitter-typescript tree-sitter-javascript \
   tree-sitter-python tree-sitter-rust tree-sitter-go \
   tree-sitter-cpp tree-sitter-java tree-sitter-php \
-  ignore; do
+  node-gyp-build ignore; do
   src="$REPO_ROOT/node_modules/$pkg"
   dst="$SERVER_DIR/dist/node_modules/$pkg"
   if [ -d "$src" ]; then

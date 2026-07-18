@@ -63,6 +63,7 @@ export class CodeGraphService {
 	private persistence: IPersistence;
 	private grammarCache: Map<string, any> = new Map();
 	private sessionWalked: Map<string, boolean> = new Map();
+	private ignoreCache: Record<string, any> = {};
 
 	constructor(persistence: IPersistence) {
 		this.persistence = persistence;
@@ -75,9 +76,9 @@ export class CodeGraphService {
 		const pkg = tsRequire(pkgName);
 		let grammar;
 		if (language === 'tsx' || language === 'typescript') {
-			grammar = pkg.default?.[language] ?? pkg[language];
+			grammar = pkg?.[language] ?? pkg?.default?.[language];
 		} else {
-			grammar = pkg.default;
+			grammar = pkg?.default ?? pkg;
 		}
 		if (!grammar) throw new Error(`Failed to load grammar for: ${language}`);
 		this.grammarCache.set(language, grammar);
@@ -96,28 +97,26 @@ export class CodeGraphService {
 		return SUPPORTED_EXTENSIONS.has(ext);
 	}
 
-	private async isGitIgnored(projectRoot: string, relativePath: string): Promise<boolean> {
+	private async loadIgnore(projectRoot: string): Promise<any> {
+		if (this.ignoreCache[projectRoot]) return this.ignoreCache[projectRoot];
+		const ig = ignore();
+		ig.add(['.git', 'node_modules', 'vendor', '.venv']);
 		const gitignorePath = path.join(projectRoot, '.gitignore');
-		if (!fs.existsSync(gitignorePath)) return false;
-		try {
-			const content = await fsPromises.readFile(gitignorePath, 'utf8');
-			const ig = ignore();
-			ig.add(content);
-			return ig.ignores(relativePath);
-		} catch {
-			return false;
+		if (fs.existsSync(gitignorePath)) {
+			try {
+				const content = await fsPromises.readFile(gitignorePath, 'utf8');
+				ig.add(content);
+			} catch {
+				// unreadable gitignore, defaults only
+			}
 		}
+		this.ignoreCache[projectRoot] = ig;
+		return ig;
 	}
-
-	private async shouldSkipDir(projectRoot: string, dirName: string): Promise<boolean> {
-		if (dirName === 'node_modules' || dirName === '.git' || dirName === 'vendor' || dirName === '.venv') return true;
-		const gitignorePath = path.join(projectRoot, '.gitignore');
-		if (!fs.existsSync(gitignorePath)) return false;
+	private async isGitIgnored(projectRoot: string, relativePath: string): Promise<boolean> {
+		const ig = await this.loadIgnore(projectRoot);
 		try {
-			const content = await fsPromises.readFile(gitignorePath, 'utf8');
-			const ig = ignore();
-			ig.add(content);
-			return ig.ignores(dirName);
+			return ig.ignores(relativePath);
 		} catch {
 			return false;
 		}
@@ -130,13 +129,13 @@ export class CodeGraphService {
 			for (const entry of entries) {
 				const relPath = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
 				if (entry.isDirectory()) {
-					if (await this.shouldSkipDir(projectRoot, entry.name)) continue;
+					if (await this.isGitIgnored(projectRoot, `${relPath}/`)) continue;
 					await walk(path.join(dir, entry.name), relPath);
 				} else if (entry.isFile()) {
 					const ext = path.extname(entry.name);
-					if (this.isSupportedLanguage(ext)) {
-						files.push(relPath);
-					}
+					if (!this.isSupportedLanguage(ext)) continue;
+					if (await this.isGitIgnored(projectRoot, relPath)) continue;
+					files.push(relPath);
 				}
 			}
 		};
@@ -160,6 +159,7 @@ export class CodeGraphService {
 		scope: string[],
 		language: string,
 		parentNodes: ICodeGraphNode[] = [],
+		seenIds: Record<string, number> = {},
 	): ICodeGraphNode[] {
 		const nodes: ICodeGraphNode[] = [];
 		const declarations = this.getDeclarationNodes(node, language);
@@ -176,7 +176,13 @@ export class CodeGraphService {
 			const signature = this.extractSignature(decl, language);
 			const isExported = this.isNodeExported(decl, language);
 
-			const nodeId = this.buildNodeId(relativePath, scope, name);
+			let nodeId = this.buildNodeId(relativePath, scope, name);
+			if (seenIds[nodeId] !== undefined) {
+				seenIds[nodeId] += 1;
+				nodeId = `${nodeId}:${seenIds[nodeId]}`;
+			} else {
+				seenIds[nodeId] = 0;
+			}
 			const node: ICodeGraphNode = {
 				id: nodeId,
 				symbol: name,
@@ -193,7 +199,7 @@ export class CodeGraphService {
 			nodes.push(node);
 
 			const childScope = [...scope, name];
-			const children = this.extractDeclarations(decl, relativePath, childScope, language, nodes);
+			const children = this.extractDeclarations(decl, relativePath, childScope, language, nodes, seenIds);
 			nodes.push(...children);
 		}
 
@@ -401,8 +407,8 @@ export class CodeGraphService {
 	private extractCallEdges(node: any, language: string, filePath: string, sourceNodes: ICodeGraphNode[]): ICodeGraphEdge[] {
 		const edges: ICodeGraphEdge[] = [];
 		const callTypes: Record<string, Set<string>> = {
-			typescript: new Set(['call_expression', 'new_expression', 'await_expression']),
-			tsx: new Set(['call_expression', 'new_expression', 'await_expression']),
+			typescript: new Set(['call_expression', 'new_expression']),
+			tsx: new Set(['call_expression', 'new_expression']),
 			javascript: new Set(['call_expression', 'new_expression']),
 			python: new Set(['call']),
 			rust: new Set(['macro_invocation', 'call_expression']),
@@ -532,6 +538,9 @@ export class CodeGraphService {
 			for (const n of nodes) {
 				n.projectId = projectRoot;
 			}
+			for (const e of edges) {
+				e.projectId = projectRoot;
+			}
 
 			await this.persistence.codeGraphUpsertFile({
 				id: randomUUID(),
@@ -587,6 +596,9 @@ export class CodeGraphService {
 		const { nodes, edges } = await this.parseFile(absPath, relativePath, ext);
 		for (const n of nodes) {
 			n.projectId = projectRoot;
+		}
+		for (const e of edges) {
+			e.projectId = projectRoot;
 		}
 
 		await this.persistence.codeGraphUpsertFile({
@@ -650,5 +662,6 @@ export class CodeGraphService {
 	async clear(projectRoot: string): Promise<void> {
 		await this.persistence.codeGraphClearProject(projectRoot);
 		this.sessionWalked.delete(projectRoot);
+		delete this.ignoreCache[projectRoot];
 	}
 }

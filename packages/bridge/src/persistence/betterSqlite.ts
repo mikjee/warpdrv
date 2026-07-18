@@ -257,7 +257,7 @@ function buildSchema(t: ReturnType<typeof buildTableNames>): string {
 		CREATE INDEX IF NOT EXISTS idx_${t.codeGraphFiles}_hash ON ${t.codeGraphFiles}(projectId, contentHash);
 
 		CREATE TABLE IF NOT EXISTS ${t.codeGraphNodes} (
-			id TEXT PRIMARY KEY,
+			id TEXT NOT NULL,
 			filePath TEXT NOT NULL,
 			projectId TEXT NOT NULL,
 			symbol TEXT NOT NULL,
@@ -268,7 +268,8 @@ function buildSchema(t: ReturnType<typeof buildTableNames>): string {
 			startCol INTEGER NOT NULL,
 			endCol INTEGER NOT NULL,
 			signature TEXT,
-			isExported INTEGER DEFAULT 0
+			isExported INTEGER DEFAULT 0,
+			PRIMARY KEY (projectId, id)
 		);
 		CREATE INDEX IF NOT EXISTS idx_${t.codeGraphNodes}_project ON ${t.codeGraphNodes}(projectId);
 		CREATE INDEX IF NOT EXISTS idx_${t.codeGraphNodes}_file ON ${t.codeGraphNodes}(filePath);
@@ -277,11 +278,13 @@ function buildSchema(t: ReturnType<typeof buildTableNames>): string {
 
 		CREATE TABLE IF NOT EXISTS ${t.codeGraphEdges} (
 			id TEXT PRIMARY KEY,
+			projectId TEXT NOT NULL,
 			sourceId TEXT NOT NULL,
 			filePath TEXT NOT NULL,
 			targetSymbol TEXT NOT NULL,
 			edgeType TEXT NOT NULL
 		);
+		CREATE INDEX IF NOT EXISTS idx_${t.codeGraphEdges}_project ON ${t.codeGraphEdges}(projectId);
 		CREATE INDEX IF NOT EXISTS idx_${t.codeGraphEdges}_source ON ${t.codeGraphEdges}(sourceId);
 		CREATE INDEX IF NOT EXISTS idx_${t.codeGraphEdges}_target ON ${t.codeGraphEdges}(targetSymbol);
 		CREATE INDEX IF NOT EXISTS idx_${t.codeGraphEdges}_file ON ${t.codeGraphEdges}(filePath);
@@ -317,11 +320,28 @@ export class SqlitePersistence implements IPersistence {
 
 		this.db.pragma('journal_mode = WAL');
 		this.db.pragma('foreign_keys = ON');
+		this.migrateCodeGraphSchema();
 		this.db.exec(buildSchema(this.t));
 		this.runMigrations();
 	}
 
-	private runMigrations(): void {
+	private migrateCodeGraphSchema(): void {
+			try {
+				const cols = this.db!.prepare(`PRAGMA table_info(${this.t.codeGraphEdges})`).all() as Array<{ name: string }>;
+				if (cols.length === 0) return;
+				if (cols.some((c) => c.name === 'projectId')) return;
+				this.db!.exec(`
+					DROP TABLE IF EXISTS ${this.t.codeGraphNodesFts};
+					DROP TABLE IF EXISTS ${this.t.codeGraphEdges};
+					DROP TABLE IF EXISTS ${this.t.codeGraphNodes};
+					DROP TABLE IF EXISTS ${this.t.codeGraphFiles};
+				`);
+				console.log('[migration] Dropped code graph tables for multi-project rebuild');
+			} catch (err) {
+				console.error('[migration] Code graph rebuild failed:', err);
+			}
+		}
+		private runMigrations(): void {
 		const columnSchema = [
 			{ name: 'data', type: 'TEXT' },
 			{ name: 'mimeType', type: 'TEXT' },
@@ -637,11 +657,11 @@ export class SqlitePersistence implements IPersistence {
 	async deleteMessage(id: TMessageId): Promise<void> {
 		const msg = this.db!.prepare(`SELECT parentId FROM ${this.t.messages} WHERE id = ?`).get(id) as { parentId?: string | null } | undefined;
 		if (!msg) return;
-		
+
 		if (!msg.parentId) {
 			throw new Error('Cannot delete root message');
 		}
-		
+
 		this.db!.transaction((() => {
 			this.db!.prepare(`UPDATE ${this.t.messages} SET parentId = ? WHERE parentId = ?`).run(msg.parentId, id);
 			this.db!.prepare(`DELETE FROM ${this.t.messages} WHERE id = ?`).run(id);
@@ -710,7 +730,7 @@ export class SqlitePersistence implements IPersistence {
 					fileSize: (p.fileSize as number) ?? 0,
 					extractedText: (p.extractedText as string) ?? undefined,
 				};
-			} 
+			}
 			return { id: p.id as string, type: EMessagePartType.TOOL_CALL, orderIndex: p.orderIndex as number, toolCallId: p.toolCallId as string };
 		});
 
@@ -1188,7 +1208,7 @@ export class SqlitePersistence implements IPersistence {
 			for (const n of nodes) {
 				insert.run(n.id, n.filePath, n.projectId, n.symbol, n.kind, n.language, n.startLine, n.endLine, n.startCol, n.endCol, n.signature ?? null, n.isExported ? 1 : 0);
 			}
-			this.db!.prepare(`DELETE FROM ${this.t.codeGraphNodesFts} WHERE nodeId IN (SELECT id FROM ${this.t.codeGraphNodes} WHERE filePath = ?)`).run(filePath);
+			this.db!.prepare(`DELETE FROM ${this.t.codeGraphNodesFts} WHERE nodeId IN (SELECT id FROM ${this.t.codeGraphNodes} WHERE projectId = ? AND filePath = ?)`).run(projectId, filePath);
 			const ftsInsert = this.db!.prepare(
 				`INSERT INTO ${this.t.codeGraphNodesFts} (nodeId, symbol, kind, signature) VALUES (?, ?, ?, ?)`
 			);
@@ -1201,13 +1221,13 @@ export class SqlitePersistence implements IPersistence {
 
 	async codeGraphUpsertEdges(projectId: string, filePath: string, edges: ICodeGraphEdge[]): Promise<void> {
 		const txn = this.db!.transaction(() => {
-			this.db!.prepare(`DELETE FROM ${this.t.codeGraphEdges} WHERE filePath = ?`).run(filePath);
+			this.db!.prepare(`DELETE FROM ${this.t.codeGraphEdges} WHERE projectId = ? AND filePath = ?`).run(projectId, filePath);
 			const insert = this.db!.prepare(
-				`INSERT INTO ${this.t.codeGraphEdges} (id, sourceId, filePath, targetSymbol, edgeType)
-				 VALUES (?, ?, ?, ?, ?)`
+				`INSERT INTO ${this.t.codeGraphEdges} (id, projectId, sourceId, filePath, targetSymbol, edgeType)
+				 VALUES (?, ?, ?, ?, ?, ?)`
 			);
 			for (const e of edges) {
-				insert.run(e.id, e.sourceId, e.filePath, e.targetSymbol, e.edgeType);
+				insert.run(e.id, projectId, e.sourceId, e.filePath, e.targetSymbol, e.edgeType);
 			}
 		});
 		txn();

@@ -14,6 +14,8 @@ export interface ICodeGraphNode {
 }
 
 export interface ICodeGraphEdge {
+	id: string;
+	projectId: string;
 	sourceId: string;
 	filePath: string;
 	targetSymbol: string;
