@@ -400,13 +400,7 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 				const timeDelta = now - buffer.lastUpdate;
 				buffer.chunk += deltaText;
 				if (timeDelta > 150) {
-					// Over 100ms - flush buffer and append new delta
 					flushBuffer(buffer);
-					// Append new delta directly to part
-					if (part && (part.type === EMessagePartType.TEXT || part.type === EMessagePartType.REASONING)) {
-						part.text += deltaText;
-					}
-					// Reset buffer
 					buffer.chunk = '';
 					buffer.lastUpdate = now;
 				}
