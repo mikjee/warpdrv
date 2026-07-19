@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Text, HStack, VStack } from '@chakra-ui/react';
 import { FileText } from 'lucide-react';
 import ReactDiffViewer from 'react-diff-viewer-continued';
+import { useStore } from '@/store';
 import type { IToolCallRenderer, TCanRenderResult } from '@/store/types';
 
 export enum EDiffStrategy {
@@ -9,6 +10,68 @@ export enum EDiffStrategy {
 	EDITS_ARRAY = 'edits_array',
 	FULL_WRITE = 'full_write',
 }
+
+const DARK_THEMES = new Set([
+	'dark', 'github-dark', 'one-dark', 'dracula-dark', 'catppuccin-mocha',
+	'nord', 'tokyo-night', 'amoled', 'vesper', 'min', 'gruvbox-hard',
+	'rose-pine', 'kanagawa', 'obsidian', 'monokai-pro', 'palenight',
+	'solarized-dark', 'gruvbox', 'kimbie-dark', 'everforest-hard',
+]);
+
+const diffViewerStyles = {
+	variables: {
+		dark: {
+			diffViewerBackground: 'var(--wc-bg-surface)',
+			diffViewerColor: 'var(--wc-text-primary)',
+			addedBackground: 'var(--wc-accent-green-bg-15)',
+			addedColor: 'var(--wc-accent-green)',
+			removedBackground: 'var(--wc-accent-red-bg-12)',
+			removedColor: 'var(--wc-accent-red-alt)',
+			wordAddedBackground: 'var(--wc-accent-green-hover)',
+			wordRemovedBackground: 'var(--wc-accent-red-hover)',
+			addedGutterBackground: 'var(--wc-accent-green-bg-15)',
+			removedGutterBackground: 'var(--wc-accent-red-bg-12)',
+			gutterBackground: 'var(--wc-bg-surface)',
+			gutterBackgroundDark: 'var(--wc-bg-surface)',
+			highlightBackground: 'var(--wc-overlay-dim)',
+			highlightGutterBackground: 'var(--wc-overlay-dim)',
+			codeFoldBackground: 'var(--wc-bg-surface)',
+			emptyLineBackground: 'var(--wc-bg-surface)',
+			gutterColor: 'var(--wc-text-faint)',
+			addedGutterColor: 'var(--wc-accent-green)',
+			removedGutterColor: 'var(--wc-accent-red-alt)',
+			codeFoldContentColor: 'var(--wc-text-muted)',
+			diffViewerTitleBackground: 'var(--wc-bg-surface)',
+			diffViewerTitleColor: 'var(--wc-text-primary)',
+			diffViewerTitleBorderColor: 'var(--wc-border-default)',
+		},
+		light: {
+			diffViewerBackground: 'var(--wc-bg-surface)',
+			diffViewerColor: 'var(--wc-text-primary)',
+			addedBackground: 'var(--wc-accent-green-bg-15)',
+			addedColor: 'var(--wc-accent-green)',
+			removedBackground: 'var(--wc-accent-red-bg-12)',
+			removedColor: 'var(--wc-accent-red-alt)',
+			wordAddedBackground: 'var(--wc-accent-green-hover)',
+			wordRemovedBackground: 'var(--wc-accent-red-hover)',
+			addedGutterBackground: 'var(--wc-accent-green-bg-15)',
+			removedGutterBackground: 'var(--wc-accent-red-bg-12)',
+			gutterBackground: 'var(--wc-bg-surface)',
+			gutterBackgroundDark: 'var(--wc-bg-surface)',
+			highlightBackground: 'var(--wc-overlay-dim)',
+			highlightGutterBackground: 'var(--wc-overlay-dim)',
+			codeFoldBackground: 'var(--wc-bg-surface)',
+			emptyLineBackground: 'var(--wc-bg-surface)',
+			gutterColor: 'var(--wc-text-faint)',
+			addedGutterColor: 'var(--wc-accent-green)',
+			removedGutterColor: 'var(--wc-accent-red-alt)',
+			codeFoldContentColor: 'var(--wc-text-muted)',
+			diffViewerTitleBackground: 'var(--wc-bg-surface)',
+			diffViewerTitleColor: 'var(--wc-text-primary)',
+			diffViewerTitleBorderColor: 'var(--wc-border-default)',
+		},
+	},
+};
 
 interface IEdit {
 	oldText?: string;
@@ -24,6 +87,8 @@ export const DiffRenderer = React.memo((props: {
 	strategy?: EDiffStrategy,
 }) => {
 	const { path, old, new: newVal, edits, content, strategy } = props;
+	const theme = useStore(s => s.settings.theme);
+	const isDark = DARK_THEMES.has(theme ?? 'dark');
 
 	return (
 		<Box px="3" py="2">
@@ -40,6 +105,8 @@ export const DiffRenderer = React.memo((props: {
 					newValue={newVal ?? ''}
 					splitView={true}
 					hideLineNumbers={false}
+					useDarkTheme={isDark}
+					styles={diffViewerStyles}
 				/>
 			)}
 
@@ -52,36 +119,8 @@ export const DiffRenderer = React.memo((props: {
 								newValue={e.newText ?? ''}
 								splitView={true}
 								hideLineNumbers={false}
-								useDarkTheme={true}  // or false based on your app theme
-								styles={{
-									variables: {
-										dark: {
-											diffViewerBackground: 'var(--wc-bg-surface)',
-											diffViewerColor: 'var(--wc-text-primary)',
-											addedBackground: 'var(--wc-accent-green-bg-15)',
-											addedColor: 'var(--wc-accent-green)',
-											removedBackground: 'var(--wc-accent-red-bg-12)',
-											removedColor: 'var(--wc-accent-red-alt)',
-											wordAddedBackground: 'var(--wc-accent-green-hover)',
-											wordRemovedBackground: 'var(--wc-accent-red-hover)',
-											addedGutterBackground: 'var(--wc-accent-green-bg-15)',
-											removedGutterBackground: 'var(--wc-accent-red-bg-12)',
-											gutterBackground: 'var(--wc-bg-surface)',
-											gutterBackgroundDark: 'var(--wc-bg-surface)',
-											highlightBackground: 'var(--wc-overlay-dim)',
-											highlightGutterBackground: 'var(--wc-overlay-dim)',
-											codeFoldBackground: 'var(--wc-bg-surface)',
-											emptyLineBackground: 'var(--wc-bg-surface)',
-											gutterColor: 'var(--wc-text-faint)',
-											addedGutterColor: 'var(--wc-accent-green)',
-											removedGutterColor: 'var(--wc-accent-red-alt)',
-											codeFoldContentColor: 'var(--wc-text-muted)',
-											diffViewerTitleBackground: 'var(--wc-bg-surface)',
-											diffViewerTitleColor: 'var(--wc-text-primary)',
-											diffViewerTitleBorderColor: 'var(--wc-border-default)',
-										},
-									}
-								}}
+								useDarkTheme={isDark}
+								styles={diffViewerStyles}
 							/>
 						</Box>
 					))}
