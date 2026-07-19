@@ -20,15 +20,20 @@ export function parseSSELine(line: string): ISSEChunk | null {
 }
 
 // Parse a buffer of SSE text, returning parsed chunks and the remaining buffer.
-export function parseSSEBuffer(buffer: string): { chunks: ISSEChunk[]; remaining: string } {
+export function parseSSEBuffer(buffer: string): { chunks: ISSEChunk[]; remaining: string; done: boolean } {
 	const lines = buffer.split('\n');
 	const remaining = lines.pop() ?? '';
 	const chunks: ISSEChunk[] = [];
+	let done = false;
 	for (const line of lines) {
+		if (line.trim() === 'data: [DONE]') {
+			done = true;
+			continue;
+		}
 		const chunk = parseSSELine(line);
 		if (chunk) chunks.push(chunk);
 	}
-	return { chunks, remaining };
+	return { chunks, remaining, done };
 }
 
 // Check if a line indicates the stream is done.

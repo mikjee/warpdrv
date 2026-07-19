@@ -8,6 +8,7 @@ import { authorizeAccess, authorizeToolCall } from './auth';
 import type { IStartArgs, IStartResult, IWarpmcpDeps } from './types';
 import { fileReadDefinition, fileReadHandler } from './tools/file_read';
 import { fileWriteDefinition, fileWriteHandler } from './tools/file_write';
+import { filePatchDefinition, filePatchHandler } from './tools/file_patch';
 import { dirListDefinition, dirListHandler } from './tools/dir_list';
 import { shellExecDefinition, shellExecHandler } from './tools/shell_exec';
 import { fetchDefinition, fetchHandler } from './tools/fetch';
@@ -35,6 +36,7 @@ function buildMcpServer(deps: IWarpmcpDeps): McpServer {
 	const tools = [
 		{ def: fileReadDefinition, handler: (a: any) => fileReadHandler(deps, a) },
 		{ def: fileWriteDefinition, handler: (a: any) => fileWriteHandler(deps, a) },
+		{ def: filePatchDefinition, handler: (a: any) => filePatchHandler(deps, a) },
 		{ def: dirListDefinition, handler: (a: any) => dirListHandler(deps, a) },
 		{ def: shellExecDefinition, handler: (a: any) => shellExecHandler(a) },
 		{ def: fetchDefinition, handler: (a: any) => fetchHandler(a) },

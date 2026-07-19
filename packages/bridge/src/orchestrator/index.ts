@@ -441,6 +441,7 @@ export class Orchestrator {
 			threadId: request.threadId,
 			messageId: assistantMsg.id,
 		});
+		console.log('[chunk-debug]', Date.now(), 'emit inference.started');
 
 		let result: IPassResult | null = null;
 		try {
@@ -454,9 +455,9 @@ export class Orchestrator {
 			);
 		} finally {
 			// Final checkpoint patch with full message state, then inference.ended
-			//console.log(new Date(), '[Orch] executePass finally, reading message from DB');
+			console.log('[chunk-debug]', Date.now(), 'getMessage start');
 			const finalMessage = await this.persistence.getMessage(assistantMsg.id);
-			//console.log(new Date(), '[Orch] message read from DB, emitting replaceParts');
+			console.log('[chunk-debug]', Date.now(), 'getMessage done');
 			if (finalMessage) {
 				this.broadcaster.emit({
 					type: 'message.patched',
@@ -467,13 +468,14 @@ export class Orchestrator {
 						replaceParts: finalMessage.content,
 					},
 				});
+				console.log('[chunk-debug]', Date.now(), 'emit message.patched (replaceParts)');
 			}
-			//console.log(new Date(), '[Orch] emitting inference.ended');
 			this.broadcaster.emit({
 				type: 'inference.ended',
 				threadId: request.threadId,
 				messageId: assistantMsg.id,
 			});
+			console.log('[chunk-debug]', Date.now(), 'emit inference.ended');
 			this.eventNode.broadcast('bridge.inference.finish', {
 				threadId: request.threadId,
 				messageId: assistantMsg.id,
@@ -605,9 +607,15 @@ export class Orchestrator {
 		try {
 			while (true) {
 				const { done, value } = await reader.read();
-				if (done) break;
+				if (done) {
+					console.log('[chunk-debug]', Date.now(), 'reader.done');
+					break;
+				}
 				buffer += decoder.decode(value, { stream: true });
-				const { chunks, remaining } = parseSSEBuffer(buffer);
+				const { chunks, remaining, done: sseDone } = parseSSEBuffer(buffer);
+				if (sseDone) {
+					console.log('[chunk-debug]', Date.now(), '[DONE] found');
+				}
 				buffer = remaining;
 
 				for (const chunk of chunks) {
@@ -642,6 +650,9 @@ export class Orchestrator {
 							});
 						}
 						turn.currentTextPart.text += delta.content;
+						if (delta.content.length > 0 && turn.currentTextPart.text.length - delta.content.length === 0) {
+							console.log('[chunk-debug]', Date.now(), 'first chunk');
+						}
 						this.broadcaster.emit({
 							type: 'message.chunk',
 							messageId: turn.assistantMessageId,
@@ -700,20 +711,25 @@ export class Orchestrator {
 						}
 					}
 
-					const fr = chunk.choices?.[0]?.finish_reason;
+		const fr = chunk.choices?.[0]?.finish_reason;
 					if (fr) {
-						//console.log(new Date(), '[Orch] finish_reason received');
+						console.log('[chunk-debug]', Date.now(), `finish_reason="${fr}"`);
 						finishReason = fr;
 					}
-					if (chunk.timings) timings = chunk.timings as Record<string, number>;
+		if (chunk.timings) timings = chunk.timings as Record<string, number>;
 					if (chunk.usage) usage = chunk.usage as Record<string, number>;
+				}
+				if (sseDone) {
+					console.log('[chunk-debug]', Date.now(), 'breaking on [DONE]');
+					break;
 				}
 			}
 		} finally {
-			//console.log(new Date(), '[Orch] stream ended, flushing parts');
+			console.log('[chunk-debug]', Date.now(), 'flushReasoningPart start');
 			await this.flushReasoningPart(turn);
+			console.log('[chunk-debug]', Date.now(), 'flushTextPart start');
 			await this.flushTextPart(turn);
-			//console.log(new Date(), '[Orch] parts flushed');
+			console.log('[chunk-debug]', Date.now(), 'parts flushed');
 		}
 
 		if (streamError) {
@@ -729,7 +745,6 @@ export class Orchestrator {
 		const finalToolCalls = finalizeToolCalls(toolCallAccumulators);
 
 		if (timings || usage) {
-			//console.log(new Date(), '[Orch] emitting stats patch');
 			const actualTokens = Math.ceil((fullText.length + reasoningText.length) / 4);
 			const stats: IChatMessageStats = {
 				promptTokens: (usage?.prompt_tokens ?? timings?.prompt_n ?? 0),
@@ -742,19 +757,20 @@ export class Orchestrator {
 				predictedMs: timings?.predicted_ms ?? 0,
 			};
 			await this.persistence.updateMessage(turn.assistantMessageId, { stats });
-			//console.log(new Date(), '[Orch] stats persisted, emitting patch');
+			console.log('[chunk-debug]', Date.now(), 'updateMessage stats done');
 			this.broadcaster.emit({
 				type: 'message.patched',
 				messageId: turn.assistantMessageId,
 				threadId: request.threadId,
 				updates: { stats },
 			});
-			//console.log(new Date(), '[Orch] stats patch emitted');
+			console.log('[chunk-debug]', Date.now(), 'emit message.patched (stats)');
 			await this.persistence.incrementThreadTokens(
 				request.threadId,
 				0,
 				stats.actualTokens ?? 0,
 			);
+			console.log('[chunk-debug]', Date.now(), 'incrementThreadTokens done');
 		}
 
 		messages.push({

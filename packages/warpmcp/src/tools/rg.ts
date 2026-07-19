@@ -100,12 +100,12 @@ function parseRgJson(output: string, maxResults: number): IRgMatch[] {
 	let currentFile: string | null = null;
 
 	for (const line of lines) {
-		if (!line.trim) continue;
+		if (!line.trim()) continue;
 		try {
 			const event = JSON.parse(line);
 			if (event.type === 'match') {
 				const data = event.data;
-				currentFile = data.data.path.text;
+				currentFile = data.path.text;
 				for (const submatch of data.submatches) {
 					const lineNum = data.line_number;
 					const lineText = data.lines?.text ?? '';

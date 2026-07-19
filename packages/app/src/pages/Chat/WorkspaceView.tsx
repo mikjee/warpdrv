@@ -92,6 +92,7 @@ function WorkspaceThreadRow({ thread, onSelect }: WorkspaceThreadRowProps) {
 
 export const WorkspaceView: React.FC<{ folderId: string }> = ({ folderId }) => {
 	const folders = useStore(s => s.folders);
+	const setFolders = useStore(s => s.setFolders);
 	const folder = folders.find(f => f.id === folderId);
 	const setWorkspace = useStore(s => s.setWorkspace);
 	const setWorkspaceState = useStore(s => s.setWorkspaceState);
@@ -131,6 +132,7 @@ export const WorkspaceView: React.FC<{ folderId: string }> = ({ folderId }) => {
 	const handleNameSave = async (name: string) => {
 		if (name.trim() && name !== folder?.name) {
 			await updateFolder(folderId, { name: name.trim() });
+			setFolders(folders.map(f => f.id === folderId ? { ...f, name: name.trim() } : f));
 		}
 		setRenaming(false);
 	};
