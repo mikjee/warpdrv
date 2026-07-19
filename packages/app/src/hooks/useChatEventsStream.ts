@@ -60,9 +60,7 @@ export function useChatEventsStream() {
 		};
 
 		const handleEvent = (e: MessageEvent) => {
-			console.log('[chunk-debug]', Date.now(), 'sse-pre', e);
 			const event = JSON.parse(e.data) as IBridgeEvent;
-			console.log('[chunk-debug]', Date.now(), 'sse', event.type);
 
 			switch (event.type) {
 				case 'thread.created':
@@ -81,16 +79,13 @@ export function useChatEventsStream() {
 					}
 					break;
 			case 'message.patched':
-				console.log('[chunk-debug]', Date.now(), 'recv message.patched', event.updates.replaceParts ? 'replaceParts' : event.updates.stats ? 'stats' : '');
 				applyMessagePatched(event.messageId, event.threadId, event.updates);
 				break;
 			case 'message.deleted':
 				applyMessageDeleted(event.messageId, event.threadId);
 				break;
 			case 'message.chunk':
-							console.log('[chunk-debug]', Date.now(), 'chunk enter');
 							applyMessageChunk(event.messageId, event.threadId, event.partId, event.deltaText);
-							console.log('[chunk-debug]', Date.now(), 'chunk exit');
 					if (event.partType === 'text') {
 					const state = useStore.getState();
 					const guardPass = state.ttsActiveMessageId === event.messageId && state.ttsIsGenerating === 'vad';
@@ -131,7 +126,6 @@ export function useChatEventsStream() {
 				applyToolCallUpdated(event.toolCall);
 				break;
 			case 'inference.started':
-				console.log('[chunk-debug]', Date.now(), 'recv inference.started');
 				applyInferenceStarted(event.threadId, event.messageId);
 				{
 					const s = useStore.getState();
@@ -145,7 +139,6 @@ export function useChatEventsStream() {
 				}
 				break;
 case 'inference.ended':
-				console.log('[chunk-debug]', Date.now(), 'recv inference.ended');
 				applyInferenceEnded(event.threadId, event.messageId);
 				tryAutoEmbed(event.messageId, event.threadId);
 				const vadActive = useStore.getState().vadActive;

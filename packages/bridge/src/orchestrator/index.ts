@@ -441,8 +441,6 @@ export class Orchestrator {
 			threadId: request.threadId,
 			messageId: assistantMsg.id,
 		});
-		console.log('[chunk-debug]', Date.now(), 'emit inference.started');
-
 		let result: IPassResult | null = null;
 		try {
 			result = await this.runPass(
@@ -455,9 +453,7 @@ export class Orchestrator {
 			);
 		} finally {
 			// Final checkpoint patch with full message state, then inference.ended
-			console.log('[chunk-debug]', Date.now(), 'getMessage start');
 			const finalMessage = await this.persistence.getMessage(assistantMsg.id);
-			console.log('[chunk-debug]', Date.now(), 'getMessage done');
 			if (finalMessage) {
 				this.broadcaster.emit({
 					type: 'message.patched',
@@ -468,14 +464,12 @@ export class Orchestrator {
 						replaceParts: finalMessage.content,
 					},
 				});
-				console.log('[chunk-debug]', Date.now(), 'emit message.patched (replaceParts)');
 			}
 			this.broadcaster.emit({
 				type: 'inference.ended',
 				threadId: request.threadId,
 				messageId: assistantMsg.id,
 			});
-			console.log('[chunk-debug]', Date.now(), 'emit inference.ended');
 			this.eventNode.broadcast('bridge.inference.finish', {
 				threadId: request.threadId,
 				messageId: assistantMsg.id,
@@ -608,13 +602,12 @@ export class Orchestrator {
 			while (true) {
 				const { done, value } = await reader.read();
 				if (done) {
-					console.log('[chunk-debug]', Date.now(), 'reader.done');
 					break;
 				}
 				buffer += decoder.decode(value, { stream: true });
 				const { chunks, remaining, done: sseDone } = parseSSEBuffer(buffer);
 				if (sseDone) {
-					console.log('[chunk-debug]', Date.now(), '[DONE] found');
+					// [DONE] marker received
 				}
 				buffer = remaining;
 
@@ -650,8 +643,9 @@ export class Orchestrator {
 							});
 						}
 						turn.currentTextPart.text += delta.content;
+						// First chunk of text content
 						if (delta.content.length > 0 && turn.currentTextPart.text.length - delta.content.length === 0) {
-							console.log('[chunk-debug]', Date.now(), 'first chunk');
+							// first chunk
 						}
 						this.broadcaster.emit({
 							type: 'message.chunk',
@@ -713,23 +707,18 @@ export class Orchestrator {
 
 		const fr = chunk.choices?.[0]?.finish_reason;
 					if (fr) {
-						console.log('[chunk-debug]', Date.now(), `finish_reason="${fr}"`);
 						finishReason = fr;
 					}
 		if (chunk.timings) timings = chunk.timings as Record<string, number>;
 					if (chunk.usage) usage = chunk.usage as Record<string, number>;
 				}
 				if (sseDone) {
-					console.log('[chunk-debug]', Date.now(), 'breaking on [DONE]');
 					break;
 				}
 			}
 		} finally {
-			console.log('[chunk-debug]', Date.now(), 'flushReasoningPart start');
 			await this.flushReasoningPart(turn);
-			console.log('[chunk-debug]', Date.now(), 'flushTextPart start');
 			await this.flushTextPart(turn);
-			console.log('[chunk-debug]', Date.now(), 'parts flushed');
 		}
 
 		if (streamError) {
@@ -757,20 +746,17 @@ export class Orchestrator {
 				predictedMs: timings?.predicted_ms ?? 0,
 			};
 			await this.persistence.updateMessage(turn.assistantMessageId, { stats });
-			console.log('[chunk-debug]', Date.now(), 'updateMessage stats done');
 			this.broadcaster.emit({
 				type: 'message.patched',
 				messageId: turn.assistantMessageId,
 				threadId: request.threadId,
 				updates: { stats },
 			});
-			console.log('[chunk-debug]', Date.now(), 'emit message.patched (stats)');
 			await this.persistence.incrementThreadTokens(
 				request.threadId,
 				0,
 				stats.actualTokens ?? 0,
 			);
-			console.log('[chunk-debug]', Date.now(), 'incrementThreadTokens done');
 		}
 
 		messages.push({

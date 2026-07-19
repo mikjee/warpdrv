@@ -6,6 +6,9 @@ import type { IToolCallRenderer, TCanRenderResult } from '@/store/types';
 export const CodeGraphClearRenderer = React.memo((props: {
 	result?: unknown;
 }) => {
+	if (props.result === undefined) {
+		return null;
+	}
 	return (
 		<Box px="3" py="2">
 			<HStack gap="2" align="center">
