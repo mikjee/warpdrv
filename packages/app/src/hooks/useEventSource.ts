@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { useStore } from '@/store';
-import { EventSource } from 'eventsource';
 
 export function useEventSource() {
 	useEffect(() => {

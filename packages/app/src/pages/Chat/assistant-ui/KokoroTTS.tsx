@@ -6,7 +6,6 @@ import { useStore } from '@/store';
 import { Box } from '@chakra-ui/react';
 import removeMd from 'remove-markdown';
 import emojiRegex from 'emoji-regex';
-import { EventSource } from 'eventsource';
 
 const ActionBarIcon: FC<{ children: React.ReactNode; onClick?: () => void }> = ({ children, onClick }) => (
 	<Box

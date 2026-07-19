@@ -1,7 +1,7 @@
 {
 	"name": "warpcore",
 	"private": true,
-	"version": "0.4.25",
+	"version": "0.4.26",
 	"workspaces": [
 		"packages/*"
 	],
@@ -9,7 +9,7 @@
 		"dev": "concurrently -n server,app -c blue,green \"npm run dev -w @warpcore/server\" \"npm run dev -w @warpcore/app\"",
 		"dev:server": "npm run dev -w @warpcore/server",
 		"dev:app": "npm run dev -w @warpcore/app",
-		"dev:desktop": "npm run dev -w @warpcore/desktop",
+		"dev:desktop": "concurrently -n app,tauri -c green,blue \"cd packages/app && npm run dev -- --port 3000\" \"cd packages/desktop && npx @tauri-apps/cli dev\"",
 		"build": "npm run build -w @warpcore/app",
 		"build:desktop": "npm run build -w @warpcore/desktop",
 		"release": "bash release.sh",
