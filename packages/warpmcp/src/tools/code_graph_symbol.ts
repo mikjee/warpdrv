@@ -12,6 +12,7 @@ export const codeGraphSymbolDefinition = {
 		},
 		required: [],
 	},
+	resultLimit: 40960,
 };
 
 export async function codeGraphSymbolHandler(

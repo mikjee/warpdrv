@@ -39,6 +39,7 @@ export const rgDefinition = {
 		},
 		required: ['pattern'],
 	},
+	resultLimit: 40960,
 };
 
 export async function rgHandler(

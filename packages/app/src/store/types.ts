@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, TStepId, IServerSlotsState, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings, TWhisperBackendId, IWhisperBackend, TWhisperServerId, IWhisperServer, IWhisperModel, IHardwareInfo, IBackendAsset, IKokoroStatus } from '@warpcore/shared';
+import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, IDevice, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, TStepId, IServerSlotsState, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings, TWhisperBackendId, IWhisperBackend, TWhisperServerId, IWhisperServer, IWhisperModel, IHardwareInfo, IBackendAsset, IKokoroStatus, IChatPreset, IChatPresetCreatePayload } from '@warpcore/shared';
 import type { IProxyStatus, IStickyRouteInfo } from '@/api/services';
 import type { IExtractedSlashCommand } from '@/pages/Chat/assistant-ui/docToString';
 export { type ImmerSet, type ImmerGet } from '@warpcore/bridge';
@@ -213,6 +213,12 @@ export interface AppState extends IChatStoreState{
 	stepOutputs: Record<TStepId, string>;
 	// Checkpoints
 	checkpoints: Record<TCheckpointId, ICheckpoint>;
+
+	// Chat Presets
+	chatPresets: IChatPreset[];
+	setChatPresets: (presets: IChatPreset[]) => void;
+	addChatPreset: (payload: IChatPresetCreatePayload) => Promise<void>;
+	removeChatPreset: (id: string) => Promise<void>;
 
 	// Chat Folders
 	folders: IFolder[];

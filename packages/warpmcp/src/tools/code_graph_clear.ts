@@ -8,6 +8,7 @@ export const codeGraphClearDefinition = {
 		properties: {},
 		required: [],
 	},
+	resultLimit: 40960,
 };
 
 export async function codeGraphClearHandler(

@@ -64,8 +64,14 @@ function buildMcpServer(deps: IWarpmcpDeps): McpServer {
 		const tool = tools.find(t => t.def.name === name);
 		if (!tool) throw new Error(`Unknown tool: ${name}`);
 		const result = await tool.handler(args as any);
-		//console.log('[warpmcp] Tool', name, 'result:', JSON.stringify(result).slice(0, 200));
-		return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+		const json = JSON.stringify(result);
+		const bytes = Buffer.byteLength(json, 'utf8');
+		const limit = (tool.def as any).resultLimit;
+		if (limit !== undefined && bytes > limit) {
+			throw new Error(`[tool:${name}] Result too large: ${bytes} bytes exceeds ${limit} byte limit.`);
+		}
+		//console.log('[warpmcp] Tool', name, 'result:', json.slice(0, 200));
+		return { content: [{ type: 'text', text: json }] };
 	});
 	return server;
 }

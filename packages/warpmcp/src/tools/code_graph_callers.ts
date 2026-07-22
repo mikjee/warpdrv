@@ -13,6 +13,7 @@ export const codeGraphCallersDefinition = {
 		},
 		required: [],
 	},
+	resultLimit: 40960,
 };
 
 export async function codeGraphCallersHandler(

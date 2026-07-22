@@ -14,6 +14,7 @@ export const fileWriteDefinition = {
 		},
 		required: ['path', 'content'],
 	},
+	resultLimit: 100000,
 };
 export async function fileWriteHandler(deps: IWarpmcpDeps, args: { path: string; content: string; encoding?: string }): Promise<{ bytesWritten: number }> {
 	const safePath = await assertPathAllowed(deps.getFsAllowedRoots(), args.path);

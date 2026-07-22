@@ -8,7 +8,9 @@
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.29.0",
 		"@vscode/ripgrep": "^1.18.0",
-		"express": "^5.1.0"
+		"express": "^5.1.0",
+		"ignore": "^7.0.0",
+		"minimatch": "^10.0.1"
 	},
 	"devDependencies": {
 		"@types/express": "^5.0.2",

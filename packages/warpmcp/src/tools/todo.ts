@@ -14,6 +14,7 @@ export const todoReadDefinition = {
 		properties: {},
 		required: [],
 	},
+	resultLimit: 40960,
 };
 export async function todoReadHandler(deps: IWarpmcpDeps, args: { threadId: string }): Promise<ITodoResult> {
 	guard(deps, 'todoRead');
@@ -32,6 +33,7 @@ export const todoAddDefinition = {
 		},
 		required: ['todo'],
 	},
+	resultLimit: 40960,
 };
 export async function todoAddHandler(deps: IWarpmcpDeps, args: { threadId: string; todo: ITodoItem; index?: number }): Promise<{ todos: ITodoItem[] }> {
 	guard(deps, 'todoAdd');
@@ -50,6 +52,7 @@ export const todoRemoveDefinition = {
 		},
 		required: ['index'],
 	},
+	resultLimit: 40960,
 };
 export async function todoRemoveHandler(deps: IWarpmcpDeps, args: { threadId: string; index: number }): Promise<{ todos: ITodoItem[] }> {
 	guard(deps, 'todoRemove');
@@ -69,6 +72,7 @@ export const todoUpdateDefinition = {
 		},
 		required: ['index', 'status'],
 	},
+	resultLimit: 40960,
 };
 export async function todoUpdateHandler(deps: IWarpmcpDeps, args: { threadId: string; index: number; status: ITodoItem['status'] }): Promise<{ todos: ITodoItem[] }> {
 	guard(deps, 'todoUpdate');
@@ -85,6 +89,7 @@ export const todoClearDefinition = {
 		properties: {},
 		required: [],
 	},
+	resultLimit: 40960,
 };
 export async function todoClearHandler(deps: IWarpmcpDeps, args: { threadId: string }): Promise<{ todos: ITodoItem[] }> {
 	guard(deps, 'todoClear');
@@ -104,6 +109,7 @@ export const todoWriteDefinition = {
 		},
 		required: ['todos'],
 	},
+	resultLimit: 40960,
 };
 export async function todoWriteHandler(deps: IWarpmcpDeps, args: { threadId: string; todos: ITodoItem[]; etag?: string }): Promise<ITodoResult> {
 	guard(deps, 'todoWrite');

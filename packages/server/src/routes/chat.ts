@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { createSession } from 'better-sse';
 import { persistence, orchestrator, broadcaster } from '../index';
 import { store } from '../util/store';
+import { sseManager } from '../services/sseManagerInstance';
 import type { IChatThreadCreatePayload, IChatMessageCreatePayload } from '@warpcore/shared';
 import { EServerStatus } from '@warpcore/shared';
 import { EChatRole, EMessagePartType, ICompletionRequest, type IFolder } from '@warpcore/bridge';
@@ -512,6 +513,7 @@ chatRouter.get('/presets/:id', (req, res) => {
 chatRouter.post('/presets', (req, res) => {
 	try {
 		const preset = createChatPreset(req.body as IChatPresetCreatePayload);
+		sseManager.emit('chatPresets:update', preset);
 		res.json({ ok: true, data: preset, error: null });
 	} catch (err) {
 		res.status(500).json({ ok: false, data: null, error: String(err) });
@@ -522,6 +524,7 @@ chatRouter.put('/presets/:id', (req, res) => {
 	try {
 		const preset = updateChatPreset(req.params.id, req.body as Partial<IChatPresetCreatePayload>);
 		if (!preset) return res.status(404).json({ ok: false, data: null, error: 'Not found' });
+		sseManager.emit('chatPresets:update', preset);
 		res.json({ ok: true, data: preset, error: null });
 	} catch (err) {
 		res.status(500).json({ ok: false, data: null, error: String(err) });
@@ -532,6 +535,7 @@ chatRouter.delete('/presets/:id', (req, res) => {
 	try {
 		const ok = deleteChatPreset(req.params.id);
 		if (!ok) return res.status(404).json({ ok: false, data: null, error: 'Not found' });
+		sseManager.emit('chatPresets:delete', { id: req.params.id });
 		res.json({ ok: true, data: null, error: null });
 	} catch (err) {
 		res.status(500).json({ ok: false, data: null, error: String(err) });

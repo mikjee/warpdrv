@@ -11,6 +11,7 @@ export const codeGraphIngestDefinition = {
 		},
 		required: [],
 	},
+	resultLimit: 40960,
 };
 
 export async function codeGraphIngestHandler(

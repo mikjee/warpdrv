@@ -26,6 +26,7 @@ import { mcpRouter } from './routes/mcp';
 import { proxyRouter } from './routes/proxy';
 import { startModelProxy, getProxyStatus } from './services/modelProxy';
 import { summaryRouter } from './routes/summary';
+import { listChatPresets } from './util/chatPresets';
 import { sseManager } from './services/sseManagerInstance';
 import { getAllServerStats, getServerStats } from './services/statsPoller';
 import { getAllServerSlots, getServerSlots } from './services/slotStateTracker';
@@ -387,6 +388,10 @@ async function main() {
 		const recipesMap: Record<string, typeof recipes[number]> = {};
 		for (const r of recipes) recipesMap[r.id] = r;
 		return { recipes: recipesMap, activeRun: getActiveRun() };
+	});
+
+	sseManager.onConnect('chatPresets:init', async () => {
+		return listChatPresets();
 	});
 
 	const httpServer = createServer(app);

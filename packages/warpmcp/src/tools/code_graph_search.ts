@@ -14,6 +14,7 @@ export const codeGraphSearchDefinition = {
 		},
 		required: ['query'],
 	},
+	resultLimit: 40960,
 };
 
 export async function codeGraphSearchHandler(

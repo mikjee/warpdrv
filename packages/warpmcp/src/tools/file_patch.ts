@@ -16,6 +16,7 @@ export const filePatchDefinition = {
 		},
 		required: ['path', 'oldText', 'newText'],
 	},
+	resultLimit: 40960,
 };
 
 interface IMatch {

@@ -12,6 +12,7 @@ export const embeddingSearchDefinition = {
 		},
 		required: ['query'],
 	},
+	resultLimit: 40960,
 };
 
 export interface IEmbeddingSearchResult {

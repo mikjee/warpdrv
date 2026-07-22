@@ -12,6 +12,7 @@ export const shellExecDefinition = {
 		},
 		required: ['command'],
 	},
+	resultLimit: 40960,
 };
 export async function shellExecHandler(args: { command: string; cwd?: string; timeout?: number }): Promise<{ stdout: string; stderr: string; exitCode: number | null }> {
 	const spec = getShellSpec(args.command);

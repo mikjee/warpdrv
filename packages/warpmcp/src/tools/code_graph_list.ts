@@ -11,6 +11,7 @@ export const codeGraphListDefinition = {
 		},
 		required: ['path'],
 	},
+	resultLimit: 40960,
 };
 
 export async function codeGraphListHandler(

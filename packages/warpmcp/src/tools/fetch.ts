@@ -11,6 +11,7 @@ export const fetchDefinition = {
 		},
 		required: ['url'],
 	},
+	resultLimit: 200000,
 };
 export async function fetchHandler(args: { url: string; method?: string; headers?: Record<string, string>; body?: string }): Promise<{ status: number; headers: Record<string, string>; body: string }> {
 	const res = await fetch(args.url, {

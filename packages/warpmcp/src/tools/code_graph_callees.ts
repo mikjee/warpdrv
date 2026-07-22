@@ -13,6 +13,7 @@ export const codeGraphCalleesDefinition = {
 		},
 		required: [],
 	},
+	resultLimit: 40960,
 };
 
 export async function codeGraphCalleesHandler(

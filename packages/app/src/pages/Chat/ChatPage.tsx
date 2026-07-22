@@ -23,6 +23,7 @@ import { ChatSidebar } from './ChatSidebar';
 import { useDerivedMsgsForUI } from '@/hooks/useChatSelectors';
 import { useThreadConfig } from '@/hooks/useThreadConfig';
 import { useThreadAttachedTools } from '@/hooks/useThreadAttachedTools';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { useHotkey, HotkeyMode } from '@/hooks/useHotKey';
 import { useSlashCommandProcessor } from '@/hooks/useSlashCommandProcessor';
 
@@ -251,7 +252,6 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 	// Initial thread load - seed messages and tool calls
 	const seedThreadMessages = useStore(s => s.seedThreadMessages);
 	const applyToolCallCreated = useStore(s => s.applyToolCallCreated);
-	const initWorkspaceState = useStore(s => s.initWorkspaceState);
 	const initThreadState = useStore(s => s.initThreadState);
 	const initMessageStates = useStore(s => s.initMessageStates);
 	const selectedEmbeddingServerId = useStore(s => s.selectedEmbeddingServerId);
@@ -311,19 +311,10 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 				}
 
 				// Fetch persisted states
-				const folderId = data?.folderId;
-				const statePromises: Promise<{ ok: boolean; data: any; error: string | null } | null>[] = [];
-				if (folderId) {
-					statePromises.push(fetch(`/api/chat/workspaces/${folderId}/state`).then(res => res.ok ? res.json() : null));
-				} else {
-					statePromises.push(Promise.resolve(null));
-				}
-				statePromises.push(fetch(`/api/chat/threads/${currentThreadId}/state`).then(res => res.ok ? res.json() : null));
-				statePromises.push(fetch(`/api/chat/threads/${currentThreadId}/message-states`).then(res => res.ok ? res.json() : null));
-				const [wsStateRes, threadStateRes, msgStatesRes] = await Promise.all(statePromises);
-				if (wsStateRes?.data !== undefined && wsStateRes?.data !== null && folderId) {
-					initWorkspaceState(folderId, wsStateRes.data);
-				}
+				const [threadStateRes, msgStatesRes] = await Promise.all([
+					fetch(`/api/chat/threads/${currentThreadId}/state`).then(res => res.ok ? res.json() : null),
+					fetch(`/api/chat/threads/${currentThreadId}/message-states`).then(res => res.ok ? res.json() : null),
+				]);
 				if (threadStateRes?.data !== undefined && threadStateRes?.data !== null) {
 					initThreadState(currentThreadId!, threadStateRes.data);
 				}
@@ -343,7 +334,7 @@ const ChatInner = React.memo(({ threadsListCollapsed, onOpenSearch }: { threadsL
 			setIsLoadingThread(false);
 		}
 		loadThread();
-	}, [currentThreadId, threadInStore, threadMessages, selectedEmbeddingServerId, servers, seedThreadMessages, applyToolCallCreated, setThreadEmbeddingStatuses, initWorkspaceState, initThreadState, initMessageStates]);
+	}, [currentThreadId, threadInStore, threadMessages, selectedEmbeddingServerId, servers, seedThreadMessages, applyToolCallCreated, setThreadEmbeddingStatuses, initThreadState, initMessageStates]);
 
 	// Realm events and applet state
 	const realmEvents = useRealm(currentThreadId);
@@ -611,6 +602,8 @@ export const ChatPage = React.memo(() => {
 	const setCurrentThreadId = useStore(s => s.setCurrentThreadId);
 	const currentThreadId = useStore(s => s.currentThreadId);
 	const [threadsListCollapsed, setThreadsListCollapsed] = useState(false);
+
+	useWorkspace();
 	const [searchOpen, setSearchOpen] = useState(false);
 	const openChatSidebarTab = useStore(s => s.openChatSidebarTab);
 	const chatSidebarOpen = useStore(s => s.chatSidebarOpen);

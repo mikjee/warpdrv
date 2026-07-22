@@ -1,5 +1,5 @@
 import type { AppState, ImmerSet, ImmerGet } from '../types';
-import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, IRecipesInitPayload, IRunsStepStartedPayload, IRunsStepOutputPayload, IRunsStepFinishedPayload, IRunsFinishedPayload, ERecipeStreamKind, ISseSlotStatePayload, ISseServerSlotsSnapshotPayload, IServerSlotsState, ISseCheckpointPayload, ISseCheckpointDeletedPayload, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings, TWhisperBackendId, IWhisperBackend, TWhisperServerId, IWhisperServer, IWhisperModel } from '@warpcore/shared';
+import type { TServerId, IServer, IServerStats, TDownloadId, IDownload, TBackendId, IBackend, TBackendGroupId, IBackendGroup, TRecipeId, IRecipe, IRecipeRunState, IRecipesInitPayload, IRunsStepStartedPayload, IRunsStepOutputPayload, IRunsStepFinishedPayload, IRunsFinishedPayload, ERecipeStreamKind, ISseSlotStatePayload, ISseServerSlotsSnapshotPayload, IServerSlotsState, ISseCheckpointPayload, ISseCheckpointDeletedPayload, ICheckpoint, TCheckpointId, TModelId, IModel, ISettings, TWhisperBackendId, IWhisperBackend, TWhisperServerId, IWhisperServer, IWhisperModel, IChatPreset } from '@warpcore/shared';
 import { ERecipeStepStatus, EServerStatus, EWhisperServerStatus } from '@warpcore/shared';
 
 interface SSEHandlersSlice {
@@ -242,6 +242,19 @@ export const sseHandlersSlice = (
 			if (!state.activeRun || state.activeRun.runId !== data.runId) return;
 			state.activeRun.status = data.status;
 			state.activeRun.finishedAt = data.finishedAt;
+		}),
+
+		// Chat Presets
+		'chatPresets:init': (data: IChatPreset[]) => setState((state) => {
+			state.chatPresets = data;
+		}),
+		'chatPresets:update': (data: IChatPreset) => setState((state) => {
+			const idx = state.chatPresets.findIndex(p => p.id === data.id);
+			if (idx >= 0) state.chatPresets[idx] = data;
+			else state.chatPresets.push(data);
+		}),
+		'chatPresets:delete': (data: { id: string }) => setState((state) => {
+			state.chatPresets = state.chatPresets.filter(p => p.id !== data.id);
 		}),
 	},
 });

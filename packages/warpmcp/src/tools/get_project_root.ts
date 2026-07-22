@@ -8,6 +8,7 @@ export const getProjectRootDefinition = {
 		properties: {},
 		required: [],
 	},
+	resultLimit: 40960,
 };
 
 export async function getProjectRootHandler(

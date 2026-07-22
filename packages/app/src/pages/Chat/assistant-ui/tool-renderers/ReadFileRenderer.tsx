@@ -10,9 +10,11 @@ export const ReadFileRenderer = React.memo((props: {
 	tail?: number,
 	offset?: number,
 	length?: number,
+	lineStart?: number,
+	lineEnd?: number,
 	result?: unknown,
 }) => {
-	const { path, head, tail, offset, length, result } = props;
+	const { path, head, tail, offset, length, lineStart, lineEnd, result } = props;
 	const resultText = extractResultText(result);
 	const [expanded, setExpanded] = useState(false);
 	const rangeBits: string[] = [];
@@ -20,6 +22,9 @@ export const ReadFileRenderer = React.memo((props: {
 	if (tail !== undefined) rangeBits.push(`tail ${tail}`);
 	if (offset !== undefined) rangeBits.push(`offset ${offset}`);
 	if (length !== undefined) rangeBits.push(`length ${length}`);
+	if (lineStart !== undefined) {
+		rangeBits.push(lineEnd !== undefined ? `lines ${lineStart}-${lineEnd}` : `lines ${lineStart}+`);
+	}
 	const lineCount = resultText ? resultText.split('\n').length : 0;
 	return (
 		<Box px="3" py="2">
@@ -67,6 +72,8 @@ export const ReadFileRendererMeta: IToolCallRenderer = {
 		const tail = typeof args.tail === 'number' ? args.tail : undefined;
 		const offset = typeof args.offset === 'number' ? args.offset : undefined;
 		const length = typeof args.length === 'number' ? args.length : undefined;
-		return { path, head, tail, offset, length };
+		const lineStart = typeof args.line_start === 'number' ? args.line_start : undefined;
+		const lineEnd = typeof args.line_end === 'number' ? args.line_end : undefined;
+		return { path, head, tail, offset, length, lineStart, lineEnd };
 	},
 };

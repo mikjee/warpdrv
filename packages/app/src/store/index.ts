@@ -22,6 +22,7 @@ import { releasesSlice } from './slices/releases';
 import { kokoroSlice } from './slices/kokoro';
 import { ttsSlice } from './slices/tts';
 import { annotationsSlice } from './slices/annotations';
+import { chatPresetsSlice } from './slices/chatPresets';
 import { embeddingSlice } from './slices/embedding';
 import { chatSidebarSlice } from './slices/chatSidebar';
 import { slashCommandsSlice } from './slices/slashCommands';
@@ -65,6 +66,7 @@ export const useStore = create<AppState>()(
 				const kokoro = kokoroSlice(set, get);
 			const tts = ttsSlice(set, get);
 			const annotations = annotationsSlice(set, get);
+			const chatPresets = chatPresetsSlice(set, get);
 			const embedding = embeddingSlice(set, get);
 				const chatSidebar = chatSidebarSlice(set, get);
 				const slashCommands = slashCommandsSlice(set, get);
@@ -235,7 +237,13 @@ export const useStore = create<AppState>()(
 					attachedTools: bridge.attachedTools,
 					setAttachedTools: bridge.setAttachedTools,
 
-// Chat Folders
+// Chat Presets
+			chatPresets: chatPresets.chatPresets!,
+			setChatPresets: chatPresets.setChatPresets!,
+			addChatPreset: chatPresets.addChatPreset!,
+			removeChatPreset: chatPresets.removeChatPreset!,
+
+		// Chat Folders
 				folders: [],
 				setFolders: (folders) => set(s => { s.folders = folders; }),
 
