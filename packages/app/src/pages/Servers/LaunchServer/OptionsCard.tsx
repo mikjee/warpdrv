@@ -1,23 +1,44 @@
 import { Box, Button, Flex, HStack, Input, Text, VStack } from "@chakra-ui/react";
 import type { ILaunchParams } from "@warpcore/shared";
+import { ELoadMode } from "@warpcore/shared";
 import { FileInput } from "lucide-react";
 import React, { useCallback } from "react";
 import { Card } from "@/components/Card";
 import { useToast } from "@/components/ToastProvider";
-import { NumberField, ToggleChip } from "./Helpers";
+import { NumberField, SelectField, ToggleChip } from "./Helpers";
 
 export const OptionsCard = React.memo(
 	({
 		params,
 		onParamChange,
+		buildNumber,
 	}: {
 		params: ILaunchParams;
 		onParamChange: (
 			key: keyof ILaunchParams,
 			value: ILaunchParams[keyof ILaunchParams],
 		) => void;
+		buildNumber: number;
 	}) => {
 		const { toast } = useToast();
+		const usesLoadMode = buildNumber >= 10105;
+		const loadModeValue = params.loadMode ?? ELoadMode.AUTO;
+		const loadModeOptions = [
+			ELoadMode.AUTO,
+			ELoadMode.NONE,
+			ELoadMode.MMAP,
+			ELoadMode.MLOCK,
+			ELoadMode.MMAP_MLOCK,
+			ELoadMode.DIO,
+		];
+		const loadModeLabels: Record<string, string> = {
+			[ELoadMode.AUTO]: "Auto (default)",
+			[ELoadMode.NONE]: "None",
+			[ELoadMode.MMAP]: "MMap",
+			[ELoadMode.MLOCK]: "MLock",
+			[ELoadMode.MMAP_MLOCK]: "MMap + MLock",
+			[ELoadMode.DIO]: "Direct I/O",
+		};
 		const handleBrowseChatTemplateFile = useCallback(async () => {
 			if (typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__) {
 				try {
@@ -58,21 +79,25 @@ export const OptionsCard = React.memo(
 							active={params.flashAttn}
 							onClick={() => onParamChange("flashAttn", !params.flashAttn)}
 						/>
-						<ToggleChip
-							label="MLock"
-							active={params.mlock}
-							onClick={() => onParamChange("mlock", !params.mlock)}
-						/>
-						<ToggleChip
-							label="MMap"
-							active={params.mmap}
-							onClick={() => onParamChange("mmap", !params.mmap)}
-						/>
-						<ToggleChip
-							label="Direct I/O"
-							active={params.directIo}
-							onClick={() => onParamChange("directIo", !params.directIo)}
-						/>
+						{!usesLoadMode && (
+							<>
+								<ToggleChip
+									label="MLock"
+									active={params.mlock}
+									onClick={() => onParamChange("mlock", !params.mlock)}
+								/>
+								<ToggleChip
+									label="MMap"
+									active={params.mmap}
+									onClick={() => onParamChange("mmap", !params.mmap)}
+								/>
+								<ToggleChip
+									label="Direct I/O"
+									active={params.directIo}
+									onClick={() => onParamChange("directIo", !params.directIo)}
+								/>
+							</>
+						)}
 						<ToggleChip
 							label="No Warmup"
 							active={params.noWarmup}
@@ -104,6 +129,17 @@ export const OptionsCard = React.memo(
 							onClick={() => onParamChange("kvUnified", !(params.kvUnified ?? false))}
 						/>
 					</HStack>
+					{usesLoadMode && (
+						<Flex>
+							<SelectField
+								label="Load Mode"
+								value={loadModeValue}
+								options={loadModeOptions}
+								optionLabels={loadModeLabels}
+								onChange={(v) => onParamChange("loadMode", v as ELoadMode)}
+							/>
+						</Flex>
+					)}
 					<Flex gap="4">
 						<NumberField
 							label="Batch Size"

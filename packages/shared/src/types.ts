@@ -1,5 +1,6 @@
 import {
 	type EDeviceBackendType,
+	type ELoadMode,
 	EKvQuantType,
 	type EReasoningEffort,
 	type EReasoningFormat,
@@ -174,9 +175,12 @@ export interface ILaunchParams {
 	threads: number; // 0 = auto
 	threadsBatch: number; // 0 = auto
 	flashAttn: boolean;
+	// Old builds (<10105): individual flags (--mlock, --no-mmap, -dio)
 	mlock: boolean;
 	mmap: boolean;
 	directIo: boolean;
+	// New builds (>=10105): single --load-mode value. undefined = auto (flag omitted)
+	loadMode?: ELoadMode;
 	noWarmup: boolean;
 	jinja: boolean;
 	swaFull: boolean;
