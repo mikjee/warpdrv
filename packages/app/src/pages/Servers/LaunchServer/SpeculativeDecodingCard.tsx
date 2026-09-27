@@ -163,6 +163,7 @@ export const SpeculativeDecodingCard = React.memo(
 		deviceIdToName,
 		flashAttn,
 		ubatchSize,
+		buildNumber,
 	}: {
 		specDecode: ISpecDecodeParams;
 		onSpecParamChange: <K extends keyof ISpecDecodeParams>(
@@ -176,6 +177,7 @@ export const SpeculativeDecodingCard = React.memo(
 		deviceIdToName: Record<string, string>;
 		flashAttn: boolean;
 		ubatchSize: number;
+		buildNumber: number;
 	}) => {
 		return (
 			<Card
@@ -580,6 +582,89 @@ export const SpeculativeDecodingCard = React.memo(
 
 						{specDecode.mode === "mtp" && (
 							<VStack align="stretch" gap="4">
+								{buildNumber >= 9193 && (
+									<Box>
+										<Text
+											fontSize="11px"
+											color="var(--wc-accent-purple-text)"
+											textTransform="uppercase"
+											letterSpacing="0.05em"
+											mb="2"
+										>
+											Draft Model
+										</Text>
+										{!targetArchitecture ? (
+											<Text fontSize="12px" color="var(--wc-text-muted)">
+												Select a target model first to see compatible draft
+												models.
+											</Text>
+										) : draftModelEntries.length === 0 ? (
+											<Text fontSize="12px" color="var(--wc-text-muted)">
+												No compatible draft models found. Draft models must
+												share the same architecture ({targetArchitecture}).
+											</Text>
+										) : (
+											<ModelCombobox
+												entries={draftModelEntries}
+												selectedPath={specDecode.draftModelPath || null}
+												onSelect={(path) =>
+													onSpecParamChange("draftModelPath", path)
+												}
+												placeholder="Search compatible draft models..."
+											/>
+										)}
+										{selectedDraftEntry?.file.metadata && (
+											<HStack
+												mt="2"
+												gap="4"
+												px="3"
+												py="2"
+												bg="var(--wc-accent-purple-bg-8)"
+												borderRadius="lg"
+												borderWidth="1px"
+												borderColor="var(--wc-accent-purple-border)"
+											>
+												<HStack gap="1.5">
+													<Layers
+														size={12}
+														color="var(--wc-accent-purple-icon)"
+													/>
+													<Text
+														fontSize="11px"
+														color="var(--wc-accent-purple-text)"
+													>
+														{selectedDraftEntry.file.metadata.nLayers}{" "}
+														layers
+													</Text>
+												</HStack>
+												<HStack gap="1.5">
+													<Cpu
+														size={12}
+														color="var(--wc-accent-purple-icon)"
+													/>
+													<Text
+														fontSize="11px"
+														color="var(--wc-accent-purple-text)"
+													>
+														{
+															selectedDraftEntry.file.metadata
+																.paramCount
+														}
+													</Text>
+												</HStack>
+												<Text
+													fontSize="11px"
+													color="var(--wc-accent-purple-icon)"
+													fontFamily='"Geist Mono", monospace'
+												>
+													{formatSize(
+														selectedDraftEntry.model.totalSizeMb,
+													)}
+												</Text>
+											</HStack>
+										)}
+									</Box>
+								)}
 								<Box>
 									<Text
 										fontSize="11px"

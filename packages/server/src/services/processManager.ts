@@ -10,6 +10,7 @@ import {
 	DEFAULT_SETTINGS,
 	ECheckpointSaveMode,
 	EKvQuantType,
+	ELoadMode,
 	EServerStatus,
 } from "@warpcore/shared";
 import { type ChildProcess, spawn, spawnSync } from "child_process";
@@ -174,6 +175,7 @@ function buildSpecDecodeArgsPost9100(sd: ISpecDecodeParams): string[] {
 	// MTP mode
 	if (isMtp) {
 		args.push("--spec-type", "draft-mtp");
+		if (sd.draftModelPath) args.push("--spec-draft-model", sd.draftModelPath);
 		if (sd.specDraftNMax) args.push("--spec-draft-n-max", String(sd.specDraftNMax));
 		if (sd.draftMin > 0) args.push("--spec-draft-n-min", String(sd.draftMin));
 		if (sd.draftPMin > 0) args.push("--spec-draft-p-min", String(sd.draftPMin));
@@ -244,9 +246,20 @@ export function buildArgs(
 	if (params.threadsBatch > 0 && !argsSet.has("-tb"))
 		args.push("-tb", String(params.threadsBatch));
 	if (params.flashAttn && !argsSet.has("-fa")) args.push("-fa", "on");
-	if (params.mlock && !argsSet.has("--mlock")) args.push("--mlock");
-	if (!params.mmap && !argsSet.has("--no-mmap") && !argsSet.has("--mmap")) args.push("--no-mmap");
-	if (params.directIo && !argsSet.has("-dio")) args.push("-dio");
+	// Load mode: b10105+ uses the single --load-mode flag (replaces the
+	// separate --mlock/--no-mmap/-dio flags, removed in b10875).
+	// When loadMode is undefined/auto we emit nothing, so any --load-mode
+	// left in defaultArgs (user's backend default) naturally survives.
+	if (buildNumber >= 10105) {
+		if (params.loadMode && params.loadMode !== ELoadMode.AUTO) {
+			args.push("--load-mode", params.loadMode);
+		}
+	} else {
+		if (params.mlock && !argsSet.has("--mlock")) args.push("--mlock");
+		if (!params.mmap && !argsSet.has("--no-mmap") && !argsSet.has("--mmap"))
+			args.push("--no-mmap");
+		if (params.directIo && !argsSet.has("-dio")) args.push("-dio");
+	}
 	if (params.noWarmup && !argsSet.has("--no-warmup")) args.push("--no-warmup");
 	if (params.jinja && !argsSet.has("--jinja")) args.push("--jinja");
 	if (params.swaFull && !argsSet.has("--swa-full")) args.push("--swa-full");

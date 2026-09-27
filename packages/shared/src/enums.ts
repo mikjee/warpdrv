@@ -32,6 +32,15 @@ export enum EDeviceBackendType {
 	VULKAN = "Vulkan",
 }
 
+// Load modes for llama.cpp -lm/--load-mode (b10105+)
+export enum ELoadMode {
+	AUTO = "auto",
+	NONE = "none",
+	MMAP = "mmap",
+	MLOCK = "mlock",
+	MMAP_MLOCK = "mmap+mlock",
+	DIO = "dio",
+}
 // Multi-GPU split mode for llama.cpp
 export enum ESplitMode {
 	LAYER = "layer",

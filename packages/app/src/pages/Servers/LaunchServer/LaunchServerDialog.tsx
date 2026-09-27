@@ -121,6 +121,13 @@ export const LaunchServerDialog = React.memo(({ onClose, serverId }: ILaunchServ
 		return selectedBackendId ? (backends[selectedBackendId] ?? null) : null;
 	}, [isGroup, selectedBackendGroupId, groups, backends, selectedBackendId]);
 
+	// llama.cpp build number of the active backend — gates which flags/UI are shown.
+	// Empty/invalid buildNumber yields 0 → treated as old build (safe default).
+	const backendBuildNumber = useMemo(
+		() => (selectedBackend ? parseInt(selectedBackend.buildNumber, 10) || 0 : 0),
+		[selectedBackend],
+	);
+
 	// Device info for spec decode card
 	const selectedBackendDevices = selectedBackend?.detectedDevices ?? [];
 	const deviceIdToName = useMemo(
@@ -395,6 +402,7 @@ export const LaunchServerDialog = React.memo(({ onClose, serverId }: ILaunchServ
 								deviceIdToName={deviceIdToName}
 								flashAttn={params.flashAttn}
 								ubatchSize={params.ubatchSize}
+								buildNumber={backendBuildNumber}
 							/>
 						</VStack>
 
@@ -435,7 +443,11 @@ export const LaunchServerDialog = React.memo(({ onClose, serverId }: ILaunchServ
 										);
 								}}
 							/>
-							<OptionsCard params={params} onParamChange={updateParam} />
+							<OptionsCard
+								params={params}
+								onParamChange={updateParam}
+								buildNumber={backendBuildNumber}
+							/>
 						</VStack>
 					</Flex>
 				</Box>

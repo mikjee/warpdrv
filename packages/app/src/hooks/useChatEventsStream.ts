@@ -1,4 +1,5 @@
 import type { IBridgeEvent } from "@warpcore/bridge";
+import { chunksByMessageId } from "@warpcore/bridge/store";
 import { useEffect } from "react";
 import { setKokoroCurrentRequestId, startStream } from "../pages/Chat/assistant-ui/KokoroTTS";
 import { useStore } from "../store";
@@ -112,7 +113,7 @@ export function useChatEventsStream() {
 						const msg = state.messagesByThread[event.threadId]?.[event.messageId];
 						if (msg) {
 							const part = msg.content.find((p: any) => p.id === event.partId);
-							const buffered = state.chunksByMessageId[event.messageId]?.chunk || "";
+							const buffered = chunksByMessageId[event.messageId]?.chunk || "";
 							const fullText = (part?.text || "") + buffered;
 							const spoken = state.ttsSpokenByMessage[event.messageId] || 0;
 							const remaining = fullText.slice(spoken);

@@ -27,6 +27,46 @@ import type {
 } from "../types";
 import { EMessagePartType } from "../types";
 
+export const chunksByMessageId: Record<
+	string,
+	{ partId: string; chunk: string; lastUpdate: number; threadId: string }
+> = {};
+
+let rafPending = false;
+function scheduleFlush(set: ImmerSet<IChatStoreState>) {
+	if (rafPending) return;
+	rafPending = true;
+	requestAnimationFrame(() => {
+		rafPending = false;
+		const ids = Object.keys(chunksByMessageId).filter((id) => chunksByMessageId[id]?.chunk);
+		if (!ids.length) return;
+		set((draft) => {
+			for (const id of ids) {
+				const buf = chunksByMessageId[id];
+				if (!buf) continue;
+				const msg = draft.messagesByThread[buf.threadId]?.[id];
+				if (!msg) continue;
+				const part = msg.content.find((p) => p.id === buf.partId);
+				if (
+					part &&
+					(part.type === EMessagePartType.TEXT ||
+						part.type === EMessagePartType.REASONING)
+				) {
+					part.text += buf.chunk;
+				} else {
+					msg.content.push({
+						id: buf.partId,
+						type: EMessagePartType.TEXT,
+						orderIndex: msg.content.length,
+						text: buf.chunk,
+					} as any);
+				}
+				buf.chunk = "";
+			}
+		});
+	});
+}
+
 // ============================================================
 // Immer-compatible set/get types (matches WarpCore pattern)
 // ============================================================
@@ -283,7 +323,7 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 				}
 
 				// Flush and remove chunks
-				const buffer = draft.chunksByMessageId[msg.id];
+				const buffer = chunksByMessageId[msg.id];
 				if (buffer && buffer.chunk.length > 0) {
 					const part = msg.content.find((p) => p.id === buffer.partId);
 					if (
@@ -294,7 +334,7 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 						part.text += buffer.chunk;
 					}
 				}
-				delete draft.chunksByMessageId[msg.id];
+				delete chunksByMessageId[msg.id];
 
 				// Update stats if provided
 				if (updates.stats !== undefined) {
@@ -414,91 +454,100 @@ export function createChatStoreSlice<TState extends IChatStoreState>(
 			threadId: TThreadId,
 			partId: TMessagePartId,
 			deltaText: string,
-		) =>
-			set((draft) => {
-				const msg = draft.messagesByThread[threadId]?.[messageId];
-				if (!msg) return;
+		) => {
+			const buffer = chunksByMessageId[messageId];
+			const now = Date.now();
 
-				const buffer = draft.chunksByMessageId[messageId];
-				const now = Date.now();
+			// Helper to flush buffer to part (creates part if needed)
+			const flushBuffer = (msg: IChatMessage, buf: { partId: string; chunk: string }) => {
+				const existingPart = msg.content.find((p) => p.id === buf.partId);
+				if (
+					existingPart &&
+					(existingPart.type === EMessagePartType.TEXT ||
+						existingPart.type === EMessagePartType.REASONING)
+				) {
+					existingPart.text += buf.chunk;
+				} else {
+					const newPart = {
+						id: buf.partId,
+						type: EMessagePartType.TEXT,
+						orderIndex: msg.content.length,
+						text: buf.chunk,
+					} as any;
+					msg.content.push(newPart);
+				}
+			};
+
+			// Helper to create part if it doesn't exist
+			const ensurePartExists = (msg: IChatMessage) => {
 				const part = msg.content.find((p) => p.id === partId);
-
-				// Helper to flush buffer to part (creates part if needed)
-				const flushBuffer = (buf: { partId: string; chunk: string }) => {
-					const existingPart = msg.content.find((p) => p.id === buf.partId);
+				if (!part) {
+					const newPart = {
+						id: partId,
+						type: EMessagePartType.TEXT,
+						orderIndex: msg.content.length,
+						text: deltaText,
+					} as any;
+					msg.content.push(newPart);
+				} else {
 					if (
-						existingPart &&
-						(existingPart.type === EMessagePartType.TEXT ||
-							existingPart.type === EMessagePartType.REASONING)
+						part.type === EMessagePartType.TEXT ||
+						part.type === EMessagePartType.REASONING
 					) {
-						existingPart.text += buf.chunk;
-					} else {
-						const newPart = {
-							id: buf.partId,
-							type: EMessagePartType.TEXT,
-							orderIndex: msg.content.length,
-							text: buf.chunk,
-						} as any;
-						msg.content.push(newPart);
+						part.text += deltaText;
 					}
+				}
+			};
+
+			// No existing buffer - first chunk for this message
+			if (!buffer) {
+				set((draft) => {
+					const msg = draft.messagesByThread[threadId]?.[messageId];
+					if (!msg) return;
+					ensurePartExists(msg);
+				});
+				// Create empty buffer for future chunks
+				chunksByMessageId[messageId] = {
+					partId,
+					chunk: "",
+					lastUpdate: now,
+					threadId,
 				};
+				return;
+			}
 
-				// Helper to create part if it doesn't exist
-				const ensurePartExists = () => {
-					if (!part) {
-						const newPart = {
-							id: partId,
-							type: EMessagePartType.TEXT,
-							orderIndex: msg.content.length,
-							text: deltaText,
-						} as any;
-						msg.content.push(newPart);
-					} else {
-						if (
-							part.type === EMessagePartType.TEXT ||
-							part.type === EMessagePartType.REASONING
-						) {
-							part.text += deltaText;
-						}
-					}
+			// Buffer exists - check if partId changed
+			if (buffer.partId !== partId) {
+				set((draft) => {
+					const msg = draft.messagesByThread[threadId]?.[messageId];
+					if (!msg) return;
+					flushBuffer(msg, buffer);
+					ensurePartExists(msg);
+				});
+				// Create empty buffer for new part
+				chunksByMessageId[messageId] = {
+					partId,
+					chunk: "",
+					lastUpdate: now,
+					threadId,
 				};
+				return;
+			}
 
-				// No existing buffer - first chunk for this message
-				if (!buffer) {
-					ensurePartExists();
-					// Create empty buffer for future chunks
-					draft.chunksByMessageId[messageId] = {
-						partId,
-						chunk: "",
-						lastUpdate: now,
-					};
-					return;
-				}
-
-				// Buffer exists - check if partId changed
-				if (buffer.partId !== partId) {
-					// Flush old buffer to its part
-					flushBuffer(buffer);
-					// Handle new part
-					ensurePartExists();
-					// Create empty buffer for new part
-					draft.chunksByMessageId[messageId] = {
-						partId,
-						chunk: "",
-						lastUpdate: now,
-					};
-					return;
-				}
-
-				// Same partId - check time delta
-				const timeDelta = now - buffer.lastUpdate;
-				buffer.chunk += deltaText;
-				if (timeDelta > 150) {
-					flushBuffer(buffer);
-					buffer.chunk = "";
-					buffer.lastUpdate = now;
-				}
-			}),
+			// Same partId - buffer-only append (no set) unless flushing
+			const timeDelta = now - buffer.lastUpdate;
+			buffer.chunk += deltaText;
+			if (timeDelta > 250) {
+				// set((draft) => {
+				// 	const msg = draft.messagesByThread[threadId]?.[messageId];
+				// 	if (!msg) return;
+				// 	flushBuffer(msg, buffer);
+				// });
+				// buffer.chunk = "";
+				buffer.lastUpdate = now;
+				scheduleFlush(set);
+			}
+		},
 
 		// Tool call actions
 		applyToolCallStarting: (messageId: TMessageId, name: string) =>
