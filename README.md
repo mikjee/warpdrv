@@ -38,6 +38,7 @@ https://github.com/user-attachments/assets/796ff98a-5536-41e0-b681-5ea9a6f71a8d
 ---
 
 > **Alpha release - expect things to be broken.** This project is in active development.
+> Expect delays - the developer is working on a new version (which contains major upgrades). Low activity is to be expected in this repo until 0.7.x release.
 
 ---
 
