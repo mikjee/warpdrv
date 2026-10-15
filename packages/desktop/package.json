@@ -7,6 +7,6 @@
 		"build": "cargo tauri build"
 	},
 	"devDependencies": {
-		"@tauri-apps/cli": "^2"
+		"@tauri-apps/cli": "^2.12.0"
 	}
 }

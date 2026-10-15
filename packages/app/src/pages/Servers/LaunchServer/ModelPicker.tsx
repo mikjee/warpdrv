@@ -32,7 +32,7 @@ const ModelCombobox = React.memo(
 	}: {
 		entries: TModelEntry[];
 		selectedPath: string | null;
-		onSelect: (path: string) => void;
+		onSelect: (path: string | null) => void;
 	}) => {
 		const [inputValue, setInputValue] = useState("");
 		const filteredItems = useMemo(() => {
@@ -57,8 +57,7 @@ const ModelCombobox = React.memo(
 			<Combobox.Root
 				collection={collection}
 				onValueChange={(details) => {
-					const val = details.value?.[0];
-					if (val) onSelect(val);
+					onSelect(details.value?.[0] ?? null);
 				}}
 				onInputValueChange={(details) => setInputValue(details.inputValue)}
 				value={selectedPath ? [selectedPath] : []}
@@ -205,7 +204,9 @@ export const ModelPicker = React.memo(
 					<ModelCombobox
 						entries={modelEntries}
 						selectedPath={selectedModelPath}
-						onSelect={onSelectModel}
+						onSelect={(path) => {
+							if (path) onSelectModel(path);
+						}}
 					/>
 				)}
 				{selectedEntry?.file.metadata && (

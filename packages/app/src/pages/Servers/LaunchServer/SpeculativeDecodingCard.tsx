@@ -38,7 +38,7 @@ const ModelCombobox = React.memo(
 	}: {
 		entries: TModelEntry[];
 		selectedPath: string | null;
-		onSelect: (path: string) => void;
+		onSelect: (path: string | null) => void;
 		placeholder: string;
 	}) => {
 		const [inputValue, setInputValue] = useState("");
@@ -64,8 +64,7 @@ const ModelCombobox = React.memo(
 			<Combobox.Root
 				collection={collection}
 				onValueChange={(details) => {
-					const val = details.value?.[0];
-					if (val) onSelect(val);
+					onSelect(details.value?.[0] ?? null);
 				}}
 				onInputValueChange={(details) => setInputValue(details.inputValue)}
 				value={selectedPath ? [selectedPath] : []}
@@ -158,6 +157,7 @@ export const SpeculativeDecodingCard = React.memo(
 		onSpecParamChange,
 		targetArchitecture,
 		draftModelEntries,
+		dflashDraftModelEntries,
 		selectedDraftEntry,
 		deviceOptions,
 		deviceIdToName,
@@ -172,6 +172,7 @@ export const SpeculativeDecodingCard = React.memo(
 		) => void;
 		targetArchitecture: string | null;
 		draftModelEntries: TModelEntry[];
+		dflashDraftModelEntries: TModelEntry[];
 		selectedDraftEntry: TModelEntry | null;
 		deviceOptions: string[];
 		deviceIdToName: Record<string, string>;
@@ -413,7 +414,7 @@ export const SpeculativeDecodingCard = React.memo(
 											entries={draftModelEntries}
 											selectedPath={specDecode.draftModelPath || null}
 											onSelect={(path) =>
-												onSpecParamChange("draftModelPath", path)
+												onSpecParamChange("draftModelPath", path ?? "")
 											}
 											placeholder="Search compatible draft models..."
 										/>
@@ -608,7 +609,7 @@ export const SpeculativeDecodingCard = React.memo(
 												entries={draftModelEntries}
 												selectedPath={specDecode.draftModelPath || null}
 												onSelect={(path) =>
-													onSpecParamChange("draftModelPath", path)
+													onSpecParamChange("draftModelPath", path ?? "")
 												}
 												placeholder="Search compatible draft models..."
 											/>
@@ -828,24 +829,18 @@ export const SpeculativeDecodingCard = React.memo(
 									>
 										Draft Model
 									</Text>
-									{!targetArchitecture ? (
+									{dflashDraftModelEntries.length === 0 ? (
 										<Text fontSize="12px" color="var(--wc-text-muted)">
-											Select a target model first to see compatible draft
-											models.
-										</Text>
-									) : draftModelEntries.length === 0 ? (
-										<Text fontSize="12px" color="var(--wc-text-muted)">
-											No compatible draft models found. Draft models must
-											share the same architecture ({targetArchitecture}).
+											No draft models available.
 										</Text>
 									) : (
 										<ModelCombobox
-											entries={draftModelEntries}
+											entries={dflashDraftModelEntries}
 											selectedPath={specDecode.draftModelPath || null}
 											onSelect={(path) =>
-												onSpecParamChange("draftModelPath", path)
+												onSpecParamChange("draftModelPath", path ?? "")
 											}
-											placeholder="Search compatible draft models..."
+											placeholder="Search draft models..."
 										/>
 									)}
 									{selectedDraftEntry?.file.metadata && (

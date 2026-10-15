@@ -153,9 +153,26 @@ export const LaunchServerDialog = React.memo(({ onClose, serverId }: ILaunchServ
 		});
 	}, [modelEntries, targetArchitecture, selectedModelPath]);
 
+	// DFlash draft model entries — no architecture match required
+	const dflashDraftModelEntries = useMemo(() => {
+		return modelEntries.filter((e) => e.file.filePath !== selectedModelPath);
+	}, [modelEntries, selectedModelPath]);
+
 	const selectedDraftEntry = modelEntries.find(
 		(e) => e.file.filePath === params.specDecode.draftModelPath,
 	);
+
+	// Changing the target model invalidates the draft selection (drafts must
+	// share the target's architecture and can't be the same file). Clear it so
+	// a stale --spec-draft-model / --model-draft path isn't sent to the server.
+	const handleSelectModel = useCallback((path: string) => {
+		setSelectedModelPath(path);
+		setParams((prev) =>
+			prev.specDecode.draftModelPath
+				? { ...prev, specDecode: { ...prev.specDecode, draftModelPath: "" } }
+				: prev,
+		);
+	}, []);
 
 	// Model metadata
 	const meta = selectedEntry?.file.metadata ?? null;
@@ -369,7 +386,7 @@ export const LaunchServerDialog = React.memo(({ onClose, serverId }: ILaunchServ
 								modelCount={modelsArr.length}
 								modelEntries={modelEntries}
 								selectedModelPath={selectedModelPath}
-								onSelectModel={setSelectedModelPath}
+								onSelectModel={handleSelectModel}
 								selectedEntry={selectedEntry ?? null}
 							/>
 							<ServerInfoCard
@@ -397,6 +414,7 @@ export const LaunchServerDialog = React.memo(({ onClose, serverId }: ILaunchServ
 								onSpecParamChange={updateSpecParam}
 								targetArchitecture={targetArchitecture}
 								draftModelEntries={draftModelEntries}
+								dflashDraftModelEntries={dflashDraftModelEntries}
 								selectedDraftEntry={selectedDraftEntry ?? null}
 								deviceOptions={deviceOptions}
 								deviceIdToName={deviceIdToName}
