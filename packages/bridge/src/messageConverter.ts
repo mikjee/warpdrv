@@ -3,12 +3,13 @@
 // Message conversion utilities - universal (no Node/browser deps)
 // ============================================================
 
-import type { IChatMessage, IToolCall } from "./types";
+import type { IChatMessage, IToolCall, IMessagePartReasoning } from "./types";
 import { EChatRole, EMessagePartType } from "./types";
 
 export type TOpenAIMessage = {
 	role: "system" | "user" | "assistant" | "tool";
 	content?: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
+	reasoning_content?: string;
 	tool_calls?: Array<{
 		id: string;
 		type: "function";
@@ -103,6 +104,13 @@ export function convertMessagesToOpenAIFormat(
 				const textParts = msg.content.filter((p) => p.type === EMessagePartType.TEXT);
 				const content = textParts.map((p) => p.text || "").join("");
 
+				const reasoningParts = msg.content.filter(
+					(p) => p.type === EMessagePartType.REASONING,
+				);
+				const reasoningContent = reasoningParts
+					.map((p) => (p as IMessagePartReasoning).text || "")
+					.join("");
+
 				const toolCallParts = msg.content.filter(
 					(p) => p.type === EMessagePartType.TOOL_CALL,
 				);
@@ -128,6 +136,7 @@ export function convertMessagesToOpenAIFormat(
 				const assistantMsg: TOpenAIMessage = { role: "assistant", content: null };
 
 				if (content) assistantMsg.content = content;
+				if (reasoningContent) assistantMsg.reasoning_content = reasoningContent;
 				if (toolCalls.length > 0) assistantMsg.tool_calls = toolCalls;
 				if (content || toolCalls.length > 0) result.push(assistantMsg);
 

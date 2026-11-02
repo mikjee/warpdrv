@@ -5,7 +5,7 @@ import { assertPathAllowed } from "../util/sandbox";
 export const filePatchDefinition = {
 	name: "file_patch",
 	description:
-		"Replace a text segment in a file. oldText must be non-empty and resolve to exactly one location. Whitespace and indentation are matched leniently, but the text content must be unique. Path must be within fsAllowedRoots.",
+		"Replace a text segment in a file. oldText is matched exactly, byte for byte (including tabs, spaces, and indentation), and must occur exactly once. It is replaced verbatim with newText. Path must be within fsAllowedRoots.",
 	inputSchema: {
 		type: "object",
 		properties: {
@@ -13,7 +13,7 @@ export const filePatchDefinition = {
 			oldText: {
 				type: "string",
 				description:
-					"Text to find. Must resolve to exactly one location. Copy it verbatim from the file including indentation; minor whitespace differences are tolerated.",
+					"Text to find, matched exactly including indentation. Must occur exactly once in the file.",
 			},
 			newText: { type: "string", description: "Replacement text." },
 			encoding: {
@@ -273,9 +273,9 @@ function isMiddleSimilar(expected: Array<string>, actual: Array<string>): boolea
 function findMatch(content: string, oldText: string): IMatch {
 	const strategies: Array<{ name: string; fn: (c: string, n: string) => Array<IMatch> }> = [
 		{ name: "exact", fn: matchExact },
-		{ name: "line-trimmed", fn: matchLineTrimmed },
-		{ name: "whitespace-insensitive", fn: matchWhitespaceInsensitive },
-		{ name: "block-anchor", fn: matchBlockAnchor },
+		// [EXACT-ONLY] { name: "line-trimmed", fn: matchLineTrimmed },
+		// [EXACT-ONLY] { name: "whitespace-insensitive", fn: matchWhitespaceInsensitive },
+		// [EXACT-ONLY] { name: "block-anchor", fn: matchBlockAnchor },
 	];
 	for (const strategy of strategies) {
 		const matches = strategy.fn(content, oldText);
@@ -339,13 +339,22 @@ export async function filePatchHandler(
 	const newText = normalizeEol(args.newText);
 	const match = findMatch(content, oldText);
 	const matchLine = content.slice(0, match.start).split("\n").length + 1;
-	const replacement = reindent(newText, match.indent);
-	let next = content.substring(0, match.start) + replacement + content.substring(match.end);
+	// [EXACT-ONLY]
+	// const replacement = reindent(newText, match.indent);
+	// let next = content.substring(0, match.start) + replacement + content.substring(match.end);
+	let next = content.substring(0, match.start) + newText + content.substring(match.end);
 	if (crlf) {
 		next = next.replace(/\n/g, "\r\n");
 	}
+
 	await fs.writeFile(safePath, next, { encoding });
 	await deps.onFileWritten?.(safePath);
 	const stat = await fs.stat(safePath);
 	return { success: true, fileSize: stat.size, strategy: "matched", matchLine };
 }
+
+// Legend for commented-out code:
+// [EXACT-ONLY] file_patch is now pure exact find-and-replace: only the "exact" matching
+//   strategy runs (the lenient ones could match the wrong block), and newText is inserted
+//   verbatim (reindent() re-indented newText against the file and added extra tabs to
+//   otherwise-correct input).

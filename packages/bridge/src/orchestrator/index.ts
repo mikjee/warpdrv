@@ -952,6 +952,7 @@ export class Orchestrator {
 		messages.push({
 			role: "assistant",
 			content: fullText || (null as any),
+			...(reasoningText ? { reasoning_content: reasoningText } : {}),
 			tool_calls: finalToolCalls.map((tc) => ({
 				id: tc.id,
 				type: "function",
